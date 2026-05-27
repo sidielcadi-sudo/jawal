@@ -12,10 +12,12 @@
 | [Veille concurrentielle](./veille.md) | Analyse des concurrents (PowerSchool, PRONOTE, Massar, Classter, acteurs Maghreb), positionnement stratégique | ✅ V0 |
 | [Glossaire tri-segment](./glossaire.md) | Terminologie unifiée K-12 / Supérieur / Formation pro + acronymes Maroc + conventions code | ✅ V0 |
 | [Périmètre MVP](./mvp-perimetre.md) | Modules retenus pour le MVP 3 mois, parcours golden paths, roadmap 6 sprints, critères de succès | ✅ V0 |
+| [Maquettes (wireframes)](./maquettes.md) | Wireframes ASCII des 6 écrans clés : login, dashboard admin, fiche élève 360°, appel mobile, parent mobile + paiement CMI, bulletin PDF | ✅ V0 |
+| [Business plan & pricing](./business-plan.md) | Marché TAM/SAM/SOM Maroc, tarification 3 plans (Starter/Standard/Premium), projection 36 mois, unit economics, go-to-market, risques | ✅ V0 |
 
 ## À produire ensuite
 
-- `maquettes/` — wireframes principaux portails (admin, parent mobile, enseignant mobile)
+- Pack hi-fi Figma sur la base des wireframes
 - `api/openapi.yaml` — spec API publique (V1)
 - `runbooks/` — procédures opérationnelles (incident, backup, déploiement)
 
