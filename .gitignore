@@ -59,3 +59,7 @@ playwright/.cache/
 
 # Vercel
 .vercel/
+
+# Claude Code local settings (allowlist auto-générée)
+.claude/settings.local.json
+.claude/settings.json

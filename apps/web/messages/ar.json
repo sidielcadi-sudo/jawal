@@ -30,5 +30,61 @@
     "delete": "حذف",
     "create": "إنشاء",
     "search": "بحث"
+  },
+  "login": {
+    "title": "تسجيل الدخول",
+    "subtitle": "ولوج إلى فضائكم على جوال",
+    "demoHint": "تجربة: admin@demo.jawal.ma / demo1234 (المعرف: demo)",
+    "fields": {
+      "tenantSlug": "معرّف المؤسسة",
+      "email": "البريد الإلكتروني",
+      "password": "كلمة المرور"
+    },
+    "actions": {
+      "signIn": "تسجيل الدخول",
+      "signingIn": "جاري الاتصال…"
+    },
+    "toggleToSuperAdmin": "دخول مشرف الخدمة",
+    "toggleToTenant": "دخول مؤسسة",
+    "errors": {
+      "invalidCredentials": "معرّفات غير صحيحة أو حساب موقوف."
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "title": "لوحة التحكم",
+      "welcome": "مرحبًا، {name}",
+      "kpi": {
+        "students": "التلاميذ",
+        "teachers": "الأساتذة",
+        "classes": "الأقسام",
+        "activeYear": "السنة النشطة"
+      },
+      "rls": {
+        "title": "إظهار عزل البيانات (RLS)",
+        "explanation": "جميع البيانات أعلاه تتم تصفيتها على مستوى قاعدة البيانات بفضل Row-Level Security: الجلسة عيّنت `app.current_tenant_id = {tenantId}`. أي مؤسسة أخرى تبقى غير مرئية."
+      }
+    },
+    "signOut": "تسجيل الخروج"
+  },
+  "superAdmin": {
+    "title": "مشرف SaaS",
+    "tenants": {
+      "title": "المؤسسات",
+      "create": "مؤسسة جديدة",
+      "table": {
+        "name": "الاسم",
+        "slug": "المعرّف",
+        "profile": "النمط",
+        "status": "الحالة",
+        "createdAt": "تاريخ الإنشاء"
+      },
+      "form": {
+        "name": "الاسم",
+        "slug": "المعرّف (URL)",
+        "profile": "النمط",
+        "submit": "إنشاء المؤسسة"
+      }
+    }
   }
 }

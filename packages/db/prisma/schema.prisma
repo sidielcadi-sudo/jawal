@@ -107,6 +107,10 @@ model User {
   passwordHash  String?   @map("password_hash")
   emailVerified DateTime? @map("email_verified")
   mfaSecret     String?   @map("mfa_secret")
+  /// Super-admin SaaS — bypasse l'isolation tenant (gère tous les tenants).
+  /// Reste rattaché à un tenant pour les contraintes de schéma mais ses
+  /// opérations utilisent le client `prismaAdmin` (superuser PostgreSQL).
+  isSuperAdmin  Boolean   @default(false) @map("is_super_admin")
   locale        String    @default("fr")
   lastLoginAt   DateTime? @map("last_login_at")
   disabledAt    DateTime? @map("disabled_at")

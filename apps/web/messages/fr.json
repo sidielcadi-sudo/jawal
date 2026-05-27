@@ -30,5 +30,61 @@
     "delete": "Supprimer",
     "create": "Créer",
     "search": "Rechercher"
+  },
+  "login": {
+    "title": "Connexion",
+    "subtitle": "Accédez à votre espace Jawal",
+    "demoHint": "Démo : admin@demo.jawal.ma / demo1234 (slug : demo)",
+    "fields": {
+      "tenantSlug": "Identifiant de l'établissement",
+      "email": "Adresse email",
+      "password": "Mot de passe"
+    },
+    "actions": {
+      "signIn": "Se connecter",
+      "signingIn": "Connexion en cours…"
+    },
+    "toggleToSuperAdmin": "Connexion super-admin SaaS",
+    "toggleToTenant": "Connexion établissement",
+    "errors": {
+      "invalidCredentials": "Identifiants incorrects ou compte désactivé."
+    }
+  },
+  "admin": {
+    "dashboard": {
+      "title": "Tableau de bord",
+      "welcome": "Bienvenue, {name}",
+      "kpi": {
+        "students": "Élèves",
+        "teachers": "Enseignants",
+        "classes": "Classes",
+        "activeYear": "Année active"
+      },
+      "rls": {
+        "title": "Démonstration RLS",
+        "explanation": "Toutes les données ci-dessus sont filtrées par Row-Level Security PostgreSQL : la session a positionné `app.current_tenant_id = {tenantId}`. Tout autre tenant est invisible — même avec une requête mal écrite."
+      }
+    },
+    "signOut": "Se déconnecter"
+  },
+  "superAdmin": {
+    "title": "Super-admin SaaS",
+    "tenants": {
+      "title": "Établissements",
+      "create": "Nouvel établissement",
+      "table": {
+        "name": "Nom",
+        "slug": "Slug",
+        "profile": "Profil",
+        "status": "Statut",
+        "createdAt": "Créé le"
+      },
+      "form": {
+        "name": "Nom",
+        "slug": "Slug (URL)",
+        "profile": "Profil",
+        "submit": "Créer l'établissement"
+      }
+    }
   }
 }
