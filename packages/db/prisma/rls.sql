@@ -1,19 +1,38 @@
 -- ─────────────────────────────────────────────────────────────
--- Jawal — Politiques Row-Level Security
--- À exécuter MANUELLEMENT après `prisma migrate dev` initial
--- (Prisma ne génère pas encore RLS automatiquement)
---
--- Usage : psql $DATABASE_URL -f packages/db/prisma/rls.sql
+-- Jawal — Setup post-migration : rôle applicatif + RLS
+-- À exécuter après `prisma migrate deploy` :
+--   psql "$DATABASE_URL" -f packages/db/prisma/rls.sql
 -- ─────────────────────────────────────────────────────────────
 
--- Helper : récupérer le tenant courant depuis la variable de session
+-- Extensions (idempotent — déjà créées par l'init Docker)
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+CREATE EXTENSION IF NOT EXISTS "citext";
+
+-- ─── Rôle applicatif (RLS active) ───────────────────────────
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'jawal_app') THEN
+    CREATE ROLE jawal_app LOGIN PASSWORD 'jawal_app';
+  END IF;
+END
+$$;
+
+GRANT USAGE ON SCHEMA public TO jawal_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO jawal_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO jawal_app;
+
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO jawal_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO jawal_app;
+
+-- ─── Helper : récupérer le tenant courant depuis la session ─
 CREATE OR REPLACE FUNCTION current_tenant_id() RETURNS uuid
 LANGUAGE sql STABLE AS $$
   SELECT NULLIF(current_setting('app.current_tenant_id', true), '')::uuid
 $$;
 
--- Macro : activer RLS + politique d'isolation tenant sur une table
--- (table doit avoir une colonne `tenant_id uuid`)
+-- ─── Activer RLS + politiques d'isolation ───────────────────
 DO $$
 DECLARE
   t text;
@@ -40,13 +59,12 @@ BEGIN
     EXECUTE format('ALTER TABLE %I ENABLE ROW LEVEL SECURITY', t);
     EXECUTE format('ALTER TABLE %I FORCE ROW LEVEL SECURITY', t);
 
-    -- Politique : un utilisateur ne voit que son tenant
+    EXECUTE format('DROP POLICY IF EXISTS tenant_isolation ON %I', t);
     EXECUTE format($p$
-      DROP POLICY IF EXISTS tenant_isolation ON %I;
       CREATE POLICY tenant_isolation ON %I
         USING (tenant_id IS NULL OR tenant_id = current_tenant_id())
-        WITH CHECK (tenant_id IS NULL OR tenant_id = current_tenant_id());
-    $p$, t, t);
+        WITH CHECK (tenant_id IS NULL OR tenant_id = current_tenant_id())
+    $p$, t);
   END LOOP;
 END
 $$;

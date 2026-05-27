@@ -154,6 +154,7 @@ model Person {
 /// ex. parent rattaché à plusieurs enfants).
 model UserPerson {
   id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
   userId       String    @map("user_id") @db.Uuid
   personId     String    @map("person_id") @db.Uuid
   relationship String?   // self, father, mother, guardian, ...
@@ -163,6 +164,7 @@ model UserPerson {
   person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
 
   @@unique([userId, personId])
+  @@index([tenantId])
   @@map("user_persons")
 }
 
@@ -186,6 +188,7 @@ model Role {
 
 model UserRole {
   id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
   userId    String   @map("user_id") @db.Uuid
   roleId    String   @map("role_id") @db.Uuid
   /// Restriction du rôle à un périmètre (ex: { "classes": ["uuid1", "uuid2"] })
@@ -196,6 +199,7 @@ model UserRole {
   role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
 
   @@unique([userId, roleId])
+  @@index([tenantId])
   @@map("user_roles")
 }
 

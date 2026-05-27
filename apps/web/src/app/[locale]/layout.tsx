@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages, setRequestLocale } from 'next-intl/server';
 import { notFound } from 'next/navigation';
-import { hasLocale } from 'next-intl';
 import { routing } from '@/lib/i18n/routing';
 import { localeDirection, type Locale } from '@/lib/i18n/config';
 import '../globals.css';
@@ -12,9 +11,12 @@ export function generateStaticParams() {
 }
 
 export const metadata = {
-  title: 'Jawal — Gestion intégrée d\'établissement scolaire',
+  title: "Jawal — Gestion intégrée d'établissement scolaire",
   description: 'Plateforme SaaS multi-tenant pour le primaire, le secondaire et le supérieur.',
 };
+
+const isLocale = (value: string): value is Locale =>
+  (routing.locales as readonly string[]).includes(value);
 
 export default async function LocaleLayout({
   children,
@@ -25,13 +27,13 @@ export default async function LocaleLayout({
 }) {
   const { locale } = await params;
 
-  if (!hasLocale(routing.locales, locale)) {
+  if (!isLocale(locale)) {
     notFound();
   }
 
   setRequestLocale(locale);
   const messages = await getMessages();
-  const dir = localeDirection[locale as Locale];
+  const dir = localeDirection[locale];
 
   return (
     <html lang={locale} dir={dir}>
