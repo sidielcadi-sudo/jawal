@@ -1,0 +1,34 @@
+{
+  "app": {
+    "name": "Jawal",
+    "tagline": "Plateforme intégrée de gestion scolaire"
+  },
+  "home": {
+    "title": "Bienvenue sur Jawal",
+    "subtitle": "Gestion intégrée pour établissements primaires, secondaires et supérieurs.",
+    "cta": {
+      "login": "Se connecter",
+      "demo": "Demander une démo"
+    }
+  },
+  "nav": {
+    "dashboard": "Tableau de bord",
+    "students": "Élèves",
+    "teachers": "Enseignants",
+    "classes": "Classes",
+    "schedule": "Emploi du temps",
+    "attendance": "Présences",
+    "grades": "Notes",
+    "finance": "Finances",
+    "messages": "Messages",
+    "settings": "Paramètres"
+  },
+  "actions": {
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "create": "Créer",
+    "search": "Rechercher"
+  }
+}

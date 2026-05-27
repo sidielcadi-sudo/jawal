@@ -1,0 +1,20 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-sans: 'Inter', system-ui, sans-serif;
+  --font-arabic: 'Noto Sans Arabic', system-ui, sans-serif;
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+html[dir='rtl'] {
+  font-family: var(--font-arabic);
+}
+
+body {
+  @apply bg-white text-slate-900 antialiased;
+}

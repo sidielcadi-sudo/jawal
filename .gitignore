@@ -1,0 +1,61 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# Turbo
+.turbo/
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Prisma
+prisma/migrations/dev.db*
+
+# Docker volumes (mounted into infra/)
+infra/data/
+infra/.docker/
+
+# Uploads / S3 local
+uploads/
+.minio/
+
+# Playwright
+playwright-report/
+test-results/
+playwright/.cache/
+
+# Vercel
+.vercel/

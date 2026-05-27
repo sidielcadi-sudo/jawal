@@ -1,0 +1,35 @@
+{
+  "name": "jawal",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Jawal — SaaS multi-tenant de gestion intégrée d'établissement scolaire",
+  "packageManager": "pnpm@9.12.0",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "db:generate": "pnpm --filter @jawal/db prisma:generate",
+    "db:migrate": "pnpm --filter @jawal/db prisma:migrate",
+    "db:seed": "pnpm --filter @jawal/db seed",
+    "db:studio": "pnpm --filter @jawal/db prisma:studio",
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker-compose.yml down",
+    "infra:logs": "docker compose -f infra/docker-compose.yml logs -f",
+    "infra:reset": "docker compose -f infra/docker-compose.yml down -v && docker compose -f infra/docker-compose.yml up -d"
+  },
+  "devDependencies": {
+    "prettier": "^3.3.3",
+    "prettier-plugin-tailwindcss": "^0.6.8",
+    "turbo": "^2.3.0",
+    "typescript": "^5.6.3"
+  }
+}
