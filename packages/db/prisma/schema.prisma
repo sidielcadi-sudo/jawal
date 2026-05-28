@@ -275,14 +275,15 @@ model Level {
 }
 
 model Class {
-  id              String   @id @default(uuid()) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  academicYearId  String   @map("academic_year_id") @db.Uuid
-  levelId         String   @map("level_id") @db.Uuid
-  name            String   // "6ème A", "TD-Info-1"
-  capacity        Int      @default(30)
-  mainTeacherId   String?  @map("main_teacher_id") @db.Uuid
-  createdAt       DateTime @default(now()) @map("created_at")
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  academicYearId  String    @map("academic_year_id") @db.Uuid
+  levelId         String    @map("level_id") @db.Uuid
+  name            String    // "1AC-A", "TD-Info-1"
+  capacity        Int       @default(30)
+  mainTeacherId   String?   @map("main_teacher_id") @db.Uuid
+  createdAt       DateTime  @default(now()) @map("created_at")
+  deletedAt       DateTime? @map("deleted_at")
 
   tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   academicYear AcademicYear   @relation(fields: [academicYearId], references: [id], onDelete: Cascade)

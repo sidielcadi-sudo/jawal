@@ -159,6 +159,69 @@
           "cancel": "Annuler"
         }
       }
+    },
+    "classes": {
+      "title": "Classes",
+      "count": "{count, plural, =0 {Aucune classe} one {# classe} other {# classes}}",
+      "empty": "Aucune classe à afficher pour ces filtres.",
+      "archived": "Archivée",
+      "newSubtitle": "Créez une classe pour une année scolaire et un niveau. L'année et le niveau ne peuvent plus changer après création.",
+      "table": {
+        "name": "Nom",
+        "level": "Niveau",
+        "year": "Année",
+        "mainTeacher": "Prof principal",
+        "enrolled": "Effectif"
+      },
+      "filters": {
+        "year": "Année",
+        "level": "Niveau",
+        "allLevels": "Tous les niveaux",
+        "apply": "Filtrer",
+        "showArchived": "Voir les archivées",
+        "showActive": "Voir les actives"
+      },
+      "actions": {
+        "new": "Nouvelle classe",
+        "edit": "Modifier",
+        "archive": "Archiver",
+        "restore": "Restaurer",
+        "confirmDelete": "Archiver cette classe ?"
+      },
+      "form": {
+        "name": "Nom de la classe",
+        "year": "Année scolaire",
+        "level": "Niveau",
+        "selectLevel": "— Sélectionner —",
+        "capacity": "Capacité",
+        "mainTeacher": "Enseignant principal",
+        "noTeacher": "Aucun",
+        "actions": {
+          "save": "Enregistrer",
+          "saving": "Enregistrement…",
+          "cancel": "Annuler"
+        }
+      },
+      "detail": {
+        "mainTeacher": "Enseignant principal",
+        "students": "Élèves inscrits",
+        "noStudents": "Aucun élève inscrit.",
+        "table": {
+          "name": "Nom",
+          "enrolledAt": "Inscrit le",
+          "actions": "Actions"
+        },
+        "unenroll": "Désinscrire",
+        "enroll": "Inscrire un élève",
+        "availableCount": "{count} élève(s) disponible(s)",
+        "selectStudent": "— Choisir un élève —",
+        "enrollButton": "Inscrire",
+        "enrolling": "Inscription…",
+        "noAvailable": "Aucun élève disponible. Créez d'abord des élèves.",
+        "cannotEnroll": "Inscription désactivée (classe archivée ou pleine).",
+        "capacityReached": "Capacité atteinte — augmentez la capacité ou retirez un élève.",
+        "utilization": "Taux d'occupation"
+      }
     }
   },
   "superAdmin": {

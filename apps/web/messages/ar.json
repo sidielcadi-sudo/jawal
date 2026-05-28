@@ -159,6 +159,69 @@
           "cancel": "إلغاء"
         }
       }
+    },
+    "classes": {
+      "title": "الأقسام",
+      "count": "{count, plural, =0 {لا توجد أقسام} one {قسم #} other {# أقسام}}",
+      "empty": "لا توجد أقسام للمعايير المحددة.",
+      "archived": "مؤرشف",
+      "newSubtitle": "أنشئ قسمًا لسنة دراسية ومستوى معينين. لا يمكن تغيير السنة والمستوى بعد الإنشاء.",
+      "table": {
+        "name": "الاسم",
+        "level": "المستوى",
+        "year": "السنة",
+        "mainTeacher": "الأستاذ الرئيسي",
+        "enrolled": "العدد"
+      },
+      "filters": {
+        "year": "السنة",
+        "level": "المستوى",
+        "allLevels": "كل المستويات",
+        "apply": "تصفية",
+        "showArchived": "إظهار المؤرشفة",
+        "showActive": "إظهار النشطة"
+      },
+      "actions": {
+        "new": "قسم جديد",
+        "edit": "تعديل",
+        "archive": "أرشفة",
+        "restore": "استرجاع",
+        "confirmDelete": "هل تريد أرشفة هذا القسم؟"
+      },
+      "form": {
+        "name": "اسم القسم",
+        "year": "السنة الدراسية",
+        "level": "المستوى",
+        "selectLevel": "— اختيار —",
+        "capacity": "السعة",
+        "mainTeacher": "الأستاذ الرئيسي",
+        "noTeacher": "لا أحد",
+        "actions": {
+          "save": "حفظ",
+          "saving": "جاري الحفظ…",
+          "cancel": "إلغاء"
+        }
+      },
+      "detail": {
+        "mainTeacher": "الأستاذ الرئيسي",
+        "students": "التلاميذ المسجلون",
+        "noStudents": "لا يوجد تلاميذ مسجلون.",
+        "table": {
+          "name": "الاسم",
+          "enrolledAt": "تاريخ التسجيل",
+          "actions": "إجراءات"
+        },
+        "unenroll": "إلغاء التسجيل",
+        "enroll": "تسجيل تلميذ",
+        "availableCount": "{count} تلميذ متاح",
+        "selectStudent": "— اختيار تلميذ —",
+        "enrollButton": "تسجيل",
+        "enrolling": "جاري التسجيل…",
+        "noAvailable": "لا يوجد تلاميذ متاحون.",
+        "cannotEnroll": "التسجيل معطل (قسم مؤرشف أو ممتلئ).",
+        "capacityReached": "السعة ممتلئة — قم بزيادتها أو احذف تلميذًا.",
+        "utilization": "نسبة الإشغال"
+      }
     }
   },
   "superAdmin": {
