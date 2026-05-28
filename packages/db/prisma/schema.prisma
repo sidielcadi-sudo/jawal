@@ -52,6 +52,13 @@ enum PeriodKind {
   SESSION
 }
 
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED // dispense, sortie anticipée, retrait justifié
+}
+
 // ─── Tenants & modules ─────────────────────────────────────
 
 model Tenant {
@@ -79,6 +86,8 @@ model Tenant {
   rooms          Room[]
   periods        Period[]
   auditLogs      AuditLog[]
+  attendanceSessions AttendanceSession[]
+  attendanceRecords  AttendanceRecord[]
   files          FileObject[]
 
   @@map("tenants")
@@ -144,10 +153,11 @@ model Person {
   updatedAt   DateTime   @updatedAt @map("updated_at")
   deletedAt   DateTime?  @map("deleted_at")
 
-  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userPersons    UserPerson[]
-  studentClasses StudentClass[]
-  mainOfClass    Class[]        @relation("MainTeacher")
+  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userPersons        UserPerson[]
+  studentClasses     StudentClass[]
+  mainOfClass        Class[]            @relation("MainTeacher")
+  attendanceRecords  AttendanceRecord[] @relation("StudentAttendance")
 
   @@index([tenantId, type])
   @@index([tenantId, lastName, firstName])
@@ -285,11 +295,12 @@ model Class {
   createdAt       DateTime  @default(now()) @map("created_at")
   deletedAt       DateTime? @map("deleted_at")
 
-  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  academicYear AcademicYear   @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  level        Level          @relation(fields: [levelId], references: [id])
-  mainTeacher  Person?        @relation("MainTeacher", fields: [mainTeacherId], references: [id])
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear        @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  level        Level               @relation(fields: [levelId], references: [id])
+  mainTeacher  Person?             @relation("MainTeacher", fields: [mainTeacherId], references: [id])
   students     StudentClass[]
+  attendanceSessions AttendanceSession[]
 
   @@unique([tenantId, academicYearId, name])
   @@index([tenantId, levelId])
@@ -367,4 +378,52 @@ model FileObject {
 
   @@index([tenantId, ownerType, ownerId])
   @@map("files")
+}
+
+// ─── Présences (M05) ───────────────────────────────────────
+
+/// Une session d'appel pour une classe à une date donnée, éventuellement
+/// ventilée par période (créneau horaire ou matière). Unique par triplet
+/// (classId, date, periodLabel) — `null` autorisé sur periodLabel pour les
+/// appels journaliers globaux (primaire par ex).
+model AttendanceSession {
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  classId      String    @map("class_id") @db.Uuid
+  date         DateTime  @db.Date
+  periodLabel  String?   @map("period_label") // "08h00-09h00", "Cours 1", "Matin", ...
+  finalizedAt  DateTime? @map("finalized_at") // null = brouillon, set = validé
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class   Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
+  records AttendanceRecord[]
+
+  @@unique([classId, date, periodLabel])
+  @@index([tenantId, date])
+  @@map("attendance_sessions")
+}
+
+/// Statut d'un élève pour une session d'appel donnée. Default PRESENT —
+/// au démarrage d'une nouvelle session, on insère une ligne par élève
+/// inscrit (status PRESENT), et l'enseignant ne saisit que les exceptions.
+model AttendanceRecord {
+  id           String           @id @default(uuid()) @db.Uuid
+  tenantId     String           @map("tenant_id") @db.Uuid
+  sessionId    String           @map("session_id") @db.Uuid
+  studentId    String           @map("student_id") @db.Uuid
+  status       AttendanceStatus @default(PRESENT)
+  lateMinutes  Int?             @map("late_minutes") // utilisé si status=LATE
+  note         String?
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  tenant  Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  session AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student Person            @relation("StudentAttendance", fields: [studentId], references: [id])
+
+  @@unique([sessionId, studentId])
+  @@index([tenantId, studentId])
+  @@map("attendance_records")
 }

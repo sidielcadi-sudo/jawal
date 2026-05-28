@@ -51,7 +51,9 @@ DECLARE
     'student_classes',
     'rooms',
     'audit_logs',
-    'files'
+    'files',
+    'attendance_sessions',
+    'attendance_records'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped

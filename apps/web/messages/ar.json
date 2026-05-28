@@ -259,7 +259,45 @@
         "noAvailable": "لا يوجد تلاميذ متاحون.",
         "cannotEnroll": "التسجيل معطل (قسم مؤرشف أو ممتلئ).",
         "capacityReached": "السعة ممتلئة — قم بزيادتها أو احذف تلميذًا.",
-        "utilization": "نسبة الإشغال"
+        "utilization": "نسبة الإشغال",
+        "takeAttendance": "أخذ الحضور",
+        "lastAttendance": "آخر حضور"
+      }
+    },
+    "attendance": {
+      "title": "الحضور",
+      "classes": "الأقسام",
+      "callOf": "حضور {date}",
+      "finalized": "تم التحقق بتاريخ {date}",
+      "noStudents": "لا يوجد تلاميذ في هذا القسم. سجّل تلاميذ قبل أخذ الحضور.",
+      "hint": "افتراضيًا الجميع حاضر — اضغط فقط على الاستثناءات.",
+      "allPresent": "تحديد الكل حاضر",
+      "minutes": "دقيقة تأخر",
+      "savedAt": "تم حفظ المسودة في {date}",
+      "back": "رجوع",
+      "saveDraft": "حفظ كمسودة",
+      "saving": "جاري الحفظ…",
+      "validate": "التحقق من الحضور",
+      "validating": "جاري التحقق…",
+      "reopen": "إعادة فتح",
+      "reopening": "جاري إعادة الفتح…",
+      "summary": {
+        "present": "حاضرون",
+        "absent": "غائبون",
+        "late": "متأخرون",
+        "excused": "مأذونون"
+      },
+      "status": {
+        "present": "حاضر",
+        "absent": "غائب",
+        "late": "متأخر",
+        "excused": "مأذون"
+      },
+      "statusShort": {
+        "present": "ح",
+        "absent": "غ",
+        "late": "م",
+        "excused": "إذ"
       }
     },
     "settings": {

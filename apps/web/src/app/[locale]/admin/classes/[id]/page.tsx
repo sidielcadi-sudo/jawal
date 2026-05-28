@@ -19,7 +19,7 @@ export default async function ClassDetailPage({
   const t = await getTranslations('admin.classes');
   const tDetail = await getTranslations('admin.classes.detail');
 
-  const { cls, availableStudents } = await withTenant(tenantId, async (tx) => {
+  const { cls, availableStudents, lastSession } = await withTenant(tenantId, async (tx) => {
     const cls = await tx.class.findUnique({
       where: { id },
       include: {
@@ -33,7 +33,7 @@ export default async function ClassDetailPage({
         },
       },
     });
-    if (!cls) return { cls: null, availableStudents: [] };
+    if (!cls) return { cls: null, availableStudents: [], lastSession: null };
 
     // Élèves disponibles : tous les STUDENT actifs qui ne sont PAS déjà
     // inscrits activement à cette classe (pas dans la liste students[]).
@@ -48,7 +48,14 @@ export default async function ClassDetailPage({
       take: 200,
     });
 
-    return { cls, availableStudents };
+    // Dernier appel finalisé sur cette classe
+    const lastSession = await tx.attendanceSession.findFirst({
+      where: { classId: id, finalizedAt: { not: null } },
+      orderBy: { date: 'desc' },
+      include: { records: { select: { status: true } } },
+    });
+
+    return { cls, availableStudents, lastSession };
   });
 
   if (!cls) notFound();
@@ -82,7 +89,17 @@ export default async function ClassDetailPage({
               : ''}
           </p>
         </div>
-        <ClassActions classId={cls.id} isArchived={!!cls.deletedAt} locale={locale} />
+        <div className="flex flex-wrap items-center gap-2">
+          {!cls.deletedAt && (
+            <Link
+              href={`/${locale}/admin/classes/${cls.id}/attendance`}
+              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-brand-700"
+            >
+              {tDetail('takeAttendance')}
+            </Link>
+          )}
+          <ClassActions classId={cls.id} isArchived={!!cls.deletedAt} locale={locale} />
+        </div>
       </header>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
@@ -181,6 +198,19 @@ export default async function ClassDetailPage({
               />
             </div>
           </section>
+
+          {lastSession && (
+            <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-5">
+              <span className="text-xs uppercase tracking-wide text-slate-500">
+                {tDetail('lastAttendance')}
+              </span>
+              <LastAttendance
+                date={lastSession.date}
+                records={lastSession.records}
+                locale={locale}
+              />
+            </section>
+          )}
         </aside>
       </div>
     </div>
@@ -211,5 +241,43 @@ function UnenrollButton({
         {label}
       </button>
     </form>
+  );
+}
+
+function LastAttendance({
+  date,
+  records,
+  locale,
+}: {
+  date: Date;
+  records: { status: string }[];
+  locale: string;
+}) {
+  const total = records.length || 1;
+  const present = records.filter((r) => r.status === 'PRESENT').length;
+  const absent = records.filter((r) => r.status === 'ABSENT').length;
+  const late = records.filter((r) => r.status === 'LATE').length;
+  const rate = Math.round((present / total) * 100);
+  return (
+    <>
+      <div className="mt-2 flex items-baseline justify-between">
+        <span className="text-2xl font-semibold text-slate-900">{rate}%</span>
+        <span className="text-xs text-slate-500">{new Date(date).toLocaleDateString(locale)}</span>
+      </div>
+      <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
+        <div>
+          <div className="font-semibold text-emerald-700">{present}</div>
+          <div className="text-slate-500">P</div>
+        </div>
+        <div>
+          <div className="font-semibold text-red-700">{absent}</div>
+          <div className="text-slate-500">A</div>
+        </div>
+        <div>
+          <div className="font-semibold text-amber-700">{late}</div>
+          <div className="text-slate-500">R</div>
+        </div>
+      </div>
+    </>
   );
 }

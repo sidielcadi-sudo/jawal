@@ -259,7 +259,45 @@
         "noAvailable": "Aucun élève disponible. Créez d'abord des élèves.",
         "cannotEnroll": "Inscription désactivée (classe archivée ou pleine).",
         "capacityReached": "Capacité atteinte — augmentez la capacité ou retirez un élève.",
-        "utilization": "Taux d'occupation"
+        "utilization": "Taux d'occupation",
+        "takeAttendance": "Faire l'appel",
+        "lastAttendance": "Dernier appel"
+      }
+    },
+    "attendance": {
+      "title": "Appel",
+      "classes": "Classes",
+      "callOf": "Appel du {date}",
+      "finalized": "Validé le {date}",
+      "noStudents": "Aucun élève inscrit dans cette classe. Inscrivez des élèves avant de faire l'appel.",
+      "hint": "Par défaut tous sont présents — tapotez seulement les exceptions.",
+      "allPresent": "Tout marquer présent",
+      "minutes": "min de retard",
+      "savedAt": "Brouillon enregistré à {date}",
+      "back": "Retour",
+      "saveDraft": "Enregistrer en brouillon",
+      "saving": "Enregistrement…",
+      "validate": "Valider l'appel",
+      "validating": "Validation…",
+      "reopen": "Déverrouiller",
+      "reopening": "Déverrouillage…",
+      "summary": {
+        "present": "Présents",
+        "absent": "Absents",
+        "late": "Retards",
+        "excused": "Excusés"
+      },
+      "status": {
+        "present": "Présent",
+        "absent": "Absent",
+        "late": "Retard",
+        "excused": "Excusé"
+      },
+      "statusShort": {
+        "present": "P",
+        "absent": "A",
+        "late": "R",
+        "excused": "Ex"
       }
     },
     "settings": {
