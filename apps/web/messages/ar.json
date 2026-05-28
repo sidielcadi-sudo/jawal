@@ -72,7 +72,9 @@
       "teachers": "الأساتذة",
       "staff": "الموظفون",
       "parents": "الآباء",
-      "classes": "الأقسام"
+      "classes": "الأقسام",
+      "import": "استيراد CSV",
+      "settings": "الإعدادات"
     },
     "persons": {
       "title": {
@@ -107,6 +109,7 @@
       },
       "actions": {
         "new": "إضافة شخص",
+        "import": "استيراد CSV",
         "view": "عرض",
         "edit": "تعديل",
         "archive": "أرشفة",
@@ -125,6 +128,42 @@
         "meta": "بيانات وصفية",
         "createdAt": "تاريخ الإنشاء",
         "updatedAt": "آخر تحديث"
+      },
+      "import": {
+        "parentTitle": "الأشخاص",
+        "title": "استيراد التلاميذ من ملف CSV",
+        "subtitle": "حمّل ملفًا أو الصق محتواه لإنشاء عدة أشخاص دفعة واحدة.",
+        "help": {
+          "title": "الصيغة المتوقعة",
+          "format": "UTF-8، الفاصل , أو ;. السطر الأول = الترويسات.",
+          "columns": "الأعمدة المقبولة :",
+          "required": "firstName و lastName إجباريان. الأعمدة الأخرى اختيارية."
+        },
+        "input": {
+          "file": "ملف CSV",
+          "paste": "أو الصق محتوى CSV هنا",
+          "loadSample": "تحميل مثال",
+          "preview": "معاينة",
+          "previewing": "جاري التحليل…"
+        },
+        "preview": {
+          "summary": "{total} سطر — {valid} صالح، {invalid} في خطأ",
+          "type": "النوع",
+          "firstName": "الاسم",
+          "lastName": "اللقب",
+          "email": "البريد الإلكتروني",
+          "status": "الحالة",
+          "more": "{count} سطر إضافي غير معروض",
+          "back": "رجوع",
+          "commit": "استيراد {count} سطرًا",
+          "committing": "جاري الاستيراد…"
+        },
+        "done": {
+          "title": "اكتمل الاستيراد",
+          "created": "{count}/{total} شخصًا تم إنشاؤه.",
+          "errors": "{count} سطر(أسطر) في خطأ",
+          "again": "استيراد جديد"
+        }
       },
       "form": {
         "section": {
@@ -221,6 +260,97 @@
         "cannotEnroll": "التسجيل معطل (قسم مؤرشف أو ممتلئ).",
         "capacityReached": "السعة ممتلئة — قم بزيادتها أو احذف تلميذًا.",
         "utilization": "نسبة الإشغال"
+      }
+    },
+    "settings": {
+      "title": "الإعدادات",
+      "subtitle": "ضبط المرجعية البيداغوجية والمستخدمين بالمؤسسة.",
+      "tabs": {
+        "years": "السنوات الدراسية",
+        "curriculum": "الأسلاك والمستويات",
+        "rooms": "القاعات",
+        "users": "المستخدمون",
+        "audit": "سجل التدقيق"
+      },
+      "years": {
+        "table": { "label": "السنة", "start": "البداية", "end": "النهاية", "status": "الحالة", "actions": "إجراءات" },
+        "active": "نشطة",
+        "empty": "لا توجد سنوات.",
+        "create": "إنشاء سنة",
+        "createHint": "سنة واحدة فقط يمكن أن تكون نشطة.",
+        "edit": "تعديل",
+        "backToList": "العودة إلى القائمة",
+        "actions": { "activate": "تفعيل", "edit": "تعديل" },
+        "form": {
+          "label": "التسمية (مثال : 2026-2027)",
+          "start": "تاريخ البداية",
+          "end": "تاريخ النهاية",
+          "create": "إنشاء",
+          "creating": "جاري الإنشاء…",
+          "save": "حفظ",
+          "saving": "جاري الحفظ…",
+          "cancel": "إلغاء"
+        }
+      },
+      "curriculum": {
+        "cycles": {
+          "title": "الأسلاك",
+          "subtitle": "ابتدائي، إعدادي، تأهيلي، إجازة، ماستر…",
+          "table": { "code": "الرمز", "label": "التسمية", "order": "الترتيب" },
+          "empty": "لا توجد أسلاك.",
+          "create": "إنشاء سلك",
+          "form": { "code": "الرمز", "label": "التسمية", "order": "الترتيب", "create": "إنشاء", "creating": "جاري الإنشاء…" }
+        },
+        "levels": {
+          "title": "المستويات",
+          "subtitle": "المستويات داخل كل سلك.",
+          "table": { "cycle": "السلك", "code": "الرمز", "label": "التسمية", "order": "الترتيب" },
+          "empty": "لا توجد مستويات.",
+          "create": "إنشاء مستوى",
+          "form": { "cycle": "السلك", "code": "الرمز", "label": "التسمية", "order": "الترتيب", "create": "إنشاء", "creating": "جاري الإنشاء…" }
+        }
+      },
+      "rooms": {
+        "table": { "code": "الرمز", "label": "التسمية", "capacity": "السعة", "equipment": "التجهيزات", "actions": "إجراءات" },
+        "empty": "لا توجد قاعات.",
+        "create": "إضافة قاعة",
+        "createHint": "تستعمل في الجداول الزمنية وتنظيم الامتحانات.",
+        "confirmDelete": "هل تريد حذف هذه القاعة؟",
+        "actions": { "edit": "تعديل", "delete": "حذف" },
+        "form": {
+          "code": "الرمز", "label": "التسمية", "capacity": "السعة", "equipment": "التجهيزات",
+          "equipmentHint": "قائمة مفصولة بفواصل.",
+          "create": "إنشاء", "creating": "جاري الإنشاء…",
+          "save": "حفظ", "saving": "جاري الحفظ…", "cancel": "إلغاء"
+        }
+      },
+      "users": {
+        "table": { "email": "البريد", "name": "الاسم", "roles": "الأدوار", "lastLogin": "آخر اتصال", "actions": "إجراءات" },
+        "you": "أنت",
+        "invite": "دعوة مستخدم",
+        "inviteHint": "ينشئ حسابًا بكلمة مرور مؤقتة تُعطى للمستخدم.",
+        "actions": { "disable": "تعطيل", "enable": "تفعيل", "confirmDisable": "هل تريد تعطيل هذا المستخدم؟" },
+        "form": {
+          "email": "البريد الإلكتروني",
+          "firstName": "الاسم",
+          "lastName": "اللقب",
+          "personType": "نوع الشخص",
+          "personTypes": { "TEACHER": "أستاذ", "STAFF": "موظف" },
+          "role": "الدور",
+          "create": "إنشاء الحساب",
+          "creating": "جاري الإنشاء…",
+          "createdTitle": "تم إنشاء الحساب",
+          "createdHint": "احفظ كلمة المرور هذه — لن تظهر مرة أخرى.",
+          "copy": "نسخ"
+        }
+      },
+      "audit": {
+        "title": "سجل التدقيق",
+        "subtitle": "{total} سجلًا (كل التعديلات متتبعة).",
+        "table": { "when": "التاريخ", "who": "المؤلف", "action": "العملية", "entity": "الكيان", "entityId": "المعرّف", "diff": "قبل / بعد" },
+        "empty": "لا توجد سجلات للمعايير المحددة.",
+        "filter": { "entity": "الكيان", "action": "العملية", "all": "الكل", "apply": "تصفية", "clear": "مسح" },
+        "pagination": "الصفحة {page} / {total}"
       }
     }
   },

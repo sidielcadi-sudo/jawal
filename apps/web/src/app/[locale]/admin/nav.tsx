@@ -12,7 +12,7 @@ type NavItem = {
 
 // type helper local — pas un vrai schéma de messages, juste pour l'autocomplete
 type IntlMessages = {
-  admin: { nav: { dashboard: string; students: string; teachers: string; staff: string; parents: string; classes: string } };
+  admin: { nav: { dashboard: string; students: string; teachers: string; staff: string; parents: string; classes: string; import: string; settings: string } };
 };
 
 function buildItems(locale: string): NavItem[] {
@@ -26,27 +26,37 @@ function buildItems(locale: string): NavItem[] {
     {
       href: `${prefix}/persons?type=STUDENT`,
       labelKey: 'students',
-      match: (p, s) => p.startsWith(`${prefix}/persons`) && s.get('type') === 'STUDENT',
+      match: (p, s) => p.startsWith(`${prefix}/persons`) && !p.includes('/import') && s.get('type') === 'STUDENT',
     },
     {
       href: `${prefix}/persons?type=TEACHER`,
       labelKey: 'teachers',
-      match: (p, s) => p.startsWith(`${prefix}/persons`) && s.get('type') === 'TEACHER',
+      match: (p, s) => p.startsWith(`${prefix}/persons`) && !p.includes('/import') && s.get('type') === 'TEACHER',
     },
     {
       href: `${prefix}/persons?type=STAFF`,
       labelKey: 'staff',
-      match: (p, s) => p.startsWith(`${prefix}/persons`) && s.get('type') === 'STAFF',
+      match: (p, s) => p.startsWith(`${prefix}/persons`) && !p.includes('/import') && s.get('type') === 'STAFF',
     },
     {
       href: `${prefix}/persons?type=PARENT`,
       labelKey: 'parents',
-      match: (p, s) => p.startsWith(`${prefix}/persons`) && s.get('type') === 'PARENT',
+      match: (p, s) => p.startsWith(`${prefix}/persons`) && !p.includes('/import') && s.get('type') === 'PARENT',
     },
     {
       href: `${prefix}/classes`,
       labelKey: 'classes',
       match: (p, _s) => p.startsWith(`${prefix}/classes`),
+    },
+    {
+      href: `${prefix}/persons/import`,
+      labelKey: 'import',
+      match: (p, _s) => p.includes('/persons/import'),
+    },
+    {
+      href: `${prefix}/settings`,
+      labelKey: 'settings',
+      match: (p, _s) => p.startsWith(`${prefix}/settings`),
     },
   ];
 }

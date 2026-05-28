@@ -72,7 +72,9 @@
       "teachers": "Enseignants",
       "staff": "Personnel",
       "parents": "Parents",
-      "classes": "Classes"
+      "classes": "Classes",
+      "import": "Importer CSV",
+      "settings": "Paramètres"
     },
     "persons": {
       "title": {
@@ -107,6 +109,7 @@
       },
       "actions": {
         "new": "Nouvelle personne",
+        "import": "Importer CSV",
         "view": "Voir",
         "edit": "Modifier",
         "archive": "Archiver",
@@ -125,6 +128,42 @@
         "meta": "Métadonnées",
         "createdAt": "Créé le",
         "updatedAt": "Mis à jour le"
+      },
+      "import": {
+        "parentTitle": "Personnes",
+        "title": "Importer des élèves depuis un CSV",
+        "subtitle": "Téléversez un fichier CSV ou collez le contenu pour créer plusieurs personnes en lot.",
+        "help": {
+          "title": "Format attendu",
+          "format": "UTF-8, séparateur , ou ;. Première ligne = en-têtes.",
+          "columns": "Colonnes reconnues :",
+          "required": "firstName et lastName sont obligatoires. Les autres champs sont optionnels."
+        },
+        "input": {
+          "file": "Fichier CSV",
+          "paste": "ou coller le contenu CSV ici",
+          "loadSample": "Charger un exemple",
+          "preview": "Prévisualiser",
+          "previewing": "Analyse…"
+        },
+        "preview": {
+          "summary": "{total} ligne(s) — {valid} valide(s), {invalid} en erreur",
+          "type": "Type",
+          "firstName": "Prénom",
+          "lastName": "Nom",
+          "email": "Email",
+          "status": "État",
+          "more": "{count} ligne(s) de plus non affichées",
+          "back": "Retour",
+          "commit": "Importer {count} ligne(s)",
+          "committing": "Import en cours…"
+        },
+        "done": {
+          "title": "Import terminé",
+          "created": "{count}/{total} personne(s) créée(s).",
+          "errors": "{count} ligne(s) en erreur",
+          "again": "Nouvel import"
+        }
       },
       "form": {
         "section": {
@@ -221,6 +260,157 @@
         "cannotEnroll": "Inscription désactivée (classe archivée ou pleine).",
         "capacityReached": "Capacité atteinte — augmentez la capacité ou retirez un élève.",
         "utilization": "Taux d'occupation"
+      }
+    },
+    "settings": {
+      "title": "Paramètres",
+      "subtitle": "Configurez le référentiel pédagogique et les utilisateurs de l'établissement.",
+      "tabs": {
+        "years": "Années scolaires",
+        "curriculum": "Cycles & niveaux",
+        "rooms": "Salles",
+        "users": "Utilisateurs",
+        "audit": "Journal d'audit"
+      },
+      "years": {
+        "table": {
+          "label": "Année",
+          "start": "Début",
+          "end": "Fin",
+          "status": "Statut",
+          "actions": "Actions"
+        },
+        "active": "Active",
+        "empty": "Aucune année scolaire.",
+        "create": "Créer une année",
+        "createHint": "Une seule année peut être active à la fois.",
+        "edit": "Modifier",
+        "backToList": "Retour à la liste",
+        "actions": {
+          "activate": "Activer",
+          "edit": "Modifier"
+        },
+        "form": {
+          "label": "Libellé (ex : 2026-2027)",
+          "start": "Date de début",
+          "end": "Date de fin",
+          "create": "Créer",
+          "creating": "Création…",
+          "save": "Enregistrer",
+          "saving": "Enregistrement…",
+          "cancel": "Annuler"
+        }
+      },
+      "curriculum": {
+        "cycles": {
+          "title": "Cycles",
+          "subtitle": "Primaire, collège, lycée, licence, master… Ordonnés via le champ « ordre ».",
+          "table": { "code": "Code", "label": "Libellé", "order": "Ordre" },
+          "empty": "Aucun cycle.",
+          "create": "Créer un cycle",
+          "form": {
+            "code": "Code (slug)",
+            "label": "Libellé",
+            "order": "Ordre",
+            "create": "Créer",
+            "creating": "Création…"
+          }
+        },
+        "levels": {
+          "title": "Niveaux",
+          "subtitle": "Niveaux à l'intérieur de chaque cycle (1AP, 6AP, 1AC, etc.).",
+          "table": { "cycle": "Cycle", "code": "Code", "label": "Libellé", "order": "Ordre" },
+          "empty": "Aucun niveau.",
+          "create": "Créer un niveau",
+          "form": {
+            "cycle": "Cycle",
+            "code": "Code",
+            "label": "Libellé",
+            "order": "Ordre",
+            "create": "Créer",
+            "creating": "Création…"
+          }
+        }
+      },
+      "rooms": {
+        "table": {
+          "code": "Code",
+          "label": "Libellé",
+          "capacity": "Capacité",
+          "equipment": "Équipement",
+          "actions": "Actions"
+        },
+        "empty": "Aucune salle déclarée.",
+        "create": "Ajouter une salle",
+        "createHint": "Utilisé pour les EDT et la planification des examens.",
+        "confirmDelete": "Supprimer cette salle ?",
+        "actions": {
+          "edit": "Modifier",
+          "delete": "Supprimer"
+        },
+        "form": {
+          "code": "Code",
+          "label": "Libellé",
+          "capacity": "Capacité",
+          "equipment": "Équipement",
+          "equipmentHint": "Liste séparée par des virgules.",
+          "create": "Créer",
+          "creating": "Création…",
+          "save": "Enregistrer",
+          "saving": "Enregistrement…",
+          "cancel": "Annuler"
+        }
+      },
+      "users": {
+        "table": {
+          "email": "Email",
+          "name": "Nom",
+          "roles": "Rôles",
+          "lastLogin": "Dernière connexion",
+          "actions": "Actions"
+        },
+        "you": "vous",
+        "invite": "Inviter un utilisateur",
+        "inviteHint": "Crée un compte avec un mot de passe temporaire à transmettre.",
+        "actions": {
+          "disable": "Désactiver",
+          "enable": "Réactiver",
+          "confirmDisable": "Désactiver cet utilisateur ?"
+        },
+        "form": {
+          "email": "Email",
+          "firstName": "Prénom",
+          "lastName": "Nom",
+          "personType": "Type de personne",
+          "personTypes": { "TEACHER": "Enseignant", "STAFF": "Personnel" },
+          "role": "Rôle",
+          "create": "Créer le compte",
+          "creating": "Création…",
+          "createdTitle": "Compte créé",
+          "createdHint": "Notez ce mot de passe : il n'est plus jamais affiché.",
+          "copy": "Copier"
+        }
+      },
+      "audit": {
+        "title": "Journal d'audit",
+        "subtitle": "{total} entrées historisées (toutes les mutations sont tracées).",
+        "table": {
+          "when": "Date",
+          "who": "Auteur",
+          "action": "Action",
+          "entity": "Entité",
+          "entityId": "ID",
+          "diff": "Avant / Après"
+        },
+        "empty": "Aucune entrée pour ces filtres.",
+        "filter": {
+          "entity": "Entité",
+          "action": "Action",
+          "all": "Toutes",
+          "apply": "Filtrer",
+          "clear": "Effacer"
+        },
+        "pagination": "Page {page} / {total}"
       }
     }
   },
