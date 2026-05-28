@@ -210,8 +210,8 @@ export function ImportClient() {
         </p>
       </div>
 
-      <div>
-        <label className="block text-xs font-medium text-slate-700">{t('input.file')}</label>
+      <label className="block">
+        <span className="block text-xs font-medium text-slate-700">{t('input.file')}</span>
         <input
           type="file"
           accept=".csv,text/csv"
@@ -221,10 +221,10 @@ export function ImportClient() {
           }}
           className="mt-1 w-full text-sm"
         />
-      </div>
+      </label>
 
-      <div>
-        <label className="block text-xs font-medium text-slate-700">{t('input.paste')}</label>
+      <label className="block">
+        <span className="block text-xs font-medium text-slate-700">{t('input.paste')}</span>
         <textarea
           rows={8}
           value={csv}
@@ -239,7 +239,7 @@ export function ImportClient() {
         >
           {t('input.loadSample')}
         </button>
-      </div>
+      </label>
 
       {error && (
         <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>

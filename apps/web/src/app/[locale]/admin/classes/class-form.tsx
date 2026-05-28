@@ -167,10 +167,10 @@ export function ClassForm({
 
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label className="block text-xs font-medium text-slate-700">{label}</label>
+    <label className="block">
+      <span className="block text-xs font-medium text-slate-700">{label}</span>
       {children}
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
-    </div>
+    </label>
   );
 }

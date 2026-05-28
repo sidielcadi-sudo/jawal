@@ -65,29 +65,29 @@ export function InviteUserForm({ roles }: { roles: { code: string; label: string
       )}
 
       <form ref={ref} action={onSubmit} className="space-y-3">
-        <div>
-          <label className="block text-xs font-medium text-slate-700">{t('email')}</label>
+        <label className="block">
+          <span className="block text-xs font-medium text-slate-700">{t('email')}</span>
           <input type="email" name="email" required placeholder="prof@exemple.ma" className={inputCls} />
-        </div>
+        </label>
         <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-xs font-medium text-slate-700">{t('lastName')}</label>
+          <label className="block">
+            <span className="block text-xs font-medium text-slate-700">{t('lastName')}</span>
             <input type="text" name="lastName" required className={inputCls} />
-          </div>
-          <div>
-            <label className="block text-xs font-medium text-slate-700">{t('firstName')}</label>
+          </label>
+          <label className="block">
+            <span className="block text-xs font-medium text-slate-700">{t('firstName')}</span>
             <input type="text" name="firstName" required className={inputCls} />
-          </div>
+          </label>
         </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-700">{t('personType')}</label>
+        <label className="block">
+          <span className="block text-xs font-medium text-slate-700">{t('personType')}</span>
           <select name="personType" required defaultValue="TEACHER" className={inputCls}>
             <option value="TEACHER">{t('personTypes.TEACHER')}</option>
             <option value="STAFF">{t('personTypes.STAFF')}</option>
           </select>
-        </div>
-        <div>
-          <label className="block text-xs font-medium text-slate-700">{t('role')}</label>
+        </label>
+        <label className="block">
+          <span className="block text-xs font-medium text-slate-700">{t('role')}</span>
           <select name="roleCode" required defaultValue="" className={inputCls}>
             <option value="" disabled>
               —
@@ -98,7 +98,7 @@ export function InviteUserForm({ roles }: { roles: { code: string; label: string
               </option>
             ))}
           </select>
-        </div>
+        </label>
         {error && (
           <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">{error}</div>
         )}
