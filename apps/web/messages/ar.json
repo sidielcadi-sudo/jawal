@@ -261,7 +261,66 @@
         "capacityReached": "السعة ممتلئة — قم بزيادتها أو احذف تلميذًا.",
         "utilization": "نسبة الإشغال",
         "takeAttendance": "أخذ الحضور",
-        "lastAttendance": "آخر حضور"
+        "lastAttendance": "آخر حضور",
+        "manageGrades": "النقاط"
+      }
+    },
+    "grades": {
+      "classes": "الأقسام",
+      "title": "النقاط",
+      "noSubjects": "لا توجد مواد محددة.",
+      "goToSubjects": "اذهب إلى الإعدادات ← المواد",
+      "empty": "لا توجد تقييمات للمعايير المحددة.",
+      "create": "تقييم جديد",
+      "createHint": "إنشاء تقييم يمهّد نقطة فارغة لكل تلميذ مسجل.",
+      "confirmDelete": "حذف هذا التقييم وكل نقاطه؟",
+      "table": {
+        "label": "التقييم",
+        "subject": "المادة",
+        "period": "الفترة",
+        "date": "التاريخ",
+        "filled": "المدخلة",
+        "actions": "إجراءات"
+      },
+      "filter": {
+        "subject": "المادة",
+        "period": "الفترة",
+        "allSubjects": "كل المواد",
+        "allPeriods": "كل الفترات",
+        "apply": "تصفية"
+      },
+      "actions": {
+        "openSheet": "إدخال",
+        "delete": "حذف"
+      },
+      "form": {
+        "label": "العنوان",
+        "subject": "المادة",
+        "period": "الفترة",
+        "date": "التاريخ",
+        "maxValue": "السلم",
+        "weight": "المعامل",
+        "create": "إنشاء",
+        "creating": "جاري الإنشاء…"
+      },
+      "sheet": {
+        "maxValue": "السلم",
+        "weight": "المعامل",
+        "stats": {
+          "avg": "المعدل",
+          "min": "الأدنى",
+          "max": "الأعلى",
+          "filled": "المدخلة"
+        },
+        "table": {
+          "student": "التلميذ",
+          "value": "النقطة"
+        },
+        "noStudents": "لا يوجد تلاميذ مسجلون.",
+        "savedAt": "تم الحفظ في {date}",
+        "back": "رجوع",
+        "save": "حفظ",
+        "saving": "جاري الحفظ…"
       }
     },
     "attendance": {
@@ -324,6 +383,7 @@
       "tabs": {
         "years": "السنوات الدراسية",
         "curriculum": "الأسلاك والمستويات",
+        "subjects": "المواد",
         "rooms": "القاعات",
         "users": "المستخدمون",
         "audit": "سجل التدقيق"
@@ -364,6 +424,36 @@
           "empty": "لا توجد مستويات.",
           "create": "إنشاء مستوى",
           "form": { "cycle": "السلك", "code": "الرمز", "label": "التسمية", "order": "الترتيب", "create": "إنشاء", "creating": "جاري الإنشاء…" }
+        }
+      },
+      "subjects": {
+        "table": {
+          "code": "الرمز",
+          "label": "التسمية",
+          "scale": "السلم",
+          "coefficient": "المعامل",
+          "order": "الترتيب",
+          "actions": "إجراءات"
+        },
+        "empty": "لا توجد مواد.",
+        "create": "إضافة مادة",
+        "createHint": "يُستعمل السلم والمعامل لاحتساب المعدلات.",
+        "confirmDelete": "هل تريد حذف هذه المادة؟",
+        "actions": {
+          "edit": "تعديل",
+          "delete": "حذف"
+        },
+        "form": {
+          "code": "الرمز",
+          "label": "التسمية",
+          "scale": "السلم",
+          "coefficient": "المعامل",
+          "order": "الترتيب",
+          "create": "إنشاء",
+          "creating": "جاري الإنشاء…",
+          "save": "حفظ",
+          "saving": "جاري الحفظ…",
+          "cancel": "إلغاء"
         }
       },
       "rooms": {

@@ -91,12 +91,20 @@ export default async function ClassDetailPage({
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {!cls.deletedAt && (
-            <Link
-              href={`/${locale}/admin/classes/${cls.id}/attendance`}
-              className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-brand-700"
-            >
-              {tDetail('takeAttendance')}
-            </Link>
+            <>
+              <Link
+                href={`/${locale}/admin/classes/${cls.id}/attendance`}
+                className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-brand-700"
+              >
+                {tDetail('takeAttendance')}
+              </Link>
+              <Link
+                href={`/${locale}/admin/classes/${cls.id}/grades`}
+                className="rounded-lg border border-brand-300 bg-white px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50"
+              >
+                {tDetail('manageGrades')}
+              </Link>
+            </>
           )}
           <ClassActions classId={cls.id} isArchived={!!cls.deletedAt} locale={locale} />
         </div>

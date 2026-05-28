@@ -95,6 +95,9 @@ model Tenant {
   attendanceSessions AttendanceSession[]
   attendanceRecords  AttendanceRecord[]
   absenceJustifications AbsenceJustification[]
+  subjects       Subject[]
+  evaluations    Evaluation[]
+  grades         Grade[]
   files          FileObject[]
 
   @@map("tenants")
@@ -165,6 +168,7 @@ model Person {
   studentClasses     StudentClass[]
   mainOfClass        Class[]            @relation("MainTeacher")
   attendanceRecords  AttendanceRecord[] @relation("StudentAttendance")
+  grades             Grade[]            @relation("StudentGrades")
 
   @@index([tenantId, type])
   @@index([tenantId, lastName, firstName])
@@ -254,6 +258,7 @@ model Period {
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  evaluations  Evaluation[]
 
   @@index([tenantId, academicYearId])
   @@map("periods")
@@ -308,6 +313,7 @@ model Class {
   mainTeacher  Person?             @relation("MainTeacher", fields: [mainTeacherId], references: [id])
   students     StudentClass[]
   attendanceSessions AttendanceSession[]
+  evaluations  Evaluation[]
 
   @@unique([tenantId, academicYearId, name])
   @@index([tenantId, levelId])
@@ -458,4 +464,75 @@ model AbsenceJustification {
 
   @@index([tenantId, status])
   @@map("absence_justifications")
+}
+
+// ─── Notes / Évaluations (M06) ─────────────────────────────
+
+/// Matière enseignée (mathématiques, français, arabe, ...).
+/// Le coefficient global de la matière s'applique lors du calcul de la
+/// moyenne générale d'une période ; on garde la possibilité de coefficients
+/// par filière pour la V1 via des configs séparées plus tard.
+model Subject {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  code        String   // "math", "fr", "ar"
+  label       String
+  scale       Float    @default(20) // /20 par défaut (peut être 10, 100, etc.)
+  coefficient Float    @default(1.0)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  evaluations Evaluation[]
+
+  @@unique([tenantId, code])
+  @@map("subjects")
+}
+
+/// Une évaluation d'une classe pour une matière à une date donnée.
+/// Un Grade y est attaché par élève inscrit dans la classe.
+model Evaluation {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  classId   String   @map("class_id") @db.Uuid
+  subjectId String   @map("subject_id") @db.Uuid
+  periodId  String   @map("period_id") @db.Uuid
+  label     String   // "Contrôle 1", "Examen mi-trimestre"
+  date      DateTime @db.Date
+  weight    Float    @default(1.0)  // pondération de cette évaluation au sein de la matière
+  maxValue  Float    @default(20.0) @map("max_value")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  period  Period  @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  grades  Grade[]
+
+  @@index([tenantId, classId, periodId, subjectId])
+  @@map("evaluations")
+}
+
+/// Note d'un élève à une évaluation. value=null signifie "non noté" ou
+/// "absent à l'épreuve" (distingué via la présence d'un AttendanceRecord
+/// ce jour-là si besoin — phase 2).
+model Grade {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  evaluationId String   @map("evaluation_id") @db.Uuid
+  studentId    String   @map("student_id") @db.Uuid
+  value        Float?
+  comment      String?
+  enteredByUserId String? @map("entered_by_user_id") @db.Uuid
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  student    Person     @relation("StudentGrades", fields: [studentId], references: [id])
+
+  @@unique([evaluationId, studentId])
+  @@index([tenantId, studentId])
+  @@map("grades")
 }

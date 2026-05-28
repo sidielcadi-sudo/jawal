@@ -261,7 +261,66 @@
         "capacityReached": "Capacité atteinte — augmentez la capacité ou retirez un élève.",
         "utilization": "Taux d'occupation",
         "takeAttendance": "Faire l'appel",
-        "lastAttendance": "Dernier appel"
+        "lastAttendance": "Dernier appel",
+        "manageGrades": "Notes"
+      }
+    },
+    "grades": {
+      "classes": "Classes",
+      "title": "Notes",
+      "noSubjects": "Aucune matière n'est définie.",
+      "goToSubjects": "Aller dans Paramètres → Matières",
+      "empty": "Aucune évaluation pour ces filtres.",
+      "create": "Nouvelle évaluation",
+      "createHint": "Créer une évaluation pré-initialise une note vide par élève inscrit.",
+      "confirmDelete": "Supprimer cette évaluation et toutes ses notes ?",
+      "table": {
+        "label": "Évaluation",
+        "subject": "Matière",
+        "period": "Période",
+        "date": "Date",
+        "filled": "Saisies",
+        "actions": "Actions"
+      },
+      "filter": {
+        "subject": "Matière",
+        "period": "Période",
+        "allSubjects": "Toutes les matières",
+        "allPeriods": "Toutes les périodes",
+        "apply": "Filtrer"
+      },
+      "actions": {
+        "openSheet": "Saisir",
+        "delete": "Supprimer"
+      },
+      "form": {
+        "label": "Intitulé",
+        "subject": "Matière",
+        "period": "Période",
+        "date": "Date",
+        "maxValue": "Barème",
+        "weight": "Coefficient",
+        "create": "Créer",
+        "creating": "Création…"
+      },
+      "sheet": {
+        "maxValue": "Barème",
+        "weight": "Coefficient",
+        "stats": {
+          "avg": "Moyenne",
+          "min": "Min",
+          "max": "Max",
+          "filled": "Saisies"
+        },
+        "table": {
+          "student": "Élève",
+          "value": "Note"
+        },
+        "noStudents": "Aucun élève inscrit.",
+        "savedAt": "Enregistré à {date}",
+        "back": "Retour",
+        "save": "Enregistrer",
+        "saving": "Enregistrement…"
       }
     },
     "attendance": {
@@ -324,6 +383,7 @@
       "tabs": {
         "years": "Années scolaires",
         "curriculum": "Cycles & niveaux",
+        "subjects": "Matières",
         "rooms": "Salles",
         "users": "Utilisateurs",
         "audit": "Journal d'audit"
@@ -386,6 +446,36 @@
             "create": "Créer",
             "creating": "Création…"
           }
+        }
+      },
+      "subjects": {
+        "table": {
+          "code": "Code",
+          "label": "Libellé",
+          "scale": "Barème",
+          "coefficient": "Coefficient",
+          "order": "Ordre",
+          "actions": "Actions"
+        },
+        "empty": "Aucune matière définie.",
+        "create": "Ajouter une matière",
+        "createHint": "Le barème (/20, /10…) et le coefficient seront utilisés pour le calcul des moyennes.",
+        "confirmDelete": "Supprimer cette matière ?",
+        "actions": {
+          "edit": "Modifier",
+          "delete": "Supprimer"
+        },
+        "form": {
+          "code": "Code",
+          "label": "Libellé",
+          "scale": "Barème",
+          "coefficient": "Coefficient",
+          "order": "Ordre",
+          "create": "Créer",
+          "creating": "Création…",
+          "save": "Enregistrer",
+          "saving": "Enregistrement…",
+          "cancel": "Annuler"
         }
       },
       "rooms": {
