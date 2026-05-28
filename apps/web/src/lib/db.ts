@@ -1,6 +1,7 @@
-import { prisma } from '@jawal/db';
+import { prisma, prismaAdmin } from '@jawal/db';
 
-export { prisma };
+export { prisma, prismaAdmin };
+export type { Prisma } from '@jawal/db';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

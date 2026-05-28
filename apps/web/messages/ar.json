@@ -65,7 +65,101 @@
         "explanation": "جميع البيانات أعلاه تتم تصفيتها على مستوى قاعدة البيانات بفضل Row-Level Security: الجلسة عيّنت `app.current_tenant_id = {tenantId}`. أي مؤسسة أخرى تبقى غير مرئية."
       }
     },
-    "signOut": "تسجيل الخروج"
+    "signOut": "تسجيل الخروج",
+    "nav": {
+      "dashboard": "لوحة التحكم",
+      "students": "التلاميذ",
+      "teachers": "الأساتذة",
+      "staff": "الموظفون",
+      "parents": "الآباء",
+      "classes": "الأقسام"
+    },
+    "persons": {
+      "title": {
+        "ALL": "الأشخاص",
+        "STUDENT": "التلاميذ",
+        "TEACHER": "الأساتذة",
+        "STAFF": "الموظفون",
+        "PARENT": "الآباء"
+      },
+      "count": "{count, plural, =0 {لا توجد نتائج} one {نتيجة #} other {# نتائج}}",
+      "empty": "لا توجد بيانات للعرض.",
+      "archived": "مؤرشف",
+      "newSubtitle": "أدخل معلومات الهوية، وسيمكن استكمال التفاصيل لاحقًا.",
+      "table": {
+        "name": "الاسم",
+        "type": "النوع",
+        "contact": "الاتصال",
+        "birthDate": "تاريخ الازدياد",
+        "actions": "إجراءات"
+      },
+      "filters": {
+        "search": "بحث",
+        "searchPlaceholder": "الاسم أو ب.و.م…",
+        "apply": "تصفية",
+        "showArchived": "إظهار المؤرشفين",
+        "showActive": "إظهار النشطين"
+      },
+      "pagination": {
+        "page": "الصفحة {page} من {total}",
+        "prev": "السابق",
+        "next": "التالي"
+      },
+      "actions": {
+        "new": "إضافة شخص",
+        "view": "عرض",
+        "edit": "تعديل",
+        "archive": "أرشفة",
+        "restore": "استرجاع",
+        "confirmDelete": "هل تريد أرشفة هذا الشخص؟"
+      },
+      "detail": {
+        "bornOn": "من مواليد {date}",
+        "contact": "بيانات الاتصال",
+        "phone": "الهاتف",
+        "address": "العنوان",
+        "cin": "ب.و.م",
+        "nationality": "الجنسية",
+        "classes": "الأقسام",
+        "noClass": "لا يوجد قسم.",
+        "meta": "بيانات وصفية",
+        "createdAt": "تاريخ الإنشاء",
+        "updatedAt": "آخر تحديث"
+      },
+      "form": {
+        "section": {
+          "identity": "الهوية",
+          "contact": "بيانات الاتصال",
+          "address": "العنوان"
+        },
+        "type": "النوع",
+        "types": {
+          "STUDENT": "تلميذ",
+          "TEACHER": "أستاذ",
+          "STAFF": "موظف",
+          "PARENT": "ولي أمر"
+        },
+        "gender": "الجنس",
+        "genders": { "M": "ذكر", "F": "أنثى", "X": "آخر" },
+        "lastName": "اللقب",
+        "firstName": "الاسم",
+        "birthDate": "تاريخ الازدياد",
+        "nationality": "الجنسية",
+        "cin": "ب.و.م / جواز السفر",
+        "contactEmail": "البريد الإلكتروني",
+        "contactPhone": "الهاتف",
+        "contactWhatsapp": "واتساب",
+        "addressLine1": "العنوان",
+        "addressCity": "المدينة",
+        "addressPostalCode": "الرمز البريدي",
+        "addressCountry": "البلد",
+        "actions": {
+          "save": "حفظ",
+          "saving": "جاري الحفظ…",
+          "cancel": "إلغاء"
+        }
+      }
+    }
   },
   "superAdmin": {
     "title": "مشرف SaaS",

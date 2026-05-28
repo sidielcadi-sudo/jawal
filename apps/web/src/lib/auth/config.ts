@@ -18,17 +18,18 @@ export const authConfig = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        token.uid = user.id!;
-        token.tenantId = user.tenantId;
-        token.isSuperAdmin = user.isSuperAdmin;
+        const u = user as { id?: string; tenantId: string; isSuperAdmin: boolean };
+        token.uid = u.id!;
+        token.tenantId = u.tenantId;
+        token.isSuperAdmin = u.isSuperAdmin;
       }
       return token;
     },
     async session({ session, token }) {
       if (token) {
-        session.user.id = token.uid;
-        session.user.tenantId = token.tenantId;
-        session.user.isSuperAdmin = token.isSuperAdmin;
+        session.user.id = String(token.uid);
+        session.user.tenantId = String(token.tenantId);
+        session.user.isSuperAdmin = Boolean(token.isSuperAdmin);
       }
       return session;
     },

@@ -65,7 +65,101 @@
         "explanation": "Toutes les données ci-dessus sont filtrées par Row-Level Security PostgreSQL : la session a positionné `app.current_tenant_id = {tenantId}`. Tout autre tenant est invisible — même avec une requête mal écrite."
       }
     },
-    "signOut": "Se déconnecter"
+    "signOut": "Se déconnecter",
+    "nav": {
+      "dashboard": "Tableau de bord",
+      "students": "Élèves",
+      "teachers": "Enseignants",
+      "staff": "Personnel",
+      "parents": "Parents",
+      "classes": "Classes"
+    },
+    "persons": {
+      "title": {
+        "ALL": "Personnes",
+        "STUDENT": "Élèves",
+        "TEACHER": "Enseignants",
+        "STAFF": "Personnel",
+        "PARENT": "Parents"
+      },
+      "count": "{count, plural, =0 {Aucun résultat} one {# résultat} other {# résultats}}",
+      "empty": "Aucune personne à afficher.",
+      "archived": "Archivé",
+      "newSubtitle": "Saisissez les informations d'identité, puis affinerez les détails après création.",
+      "table": {
+        "name": "Nom",
+        "type": "Type",
+        "contact": "Contact",
+        "birthDate": "Date de naissance",
+        "actions": "Actions"
+      },
+      "filters": {
+        "search": "Recherche",
+        "searchPlaceholder": "Nom, prénom ou CIN…",
+        "apply": "Filtrer",
+        "showArchived": "Voir les archivés",
+        "showActive": "Voir les actifs"
+      },
+      "pagination": {
+        "page": "Page {page} sur {total}",
+        "prev": "Précédent",
+        "next": "Suivant"
+      },
+      "actions": {
+        "new": "Nouvelle personne",
+        "view": "Voir",
+        "edit": "Modifier",
+        "archive": "Archiver",
+        "restore": "Restaurer",
+        "confirmDelete": "Archiver cette personne ?"
+      },
+      "detail": {
+        "bornOn": "Né(e) le {date}",
+        "contact": "Coordonnées",
+        "phone": "Téléphone",
+        "address": "Adresse",
+        "cin": "CIN",
+        "nationality": "Nationalité",
+        "classes": "Classes",
+        "noClass": "Aucune classe assignée.",
+        "meta": "Métadonnées",
+        "createdAt": "Créé le",
+        "updatedAt": "Mis à jour le"
+      },
+      "form": {
+        "section": {
+          "identity": "Identité",
+          "contact": "Coordonnées",
+          "address": "Adresse"
+        },
+        "type": "Type",
+        "types": {
+          "STUDENT": "Élève",
+          "TEACHER": "Enseignant",
+          "STAFF": "Personnel",
+          "PARENT": "Parent"
+        },
+        "gender": "Genre",
+        "genders": { "M": "Masculin", "F": "Féminin", "X": "Autre" },
+        "lastName": "Nom",
+        "firstName": "Prénom",
+        "birthDate": "Date de naissance",
+        "nationality": "Nationalité",
+        "cin": "CIN / passeport",
+        "contactEmail": "Email",
+        "contactPhone": "Téléphone",
+        "contactWhatsapp": "WhatsApp",
+        "addressLine1": "Adresse",
+        "addressCity": "Ville",
+        "addressPostalCode": "Code postal",
+        "addressCountry": "Pays",
+        "actions": {
+          "save": "Enregistrer",
+          "saving": "Enregistrement…",
+          "cancel": "Annuler"
+        }
+      }
+    }
   },
   "superAdmin": {
     "title": "Super-admin SaaS",
