@@ -46,7 +46,32 @@ export default async function AttendancePage({
     );
   }
 
-  const { sessionId, finalizedAt, date, periodLabel, records } = result.data!;
+  const { sessionId, finalizedAt, date, records } = result.data!;
+
+  // Enrichir avec les justifications existantes + l'ID du record (nécessaire pour les actions)
+  const enriched = await withTenant(sessionAuth.user.tenantId, async (tx) => {
+    const dbRecords = await tx.attendanceRecord.findMany({
+      where: { sessionId },
+      include: { justification: true },
+    });
+    const byStudent = new Map<string, (typeof dbRecords)[number]>();
+    for (const r of dbRecords) byStudent.set(r.studentId, r);
+    return records.map((r) => {
+      const full = byStudent.get(r.studentId);
+      return {
+        ...r,
+        recordId: full?.id ?? '',
+        justification: full?.justification
+          ? {
+              id: full.justification.id,
+              reason: full.justification.reason,
+              status: full.justification.status as 'PENDING' | 'APPROVED' | 'REJECTED',
+              reviewNote: full.justification.reviewNote,
+            }
+          : null,
+      };
+    });
+  });
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-6 sm:px-6 sm:py-8">
@@ -76,7 +101,7 @@ export default async function AttendancePage({
         )}
       </header>
 
-      {records.length === 0 ? (
+      {enriched.length === 0 ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
           {t('noStudents')}
         </div>
@@ -85,7 +110,7 @@ export default async function AttendancePage({
           sessionId={sessionId}
           locale={locale}
           isFinalized={!!finalizedAt}
-          initialRecords={records}
+          initialRecords={enriched}
           backUrl={`/${locale}/admin/classes/${id}`}
         />
       )}

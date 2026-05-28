@@ -59,6 +59,12 @@ enum AttendanceStatus {
   EXCUSED // dispense, sortie anticipée, retrait justifié
 }
 
+enum JustificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 // ─── Tenants & modules ─────────────────────────────────────
 
 model Tenant {
@@ -88,6 +94,7 @@ model Tenant {
   auditLogs      AuditLog[]
   attendanceSessions AttendanceSession[]
   attendanceRecords  AttendanceRecord[]
+  absenceJustifications AbsenceJustification[]
   files          FileObject[]
 
   @@map("tenants")
@@ -419,11 +426,36 @@ model AttendanceRecord {
   createdAt    DateTime         @default(now()) @map("created_at")
   updatedAt    DateTime         @updatedAt @map("updated_at")
 
-  tenant  Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  session AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student Person            @relation("StudentAttendance", fields: [studentId], references: [id])
+  tenant       Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  session      AttendanceSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student      Person                @relation("StudentAttendance", fields: [studentId], references: [id])
+  justification AbsenceJustification?
 
   @@unique([sessionId, studentId])
   @@index([tenantId, studentId])
   @@map("attendance_records")
+}
+
+/// Justification d'absence ou de retard. Workflow PENDING → APPROVED/REJECTED.
+/// Une seule justification active par AttendanceRecord (1-1).
+model AbsenceJustification {
+  id                 String              @id @default(uuid()) @db.Uuid
+  tenantId           String              @map("tenant_id") @db.Uuid
+  attendanceRecordId String              @unique @map("attendance_record_id") @db.Uuid
+  reason             String
+  submittedByUserId  String?             @map("submitted_by_user_id") @db.Uuid
+  submittedAt        DateTime            @default(now()) @map("submitted_at")
+  status             JustificationStatus @default(PENDING)
+  reviewedByUserId   String?             @map("reviewed_by_user_id") @db.Uuid
+  reviewedAt         DateTime?           @map("reviewed_at")
+  reviewNote         String?             @map("review_note")
+  attachmentUrl      String?             @map("attachment_url")
+  createdAt          DateTime            @default(now()) @map("created_at")
+  updatedAt          DateTime            @updatedAt @map("updated_at")
+
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  attendanceRecord AttendanceRecord @relation(fields: [attendanceRecordId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@map("absence_justifications")
 }

@@ -53,7 +53,8 @@ DECLARE
     'audit_logs',
     'files',
     'attendance_sessions',
-    'attendance_records'
+    'attendance_records',
+    'absence_justifications'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped

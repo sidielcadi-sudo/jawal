@@ -298,6 +298,24 @@
         "absent": "غ",
         "late": "م",
         "excused": "إذ"
+      },
+      "justification": {
+        "label": "تبرير",
+        "reasonLabel": "السبب",
+        "reasonPlaceholder": "مرض، موعد طبي، حدث عائلي…",
+        "reasonTooShort": "السبب قصير جدًا (3 أحرف على الأقل).",
+        "submit": "إرسال",
+        "submitting": "جاري الإرسال…",
+        "cancel": "إلغاء",
+        "edit": "تعديل",
+        "approve": "موافقة",
+        "reject": "رفض",
+        "reviewNote": "ملاحظة",
+        "status": {
+          "PENDING": "في الانتظار",
+          "APPROVED": "موافق عليه",
+          "REJECTED": "مرفوض"
+        }
       }
     },
     "settings": {

@@ -5,6 +5,17 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import type { AttendanceStatusInput } from '@jawal/shared';
 import { reopenSessionAction, saveAttendanceAction } from './actions';
+import {
+  reviewJustificationAction,
+  submitJustificationAction,
+} from './justification-actions';
+
+type Justification = {
+  id: string;
+  reason: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  reviewNote: string | null;
+};
 
 type AttendanceRow = {
   studentId: string;
@@ -13,6 +24,8 @@ type AttendanceRow = {
   status: AttendanceStatusInput;
   lateMinutes: number | null;
   note: string | null;
+  recordId: string;
+  justification: Justification | null;
 };
 
 const STATUSES: AttendanceStatusInput[] = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'];
@@ -207,6 +220,15 @@ export function AttendanceCallSheet({
                 })}
               </div>
             </div>
+
+            {/* Section justification — visible quand status != PRESENT et record déjà persisté */}
+            {r.status !== 'PRESENT' && r.recordId && (
+              <JustificationPanel
+                recordId={r.recordId}
+                justification={r.justification}
+                disabled={isFinalized}
+              />
+            )}
           </li>
         ))}
       </ul>
@@ -284,6 +306,153 @@ function SummaryPill({
     <div>
       <div className={`text-2xl font-semibold tabular-nums ${styles}`}>{value}</div>
       <div className="text-xs text-slate-500">{label}</div>
+    </div>
+  );
+}
+
+function JustificationPanel({
+  recordId,
+  justification,
+  disabled,
+}: {
+  recordId: string;
+  justification: Justification | null;
+  disabled: boolean;
+}) {
+  const t = useTranslations('admin.attendance.justification');
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [editing, setEditing] = useState(!justification);
+  const [reason, setReason] = useState(justification?.reason ?? '');
+  const [error, setError] = useState('');
+
+  function submit() {
+    if (reason.trim().length < 3) {
+      setError(t('reasonTooShort'));
+      return;
+    }
+    setError('');
+    const fd = new FormData();
+    fd.set('attendanceRecordId', recordId);
+    fd.set('reason', reason);
+    startTransition(async () => {
+      const r = await submitJustificationAction(fd);
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setEditing(false);
+      router.refresh();
+    });
+  }
+
+  function review(decision: 'APPROVED' | 'REJECTED') {
+    if (!justification) return;
+    setError('');
+    const fd = new FormData();
+    fd.set('justificationId', justification.id);
+    fd.set('decision', decision);
+    startTransition(async () => {
+      const r = await reviewJustificationAction(fd);
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  const badgeStyles: Record<Justification['status'], string> = {
+    PENDING: 'bg-amber-100 text-amber-800',
+    APPROVED: 'bg-emerald-100 text-emerald-800',
+    REJECTED: 'bg-red-100 text-red-800',
+  };
+
+  if (justification && !editing) {
+    return (
+      <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs">
+        <div className="flex items-center justify-between">
+          <span className="font-medium text-slate-700">{t('label')}</span>
+          <span className={`rounded px-1.5 py-0.5 ${badgeStyles[justification.status]}`}>
+            {t(`status.${justification.status}` as never)}
+          </span>
+        </div>
+        <p className="mt-1.5 whitespace-pre-wrap text-slate-700">{justification.reason}</p>
+        {justification.reviewNote && (
+          <p className="mt-1 text-slate-500">
+            {t('reviewNote')} : {justification.reviewNote}
+          </p>
+        )}
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {justification.status === 'PENDING' && !disabled && (
+            <>
+              <button
+                type="button"
+                onClick={() => review('APPROVED')}
+                disabled={isPending}
+                className="rounded border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 hover:bg-emerald-100 disabled:opacity-50"
+              >
+                {t('approve')}
+              </button>
+              <button
+                type="button"
+                onClick={() => review('REJECTED')}
+                disabled={isPending}
+                className="rounded border border-red-300 bg-white px-2 py-0.5 text-xs text-red-700 hover:bg-red-50 disabled:opacity-50"
+              >
+                {t('reject')}
+              </button>
+            </>
+          )}
+          {!disabled && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="rounded border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50"
+            >
+              {t('edit')}
+            </button>
+          )}
+        </div>
+        {error && <p className="mt-1 text-red-700">{error}</p>}
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <label className="block text-xs font-medium text-slate-700">{t('reasonLabel')}</label>
+      <textarea
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        rows={2}
+        disabled={disabled || isPending}
+        placeholder={t('reasonPlaceholder')}
+        className="mt-1 w-full rounded-lg border border-slate-300 px-2 py-1 text-xs shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+      />
+      {error && <p className="mt-1 text-xs text-red-700">{error}</p>}
+      <div className="mt-2 flex justify-end gap-2">
+        {justification && (
+          <button
+            type="button"
+            onClick={() => {
+              setEditing(false);
+              setReason(justification.reason);
+            }}
+            className="rounded border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:bg-slate-50"
+          >
+            {t('cancel')}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={submit}
+          disabled={disabled || isPending}
+          className="rounded bg-brand-600 px-2 py-0.5 text-xs font-medium text-white shadow hover:bg-brand-700 disabled:opacity-50"
+        >
+          {isPending ? t('submitting') : t('submit')}
+        </button>
+      </div>
     </div>
   );
 }

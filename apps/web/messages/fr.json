@@ -298,6 +298,24 @@
         "absent": "A",
         "late": "R",
         "excused": "Ex"
+      },
+      "justification": {
+        "label": "Justification",
+        "reasonLabel": "Motif",
+        "reasonPlaceholder": "Maladie, rendez-vous médical, événement familial…",
+        "reasonTooShort": "Motif trop court (3 caractères minimum).",
+        "submit": "Soumettre",
+        "submitting": "Envoi…",
+        "cancel": "Annuler",
+        "edit": "Modifier",
+        "approve": "Approuver",
+        "reject": "Rejeter",
+        "reviewNote": "Note",
+        "status": {
+          "PENDING": "En attente",
+          "APPROVED": "Approuvée",
+          "REJECTED": "Rejetée"
+        }
       }
     },
     "settings": {
