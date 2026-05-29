@@ -104,6 +104,12 @@ export default async function ClassDetailPage({
               >
                 {tDetail('manageGrades')}
               </Link>
+              <Link
+                href={`/${locale}/admin/classes/${cls.id}/grade-book`}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                {tDetail('gradeBook')}
+              </Link>
             </>
           )}
           <ClassActions classId={cls.id} isArchived={!!cls.deletedAt} locale={locale} />

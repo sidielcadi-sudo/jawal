@@ -262,8 +262,58 @@
         "utilization": "Taux d'occupation",
         "takeAttendance": "Faire l'appel",
         "lastAttendance": "Dernier appel",
-        "manageGrades": "Notes"
+        "manageGrades": "Notes",
+        "gradeBook": "Carnet de notes"
       }
+    },
+    "gradeBook": {
+      "classes": "Classes",
+      "title": "Carnet de notes",
+      "noSubjects": "Aucune matière définie.",
+      "noPeriod": "Aucune période disponible.",
+      "noStudents": "Aucun élève inscrit.",
+      "filter": {
+        "period": "Période",
+        "apply": "Filtrer"
+      },
+      "table": {
+        "student": "Élève",
+        "general": "Générale",
+        "classAvg": "Moyenne classe",
+        "actions": "Bulletin",
+        "bulletin": "Voir"
+      }
+    },
+    "bulletin": {
+      "classes": "Classes",
+      "title": "Bulletin",
+      "print": "Imprimer",
+      "filter": {
+        "period": "Période",
+        "apply": "Voir"
+      },
+      "bulletinOf": "Bulletin {period} — {year}",
+      "info": {
+        "student": "Élève",
+        "class": "Classe",
+        "bornOn": "Né(e) le",
+        "level": "Niveau",
+        "classSize": "Effectif",
+        "printedOn": "Édité le"
+      },
+      "table": {
+        "subject": "Matière",
+        "coefficient": "Coef.",
+        "gradesCount": "Nb notes",
+        "studentAvg": "Moyenne",
+        "classAvg": "Moy. classe",
+        "generalAvg": "Moyenne générale"
+      },
+      "signatures": {
+        "head": "Chef d'établissement",
+        "parent": "Responsable légal"
+      },
+      "footer": "Bulletin généré par Jawal · Réf : {id}"
     },
     "grades": {
       "classes": "Classes",

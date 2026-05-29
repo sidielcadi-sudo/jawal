@@ -18,3 +18,42 @@ html[dir='rtl'] {
 body {
   @apply bg-white text-slate-900 antialiased;
 }
+
+/* ─── Mode impression (bulletins, factures, certificats) ─── */
+@media print {
+  /* Format A4 + marges économes */
+  @page {
+    size: A4 portrait;
+    margin: 15mm 12mm;
+  }
+
+  /* On masque tout sauf l'élément #bulletin (ou similaire) */
+  body * {
+    visibility: hidden;
+  }
+  #bulletin,
+  #bulletin * {
+    visibility: visible;
+  }
+  #bulletin {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white !important;
+  }
+
+  /* Économie d'encre + lisibilité */
+  body {
+    background: white !important;
+    color: #000 !important;
+    font-size: 11pt;
+  }
+
+  /* Pas de retours de ligne au milieu d'une cellule */
+  tr,
+  td,
+  th {
+    page-break-inside: avoid;
+  }
+}

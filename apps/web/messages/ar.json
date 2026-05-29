@@ -262,8 +262,58 @@
         "utilization": "نسبة الإشغال",
         "takeAttendance": "أخذ الحضور",
         "lastAttendance": "آخر حضور",
-        "manageGrades": "النقاط"
+        "manageGrades": "النقاط",
+        "gradeBook": "دفتر النقاط"
       }
+    },
+    "gradeBook": {
+      "classes": "الأقسام",
+      "title": "دفتر النقاط",
+      "noSubjects": "لا توجد مواد محددة.",
+      "noPeriod": "لا توجد فترة متاحة.",
+      "noStudents": "لا يوجد تلاميذ مسجلون.",
+      "filter": {
+        "period": "الفترة",
+        "apply": "تصفية"
+      },
+      "table": {
+        "student": "التلميذ",
+        "general": "العام",
+        "classAvg": "معدل القسم",
+        "actions": "الكشف",
+        "bulletin": "عرض"
+      }
+    },
+    "bulletin": {
+      "classes": "الأقسام",
+      "title": "كشف النقاط",
+      "print": "طباعة",
+      "filter": {
+        "period": "الفترة",
+        "apply": "عرض"
+      },
+      "bulletinOf": "كشف {period} — {year}",
+      "info": {
+        "student": "التلميذ",
+        "class": "القسم",
+        "bornOn": "تاريخ الازدياد",
+        "level": "المستوى",
+        "classSize": "العدد",
+        "printedOn": "تاريخ الإصدار"
+      },
+      "table": {
+        "subject": "المادة",
+        "coefficient": "المعامل",
+        "gradesCount": "عدد النقاط",
+        "studentAvg": "المعدل",
+        "classAvg": "معدل القسم",
+        "generalAvg": "المعدل العام"
+      },
+      "signatures": {
+        "head": "مدير المؤسسة",
+        "parent": "ولي الأمر"
+      },
+      "footer": "كشف صادر عن جوال · الرقم : {id}"
     },
     "grades": {
       "classes": "الأقسام",
