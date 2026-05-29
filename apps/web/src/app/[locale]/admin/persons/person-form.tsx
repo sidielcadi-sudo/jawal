@@ -4,6 +4,14 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createPersonAction, updatePersonAction } from './actions';
+import {
+  MultiPicker,
+  DiplomasField,
+  AvailabilityField,
+  BenefitsField,
+  DeductionsField,
+  PAYROLL_METHODS,
+} from './hr-sections';
 
 type PersonType = 'STUDENT' | 'TEACHER' | 'STAFF' | 'PARENT';
 type RelationType = 'FATHER' | 'MOTHER' | 'LEGAL_GUARDIAN' | 'GUARDIAN';
@@ -20,6 +28,11 @@ type ParentOption = { id: string; firstName: string; lastName: string };
 type ParentLink = { parentId: string; type: RelationType };
 
 type ContractType = 'CDI' | 'CDD' | 'VACATAIRE' | 'STAGIAIRE' | 'AUTRE';
+type PayrollMethod = 'BANK_TRANSFER' | 'CHECK' | 'CASH' | 'OTHER';
+type Diploma = { title: string; institution?: string; year?: number };
+type Benefit = { label: string; amount: number };
+type Deduction = { label: string; amount: number; date?: string };
+type Availability = Record<'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN', Array<{ from: string; to: string }>>;
 
 type ContractFile = { id: string; filename: string; sizeBytes: number } | null;
 
@@ -40,6 +53,18 @@ type PersonInitial = {
   contractEndDate?: string;
   contractType?: ContractType;
   contractFile?: ContractFile;
+  specialtySubjectIds?: string[];
+  cycleIds?: string[];
+  experienceYears?: number;
+  diplomas?: Diploma[];
+  availability?: Availability;
+  rib?: string;
+  bankName?: string;
+  payrollMethod?: PayrollMethod;
+  grossSalary?: number;
+  netSalary?: number;
+  benefits?: Benefit[];
+  deductions?: Deduction[];
 };
 
 export function PersonForm({
@@ -48,12 +73,16 @@ export function PersonForm({
   locale,
   roles,
   availableParents,
+  allSubjects,
+  allCycles,
 }: {
   mode: 'create' | 'edit';
   initial?: PersonInitial;
   locale: string;
   roles: RoleOption[];
   availableParents: ParentOption[];
+  allSubjects: { id: string; label: string }[];
+  allCycles: { id: string; label: string }[];
 }) {
   const t = useTranslations('admin.persons.form');
   const tRel = useTranslations('admin.persons.detail.relations');
@@ -306,6 +335,123 @@ export function PersonForm({
           {mode === 'create' && (
             <p className="mt-2 text-xs text-slate-500">{t('contractUploadAfterCreate')}</p>
           )}
+        </section>
+      )}
+
+      {type === 'TEACHER' && (
+        <section className="space-y-4">
+          <h2 className="text-sm font-semibold text-slate-700">{t('section.skills')}</h2>
+          <MultiPicker
+            name="specialtySubjectIds"
+            label={t('specialties')}
+            hint={t('specialtiesHint')}
+            options={allSubjects}
+            initial={initial?.specialtySubjectIds ?? []}
+          />
+          <MultiPicker
+            name="cycleIds"
+            label={t('cyclesTaught')}
+            hint={t('cyclesTaughtHint')}
+            options={allCycles}
+            initial={initial?.cycleIds ?? []}
+          />
+        </section>
+      )}
+
+      {showContractField && (
+        <section className="space-y-4">
+          <h2 className="text-sm font-semibold text-slate-700">{t('section.hr')}</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label={t('experienceYears')}>
+              <input
+                type="number"
+                name="experienceYears"
+                min={0}
+                max={80}
+                defaultValue={initial?.experienceYears ?? ''}
+                className={inputCls}
+              />
+            </Field>
+            <Field label={t('seniority')}>
+              <input
+                type="text"
+                disabled
+                value={
+                  initial?.hireDate
+                    ? `${Math.floor((Date.now() - new Date(initial.hireDate).getTime()) / (365.25 * 86400e3))} ${t('yearsSuffix')}`
+                    : '—'
+                }
+                className={`${inputCls} bg-slate-50 text-slate-500`}
+              />
+            </Field>
+          </div>
+          <DiplomasField initial={initial?.diplomas ?? []} />
+          {type === 'TEACHER' && (
+            <AvailabilityField initial={initial?.availability ?? ({} as Availability)} />
+          )}
+        </section>
+      )}
+
+      {showContractField && (
+        <section className="space-y-4">
+          <h2 className="text-sm font-semibold text-slate-700">{t('section.financial')}</h2>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label={t('bankName')}>
+              <input
+                type="text"
+                name="bankName"
+                defaultValue={initial?.bankName ?? ''}
+                placeholder="ATTIJARI"
+                className={inputCls}
+              />
+            </Field>
+            <Field label={t('rib')}>
+              <input
+                type="text"
+                name="rib"
+                defaultValue={initial?.rib ?? ''}
+                placeholder="007 780 0001234567890123 45"
+                className={`${inputCls} font-mono`}
+              />
+            </Field>
+            <Field label={t('payrollMethod')}>
+              <select
+                name="payrollMethod"
+                defaultValue={initial?.payrollMethod ?? ''}
+                className={inputCls}
+              >
+                <option value="">—</option>
+                {PAYROLL_METHODS.map((m) => (
+                  <option key={m} value={m}>
+                    {t(`payrollMethods.${m}` as never)}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <div />
+            <Field label={t('grossSalary')}>
+              <input
+                type="number"
+                name="grossSalary"
+                step="any"
+                min={0}
+                defaultValue={initial?.grossSalary ?? ''}
+                className={inputCls}
+              />
+            </Field>
+            <Field label={t('netSalary')}>
+              <input
+                type="number"
+                name="netSalary"
+                step="any"
+                min={0}
+                defaultValue={initial?.netSalary ?? ''}
+                className={inputCls}
+              />
+            </Field>
+          </div>
+          <BenefitsField initial={initial?.benefits ?? []} />
+          <DeductionsField initial={initial?.deductions ?? []} />
         </section>
       )}
 

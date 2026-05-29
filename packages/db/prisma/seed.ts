@@ -7,6 +7,7 @@ import {
   PeriodKind,
   RelationType,
   ContractType,
+  PayrollPaymentMethod,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -269,11 +270,16 @@ async function main() {
     { code: 'svt', label: 'SVT', coefficient: 2, order: 50 },
   ] as const;
   for (const s of STD_SUBJECTS) {
-    await prisma.subject.upsert({
-      where: { tenantId_code: { tenantId: tenant.id, code: s.code } },
-      update: {},
-      create: { tenantId: tenant.id, ...s },
+    // Évite les conflits si l'utilisateur a renommé code ou label : on skip
+    // toute matière qui existe déjà par l'un des deux champs uniques.
+    const existing = await prisma.subject.findFirst({
+      where: {
+        tenantId: tenant.id,
+        OR: [{ code: s.code }, { label: s.label }],
+      },
     });
+    if (existing) continue;
+    await prisma.subject.create({ data: { tenantId: tenant.id, ...s } });
   }
   // Programme par niveau (1AC = collège 1ère année — coef/heures alignés sur Maroc K-12)
   const level1ac = await prisma.level.findUnique({
@@ -281,16 +287,20 @@ async function main() {
   });
   if (level1ac) {
     const PROGRAMME_1AC = [
-      { code: 'math', weeklyHours: 5, coefficient: 4 },
-      { code: 'fr', weeklyHours: 4, coefficient: 3 },
-      { code: 'ar', weeklyHours: 5, coefficient: 3 },
-      { code: 'phys', weeklyHours: 3, coefficient: 2 },
-      { code: 'svt', weeklyHours: 2, coefficient: 2 },
+      { code: 'math', label: 'Mathématiques',      weeklyHours: 5, coefficient: 4 },
+      { code: 'fr',   label: 'Français',           weeklyHours: 4, coefficient: 3 },
+      { code: 'ar',   label: 'Arabe',              weeklyHours: 5, coefficient: 3 },
+      { code: 'phys', label: 'Sciences physiques', weeklyHours: 3, coefficient: 2 },
+      { code: 'svt',  label: 'SVT',                weeklyHours: 2, coefficient: 2 },
     ];
     for (const [order, p] of PROGRAMME_1AC.entries()) {
-      const subj = await prisma.subject.findUniqueOrThrow({
-        where: { tenantId_code: { tenantId: tenant.id, code: p.code } },
+      const subj = await prisma.subject.findFirst({
+        where: {
+          tenantId: tenant.id,
+          OR: [{ code: p.code }, { label: p.label }],
+        },
       });
+      if (!subj) continue;
       await prisma.curriculumSubject.upsert({
         where: { levelId_subjectId: { levelId: level1ac.id, subjectId: subj.id } },
         update: { weeklyHours: p.weeklyHours, coefficient: p.coefficient, order },
@@ -312,7 +322,7 @@ async function main() {
     where: { tenantId: tenant.id, type: PersonType.TEACHER, firstName: 'Amina' },
   });
   if (aminaUpd) {
-    // Donne à Amina un CDI + date d'entrée si elle n'en a pas déjà.
+    // Donne à Amina un CDI + date d'entrée si pas déjà fait.
     if (!aminaUpd.hireDate) {
       await prisma.person.update({
         where: { id: aminaUpd.id },
@@ -322,12 +332,94 @@ async function main() {
         },
       });
     }
-    // Matière Maths (idempotent)
-    const maths = await prisma.subject.upsert({
-      where: { tenantId_code: { tenantId: tenant.id, code: 'math' } },
-      update: {},
-      create: { tenantId: tenant.id, code: 'math', label: 'Mathématiques', coefficient: 4, order: 1 },
+    // Données RH/financières démo — appliquées si absentes (idempotent).
+    if (aminaUpd.grossSalary === null || aminaUpd.experienceYears === null) {
+      await prisma.person.update({
+        where: { id: aminaUpd.id },
+        data: {
+          experienceYears: 8,
+          availability: {
+            MON: [{ from: '08:00', to: '12:00' }, { from: '14:00', to: '17:00' }],
+            TUE: [{ from: '08:00', to: '12:00' }],
+            WED: [{ from: '08:00', to: '12:00' }],
+            THU: [{ from: '08:00', to: '12:00' }, { from: '14:00', to: '17:00' }],
+            FRI: [{ from: '08:00', to: '12:00' }],
+          },
+          rib: '007 780 0001234567890123 45',
+          bankName: 'Attijariwafa Bank',
+          payrollMethod: PayrollPaymentMethod.BANK_TRANSFER,
+          grossSalary: 12000,
+          netSalary: 9800,
+          benefits: [
+            { label: 'Prime de transport', amount: 800 },
+            { label: 'Prime de rendement', amount: 500 },
+          ],
+          deductions: [],
+        },
+      });
+    }
+    // Spécialités + cycles + diplômes (idempotent) — recherche tolérante au renommage de code.
+    const subjMath = await prisma.subject.findFirst({
+      where: {
+        tenantId: tenant.id,
+        OR: [{ code: 'math' }, { label: 'Mathématiques' }],
+      },
     });
+    const subjPhys = await prisma.subject.findFirst({
+      where: {
+        tenantId: tenant.id,
+        OR: [{ code: 'phys' }, { label: 'Sciences physiques' }],
+      },
+    });
+    for (const subj of [subjMath, subjPhys].filter(Boolean) as Array<{ id: string }>) {
+      await prisma.teacherSpecialty
+        .create({
+          data: { tenantId: tenant.id, teacherId: aminaUpd.id, subjectId: subj.id },
+        })
+        .catch(() => null);
+    }
+    const cycleCol = await prisma.cycle.findFirst({
+      where: { tenantId: tenant.id, code: 'college' },
+    });
+    if (cycleCol) {
+      await prisma.teacherCycle
+        .create({ data: { tenantId: tenant.id, teacherId: aminaUpd.id, cycleId: cycleCol.id } })
+        .catch(() => null);
+    }
+    const hasDiploma = await prisma.diploma.findFirst({ where: { personId: aminaUpd.id } });
+    if (!hasDiploma) {
+      await prisma.diploma.createMany({
+        data: [
+          {
+            tenantId: tenant.id,
+            personId: aminaUpd.id,
+            title: 'Master en didactique des mathématiques',
+            institution: 'Université Hassan II Casablanca',
+            year: 2016,
+            order: 0,
+          },
+          {
+            tenantId: tenant.id,
+            personId: aminaUpd.id,
+            title: 'CAPES Mathématiques',
+            institution: 'CRMEF Rabat',
+            year: 2017,
+            order: 1,
+          },
+        ],
+      });
+    }
+    // Matière Maths (idempotent) — tolérante au renommage de code/label
+    const maths =
+      (await prisma.subject.findFirst({
+        where: {
+          tenantId: tenant.id,
+          OR: [{ code: 'math' }, { label: 'Mathématiques' }],
+        },
+      })) ??
+      (await prisma.subject.create({
+        data: { tenantId: tenant.id, code: 'math', label: 'Mathématiques', coefficient: 4, order: 1 },
+      }));
     // Une classe existante (la 1ère trouvée) pour l'affectation démo
     const classe = await prisma.class.findFirst({
       where: { tenantId: tenant.id, deletedAt: null },

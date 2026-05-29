@@ -45,6 +45,9 @@ export default async function PersonDetailPage({
           },
           orderBy: [{ academicYear: { startDate: 'desc' } }, { subject: { label: 'asc' } }],
         },
+        teacherSpecialties: { include: { subject: true } },
+        teacherCycles: { include: { cycle: true } },
+        diplomas: { orderBy: { order: 'asc' } },
       },
     }),
   );
@@ -248,6 +251,139 @@ export default async function PersonDetailPage({
               >
                 {tDetail('manageAssignments')} →
               </Link>
+            </section>
+          )}
+
+          {person.type === 'TEACHER' && person.teacherSpecialties.length > 0 && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-slate-700">{tDetail('specialties')}</h2>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {person.teacherSpecialties.map((s) => (
+                  <span
+                    key={s.id}
+                    className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
+                  >
+                    {s.subject.label}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {person.type === 'TEACHER' && person.teacherCycles.length > 0 && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-slate-700">{tDetail('cyclesTaught')}</h2>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {person.teacherCycles.map((c) => (
+                  <span
+                    key={c.id}
+                    className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
+                  >
+                    {c.cycle.label}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {isEmployee && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-slate-700">{tDetail('hr')}</h2>
+              <dl className="mt-3 space-y-2 text-sm">
+                {person.hireDate && (
+                  <Row
+                    label={tDetail('seniority')}
+                    value={`${Math.floor((Date.now() - new Date(person.hireDate).getTime()) / (365.25 * 86400e3))} ${tDetail('yearsSuffix')}`}
+                  />
+                )}
+                <Row
+                  label={tDetail('experienceYears')}
+                  value={
+                    person.experienceYears !== null
+                      ? `${person.experienceYears} ${tDetail('yearsSuffix')}`
+                      : undefined
+                  }
+                />
+              </dl>
+              {person.diplomas.length > 0 && (
+                <div className="mt-3 border-t border-slate-100 pt-3">
+                  <span className="text-xs font-medium text-slate-700">{tDetail('diplomas')}</span>
+                  <ul className="mt-2 space-y-1 text-xs text-slate-600">
+                    {person.diplomas.map((d) => (
+                      <li key={d.id}>
+                        <span className="font-medium">{d.title}</span>
+                        {d.institution && <span> · {d.institution}</span>}
+                        {d.year && <span className="text-slate-400"> ({d.year})</span>}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </section>
+          )}
+
+          {isEmployee && (person.rib || person.grossSalary !== null || person.payrollMethod) && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-slate-700">{tDetail('financial')}</h2>
+              <dl className="mt-3 space-y-2 text-sm">
+                <Row label={tDetail('bankName')} value={person.bankName ?? undefined} />
+                <Row label={tDetail('rib')} value={person.rib ?? undefined} mono />
+                <Row
+                  label={tDetail('payrollMethod')}
+                  value={
+                    person.payrollMethod
+                      ? tForm(`payrollMethods.${person.payrollMethod}` as never)
+                      : undefined
+                  }
+                />
+                <Row
+                  label={tDetail('grossSalary')}
+                  value={
+                    person.grossSalary !== null
+                      ? `${Number(person.grossSalary).toLocaleString(locale)} MAD`
+                      : undefined
+                  }
+                />
+                <Row
+                  label={tDetail('netSalary')}
+                  value={
+                    person.netSalary !== null
+                      ? `${Number(person.netSalary).toLocaleString(locale)} MAD`
+                      : undefined
+                  }
+                />
+              </dl>
+              {Array.isArray(person.benefits) && person.benefits.length > 0 && (
+                <div className="mt-3 border-t border-slate-100 pt-3">
+                  <span className="text-xs font-medium text-slate-700">{tDetail('benefits')}</span>
+                  <ul className="mt-2 space-y-1 text-xs text-slate-600">
+                    {(person.benefits as Array<{ label: string; amount: number }>).map((b, i) => (
+                      <li key={i} className="flex justify-between">
+                        <span>{b.label}</span>
+                        <span className="font-medium">+{b.amount} MAD</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {Array.isArray(person.deductions) && person.deductions.length > 0 && (
+                <div className="mt-3 border-t border-slate-100 pt-3">
+                  <span className="text-xs font-medium text-slate-700">{tDetail('deductions')}</span>
+                  <ul className="mt-2 space-y-1 text-xs text-slate-600">
+                    {(person.deductions as Array<{ label: string; amount: number; date?: string }>).map(
+                      (d, i) => (
+                        <li key={i} className="flex justify-between">
+                          <span>
+                            {d.label}
+                            {d.date && <span className="text-slate-400"> · {d.date}</span>}
+                          </span>
+                          <span className="font-medium text-red-600">−{d.amount} MAD</span>
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                </div>
+              )}
             </section>
           )}
 

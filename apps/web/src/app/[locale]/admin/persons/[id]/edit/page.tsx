@@ -16,13 +16,19 @@ export default async function EditPersonPage({
   const session = (await auth())!;
   const t = await getTranslations('admin.persons');
 
-  const { person, roles, availableParents } = await withTenant(
+  const { person, roles, availableParents, allSubjects, allCycles } = await withTenant(
     session.user.tenantId,
     async (tx) => {
-      const [person, roles, availableParents] = await Promise.all([
+      const [person, roles, availableParents, allSubjects, allCycles] = await Promise.all([
         tx.person.findUnique({
           where: { id },
-          include: { relationsAsChild: true, contractFile: true },
+          include: {
+            relationsAsChild: true,
+            contractFile: true,
+            teacherSpecialties: true,
+            teacherCycles: true,
+            diplomas: { orderBy: { order: 'asc' } },
+          },
         }),
         tx.personRole.findMany({
           where: { active: true },
@@ -33,8 +39,10 @@ export default async function EditPersonPage({
           orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
           select: { id: true, firstName: true, lastName: true },
         }),
+        tx.subject.findMany({ orderBy: [{ order: 'asc' }, { label: 'asc' }] }),
+        tx.cycle.findMany({ orderBy: { order: 'asc' } }),
       ]);
-      return { person, roles, availableParents };
+      return { person, roles, availableParents, allSubjects, allCycles };
     },
   );
   if (!person) notFound();
@@ -100,6 +108,28 @@ export default async function EditPersonPage({
                   sizeBytes: person.contractFile.sizeBytes,
                 }
               : null,
+            specialtySubjectIds: person.teacherSpecialties.map((s) => s.subjectId),
+            cycleIds: person.teacherCycles.map((c) => c.cycleId),
+            experienceYears: person.experienceYears ?? undefined,
+            diplomas: person.diplomas.map((d) => ({
+              title: d.title,
+              institution: d.institution ?? undefined,
+              year: d.year ?? undefined,
+            })),
+            availability:
+              (person.availability as Record<'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN', Array<{ from: string; to: string }>>) ??
+              ({ MON: [], TUE: [], WED: [], THU: [], FRI: [], SAT: [], SUN: [] } as never),
+            rib: person.rib ?? undefined,
+            bankName: person.bankName ?? undefined,
+            payrollMethod: person.payrollMethod ?? undefined,
+            grossSalary: person.grossSalary !== null ? Number(person.grossSalary) : undefined,
+            netSalary: person.netSalary !== null ? Number(person.netSalary) : undefined,
+            benefits: Array.isArray(person.benefits)
+              ? (person.benefits as Array<{ label: string; amount: number }>)
+              : [],
+            deductions: Array.isArray(person.deductions)
+              ? (person.deductions as Array<{ label: string; amount: number; date?: string }>)
+              : [],
           }}
           roles={roles.map((r) => ({
             id: r.id,
@@ -108,6 +138,8 @@ export default async function EditPersonPage({
             labelAr: r.labelAr,
           }))}
           availableParents={availableParents}
+          allSubjects={allSubjects.map((s) => ({ id: s.id, label: s.label }))}
+          allCycles={allCycles.map((c) => ({ id: c.id, label: c.label }))}
         />
       </div>
     </div>

@@ -70,7 +70,10 @@ DECLARE
     'person_roles',
     'person_relations',
     'teacher_assignments',
-    'curriculum_subjects'
+    'curriculum_subjects',
+    'teacher_specialties',
+    'teacher_cycles',
+    'diplomas'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped

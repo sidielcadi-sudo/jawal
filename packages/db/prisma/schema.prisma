@@ -53,6 +53,15 @@ enum ContractType {
   AUTRE
 }
 
+/// Mode de paiement du SALAIRE (distinct de PaymentMethod qui sert aux
+/// encaissements élèves/parents).
+enum PayrollPaymentMethod {
+  BANK_TRANSFER
+  CHECK
+  CASH
+  OTHER
+}
+
 enum Gender {
   M
   F
@@ -163,6 +172,9 @@ model Tenant {
   personRelations PersonRelation[]
   teacherAssignments TeacherAssignment[]
   curriculumSubjects CurriculumSubject[]
+  teacherSpecialties TeacherSpecialty[]
+  teacherCycles      TeacherCycle[]
+  diplomas           Diploma[]
 
   @@map("tenants")
 }
@@ -232,6 +244,20 @@ model Person {
   contractType   ContractType? @map("contract_type")
   /// PDF du contrat — stocké dans MinIO via FileObject.
   contractFileId String?       @unique @map("contract_file_id") @db.Uuid
+  /// RH — uniquement TEACHER/STAFF
+  experienceYears Int?         @map("experience_years")
+  /// JSON : grille hebdomadaire de disponibilités { MON: [{from,to}], ... }
+  availability    Json         @default("{}") @map("availability")
+  /// Données financières — uniquement TEACHER/STAFF
+  rib             String?
+  bankName        String?      @map("bank_name")
+  payrollMethod   PayrollPaymentMethod? @map("payroll_method")
+  grossSalary     Decimal?     @map("gross_salary") @db.Decimal(12, 2)
+  netSalary       Decimal?     @map("net_salary") @db.Decimal(12, 2)
+  /// JSON : avantages [{label, amount}]
+  benefits        Json         @default("[]")
+  /// JSON : retenues [{label, amount, date?}]
+  deductions      Json         @default("[]")
   createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime   @updatedAt @map("updated_at")
   deletedAt   DateTime?  @map("deleted_at")
@@ -248,6 +274,9 @@ model Person {
   councilEntries     CouncilEntry[]     @relation("StudentCouncil")
   installments       Installment[]      @relation("StudentInstallments")
   teacherAssignments TeacherAssignment[] @relation("TeacherAssignments")
+  teacherSpecialties TeacherSpecialty[]
+  teacherCycles      TeacherCycle[]
+  diplomas           Diploma[]
   /// Liens de parenté où cette personne est l'enfant (FROM = student/PARENT-child)
   relationsAsChild   PersonRelation[]   @relation("ChildRelations")
   /// Liens où cette personne est le parent/tuteur (TO = parent/guardian)
@@ -258,6 +287,60 @@ model Person {
   @@index([tenantId, roleId])
   @@index([tenantId, contractEndDate])
   @@map("persons")
+}
+
+/// Spécialités d'un enseignant : matières qu'il est capable d'enseigner
+/// (vs TeacherAssignment qui est ce qu'il enseigne effectivement cette année).
+model TeacherSpecialty {
+  id        String @id @default(uuid()) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  teacherId String @map("teacher_id") @db.Uuid
+  subjectId String @map("subject_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  teacher Person  @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, subjectId])
+  @@index([tenantId, teacherId])
+  @@index([tenantId, subjectId])
+  @@map("teacher_specialties")
+}
+
+/// Cycles enseignés par un enseignant (Primaire, Collège, Lycée…).
+model TeacherCycle {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  teacherId String   @map("teacher_id") @db.Uuid
+  cycleId   String   @map("cycle_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  teacher Person @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  cycle   Cycle  @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, cycleId])
+  @@index([tenantId, teacherId])
+  @@map("teacher_cycles")
+}
+
+/// Diplômes / certifications d'une personne (TEACHER ou STAFF).
+model Diploma {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  personId    String   @map("person_id") @db.Uuid
+  title       String   // ex : "Licence en mathématiques"
+  institution String?  // ex : "Université Hassan II"
+  year        Int?     // ex : 2018
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, personId])
+  @@map("diplomas")
 }
 
 /// Affectation pédagogique : un enseignant enseigne une matière à une classe
@@ -432,6 +515,7 @@ model Cycle {
 
   tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   levels Level[]
+  teacherCycles TeacherCycle[]
 
   @@unique([tenantId, code])
   @@map("cycles")
@@ -673,6 +757,7 @@ model Subject {
   evaluations Evaluation[]
   teacherAssignments TeacherAssignment[]
   curriculumEntries CurriculumSubject[]
+  teacherSpecialties TeacherSpecialty[]
 
   @@unique([tenantId, code])
   /// Empêche deux matières d'avoir le même libellé dans un même tenant —

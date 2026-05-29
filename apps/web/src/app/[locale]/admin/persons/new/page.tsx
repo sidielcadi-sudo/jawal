@@ -23,8 +23,8 @@ export default async function NewPersonPage({
     : 'STUDENT';
 
   const session = (await auth())!;
-  const { roles, availableParents } = await withTenant(session.user.tenantId, async (tx) => {
-    const [roles, availableParents] = await Promise.all([
+  const { roles, availableParents, allSubjects, allCycles } = await withTenant(session.user.tenantId, async (tx) => {
+    const [roles, availableParents, allSubjects, allCycles] = await Promise.all([
       tx.personRole.findMany({
         where: { active: true },
         orderBy: [{ appliesTo: 'asc' }, { order: 'asc' }, { labelFr: 'asc' }],
@@ -34,8 +34,10 @@ export default async function NewPersonPage({
         orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
         select: { id: true, firstName: true, lastName: true },
       }),
+      tx.subject.findMany({ orderBy: [{ order: 'asc' }, { label: 'asc' }] }),
+      tx.cycle.findMany({ orderBy: { order: 'asc' } }),
     ]);
-    return { roles, availableParents };
+    return { roles, availableParents, allSubjects, allCycles };
   });
 
   const backHref = `/${locale}/admin/persons?type=${defaultType}`;
@@ -66,6 +68,8 @@ export default async function NewPersonPage({
             labelAr: r.labelAr,
           }))}
           availableParents={availableParents}
+          allSubjects={allSubjects.map((s) => ({ id: s.id, label: s.label }))}
+          allCycles={allCycles.map((c) => ({ id: c.id, label: c.label }))}
         />
       </div>
     </div>

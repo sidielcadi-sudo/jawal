@@ -9,6 +9,33 @@ export type RelationTypeValue = z.infer<typeof relationTypeSchema>;
 export const contractTypeSchema = z.enum(['CDI', 'CDD', 'VACATAIRE', 'STAGIAIRE', 'AUTRE']);
 export type ContractTypeValue = z.infer<typeof contractTypeSchema>;
 
+export const payrollMethodSchema = z.enum(['BANK_TRANSFER', 'CHECK', 'CASH', 'OTHER']);
+export type PayrollMethodValue = z.infer<typeof payrollMethodSchema>;
+
+export const dayKeySchema = z.enum(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']);
+export const timeSlotSchema = z.object({
+  from: z.string().regex(/^\d{2}:\d{2}$/),
+  to: z.string().regex(/^\d{2}:\d{2}$/),
+});
+export const availabilitySchema = z.record(dayKeySchema, z.array(timeSlotSchema)).default({});
+
+export const diplomaSchema = z.object({
+  title: z.string().min(1).max(200),
+  institution: z.string().max(200).optional(),
+  year: z.coerce.number().int().min(1950).max(2100).optional(),
+});
+
+export const benefitItemSchema = z.object({
+  label: z.string().min(1).max(100),
+  amount: z.coerce.number().min(0).max(1_000_000),
+});
+
+export const deductionItemSchema = z.object({
+  label: z.string().min(1).max(100),
+  amount: z.coerce.number().min(0).max(1_000_000),
+  date: z.string().optional(),
+});
+
 export const personCreateSchema = z.object({
   type: personTypeSchema,
   /// Rôle paramétrable (uniquement pour TEACHER ou STAFF). UUID ou undefined.
@@ -44,6 +71,21 @@ export const personCreateSchema = z.object({
   hireDate: z.coerce.date().optional(),
   contractEndDate: z.coerce.date().optional(),
   contractType: contractTypeSchema.optional(),
+  /// Compétences pédagogiques (TEACHER uniquement)
+  specialtySubjectIds: z.array(z.string().uuid()).optional(),
+  cycleIds: z.array(z.string().uuid()).optional(),
+  /// Données RH (TEACHER + STAFF)
+  experienceYears: z.coerce.number().int().min(0).max(80).optional(),
+  diplomas: z.array(diplomaSchema).optional(),
+  availability: availabilitySchema.optional(),
+  /// Données financières (TEACHER + STAFF)
+  rib: z.string().max(40).optional(),
+  bankName: z.string().max(100).optional(),
+  payrollMethod: payrollMethodSchema.optional(),
+  grossSalary: z.coerce.number().min(0).max(1_000_000).optional(),
+  netSalary: z.coerce.number().min(0).max(1_000_000).optional(),
+  benefits: z.array(benefitItemSchema).optional(),
+  deductions: z.array(deductionItemSchema).optional(),
 });
 
 export type PersonCreate = z.infer<typeof personCreateSchema>;

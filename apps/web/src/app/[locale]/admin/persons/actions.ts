@@ -22,26 +22,49 @@ function flatten<T>(parsed: z.SafeParseError<T>): Record<string, string> {
   return out;
 }
 
+function safeJson<T>(v: FormDataEntryValue | null, validator: (x: unknown) => x is T): T | undefined {
+  if (typeof v !== 'string' || v.trim() === '') return undefined;
+  try {
+    const parsed = JSON.parse(v);
+    return validator(parsed) ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 function formToInput(formData: FormData) {
   const get = (k: string) => {
     const v = formData.get(k);
     return typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined;
   };
 
-  let parents: Array<{ parentId: string; type: 'FATHER' | 'MOTHER' | 'LEGAL_GUARDIAN' | 'GUARDIAN' }> | undefined;
-  const parentsRaw = formData.get('parents');
-  if (typeof parentsRaw === 'string' && parentsRaw.trim() !== '') {
-    try {
-      const arr = JSON.parse(parentsRaw);
-      if (Array.isArray(arr)) {
-        parents = arr.filter(
-          (p) => p && typeof p.parentId === 'string' && p.parentId && typeof p.type === 'string',
-        );
-      }
-    } catch {
-      // ignore — Zod ne recevra rien et le champ restera undefined
-    }
-  }
+  const parents = safeJson(formData.get('parents'), (x): x is Array<{ parentId: string; type: 'FATHER' | 'MOTHER' | 'LEGAL_GUARDIAN' | 'GUARDIAN' }> =>
+    Array.isArray(x) && x.every((p) => p && typeof p.parentId === 'string' && typeof p.type === 'string'),
+  );
+
+  const specialtySubjectIds = safeJson(formData.get('specialtySubjectIds'), (x): x is string[] =>
+    Array.isArray(x) && x.every((s) => typeof s === 'string'),
+  );
+
+  const cycleIds = safeJson(formData.get('cycleIds'), (x): x is string[] =>
+    Array.isArray(x) && x.every((s) => typeof s === 'string'),
+  );
+
+  const diplomas = safeJson(formData.get('diplomas'), (x): x is Array<{ title: string; institution?: string; year?: number }> =>
+    Array.isArray(x) && x.every((d) => d && typeof d.title === 'string'),
+  );
+
+  const availability = safeJson(formData.get('availability'), (x): x is Record<string, Array<{ from: string; to: string }>> =>
+    typeof x === 'object' && x !== null && !Array.isArray(x),
+  );
+
+  const benefits = safeJson(formData.get('benefits'), (x): x is Array<{ label: string; amount: number }> =>
+    Array.isArray(x) && x.every((b) => b && typeof b.label === 'string'),
+  );
+
+  const deductions = safeJson(formData.get('deductions'), (x): x is Array<{ label: string; amount: number; date?: string }> =>
+    Array.isArray(x) && x.every((d) => d && typeof d.label === 'string'),
+  );
 
   return {
     type: get('type'),
@@ -67,6 +90,18 @@ function formToInput(formData: FormData) {
     hireDate: get('hireDate'),
     contractEndDate: get('contractEndDate'),
     contractType: get('contractType'),
+    specialtySubjectIds,
+    cycleIds,
+    experienceYears: get('experienceYears'),
+    diplomas,
+    availability,
+    rib: get('rib'),
+    bankName: get('bankName'),
+    payrollMethod: get('payrollMethod'),
+    grossSalary: get('grossSalary'),
+    netSalary: get('netSalary'),
+    benefits,
+    deductions,
   };
 }
 
@@ -84,6 +119,7 @@ export async function createPersonAction(formData: FormData): Promise<ActionResu
 
   // roleId, hireDate, contractEndDate, contractType n'ont de sens que pour TEACHER/STAFF.
   const isEmployee = parsed.data.type === 'TEACHER' || parsed.data.type === 'STAFF';
+  const isTeacher = parsed.data.type === 'TEACHER';
   const roleId = isEmployee ? parsed.data.roleId ?? null : null;
   const hireDate = isEmployee ? parsed.data.hireDate ?? null : null;
   const contractEndDate = isEmployee ? parsed.data.contractEndDate ?? null : null;
@@ -106,8 +142,49 @@ export async function createPersonAction(formData: FormData): Promise<ActionResu
         hireDate,
         contractEndDate,
         contractType,
+        experienceYears: isEmployee ? parsed.data.experienceYears ?? null : null,
+        availability: isEmployee ? parsed.data.availability ?? {} : {},
+        rib: isEmployee ? parsed.data.rib ?? null : null,
+        bankName: isEmployee ? parsed.data.bankName ?? null : null,
+        payrollMethod: isEmployee ? parsed.data.payrollMethod ?? null : null,
+        grossSalary: isEmployee ? parsed.data.grossSalary ?? null : null,
+        netSalary: isEmployee ? parsed.data.netSalary ?? null : null,
+        benefits: isEmployee ? parsed.data.benefits ?? [] : [],
+        deductions: isEmployee ? parsed.data.deductions ?? [] : [],
       },
     });
+
+    // Spécialités + cycles (TEACHER uniquement)
+    if (isTeacher && parsed.data.specialtySubjectIds) {
+      for (const subjectId of parsed.data.specialtySubjectIds) {
+        await tx.teacherSpecialty.create({
+          data: { tenantId, teacherId: person.id, subjectId },
+        });
+      }
+    }
+    if (isTeacher && parsed.data.cycleIds) {
+      for (const cycleId of parsed.data.cycleIds) {
+        await tx.teacherCycle.create({
+          data: { tenantId, teacherId: person.id, cycleId },
+        });
+      }
+    }
+
+    // Diplômes (TEACHER + STAFF)
+    if (isEmployee && parsed.data.diplomas) {
+      for (const [order, d] of parsed.data.diplomas.entries()) {
+        await tx.diploma.create({
+          data: {
+            tenantId,
+            personId: person.id,
+            title: d.title,
+            institution: d.institution,
+            year: d.year,
+            order,
+          },
+        });
+      }
+    }
 
     // Liens parents (uniquement pour les élèves)
     if (parsed.data.type === 'STUDENT' && parsed.data.parents && parsed.data.parents.length > 0) {
@@ -165,6 +242,7 @@ export async function updatePersonAction(
     if (!before) throw new Error('Personne introuvable');
 
     const isEmployee = before.type === 'TEACHER' || before.type === 'STAFF';
+    const isTeacher = before.type === 'TEACHER';
     const roleId = isEmployee ? parsed.data.roleId ?? null : null;
     const hireDate = isEmployee ? parsed.data.hireDate ?? null : null;
     const contractEndDate = isEmployee ? parsed.data.contractEndDate ?? null : null;
@@ -185,8 +263,52 @@ export async function updatePersonAction(
         hireDate,
         contractEndDate,
         contractType,
+        experienceYears: isEmployee ? parsed.data.experienceYears ?? null : null,
+        availability: isEmployee && parsed.data.availability !== undefined
+          ? parsed.data.availability
+          : (before.availability ?? {}),
+        rib: isEmployee ? parsed.data.rib ?? null : null,
+        bankName: isEmployee ? parsed.data.bankName ?? null : null,
+        payrollMethod: isEmployee ? parsed.data.payrollMethod ?? null : null,
+        grossSalary: isEmployee ? parsed.data.grossSalary ?? null : null,
+        netSalary: isEmployee ? parsed.data.netSalary ?? null : null,
+        benefits: isEmployee && parsed.data.benefits !== undefined ? parsed.data.benefits : (before.benefits ?? []),
+        deductions: isEmployee && parsed.data.deductions !== undefined ? parsed.data.deductions : (before.deductions ?? []),
       },
     });
+
+    // Sync M2M : on remplace
+    if (isTeacher && parsed.data.specialtySubjectIds !== undefined) {
+      await tx.teacherSpecialty.deleteMany({ where: { teacherId: id } });
+      for (const subjectId of parsed.data.specialtySubjectIds) {
+        await tx.teacherSpecialty.create({
+          data: { tenantId, teacherId: id, subjectId },
+        });
+      }
+    }
+    if (isTeacher && parsed.data.cycleIds !== undefined) {
+      await tx.teacherCycle.deleteMany({ where: { teacherId: id } });
+      for (const cycleId of parsed.data.cycleIds) {
+        await tx.teacherCycle.create({
+          data: { tenantId, teacherId: id, cycleId },
+        });
+      }
+    }
+    if (isEmployee && parsed.data.diplomas !== undefined) {
+      await tx.diploma.deleteMany({ where: { personId: id } });
+      for (const [order, d] of parsed.data.diplomas.entries()) {
+        await tx.diploma.create({
+          data: {
+            tenantId,
+            personId: id,
+            title: d.title,
+            institution: d.institution,
+            year: d.year,
+            order,
+          },
+        });
+      }
+    }
 
     // Synchronisation des liens parents (seulement pour STUDENT).
     // On efface puis recrée — plus simple et idempotent.
