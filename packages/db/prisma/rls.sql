@@ -66,7 +66,9 @@ DECLARE
     'messages',
     'fee_schedules',
     'installments',
-    'payments'
+    'payments',
+    'person_roles',
+    'person_relations'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped

@@ -17,21 +17,50 @@ export default async function PersonDetailPage({
   const tenantId = session.user.tenantId;
   const t = await getTranslations('admin.persons');
   const tDetail = await getTranslations('admin.persons.detail');
+  const tForm = await getTranslations('admin.persons.form');
 
   const person = await withTenant(tenantId, async (tx) =>
     tx.person.findUnique({
       where: { id },
       include: {
+        role: true,
         studentClasses: {
           include: {
             class: { include: { level: true, academicYear: true } },
           },
+        },
+        relationsAsChild: {
+          include: { parent: true },
+        },
+        relationsAsParent: {
+          include: { child: true },
         },
       },
     }),
   );
 
   if (!person) notFound();
+
+  // Fratrie déduite : autres élèves ayant au moins un parent en commun.
+  let siblings: { id: string; firstName: string; lastName: string }[] = [];
+  if (person.type === 'STUDENT' && person.relationsAsChild.length > 0) {
+    const parentIds = person.relationsAsChild.map((r) => r.parentId);
+    siblings = await withTenant(tenantId, async (tx) => {
+      const rels = await tx.personRelation.findMany({
+        where: {
+          parentId: { in: parentIds },
+          childId: { not: person.id },
+        },
+        include: { child: true },
+        distinct: ['childId'],
+      });
+      return rels.map((r) => ({
+        id: r.child.id,
+        firstName: r.child.firstName,
+        lastName: r.child.lastName,
+      }));
+    });
+  }
 
   const contacts = (person.contacts ?? {}) as { email?: string; phone?: string; whatsapp?: string };
   const address = (person.address ?? {}) as {
@@ -41,11 +70,21 @@ export default async function PersonDetailPage({
     country?: string;
   };
 
+  // Breadcrumb dynamique : renvoie vers la liste filtrée selon le type.
+  const backHref = `/${locale}/admin/persons?type=${person.type}`;
+  const backLabel = t(`title.${person.type}` as never);
+
+  const roleLabel = person.role
+    ? locale === 'ar'
+      ? person.role.labelAr
+      : person.role.labelFr
+    : null;
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
       <nav className="mb-4 text-xs text-slate-500">
-        <Link href={`/${locale}/admin/persons`} className="hover:text-brand-700">
-          {t('title.ALL')}
+        <Link href={backHref} className="hover:text-brand-700">
+          {backLabel}
         </Link>
         <span className="mx-1.5">›</span>
         <span>
@@ -68,7 +107,8 @@ export default async function PersonDetailPage({
               )}
             </h1>
             <p className="mt-1 text-sm text-slate-500">
-              {t(`form.types.${person.type}` as never)}
+              {tForm(`types.${person.type}` as never)}
+              {roleLabel && ` · ${roleLabel}`}
               {person.birthDate &&
                 ` · ${tDetail('bornOn', { date: new Date(person.birthDate).toLocaleDateString(locale) })}`}
             </p>
@@ -121,6 +161,75 @@ export default async function PersonDetailPage({
                       <span className="font-medium text-slate-900">{sc.class.name}</span>
                       <span className="ms-1.5 text-xs text-slate-500">
                         ({sc.class.academicYear.label})
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
+          {person.type === 'STUDENT' && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-slate-700">{tDetail('parents')}</h2>
+              {person.relationsAsChild.length === 0 ? (
+                <p className="mt-2 text-xs text-slate-500">{tDetail('noParent')}</p>
+              ) : (
+                <ul className="mt-2 space-y-1.5 text-sm">
+                  {person.relationsAsChild.map((r) => (
+                    <li key={r.id} className="rounded-lg border border-slate-100 px-3 py-1.5">
+                      <Link
+                        href={`/${locale}/admin/persons/${r.parent.id}`}
+                        className="font-medium text-slate-900 hover:text-brand-700"
+                      >
+                        {r.parent.lastName} {r.parent.firstName}
+                      </Link>
+                      <span className="ms-1.5 text-xs text-slate-500">
+                        ({tDetail(`relations.${r.type}` as never)})
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          )}
+
+          {person.type === 'STUDENT' && siblings.length > 0 && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-slate-700">{tDetail('siblings')}</h2>
+              <ul className="mt-2 space-y-1.5 text-sm">
+                {siblings.map((s) => (
+                  <li key={s.id} className="rounded-lg border border-slate-100 px-3 py-1.5">
+                    <Link
+                      href={`/${locale}/admin/persons/${s.id}`}
+                      className="font-medium text-slate-900 hover:text-brand-700"
+                    >
+                      {s.lastName} {s.firstName}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-2 text-[10px] text-slate-400">{tDetail('siblingsHint')}</p>
+            </section>
+          )}
+
+          {person.type === 'PARENT' && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-slate-700">{tDetail('children')}</h2>
+              {person.relationsAsParent.length === 0 ? (
+                <p className="mt-2 text-xs text-slate-500">{tDetail('noChild')}</p>
+              ) : (
+                <ul className="mt-2 space-y-1.5 text-sm">
+                  {person.relationsAsParent.map((r) => (
+                    <li key={r.id} className="rounded-lg border border-slate-100 px-3 py-1.5">
+                      <Link
+                        href={`/${locale}/admin/persons/${r.child.id}`}
+                        className="font-medium text-slate-900 hover:text-brand-700"
+                      >
+                        {r.child.lastName} {r.child.firstName}
+                      </Link>
+                      <span className="ms-1.5 text-xs text-slate-500">
+                        ({tDetail(`relations.${r.type}` as never)})
                       </span>
                     </li>
                   ))}

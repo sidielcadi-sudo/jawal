@@ -30,8 +30,21 @@ const ROW_SCHEMA = z.object({
   email: z
     .preprocess((v) => (typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined), z.string().email().optional())
     .optional(),
+  // Téléphone : au moins 9 chiffres après nettoyage (espaces, +, -, parenthèses, points).
+  // Maroc local = 10 chiffres (06/07XXXXXXXX), international ≥ 11. On accepte ≥ 9 pour
+  // tolérer les formats locaux raccourcis. Le numéro brut est conservé.
   phone: z
-    .preprocess((v) => (typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined), z.string().optional())
+    .preprocess(
+      (v) => (typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined),
+      z
+        .string()
+        .max(30, { message: 'Téléphone trop long (max 30 caractères).' })
+        .refine(
+          (s) => (s.match(/\d/g) ?? []).length >= 9,
+          { message: 'Téléphone : au moins 9 chiffres requis.' },
+        )
+        .optional(),
+    )
     .optional(),
   cin: z
     .preprocess((v) => (typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined), z.string().optional())

@@ -27,8 +27,25 @@ function formToInput(formData: FormData) {
     const v = formData.get(k);
     return typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined;
   };
+
+  let parents: Array<{ parentId: string; type: 'FATHER' | 'MOTHER' | 'LEGAL_GUARDIAN' | 'GUARDIAN' }> | undefined;
+  const parentsRaw = formData.get('parents');
+  if (typeof parentsRaw === 'string' && parentsRaw.trim() !== '') {
+    try {
+      const arr = JSON.parse(parentsRaw);
+      if (Array.isArray(arr)) {
+        parents = arr.filter(
+          (p) => p && typeof p.parentId === 'string' && p.parentId && typeof p.type === 'string',
+        );
+      }
+    } catch {
+      // ignore — Zod ne recevra rien et le champ restera undefined
+    }
+  }
+
   return {
     type: get('type'),
+    roleId: get('roleId'),
     firstName: get('firstName'),
     lastName: get('lastName'),
     birthDate: get('birthDate'),
@@ -46,6 +63,7 @@ function formToInput(formData: FormData) {
       postalCode: get('addressPostalCode'),
       country: get('addressCountry'),
     },
+    parents,
   };
 }
 
@@ -61,11 +79,16 @@ export async function createPersonAction(formData: FormData): Promise<ActionResu
 
   const tenantId = session.user.tenantId;
 
+  // roleId n'a de sens que pour TEACHER/STAFF — on l'ignore sinon.
+  const roleId =
+    (parsed.data.type === 'TEACHER' || parsed.data.type === 'STAFF') ? parsed.data.roleId ?? null : null;
+
   const created = await withTenant(tenantId, async (tx) => {
     const person = await tx.person.create({
       data: {
         tenantId,
         type: parsed.data.type,
+        roleId,
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,
         birthDate: parsed.data.birthDate,
@@ -77,6 +100,20 @@ export async function createPersonAction(formData: FormData): Promise<ActionResu
       },
     });
 
+    // Liens parents (uniquement pour les élèves)
+    if (parsed.data.type === 'STUDENT' && parsed.data.parents && parsed.data.parents.length > 0) {
+      for (const link of parsed.data.parents) {
+        await tx.personRelation.create({
+          data: {
+            tenantId,
+            childId: person.id,
+            parentId: link.parentId,
+            type: link.type,
+          },
+        });
+      }
+    }
+
     await logAudit(tx, {
       tenantId,
       userId: session.user.id,
@@ -87,6 +124,8 @@ export async function createPersonAction(formData: FormData): Promise<ActionResu
         type: person.type,
         firstName: person.firstName,
         lastName: person.lastName,
+        roleId,
+        parents: parsed.data.parents?.length ?? 0,
       },
     });
 
@@ -116,9 +155,15 @@ export async function updatePersonAction(
     const before = await tx.person.findUnique({ where: { id } });
     if (!before) throw new Error('Personne introuvable');
 
+    const roleId =
+      (before.type === 'TEACHER' || before.type === 'STAFF')
+        ? parsed.data.roleId ?? null
+        : null;
+
     const updated = await tx.person.update({
       where: { id },
       data: {
+        roleId,
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,
         birthDate: parsed.data.birthDate,
@@ -130,6 +175,22 @@ export async function updatePersonAction(
       },
     });
 
+    // Synchronisation des liens parents (seulement pour STUDENT).
+    // On efface puis recrée — plus simple et idempotent.
+    if (before.type === 'STUDENT' && parsed.data.parents !== undefined) {
+      await tx.personRelation.deleteMany({ where: { childId: id } });
+      for (const link of parsed.data.parents) {
+        await tx.personRelation.create({
+          data: {
+            tenantId,
+            childId: id,
+            parentId: link.parentId,
+            type: link.type,
+          },
+        });
+      }
+    }
+
     await logAudit(tx, {
       tenantId,
       userId: session.user.id,
@@ -139,11 +200,13 @@ export async function updatePersonAction(
       before: {
         firstName: before.firstName,
         lastName: before.lastName,
+        roleId: before.roleId,
         contacts: before.contacts,
       },
       after: {
         firstName: updated.firstName,
         lastName: updated.lastName,
+        roleId: updated.roleId,
         contacts: updated.contacts,
       },
     });

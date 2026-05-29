@@ -38,6 +38,13 @@ enum PersonType {
   STAFF
 }
 
+enum RelationType {
+  FATHER
+  MOTHER
+  LEGAL_GUARDIAN
+  GUARDIAN
+}
+
 enum Gender {
   M
   F
@@ -144,6 +151,8 @@ model Tenant {
   installments   Installment[]
   payments       Payment[]
   files          FileObject[]
+  personRoles    PersonRole[]
+  personRelations PersonRelation[]
 
   @@map("tenants")
 }
@@ -195,6 +204,8 @@ model Person {
   id          String     @id @default(uuid()) @db.Uuid
   tenantId    String     @map("tenant_id") @db.Uuid
   type        PersonType
+  /// Catégorie paramétrable (TEACHER ou STAFF uniquement). Null sinon.
+  roleId      String?    @map("role_id") @db.Uuid
   firstName   String     @map("first_name")
   lastName    String     @map("last_name")
   birthDate   DateTime?  @map("birth_date") @db.Date
@@ -209,6 +220,7 @@ model Person {
   deletedAt   DateTime?  @map("deleted_at")
 
   tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role               PersonRole?        @relation(fields: [roleId], references: [id], onDelete: SetNull)
   userPersons        UserPerson[]
   studentClasses     StudentClass[]
   mainOfClass        Class[]            @relation("MainTeacher")
@@ -217,10 +229,59 @@ model Person {
   subjectAppreciations SubjectAppreciation[] @relation("StudentSubjectAppreciations")
   councilEntries     CouncilEntry[]     @relation("StudentCouncil")
   installments       Installment[]      @relation("StudentInstallments")
+  /// Liens de parenté où cette personne est l'enfant (FROM = student/PARENT-child)
+  relationsAsChild   PersonRelation[]   @relation("ChildRelations")
+  /// Liens où cette personne est le parent/tuteur (TO = parent/guardian)
+  relationsAsParent  PersonRelation[]   @relation("ParentRelations")
 
   @@index([tenantId, type])
   @@index([tenantId, lastName, firstName])
+  @@index([tenantId, roleId])
   @@map("persons")
+}
+
+/// Catégorie paramétrable pour les enseignants ou le personnel.
+/// Bilingue FR/AR — l'affichage choisit selon la locale active.
+model PersonRole {
+  id        String     @id @default(uuid()) @db.Uuid
+  tenantId  String     @map("tenant_id") @db.Uuid
+  appliesTo PersonType @map("applies_to") // TEACHER ou STAFF
+  code      String     // identifiant stable (MAIN_TEACHER, BURSAR, ...)
+  labelFr   String     @map("label_fr")
+  labelAr   String     @map("label_ar")
+  order     Int        @default(0)
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  persons Person[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, appliesTo, order])
+  @@map("person_roles")
+}
+
+/// Lien explicite parent ↔ enfant (Père, Mère, Tuteur légal, Tuteur).
+/// La fratrie est *déduite* via parents partagés (pas stockée).
+model PersonRelation {
+  id        String       @id @default(uuid()) @db.Uuid
+  tenantId  String       @map("tenant_id") @db.Uuid
+  /// Élève
+  childId   String       @map("child_id") @db.Uuid
+  /// Parent ou tuteur
+  parentId  String       @map("parent_id") @db.Uuid
+  type      RelationType
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  child  Person @relation("ChildRelations", fields: [childId], references: [id], onDelete: Cascade)
+  parent Person @relation("ParentRelations", fields: [parentId], references: [id], onDelete: Cascade)
+
+  @@unique([childId, parentId])
+  @@index([tenantId, childId])
+  @@index([tenantId, parentId])
+  @@map("person_relations")
 }
 
 /// Lien compte ↔ identité (un user peut représenter plusieurs persons,

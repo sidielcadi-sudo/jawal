@@ -3,8 +3,13 @@ import { z } from 'zod';
 export const personTypeSchema = z.enum(['STUDENT', 'PARENT', 'TEACHER', 'STAFF']);
 export const genderSchema = z.enum(['M', 'F', 'X']);
 
+export const relationTypeSchema = z.enum(['FATHER', 'MOTHER', 'LEGAL_GUARDIAN', 'GUARDIAN']);
+export type RelationTypeValue = z.infer<typeof relationTypeSchema>;
+
 export const personCreateSchema = z.object({
   type: personTypeSchema,
+  /// Rôle paramétrable (uniquement pour TEACHER ou STAFF). UUID ou undefined.
+  roleId: z.string().uuid().optional(),
   firstName: z.string().min(1).max(100),
   lastName: z.string().min(1).max(100),
   birthDate: z.coerce.date().optional(),
@@ -27,6 +32,10 @@ export const personCreateSchema = z.object({
       country: z.string().optional(),
     })
     .partial()
+    .optional(),
+  /// Pour un STUDENT : liens vers les parents existants à attacher.
+  parents: z
+    .array(z.object({ parentId: z.string().uuid(), type: relationTypeSchema }))
     .optional(),
 });
 

@@ -337,7 +337,19 @@
         "meta": "Métadonnées",
         "createdAt": "Créé le",
         "updatedAt": "Mis à jour le",
-        "finance": "Finances"
+        "finance": "Finances",
+        "parents": "Parents / Tuteurs",
+        "noParent": "Aucun parent rattaché.",
+        "siblings": "Frères et sœurs",
+        "siblingsHint": "Déduit automatiquement à partir des parents partagés.",
+        "children": "Enfants",
+        "noChild": "Aucun enfant rattaché.",
+        "relations": {
+          "FATHER": "Père",
+          "MOTHER": "Mère",
+          "LEGAL_GUARDIAN": "Tuteur légal",
+          "GUARDIAN": "Tuteur"
+        }
       },
       "import": {
         "parentTitle": "Personnes",
@@ -379,7 +391,8 @@
         "section": {
           "identity": "Identité",
           "contact": "Coordonnées",
-          "address": "Adresse"
+          "address": "Adresse",
+          "parents": "Parents / Tuteurs"
         },
         "type": "Type",
         "types": {
@@ -388,6 +401,9 @@
           "STAFF": "Personnel",
           "PARENT": "Parent"
         },
+        "roleTeacher": "Type d'enseignant",
+        "roleStaff": "Type de personnel",
+        "noRole": "Aucun",
         "gender": "Genre",
         "genders": { "M": "Masculin", "F": "Féminin", "X": "Autre" },
         "lastName": "Nom",
@@ -402,6 +418,13 @@
         "addressCity": "Ville",
         "addressPostalCode": "Code postal",
         "addressCountry": "Pays",
+        "parentsHint": "Rattachez un ou plusieurs parents existants. La fratrie sera déduite automatiquement à partir des parents partagés.",
+        "parentLabel": "Parent",
+        "selectParent": "Choisir un parent",
+        "relationLabel": "Lien",
+        "addParent": "Ajouter un parent",
+        "removeParent": "Retirer",
+        "noParentAvailable": "Aucun parent enregistré pour le moment. Créez d'abord un parent.",
         "actions": {
           "save": "Enregistrer",
           "saving": "Enregistrement…",
@@ -685,6 +708,7 @@
         "subjects": "Matières",
         "rooms": "Salles",
         "fees": "Frais",
+        "roles": "Rôles",
         "users": "Utilisateurs",
         "audit": "Journal d'audit"
       },
@@ -771,6 +795,42 @@
           "scale": "Barème",
           "coefficient": "Coefficient",
           "order": "Ordre",
+          "create": "Créer",
+          "creating": "Création…",
+          "save": "Enregistrer",
+          "saving": "Enregistrement…",
+          "cancel": "Annuler"
+        }
+      },
+      "roles": {
+        "tabs": {
+          "TEACHER": "Types d'enseignants",
+          "STAFF": "Types de personnel"
+        },
+        "table": {
+          "code": "Code",
+          "labelFr": "Libellé (FR)",
+          "labelAr": "Libellé (AR)",
+          "order": "Ordre",
+          "active": "Actif",
+          "actions": "Actions"
+        },
+        "active": "Actif",
+        "inactive": "Désactivé",
+        "empty": "Aucun rôle défini pour cette catégorie.",
+        "create": "Ajouter un rôle",
+        "createHint": "Saisissez un code stable (MAJUSCULES) et le libellé dans les deux langues. Désactivez plutôt que supprimer si le rôle est déjà utilisé.",
+        "confirmDelete": "Supprimer ce rôle ? (impossible s'il est encore attribué à une personne)",
+        "actions": {
+          "edit": "Modifier",
+          "delete": "Supprimer"
+        },
+        "form": {
+          "code": "Code",
+          "labelFr": "Libellé en français",
+          "labelAr": "Libellé en arabe",
+          "order": "Ordre",
+          "active": "Actif",
           "create": "Créer",
           "creating": "Création…",
           "save": "Enregistrer",

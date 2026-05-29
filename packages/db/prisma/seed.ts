@@ -1,4 +1,12 @@
-import { PrismaClient, TenantProfile, TenantStatus, PersonType, Gender, PeriodKind } from '@prisma/client';
+import {
+  PrismaClient,
+  TenantProfile,
+  TenantStatus,
+  PersonType,
+  Gender,
+  PeriodKind,
+  RelationType,
+} from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -12,6 +20,31 @@ const SYSTEM_ROLES = [
   { code: 'cpe', label: 'CPE / Vie scolaire', permissions: ['attendance.*', 'discipline.*'] },
   { code: 'parent', label: 'Parent', permissions: ['self.read'] },
   { code: 'eleve', label: 'Élève', permissions: ['self.read'] },
+] as const;
+
+const TEACHER_ROLES = [
+  { code: 'TEACHER',             labelFr: 'Professeur',                labelAr: 'أستاذ',           order: 10 },
+  { code: 'MAIN_TEACHER',        labelFr: 'Professeur principal',      labelAr: 'أستاذ رئيسي',     order: 20 },
+  { code: 'SUBJECT_COORDINATOR', labelFr: 'Coordinateur de matière',   labelAr: 'منسق المادة',    order: 30 },
+  { code: 'LEVEL_COORDINATOR',   labelFr: 'Coordinateur de niveau',    labelAr: 'منسق المستوى',   order: 40 },
+  { code: 'LIBRARIAN_TEACHER',   labelFr: 'Documentaliste pédagogique', labelAr: 'موثق تربوي',    order: 50 },
+] as const;
+
+const STAFF_ROLES = [
+  { code: 'DIRECTOR',          labelFr: 'Directeur',                       labelAr: 'المدير',                 order: 10 },
+  { code: 'DEPUTY_DIRECTOR',   labelFr: 'Directeur adjoint',               labelAr: 'نائب المدير',            order: 20 },
+  { code: 'EDUCATION_ADVISOR', labelFr: "Conseiller principal d'éducation", labelAr: 'مستشار التربية الرئيسي', order: 30 },
+  { code: 'BURSAR',            labelFr: 'Gestionnaire',                    labelAr: 'المسير المالي',          order: 40 },
+  { code: 'SUPERVISOR',        labelFr: 'Surveillant général',             labelAr: 'الحارس العام',           order: 50 },
+  { code: 'MONITOR',           labelFr: 'Surveillant',                     labelAr: 'المراقب',                order: 60 },
+  { code: 'SECRETARY',         labelFr: 'Secrétaire',                      labelAr: 'كاتب الإدارة',           order: 70 },
+  { code: 'ACCOUNTANT',        labelFr: 'Comptable',                       labelAr: 'المحاسب',                order: 80 },
+  { code: 'LIBRARIAN',         labelFr: 'Bibliothécaire',                  labelAr: 'أمين المكتبة',           order: 90 },
+  { code: 'NURSE',             labelFr: 'Infirmier(ère)',                  labelAr: 'الممرض(ة)',              order: 100 },
+  { code: 'IT_OFFICER',        labelFr: 'Responsable informatique',        labelAr: 'مسؤول المعلوميات',       order: 110 },
+  { code: 'MAINTENANCE',       labelFr: "Agent d'entretien",               labelAr: 'عامل النظافة',           order: 120 },
+  { code: 'SECURITY',          labelFr: 'Agent de sécurité',               labelAr: 'عون الأمن',              order: 130 },
+  { code: 'DRIVER',            labelFr: 'Chauffeur',                       labelAr: 'السائق',                 order: 140 },
 ] as const;
 
 const CORE_MODULES = [
@@ -184,11 +217,56 @@ async function main() {
   }
   console.log(`  ✓ 2 cycles + ${levels.length} niveaux`);
 
+  // 7.bis Rôles paramétrables (enseignants + personnel) — bilingues FR/AR
+  for (const r of TEACHER_ROLES) {
+    await prisma.personRole.upsert({
+      where: { tenantId_code: { tenantId: tenant.id, code: r.code } },
+      update: { labelFr: r.labelFr, labelAr: r.labelAr, order: r.order },
+      create: {
+        tenantId: tenant.id,
+        appliesTo: PersonType.TEACHER,
+        code: r.code,
+        labelFr: r.labelFr,
+        labelAr: r.labelAr,
+        order: r.order,
+      },
+    });
+  }
+  for (const r of STAFF_ROLES) {
+    await prisma.personRole.upsert({
+      where: { tenantId_code: { tenantId: tenant.id, code: r.code } },
+      update: { labelFr: r.labelFr, labelAr: r.labelAr, order: r.order },
+      create: {
+        tenantId: tenant.id,
+        appliesTo: PersonType.STAFF,
+        code: r.code,
+        labelFr: r.labelFr,
+        labelAr: r.labelAr,
+        order: r.order,
+      },
+    });
+  }
+  console.log(`  ✓ ${TEACHER_ROLES.length + STAFF_ROLES.length} rôles paramétrables (FR/AR)`);
+
+  // 7.ter Attribuer le rôle MAIN_TEACHER à l'enseignant Amina existant (rétro-compat)
+  const mainTeacherRoleUpgrade = await prisma.personRole.findUnique({
+    where: { tenantId_code: { tenantId: tenant.id, code: 'MAIN_TEACHER' } },
+  });
+  if (mainTeacherRoleUpgrade) {
+    await prisma.person.updateMany({
+      where: { tenantId: tenant.id, type: PersonType.TEACHER, roleId: null },
+      data: { roleId: mainTeacherRoleUpgrade.id },
+    });
+  }
+
   // 8. Classe + enseignant principal + élèves (idempotent : on saute si déjà présent)
   const existingTeacher = await prisma.person.findFirst({
     where: { tenantId: tenant.id, type: PersonType.TEACHER },
   });
   if (!existingTeacher) {
+    const mainTeacherRole = await prisma.personRole.findUnique({
+      where: { tenantId_code: { tenantId: tenant.id, code: 'MAIN_TEACHER' } },
+    });
     const teacher = await prisma.person.create({
       data: {
         tenantId: tenant.id,
@@ -197,6 +275,7 @@ async function main() {
         lastName: 'El Idrissi',
         gender: Gender.F,
         contacts: { email: 'amina.elidrissi@demo.jawal.ma' },
+        roleId: mainTeacherRole?.id,
       },
     });
     const level1ac = await prisma.level.findUniqueOrThrow({
@@ -217,6 +296,7 @@ async function main() {
       { firstName: 'Salma', lastName: 'Cherkaoui', gender: Gender.F },
       { firstName: 'Omar', lastName: 'Tazi', gender: Gender.M },
     ];
+    const createdStudents: { id: string; lastName: string }[] = [];
     for (const s of students) {
       const p = await prisma.person.create({
         data: {
@@ -229,10 +309,116 @@ async function main() {
       await prisma.studentClass.create({
         data: { tenantId: tenant.id, studentId: p.id, classId: classe.id },
       });
+      createdStudents.push({ id: p.id, lastName: s.lastName });
     }
-    console.log(`  ✓ 1 enseignant, 1 classe (1AC-A), ${students.length} élèves`);
+
+    // 8.bis Parent de démo + liens de parenté (les 2 Benani sont frères)
+    const fatherBenani = await prisma.person.create({
+      data: {
+        tenantId: tenant.id,
+        type: PersonType.PARENT,
+        firstName: 'Hassan',
+        lastName: 'Benani',
+        gender: Gender.M,
+        contacts: { email: 'hassan.benani@demo.jawal.ma', phone: '+212612345678' },
+      },
+    });
+    const motherBenani = await prisma.person.create({
+      data: {
+        tenantId: tenant.id,
+        type: PersonType.PARENT,
+        firstName: 'Fatima',
+        lastName: 'Benani',
+        gender: Gender.F,
+        contacts: { email: 'fatima.benani@demo.jawal.ma', phone: '+212698765432' },
+      },
+    });
+    // 2e enfant Benani pour démontrer la fratrie déduite
+    const yassine = createdStudents.find((s) => s.lastName === 'Benani')!;
+    const youssra = await prisma.person.create({
+      data: {
+        tenantId: tenant.id,
+        type: PersonType.STUDENT,
+        firstName: 'Youssra',
+        lastName: 'Benani',
+        gender: Gender.F,
+        birthDate: new Date('2015-09-20'),
+      },
+    });
+    await prisma.studentClass.create({
+      data: { tenantId: tenant.id, studentId: youssra.id, classId: classe.id },
+    });
+    for (const childId of [yassine.id, youssra.id]) {
+      await prisma.personRelation.create({
+        data: { tenantId: tenant.id, childId, parentId: fatherBenani.id, type: RelationType.FATHER },
+      });
+      await prisma.personRelation.create({
+        data: { tenantId: tenant.id, childId, parentId: motherBenani.id, type: RelationType.MOTHER },
+      });
+    }
+    console.log(`  ✓ 1 enseignant, 1 classe (1AC-A), ${students.length + 1} élèves, 2 parents Benani + fratrie`);
   } else {
     console.log(`  ✓ Données pédagogiques déjà présentes (skip)`);
+  }
+
+  // 8.ter Parents Benani + fratrie déduite (idempotent — créés même si étape 8 est skippée)
+  const existingFatherBenani = await prisma.person.findFirst({
+    where: { tenantId: tenant.id, type: PersonType.PARENT, lastName: 'Benani', firstName: 'Hassan' },
+  });
+  if (!existingFatherBenani) {
+    const yassineDb = await prisma.person.findFirst({
+      where: { tenantId: tenant.id, type: PersonType.STUDENT, firstName: 'Yassine', lastName: 'Benani' },
+    });
+    if (yassineDb) {
+      const classe = await prisma.studentClass.findFirst({
+        where: { tenantId: tenant.id, studentId: yassineDb.id },
+        include: { class: true },
+      });
+      const fatherBenani = await prisma.person.create({
+        data: {
+          tenantId: tenant.id,
+          type: PersonType.PARENT,
+          firstName: 'Hassan',
+          lastName: 'Benani',
+          gender: Gender.M,
+          contacts: { email: 'hassan.benani@demo.jawal.ma', phone: '+212612345678' },
+        },
+      });
+      const motherBenani = await prisma.person.create({
+        data: {
+          tenantId: tenant.id,
+          type: PersonType.PARENT,
+          firstName: 'Fatima',
+          lastName: 'Benani',
+          gender: Gender.F,
+          contacts: { email: 'fatima.benani@demo.jawal.ma', phone: '+212698765432' },
+        },
+      });
+      const youssra = await prisma.person.create({
+        data: {
+          tenantId: tenant.id,
+          type: PersonType.STUDENT,
+          firstName: 'Youssra',
+          lastName: 'Benani',
+          gender: Gender.F,
+          birthDate: new Date('2015-09-20'),
+        },
+      });
+      if (classe?.classId) {
+        await prisma.studentClass.create({
+          data: { tenantId: tenant.id, studentId: youssra.id, classId: classe.classId },
+        });
+      }
+      for (const childId of [yassineDb.id, youssra.id]) {
+        await prisma.personRelation.create({
+          data: { tenantId: tenant.id, childId, parentId: fatherBenani.id, type: RelationType.FATHER },
+        });
+        await prisma.personRelation.create({
+          data: { tenantId: tenant.id, childId, parentId: motherBenani.id, type: RelationType.MOTHER },
+        });
+      }
+      console.log(`  ✓ Famille Benani démo : 2 parents + 1 sœur (Youssra) → fratrie déduite OK`);
+    }
   }
 
   console.log('\n✅ Seed terminé.\n');

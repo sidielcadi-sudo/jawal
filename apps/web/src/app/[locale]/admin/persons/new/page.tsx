@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
+import { auth } from '@/lib/auth';
+import { withTenant } from '@/lib/db';
 import { PersonForm } from '../person-form';
 
 export default async function NewPersonPage({
@@ -20,11 +22,30 @@ export default async function NewPersonPage({
     ? (sp.type as 'STUDENT' | 'TEACHER' | 'STAFF' | 'PARENT')
     : 'STUDENT';
 
+  const session = (await auth())!;
+  const { roles, availableParents } = await withTenant(session.user.tenantId, async (tx) => {
+    const [roles, availableParents] = await Promise.all([
+      tx.personRole.findMany({
+        where: { active: true },
+        orderBy: [{ appliesTo: 'asc' }, { order: 'asc' }, { labelFr: 'asc' }],
+      }),
+      tx.person.findMany({
+        where: { type: 'PARENT', deletedAt: null },
+        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+        select: { id: true, firstName: true, lastName: true },
+      }),
+    ]);
+    return { roles, availableParents };
+  });
+
+  const backHref = `/${locale}/admin/persons?type=${defaultType}`;
+  const backLabel = t(`title.${defaultType}` as never);
+
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
       <nav className="mb-4 text-xs text-slate-500">
-        <Link href={`/${locale}/admin/persons`} className="hover:text-brand-700">
-          {t('title.ALL')}
+        <Link href={backHref} className="hover:text-brand-700">
+          {backLabel}
         </Link>
         <span className="mx-1.5">›</span>
         <span>{t('actions.new')}</span>
@@ -34,7 +55,18 @@ export default async function NewPersonPage({
       <p className="mt-1 text-sm text-slate-500">{t('newSubtitle')}</p>
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
-        <PersonForm mode="create" locale={locale} initial={{ type: defaultType }} />
+        <PersonForm
+          mode="create"
+          locale={locale}
+          initial={{ type: defaultType }}
+          roles={roles.map((r) => ({
+            id: r.id,
+            appliesTo: r.appliesTo,
+            labelFr: r.labelFr,
+            labelAr: r.labelAr,
+          }))}
+          availableParents={availableParents}
+        />
       </div>
     </div>
   );
