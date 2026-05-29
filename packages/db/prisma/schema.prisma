@@ -675,6 +675,9 @@ model Subject {
   curriculumEntries CurriculumSubject[]
 
   @@unique([tenantId, code])
+  /// Empêche deux matières d'avoir le même libellé dans un même tenant —
+  /// évite les "Mathématiques" en double qui rendaient les dropdowns ambigus.
+  @@unique([tenantId, label])
   @@map("subjects")
 }
 

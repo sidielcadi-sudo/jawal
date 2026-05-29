@@ -65,7 +65,7 @@ export function ProgrammeMatrix({
       <td className="px-4 py-3 text-end">
         <input
           type="number"
-          step="0.5"
+          step="any"
           min={0}
           max={60}
           value={h}
@@ -79,7 +79,7 @@ export function ProgrammeMatrix({
       <td className="px-4 py-3 text-end">
         <input
           type="number"
-          step="0.5"
+          step="any"
           min={0.1}
           max={20}
           value={c}
@@ -182,7 +182,7 @@ export function ProgrammeAddRow({
             type="number"
             name="weeklyHours"
             required
-            step="0.5"
+            step="any"
             min={0}
             max={60}
             defaultValue={4}
@@ -196,7 +196,7 @@ export function ProgrammeAddRow({
             type="number"
             name="coefficient"
             required
-            step="0.5"
+            step="any"
             min={0.1}
             max={20}
             defaultValue={defaultCoef}

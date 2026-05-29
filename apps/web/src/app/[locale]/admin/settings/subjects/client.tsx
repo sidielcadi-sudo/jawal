@@ -55,7 +55,7 @@ export function SubjectCreateForm() {
             defaultValue={20}
             min={1}
             max={1000}
-            step="0.5"
+            step="any"
             className={inputCls}
           />
         </div>
@@ -67,7 +67,7 @@ export function SubjectCreateForm() {
             defaultValue={1}
             min={0.1}
             max={20}
-            step="0.5"
+            step="any"
             className={inputCls}
           />
         </div>
@@ -169,7 +169,7 @@ export function SubjectRowActions({ id, initial }: { id: string; initial: Subjec
                 name="scale"
                 defaultValue={initial.scale}
                 min={1}
-                step="0.5"
+                step="any"
                 className={inputCls}
               />
             </div>
@@ -180,7 +180,7 @@ export function SubjectRowActions({ id, initial }: { id: string; initial: Subjec
                 name="coefficient"
                 defaultValue={initial.coefficient}
                 min={0.1}
-                step="0.5"
+                step="any"
                 className={inputCls}
               />
             </div>

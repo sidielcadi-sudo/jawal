@@ -47,7 +47,13 @@ export async function createSubjectAction(formData: FormData): Promise<Result> {
     });
   } catch (e: unknown) {
     if (e instanceof Error && e.message.includes('Unique constraint')) {
-      return { ok: false, error: 'Ce code de matière existe déjà.' };
+      const onLabel = /label/i.test(e.message);
+      return {
+        ok: false,
+        error: onLabel
+          ? 'Une matière avec ce libellé existe déjà.'
+          : 'Ce code de matière existe déjà.',
+      };
     }
     throw e;
   }
@@ -81,7 +87,13 @@ export async function updateSubjectAction(id: string, formData: FormData): Promi
     });
   } catch (e: unknown) {
     if (e instanceof Error && e.message.includes('Unique constraint')) {
-      return { ok: false, error: 'Ce code existe déjà pour une autre matière.' };
+      const onLabel = /label/i.test(e.message);
+      return {
+        ok: false,
+        error: onLabel
+          ? 'Une autre matière porte déjà ce libellé.'
+          : 'Ce code existe déjà pour une autre matière.',
+      };
     }
     throw e;
   }

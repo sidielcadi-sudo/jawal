@@ -96,7 +96,7 @@ export function AssignmentCreateForm({
         <input
           type="number"
           name="hoursPerWeek"
-          step="0.5"
+          step="any"
           min={0}
           max={40}
           placeholder="4"

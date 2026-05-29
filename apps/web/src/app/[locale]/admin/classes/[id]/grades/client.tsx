@@ -109,13 +109,13 @@ export function EvaluationCreateForm({
             name="maxValue"
             defaultValue={scaleHint}
             min={1}
-            step="0.5"
+            step="any"
             className={inputCls}
           />
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-700">{t('weight')}</label>
-          <input type="number" name="weight" defaultValue={1} min={0.1} step="0.5" className={inputCls} />
+          <input type="number" name="weight" defaultValue={1} min={0.1} step="any" className={inputCls} />
         </div>
       </div>
       {error && (
