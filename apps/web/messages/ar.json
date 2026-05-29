@@ -75,8 +75,91 @@
       "classes": "الأقسام",
       "announcements": "إعلانات",
       "messages": "الرسائل",
+      "finance": "المالية",
       "import": "استيراد CSV",
       "settings": "الإعدادات"
+    },
+    "finance": {
+      "title": "المالية",
+      "subtitle": "نظرة شاملة على المداخيل والمتأخرات.",
+      "kpi": {
+        "totalDue": "المبلغ المستحق",
+        "totalPaid": "المُحصَّل",
+        "totalRemaining": "المتبقي",
+        "collectionRate": "معدل التحصيل"
+      },
+      "topUnpaid": "التلاميذ الذين لديهم متأخرات",
+      "noUnpaid": "لا توجد متأخرات.",
+      "table": {
+        "student": "التلميذ",
+        "remaining": "المتبقي",
+        "actions": "",
+        "view": "عرض"
+      },
+      "breakdown": {
+        "title": "الأقساط",
+        "installments": "إجمالي الأقساط",
+        "paid": "المسددة",
+        "partial": "جزئية",
+        "pending": "في الانتظار"
+      },
+      "recent": {
+        "title": "النشاط الأخير",
+        "last30days": "محصل خلال 30 يوم",
+        "paymentCount": "{count, plural, =0 {لا توجد مدفوعات} one {# دفعة} other {# مدفوعات}}"
+      }
+    },
+    "studentFinance": {
+      "persons": "الأشخاص",
+      "title": "المالية",
+      "kpi": {
+        "totalDue": "المبلغ المستحق",
+        "totalPaid": "المسدد",
+        "totalRemaining": "المتبقي"
+      },
+      "installments": "الأقساط",
+      "noFees": "لا توجد لائحة أسعار لمستوى هذا التلميذ.",
+      "emptyHint": "لم يتم توليد لائحة الأقساط بعد.",
+      "table": {
+        "label": "التسمية",
+        "dueDate": "تاريخ الاستحقاق",
+        "amount": "المبلغ",
+        "paid": "المدفوع",
+        "remaining": "المتبقي",
+        "status": "الحالة",
+        "actions": "إجراءات"
+      },
+      "status": {
+        "PENDING": "غير مسدد",
+        "PARTIAL": "جزئي",
+        "PAID": "مسدد",
+        "CANCELLED": "ملغى"
+      },
+      "generate": {
+        "schedule": "لائحة الأسعار",
+        "generate": "توليد الأقساط",
+        "generating": "جاري التوليد…",
+        "confirm": "توليد الأقساط لهذا التلميذ؟"
+      },
+      "payment": {
+        "record": "تحصيل",
+        "recording": "جاري التسجيل…",
+        "title": "تسجيل دفعة",
+        "remaining": "المبلغ المتبقي",
+        "amount": "المبلغ",
+        "method": "طريقة الدفع",
+        "methods": {
+          "CASH": "نقدًا",
+          "CHEQUE": "شيك",
+          "TRANSFER": "تحويل",
+          "CMI": "بطاقة CMI",
+          "STRIPE": "Stripe",
+          "OTHER": "أخرى"
+        },
+        "reference": "المرجع",
+        "referencePlaceholder": "رقم الشيك، مرجع التحويل…",
+        "cancel": "إلغاء"
+      }
     },
     "announcements": {
       "title": "الإعلانات",
@@ -188,7 +271,8 @@
         "noClass": "لا يوجد قسم.",
         "meta": "بيانات وصفية",
         "createdAt": "تاريخ الإنشاء",
-        "updatedAt": "آخر تحديث"
+        "updatedAt": "آخر تحديث",
+        "finance": "المالية"
       },
       "import": {
         "parentTitle": "الأشخاص",
@@ -535,6 +619,7 @@
         "curriculum": "الأسلاك والمستويات",
         "subjects": "المواد",
         "rooms": "القاعات",
+        "fees": "الرسوم",
         "users": "المستخدمون",
         "audit": "سجل التدقيق"
       },
@@ -604,6 +689,31 @@
           "save": "حفظ",
           "saving": "جاري الحفظ…",
           "cancel": "إلغاء"
+        }
+      },
+      "fees": {
+        "table": {
+          "year": "السنة",
+          "level": "المستوى",
+          "label": "التسمية",
+          "totalAmount": "المجموع",
+          "installments": "الأقساط",
+          "actions": "إجراءات"
+        },
+        "empty": "لا توجد لائحة أسعار.",
+        "create": "لائحة جديدة",
+        "createHint": "المبلغ السنوي وعدد الأقساط الشهرية.",
+        "confirmDelete": "حذف لائحة الأسعار هذه؟",
+        "actions": { "delete": "حذف" },
+        "form": {
+          "year": "السنة الدراسية",
+          "level": "المستوى",
+          "label": "التسمية",
+          "totalAmount": "المبلغ السنوي",
+          "installmentCount": "عدد الأقساط",
+          "firstDueMonth": "شهر القسط الأول",
+          "create": "إنشاء",
+          "creating": "جاري الإنشاء…"
         }
       },
       "rooms": {

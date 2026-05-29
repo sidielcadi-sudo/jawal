@@ -75,7 +75,17 @@ export default async function PersonDetailPage({
           </div>
         </div>
 
-        <PersonActions personId={person.id} isArchived={!!person.deletedAt} locale={locale} />
+        <div className="flex flex-wrap items-center gap-2">
+          {person.type === 'STUDENT' && (
+            <Link
+              href={`/${locale}/admin/persons/${person.id}/finance`}
+              className="rounded-lg border border-brand-300 bg-white px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
+            >
+              {tDetail('finance')}
+            </Link>
+          )}
+          <PersonActions personId={person.id} isArchived={!!person.deletedAt} locale={locale} />
+        </div>
       </header>
 
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">

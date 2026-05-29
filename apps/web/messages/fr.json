@@ -75,8 +75,91 @@
       "classes": "Classes",
       "announcements": "Annonces",
       "messages": "Messages",
+      "finance": "Finances",
       "import": "Importer CSV",
       "settings": "Paramètres"
+    },
+    "finance": {
+      "title": "Finances",
+      "subtitle": "Vue d'ensemble des encaissements et des impayés.",
+      "kpi": {
+        "totalDue": "Total dû",
+        "totalPaid": "Encaissé",
+        "totalRemaining": "Reste à recouvrer",
+        "collectionRate": "Taux de recouvrement"
+      },
+      "topUnpaid": "Élèves avec impayés",
+      "noUnpaid": "Aucun impayé. Tous les élèves sont à jour.",
+      "table": {
+        "student": "Élève",
+        "remaining": "Reste dû",
+        "actions": "",
+        "view": "Voir"
+      },
+      "breakdown": {
+        "title": "Échéances",
+        "installments": "Total échéances",
+        "paid": "Payées",
+        "partial": "Partielles",
+        "pending": "En attente"
+      },
+      "recent": {
+        "title": "Activité récente",
+        "last30days": "Encaissé sur 30 jours",
+        "paymentCount": "{count, plural, =0 {Aucun paiement} one {# paiement} other {# paiements}}"
+      }
+    },
+    "studentFinance": {
+      "persons": "Personnes",
+      "title": "Finances",
+      "kpi": {
+        "totalDue": "Total dû",
+        "totalPaid": "Encaissé",
+        "totalRemaining": "Reste à payer"
+      },
+      "installments": "Échéances",
+      "noFees": "Aucune grille tarifaire ne correspond au niveau de l'élève. Définissez-en une dans Paramètres > Frais.",
+      "emptyHint": "Aucun échéancier généré. Sélectionnez une grille et générez l'échéancier.",
+      "table": {
+        "label": "Libellé",
+        "dueDate": "Échéance",
+        "amount": "Montant",
+        "paid": "Payé",
+        "remaining": "Reste",
+        "status": "État",
+        "actions": "Actions"
+      },
+      "status": {
+        "PENDING": "À payer",
+        "PARTIAL": "Partiel",
+        "PAID": "Payée",
+        "CANCELLED": "Annulée"
+      },
+      "generate": {
+        "schedule": "Grille tarifaire",
+        "generate": "Générer l'échéancier",
+        "generating": "Génération…",
+        "confirm": "Générer un échéancier pour cet élève ?"
+      },
+      "payment": {
+        "record": "Encaisser",
+        "recording": "Enregistrement…",
+        "title": "Enregistrer un paiement",
+        "remaining": "Reste à payer",
+        "amount": "Montant",
+        "method": "Mode de paiement",
+        "methods": {
+          "CASH": "Espèces",
+          "CHEQUE": "Chèque",
+          "TRANSFER": "Virement",
+          "CMI": "CMI (carte)",
+          "STRIPE": "Stripe",
+          "OTHER": "Autre"
+        },
+        "reference": "Référence",
+        "referencePlaceholder": "Numéro chèque, ref virement…",
+        "cancel": "Annuler"
+      }
     },
     "announcements": {
       "title": "Annonces",
@@ -188,7 +271,8 @@
         "noClass": "Aucune classe assignée.",
         "meta": "Métadonnées",
         "createdAt": "Créé le",
-        "updatedAt": "Mis à jour le"
+        "updatedAt": "Mis à jour le",
+        "finance": "Finances"
       },
       "import": {
         "parentTitle": "Personnes",
@@ -535,6 +619,7 @@
         "curriculum": "Cycles & niveaux",
         "subjects": "Matières",
         "rooms": "Salles",
+        "fees": "Frais",
         "users": "Utilisateurs",
         "audit": "Journal d'audit"
       },
@@ -626,6 +711,33 @@
           "save": "Enregistrer",
           "saving": "Enregistrement…",
           "cancel": "Annuler"
+        }
+      },
+      "fees": {
+        "table": {
+          "year": "Année",
+          "level": "Niveau",
+          "label": "Libellé",
+          "totalAmount": "Total",
+          "installments": "Échéances",
+          "actions": "Actions"
+        },
+        "empty": "Aucune grille tarifaire.",
+        "create": "Nouvelle grille",
+        "createHint": "Total annuel + nombre d'échéances mensuelles. Chaque élève hérite à la génération.",
+        "confirmDelete": "Supprimer cette grille tarifaire ?",
+        "actions": {
+          "delete": "Supprimer"
+        },
+        "form": {
+          "year": "Année scolaire",
+          "level": "Niveau",
+          "label": "Libellé",
+          "totalAmount": "Total annuel",
+          "installmentCount": "Nombre d'échéances",
+          "firstDueMonth": "Mois de la 1ère échéance",
+          "create": "Créer",
+          "creating": "Création…"
         }
       },
       "rooms": {

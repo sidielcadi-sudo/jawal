@@ -63,7 +63,10 @@ DECLARE
     'announcements',
     'conversations',
     'conversation_participants',
-    'messages'
+    'messages',
+    'fee_schedules',
+    'installments',
+    'payments'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped
