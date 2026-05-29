@@ -22,7 +22,7 @@ export default async function EditPersonPage({
       const [person, roles, availableParents] = await Promise.all([
         tx.person.findUnique({
           where: { id },
-          include: { relationsAsChild: true },
+          include: { relationsAsChild: true, contractFile: true },
         }),
         tx.personRole.findMany({
           where: { active: true },
@@ -88,6 +88,18 @@ export default async function EditPersonPage({
               parentId: r.parentId,
               type: r.type,
             })),
+            hireDate: person.hireDate ? person.hireDate.toISOString().slice(0, 10) : undefined,
+            contractEndDate: person.contractEndDate
+              ? person.contractEndDate.toISOString().slice(0, 10)
+              : undefined,
+            contractType: person.contractType ?? undefined,
+            contractFile: person.contractFile
+              ? {
+                  id: person.contractFile.id,
+                  filename: person.contractFile.filename,
+                  sizeBytes: person.contractFile.sizeBytes,
+                }
+              : null,
           }}
           roles={roles.map((r) => ({
             id: r.id,

@@ -19,6 +19,10 @@ type ParentOption = { id: string; firstName: string; lastName: string };
 
 type ParentLink = { parentId: string; type: RelationType };
 
+type ContractType = 'CDI' | 'CDD' | 'VACATAIRE' | 'STAGIAIRE' | 'AUTRE';
+
+type ContractFile = { id: string; filename: string; sizeBytes: number } | null;
+
 type PersonInitial = {
   id?: string;
   type?: PersonType;
@@ -32,6 +36,10 @@ type PersonInitial = {
   contacts?: { email?: string; phone?: string; whatsapp?: string };
   address?: { line1?: string; city?: string; postalCode?: string; country?: string };
   parents?: ParentLink[];
+  hireDate?: string;
+  contractEndDate?: string;
+  contractType?: ContractType;
+  contractFile?: ContractFile;
 };
 
 export function PersonForm({
@@ -84,6 +92,7 @@ export function PersonForm({
   const filteredRoles = roles.filter((r) => r.appliesTo === type);
   const showRoleField = type === 'TEACHER' || type === 'STAFF';
   const showParentsField = type === 'STUDENT';
+  const showContractField = type === 'TEACHER' || type === 'STAFF';
 
   function addParent() {
     setParents([...parents, { parentId: '', type: 'FATHER' }]);
@@ -256,6 +265,50 @@ export function PersonForm({
         </div>
       </section>
 
+      {showContractField && (
+        <section>
+          <h2 className="text-sm font-semibold text-slate-700">{t('section.contract')}</h2>
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <Field label={t('contractType')}>
+              <select
+                name="contractType"
+                defaultValue={initial?.contractType ?? ''}
+                className={inputCls}
+              >
+                <option value="">—</option>
+                <option value="CDI">{t('contractTypes.CDI')}</option>
+                <option value="CDD">{t('contractTypes.CDD')}</option>
+                <option value="VACATAIRE">{t('contractTypes.VACATAIRE')}</option>
+                <option value="STAGIAIRE">{t('contractTypes.STAGIAIRE')}</option>
+                <option value="AUTRE">{t('contractTypes.AUTRE')}</option>
+              </select>
+            </Field>
+            <Field label={t('hireDate')}>
+              <input
+                type="date"
+                name="hireDate"
+                defaultValue={initial?.hireDate ?? ''}
+                className={inputCls}
+              />
+            </Field>
+            <Field label={t('contractEndDate')}>
+              <input
+                type="date"
+                name="contractEndDate"
+                defaultValue={initial?.contractEndDate ?? ''}
+                className={inputCls}
+              />
+            </Field>
+          </div>
+          {mode === 'edit' && initial?.id && (
+            <ContractUpload personId={initial.id} current={initial.contractFile ?? null} />
+          )}
+          {mode === 'create' && (
+            <p className="mt-2 text-xs text-slate-500">{t('contractUploadAfterCreate')}</p>
+          )}
+        </section>
+      )}
+
       {showParentsField && (
         <section>
           <h2 className="text-sm font-semibold text-slate-700">{t('section.parents')}</h2>
@@ -348,5 +401,108 @@ function Field({ label, error, children }: { label: string; error?: string; chil
       {children}
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </label>
+  );
+}
+
+function ContractUpload({
+  personId,
+  current,
+}: {
+  personId: string;
+  current: ContractFile;
+}) {
+  const t = useTranslations('admin.persons.form');
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+
+  async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setErr('');
+    if (!file.type.includes('pdf')) {
+      setErr(t('contractFileMustBePdf'));
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setErr(t('contractFileTooLarge'));
+      return;
+    }
+    setBusy(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await fetch(`/api/admin/persons/${personId}/contract/upload`, {
+      method: 'POST',
+      body: fd,
+    });
+    setBusy(false);
+    if (!r.ok) {
+      setErr(await r.text());
+      return;
+    }
+    router.refresh();
+  }
+
+  async function onDelete() {
+    if (!confirm(t('contractFileConfirmDelete'))) return;
+    setBusy(true);
+    setErr('');
+    await fetch(`/api/admin/persons/${personId}/contract/upload`, { method: 'DELETE' });
+    setBusy(false);
+    router.refresh();
+  }
+
+  return (
+    <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div className="text-xs font-medium text-slate-700">{t('contractFile')}</div>
+      {current ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+          <a
+            href={`/api/admin/persons/${personId}/contract/download`}
+            target="_blank"
+            rel="noopener"
+            className="rounded-lg border border-brand-300 bg-white px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
+          >
+            📄 {current.filename}
+          </a>
+          <span className="text-xs text-slate-500">
+            ({(current.sizeBytes / 1024).toFixed(0)} Ko)
+          </span>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={busy}
+            className="text-xs text-red-600 hover:text-red-800 disabled:opacity-50"
+          >
+            {t('contractFileDelete')}
+          </button>
+          <label className="ms-auto cursor-pointer text-xs text-slate-600 hover:text-brand-700">
+            {t('contractFileReplace')}
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={onUpload}
+              disabled={busy}
+              className="hidden"
+            />
+          </label>
+        </div>
+      ) : (
+        <div className="mt-2">
+          <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+            📎 {t('contractFileUpload')}
+            <input
+              type="file"
+              accept="application/pdf"
+              onChange={onUpload}
+              disabled={busy}
+              className="hidden"
+            />
+          </label>
+          <p className="mt-1 text-xs text-slate-500">{t('contractFileHint')}</p>
+        </div>
+      )}
+      {err && <p className="mt-2 text-xs text-red-600">{err}</p>}
+    </div>
   );
 }

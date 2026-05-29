@@ -6,6 +6,7 @@ import {
   Gender,
   PeriodKind,
   RelationType,
+  ContractType,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
@@ -256,6 +257,75 @@ async function main() {
     await prisma.person.updateMany({
       where: { tenantId: tenant.id, type: PersonType.TEACHER, roleId: null },
       data: { roleId: mainTeacherRoleUpgrade.id },
+    });
+  }
+
+  // 7.quater Contrat démo + matière + affectation pour Amina
+  const aminaUpd = await prisma.person.findFirst({
+    where: { tenantId: tenant.id, type: PersonType.TEACHER, firstName: 'Amina' },
+  });
+  if (aminaUpd) {
+    // Donne à Amina un CDI + date d'entrée si elle n'en a pas déjà.
+    if (!aminaUpd.hireDate) {
+      await prisma.person.update({
+        where: { id: aminaUpd.id },
+        data: {
+          contractType: ContractType.CDI,
+          hireDate: new Date('2024-09-01'),
+        },
+      });
+    }
+    // Matière Maths (idempotent)
+    const maths = await prisma.subject.upsert({
+      where: { tenantId_code: { tenantId: tenant.id, code: 'math' } },
+      update: {},
+      create: { tenantId: tenant.id, code: 'math', label: 'Mathématiques', coefficient: 4, order: 1 },
+    });
+    // Une classe existante (la 1ère trouvée) pour l'affectation démo
+    const classe = await prisma.class.findFirst({
+      where: { tenantId: tenant.id, deletedAt: null },
+    });
+    if (classe) {
+      try {
+        await prisma.teacherAssignment.create({
+          data: {
+            tenantId: tenant.id,
+            teacherId: aminaUpd.id,
+            subjectId: maths.id,
+            classId: classe.id,
+            academicYearId: year.id,
+            hoursPerWeek: 4,
+          },
+        });
+      } catch {
+        // existe déjà — OK
+      }
+    }
+  }
+
+  // 7.quinquies Un CDD démo qui expire dans ~25 jours (déclenche EXPIRES_30)
+  const existingCDD = await prisma.person.findFirst({
+    where: { tenantId: tenant.id, type: PersonType.TEACHER, firstName: 'Karim' },
+  });
+  if (!existingCDD) {
+    const cddEnd = new Date();
+    cddEnd.setDate(cddEnd.getDate() + 25);
+    const teacherRole = await prisma.personRole.findUnique({
+      where: { tenantId_code: { tenantId: tenant.id, code: 'TEACHER' } },
+    });
+    await prisma.person.create({
+      data: {
+        tenantId: tenant.id,
+        type: PersonType.TEACHER,
+        firstName: 'Karim',
+        lastName: 'Lahcen',
+        gender: Gender.M,
+        contacts: { email: 'karim.lahcen@demo.jawal.ma' },
+        roleId: teacherRole?.id,
+        contractType: ContractType.CDD,
+        hireDate: new Date(new Date().getFullYear() - 1, 8, 1),
+        contractEndDate: cddEnd,
+      },
     });
   }
 

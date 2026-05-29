@@ -105,6 +105,24 @@
         "exports": "تصدير CSV",
         "finance": "المالية",
         "announcements": "إعلانات"
+      },
+      "contractAlerts": {
+        "title": "عقود قارب على الانتهاء",
+        "table": {
+          "name": "الموظف",
+          "type": "الفئة",
+          "contractType": "نوع العقد",
+          "endDate": "النهاية",
+          "status": "الحالة"
+        },
+        "type": {
+          "TEACHER": "أستاذ",
+          "STAFF": "موظف"
+        },
+        "triggerNow": "إرسال التنبيهات الآن",
+        "triggering": "جاري الإرسال…",
+        "triggerOk": "تم الإرسال إلى {recipients} مستلم(ين) · {alerts} تنبيه(ات)",
+        "triggerFailed": "فشل إرسال التنبيهات."
       }
     },
     "signOut": "تسجيل الخروج",
@@ -338,6 +356,23 @@
         "createdAt": "تاريخ الإنشاء",
         "updatedAt": "آخر تحديث",
         "finance": "المالية",
+        "contract": "العقد",
+        "contractType": "النوع",
+        "hireDate": "تاريخ الالتحاق",
+        "contractEndDate": "نهاية العقد",
+        "contractStatus": {
+          "NO_CONTRACT": "لا يوجد عقد مسجل",
+          "NOT_STARTED": "لم يبدأ بعد",
+          "ACTIVE": "يعمل حاليًا",
+          "EXPIRES_30": "قارب على الانتهاء",
+          "EXPIRES_7": "ينتهي خلال أسبوع",
+          "EXPIRED": "العقد منتهٍ"
+        },
+        "inDays": "خلال {days, plural, one {# يوم} other {# أيام}}",
+        "daysAgo": "منذ {days, plural, one {# يوم} other {# أيام}}",
+        "assignments": "التكاليف البيداغوجية",
+        "noAssignment": "لا توجد تكاليف.",
+        "manageAssignments": "إدارة التكاليف",
         "parents": "الآباء / الأولياء",
         "noParent": "لا يوجد ولي مرتبط.",
         "siblings": "الإخوة والأخوات",
@@ -387,12 +422,42 @@
           "again": "استيراد جديد"
         }
       },
+      "assignments": {
+        "title": "التكاليف البيداغوجية",
+        "subtitle": "المواد والأقسام التي يدرّسها {name}.",
+        "empty": "لا توجد تكاليف بعد. أضف واحدة من النموذج.",
+        "create": "إضافة تكليف",
+        "createHint": "يربط التكليف الأستاذ بمادة في قسم لسنة دراسية.",
+        "confirmDelete": "حذف هذا التكليف؟",
+        "table": {
+          "subject": "المادة",
+          "class": "القسم",
+          "year": "السنة",
+          "hours": "ساعات/أسبوع",
+          "actions": "إجراءات"
+        },
+        "actions": {
+          "delete": "حذف"
+        },
+        "form": {
+          "year": "السنة الدراسية",
+          "subject": "المادة",
+          "class": "القسم",
+          "hoursPerWeek": "الساعات الأسبوعية",
+          "selectSubject": "اختر مادة",
+          "selectClass": "اختر قسمًا",
+          "create": "إضافة",
+          "creating": "جاري الإضافة…",
+          "emptyHint": "أنشئ على الأقل مادة وقسمًا للسنة المختارة."
+        }
+      },
       "form": {
         "section": {
           "identity": "الهوية",
           "contact": "بيانات الاتصال",
           "address": "العنوان",
-          "parents": "الآباء / الأولياء"
+          "parents": "الآباء / الأولياء",
+          "contract": "عقد العمل"
         },
         "type": "النوع",
         "types": {
@@ -425,6 +490,25 @@
         "addParent": "إضافة ولي",
         "removeParent": "حذف",
         "noParentAvailable": "لا يوجد ولي مسجَّل بعد. أنشئ وليًا أولاً.",
+        "contractType": "نوع العقد",
+        "contractTypes": {
+          "CDI": "عقد غير محدد المدة",
+          "CDD": "عقد محدد المدة",
+          "VACATAIRE": "بالساعة",
+          "STAGIAIRE": "متدرب",
+          "AUTRE": "أخرى"
+        },
+        "hireDate": "تاريخ الالتحاق",
+        "contractEndDate": "نهاية العقد (محدد المدة)",
+        "contractFile": "العقد (PDF)",
+        "contractFileUpload": "تحميل العقد (PDF)",
+        "contractFileReplace": "استبدال",
+        "contractFileDelete": "حذف",
+        "contractFileConfirmDelete": "حذف ملف العقد؟",
+        "contractFileHint": "PDF فقط، حجم أقصى 10 ميغا.",
+        "contractFileMustBePdf": "ملفات PDF فقط مقبولة.",
+        "contractFileTooLarge": "الملف كبير جدًا (10 ميغا كحد أقصى).",
+        "contractUploadAfterCreate": "سيمكن تحميل PDF بعد حفظ البطاقة.",
         "actions": {
           "save": "حفظ",
           "saving": "جاري الحفظ…",

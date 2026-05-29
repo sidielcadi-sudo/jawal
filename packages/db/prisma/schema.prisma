@@ -45,6 +45,14 @@ enum RelationType {
   GUARDIAN
 }
 
+enum ContractType {
+  CDI          // Contrat à durée indéterminée
+  CDD          // Contrat à durée déterminée
+  VACATAIRE    // Vacataire / Heures supp.
+  STAGIAIRE    // Stage
+  AUTRE
+}
+
 enum Gender {
   M
   F
@@ -153,6 +161,7 @@ model Tenant {
   files          FileObject[]
   personRoles    PersonRole[]
   personRelations PersonRelation[]
+  teacherAssignments TeacherAssignment[]
 
   @@map("tenants")
 }
@@ -215,12 +224,20 @@ model Person {
   contacts    Json       @default("{}") // { email, phone, ... }
   address     Json       @default("{}")
   metadata    Json       @default("{}")
+  /// Date d'entrée en fonction (TEACHER/STAFF). Null pour STUDENT/PARENT.
+  hireDate       DateTime?     @map("hire_date") @db.Date
+  /// Date de sortie / fin de contrat. Null = encore en poste.
+  contractEndDate DateTime?    @map("contract_end_date") @db.Date
+  contractType   ContractType? @map("contract_type")
+  /// PDF du contrat — stocké dans MinIO via FileObject.
+  contractFileId String?       @unique @map("contract_file_id") @db.Uuid
   createdAt   DateTime   @default(now()) @map("created_at")
   updatedAt   DateTime   @updatedAt @map("updated_at")
   deletedAt   DateTime?  @map("deleted_at")
 
   tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   role               PersonRole?        @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  contractFile       FileObject?        @relation("ContractFile", fields: [contractFileId], references: [id], onDelete: SetNull)
   userPersons        UserPerson[]
   studentClasses     StudentClass[]
   mainOfClass        Class[]            @relation("MainTeacher")
@@ -229,6 +246,7 @@ model Person {
   subjectAppreciations SubjectAppreciation[] @relation("StudentSubjectAppreciations")
   councilEntries     CouncilEntry[]     @relation("StudentCouncil")
   installments       Installment[]      @relation("StudentInstallments")
+  teacherAssignments TeacherAssignment[] @relation("TeacherAssignments")
   /// Liens de parenté où cette personne est l'enfant (FROM = student/PARENT-child)
   relationsAsChild   PersonRelation[]   @relation("ChildRelations")
   /// Liens où cette personne est le parent/tuteur (TO = parent/guardian)
@@ -237,7 +255,35 @@ model Person {
   @@index([tenantId, type])
   @@index([tenantId, lastName, firstName])
   @@index([tenantId, roleId])
+  @@index([tenantId, contractEndDate])
   @@map("persons")
+}
+
+/// Affectation pédagogique : un enseignant enseigne une matière à une classe
+/// donnée pour une année scolaire. Sert à filtrer la saisie de notes et de
+/// base à l'emploi du temps.
+model TeacherAssignment {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  teacherId       String   @map("teacher_id") @db.Uuid
+  subjectId       String   @map("subject_id") @db.Uuid
+  classId         String   @map("class_id") @db.Uuid
+  academicYearId  String   @map("academic_year_id") @db.Uuid
+  hoursPerWeek    Float?   @map("hours_per_week")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  teacher      Person       @relation("TeacherAssignments", fields: [teacherId], references: [id], onDelete: Cascade)
+  subject      Subject      @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  class        Class        @relation(fields: [classId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, subjectId, classId, academicYearId])
+  @@index([tenantId, teacherId])
+  @@index([tenantId, classId, academicYearId])
+  @@index([tenantId, subjectId])
+  @@map("teacher_assignments")
 }
 
 /// Catégorie paramétrable pour les enseignants ou le personnel.
@@ -352,6 +398,7 @@ model AcademicYear {
   periods Period[]
   classes Class[]
   feeSchedules FeeScheduleItem[]
+  teacherAssignments TeacherAssignment[]
 
   @@unique([tenantId, label])
   @@map("academic_years")
@@ -425,6 +472,7 @@ model Class {
   students     StudentClass[]
   attendanceSessions AttendanceSession[]
   evaluations  Evaluation[]
+  teacherAssignments TeacherAssignment[]
 
   @@unique([tenantId, academicYearId, name])
   @@index([tenantId, levelId])
@@ -488,7 +536,7 @@ model AuditLog {
 model FileObject {
   id          String   @id @default(uuid()) @db.Uuid
   tenantId    String   @map("tenant_id") @db.Uuid
-  ownerType   String   @map("owner_type") // "student", "tenant", "bulletin", ...
+  ownerType   String   @map("owner_type") // "person.contract", "bulletin", ...
   ownerId     String   @map("owner_id")
   s3Key       String   @unique @map("s3_key")
   filename    String
@@ -499,6 +547,7 @@ model FileObject {
   createdAt   DateTime @default(now()) @map("created_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contractOf Person? @relation("ContractFile")
 
   @@index([tenantId, ownerType, ownerId])
   @@map("files")
@@ -595,6 +644,7 @@ model Subject {
 
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   evaluations Evaluation[]
+  teacherAssignments TeacherAssignment[]
 
   @@unique([tenantId, code])
   @@map("subjects")

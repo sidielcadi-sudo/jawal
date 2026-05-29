@@ -4,6 +4,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { PersonActions } from './person-actions';
+import { computeContractStatus, contractStatusBadgeClass } from '@/lib/contract-status';
 
 export default async function PersonDetailPage({
   params,
@@ -24,6 +25,7 @@ export default async function PersonDetailPage({
       where: { id },
       include: {
         role: true,
+        contractFile: true,
         studentClasses: {
           include: {
             class: { include: { level: true, academicYear: true } },
@@ -34,6 +36,14 @@ export default async function PersonDetailPage({
         },
         relationsAsParent: {
           include: { child: true },
+        },
+        teacherAssignments: {
+          include: {
+            subject: true,
+            class: { include: { academicYear: true } },
+            academicYear: true,
+          },
+          orderBy: [{ academicYear: { startDate: 'desc' } }, { subject: { label: 'asc' } }],
         },
       },
     }),
@@ -80,6 +90,14 @@ export default async function PersonDetailPage({
       : person.role.labelFr
     : null;
 
+  const isEmployee = person.type === 'TEACHER' || person.type === 'STAFF';
+  const contract = isEmployee
+    ? computeContractStatus({
+        hireDate: person.hireDate,
+        contractEndDate: person.contractEndDate,
+      })
+    : null;
+
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
       <nav className="mb-4 text-xs text-slate-500">
@@ -112,6 +130,21 @@ export default async function PersonDetailPage({
               {person.birthDate &&
                 ` · ${tDetail('bornOn', { date: new Date(person.birthDate).toLocaleDateString(locale) })}`}
             </p>
+            {contract && contract.status !== 'NO_CONTRACT' && (
+              <p className="mt-2">
+                <span
+                  className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${contractStatusBadgeClass(contract.status)}`}
+                >
+                  {tDetail(`contractStatus.${contract.status}` as never)}
+                  {contract.daysToEnd !== null && contract.status !== 'EXPIRED' && contract.status !== 'ACTIVE'
+                    ? ` (${tDetail('inDays', { days: contract.daysToEnd })})`
+                    : ''}
+                  {contract.status === 'EXPIRED' && contract.daysToEnd !== null
+                    ? ` (${tDetail('daysAgo', { days: -contract.daysToEnd })})`
+                    : ''}
+                </span>
+              </p>
+            )}
           </div>
         </div>
 
@@ -149,6 +182,75 @@ export default async function PersonDetailPage({
         </section>
 
         <aside className="space-y-4">
+          {isEmployee && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-slate-700">{tDetail('contract')}</h2>
+              <dl className="mt-3 space-y-2 text-sm">
+                <Row
+                  label={tDetail('contractType')}
+                  value={
+                    person.contractType
+                      ? tForm(`contractTypes.${person.contractType}` as never)
+                      : undefined
+                  }
+                />
+                <Row
+                  label={tDetail('hireDate')}
+                  value={
+                    person.hireDate
+                      ? new Date(person.hireDate).toLocaleDateString(locale)
+                      : undefined
+                  }
+                />
+                <Row
+                  label={tDetail('contractEndDate')}
+                  value={
+                    person.contractEndDate
+                      ? new Date(person.contractEndDate).toLocaleDateString(locale)
+                      : undefined
+                  }
+                />
+              </dl>
+              {person.contractFile && (
+                <a
+                  href={`/api/admin/persons/${person.id}/contract/download`}
+                  target="_blank"
+                  rel="noopener"
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-brand-300 bg-white px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
+                >
+                  📄 {person.contractFile.filename}
+                </a>
+              )}
+            </section>
+          )}
+
+          {person.type === 'TEACHER' && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-slate-700">{tDetail('assignments')}</h2>
+              {person.teacherAssignments.length === 0 ? (
+                <p className="mt-2 text-xs text-slate-500">{tDetail('noAssignment')}</p>
+              ) : (
+                <ul className="mt-2 space-y-1.5 text-sm">
+                  {person.teacherAssignments.map((a) => (
+                    <li key={a.id} className="rounded-lg border border-slate-100 px-3 py-1.5">
+                      <span className="font-medium text-slate-900">{a.subject.label}</span>
+                      <span className="ms-1.5 text-xs text-slate-500">
+                        · {a.class.name} · {a.academicYear.label}
+                        {a.hoursPerWeek ? ` · ${a.hoursPerWeek}h/sem` : ''}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Link
+                href={`/${locale}/admin/persons/${person.id}/assignments`}
+                className="mt-3 inline-block text-xs font-medium text-brand-700 hover:underline"
+              >
+                {tDetail('manageAssignments')} →
+              </Link>
+            </section>
+          )}
+
           {person.type === 'STUDENT' && (
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="text-sm font-semibold text-slate-700">{tDetail('classes')}</h2>

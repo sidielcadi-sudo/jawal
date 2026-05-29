@@ -8,6 +8,9 @@ import {
   computeAttendanceRate,
   findAtRiskStudents,
 } from '@/lib/bi';
+import { listContractAlerts } from '@/lib/contract-alerts';
+import { contractStatusBadgeClass } from '@/lib/contract-status';
+import { ContractAlertsActions } from './contract-alerts-actions';
 
 export default async function AdminDashboard({
   params,
@@ -78,6 +81,10 @@ export default async function AdminDashboard({
       currency: tenant?.currency ?? 'MAD',
     };
   });
+
+  const contractAlerts = await listContractAlerts(tenantId);
+  const tContract = await getTranslations('admin.persons.detail');
+  const tAlerts = await getTranslations('admin.dashboard.contractAlerts');
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
@@ -330,6 +337,66 @@ export default async function AdminDashboard({
           </table>
         </div>
       </section>
+
+      {contractAlerts.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-900">
+            {tAlerts('title')}{' '}
+            <span className="rounded bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
+              {contractAlerts.length}
+            </span>
+          </h2>
+          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <table className="w-full text-sm">
+              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-4 py-3 text-start">{tAlerts('table.name')}</th>
+                  <th className="px-4 py-3 text-start">{tAlerts('table.type')}</th>
+                  <th className="px-4 py-3 text-start">{tAlerts('table.contractType')}</th>
+                  <th className="px-4 py-3 text-start">{tAlerts('table.endDate')}</th>
+                  <th className="px-4 py-3 text-end">{tAlerts('table.status')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {contractAlerts.map((a) => (
+                  <tr key={a.personId}>
+                    <td className="px-4 py-3">
+                      <Link
+                        href={`/${locale}/admin/persons/${a.personId}`}
+                        className="font-medium text-slate-900 hover:text-brand-700 hover:underline"
+                      >
+                        {a.lastName} {a.firstName}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-500">
+                      {tAlerts(`type.${a.type}` as never)}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-500">
+                      {a.contractType ?? '—'}
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-700">
+                      {a.endDate.toISOString().slice(0, 10)}
+                    </td>
+                    <td className="px-4 py-3 text-end">
+                      <span
+                        className={`rounded px-2 py-0.5 text-xs font-medium ${contractStatusBadgeClass(a.bucket)}`}
+                      >
+                        {tContract(`contractStatus.${a.bucket}` as never)}
+                        {a.bucket !== 'EXPIRED'
+                          ? ` (${tContract('inDays', { days: a.daysToEnd })})`
+                          : ` (${tContract('daysAgo', { days: -a.daysToEnd })})`}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-2 flex items-center justify-end">
+            <ContractAlertsActions locale={locale} />
+          </div>
+        </section>
+      )}
 
       <section className="mt-6 flex flex-wrap gap-3">
         <Link

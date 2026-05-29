@@ -6,6 +6,9 @@ export const genderSchema = z.enum(['M', 'F', 'X']);
 export const relationTypeSchema = z.enum(['FATHER', 'MOTHER', 'LEGAL_GUARDIAN', 'GUARDIAN']);
 export type RelationTypeValue = z.infer<typeof relationTypeSchema>;
 
+export const contractTypeSchema = z.enum(['CDI', 'CDD', 'VACATAIRE', 'STAGIAIRE', 'AUTRE']);
+export type ContractTypeValue = z.infer<typeof contractTypeSchema>;
+
 export const personCreateSchema = z.object({
   type: personTypeSchema,
   /// Rôle paramétrable (uniquement pour TEACHER ou STAFF). UUID ou undefined.
@@ -37,6 +40,10 @@ export const personCreateSchema = z.object({
   parents: z
     .array(z.object({ parentId: z.string().uuid(), type: relationTypeSchema }))
     .optional(),
+  /// Dates d'entrée / sortie de fonction (TEACHER ou STAFF uniquement).
+  hireDate: z.coerce.date().optional(),
+  contractEndDate: z.coerce.date().optional(),
+  contractType: contractTypeSchema.optional(),
 });
 
 export type PersonCreate = z.infer<typeof personCreateSchema>;

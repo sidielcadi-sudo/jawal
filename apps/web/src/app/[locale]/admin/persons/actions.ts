@@ -64,6 +64,9 @@ function formToInput(formData: FormData) {
       country: get('addressCountry'),
     },
     parents,
+    hireDate: get('hireDate'),
+    contractEndDate: get('contractEndDate'),
+    contractType: get('contractType'),
   };
 }
 
@@ -79,9 +82,12 @@ export async function createPersonAction(formData: FormData): Promise<ActionResu
 
   const tenantId = session.user.tenantId;
 
-  // roleId n'a de sens que pour TEACHER/STAFF — on l'ignore sinon.
-  const roleId =
-    (parsed.data.type === 'TEACHER' || parsed.data.type === 'STAFF') ? parsed.data.roleId ?? null : null;
+  // roleId, hireDate, contractEndDate, contractType n'ont de sens que pour TEACHER/STAFF.
+  const isEmployee = parsed.data.type === 'TEACHER' || parsed.data.type === 'STAFF';
+  const roleId = isEmployee ? parsed.data.roleId ?? null : null;
+  const hireDate = isEmployee ? parsed.data.hireDate ?? null : null;
+  const contractEndDate = isEmployee ? parsed.data.contractEndDate ?? null : null;
+  const contractType = isEmployee ? parsed.data.contractType ?? null : null;
 
   const created = await withTenant(tenantId, async (tx) => {
     const person = await tx.person.create({
@@ -97,6 +103,9 @@ export async function createPersonAction(formData: FormData): Promise<ActionResu
         cin: parsed.data.cin,
         contacts: parsed.data.contacts ?? {},
         address: parsed.data.address ?? {},
+        hireDate,
+        contractEndDate,
+        contractType,
       },
     });
 
@@ -155,10 +164,11 @@ export async function updatePersonAction(
     const before = await tx.person.findUnique({ where: { id } });
     if (!before) throw new Error('Personne introuvable');
 
-    const roleId =
-      (before.type === 'TEACHER' || before.type === 'STAFF')
-        ? parsed.data.roleId ?? null
-        : null;
+    const isEmployee = before.type === 'TEACHER' || before.type === 'STAFF';
+    const roleId = isEmployee ? parsed.data.roleId ?? null : null;
+    const hireDate = isEmployee ? parsed.data.hireDate ?? null : null;
+    const contractEndDate = isEmployee ? parsed.data.contractEndDate ?? null : null;
+    const contractType = isEmployee ? parsed.data.contractType ?? null : null;
 
     const updated = await tx.person.update({
       where: { id },
@@ -172,6 +182,9 @@ export async function updatePersonAction(
         cin: parsed.data.cin,
         contacts: parsed.data.contacts ?? before.contacts ?? undefined,
         address: parsed.data.address ?? before.address ?? undefined,
+        hireDate,
+        contractEndDate,
+        contractType,
       },
     });
 

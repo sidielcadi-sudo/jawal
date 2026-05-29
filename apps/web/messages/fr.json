@@ -105,6 +105,24 @@
         "exports": "Exports CSV",
         "finance": "Finances",
         "announcements": "Annonces"
+      },
+      "contractAlerts": {
+        "title": "Contrats à renouveler",
+        "table": {
+          "name": "Salarié",
+          "type": "Catégorie",
+          "contractType": "Contrat",
+          "endDate": "Fin",
+          "status": "Statut"
+        },
+        "type": {
+          "TEACHER": "Enseignant",
+          "STAFF": "Personnel"
+        },
+        "triggerNow": "Envoyer les alertes maintenant",
+        "triggering": "Envoi…",
+        "triggerOk": "Envoyé à {recipients} destinataire(s) · {alerts} alerte(s)",
+        "triggerFailed": "Échec de l'envoi des alertes."
       }
     },
     "signOut": "Se déconnecter",
@@ -338,6 +356,23 @@
         "createdAt": "Créé le",
         "updatedAt": "Mis à jour le",
         "finance": "Finances",
+        "contract": "Contrat",
+        "contractType": "Type",
+        "hireDate": "Date d'entrée",
+        "contractEndDate": "Fin de contrat",
+        "contractStatus": {
+          "NO_CONTRACT": "Pas de contrat saisi",
+          "NOT_STARTED": "Pas encore débuté",
+          "ACTIVE": "En poste",
+          "EXPIRES_30": "Expire bientôt",
+          "EXPIRES_7": "Expire dans la semaine",
+          "EXPIRED": "Contrat expiré"
+        },
+        "inDays": "dans {days, plural, one {# jour} other {# jours}}",
+        "daysAgo": "il y a {days, plural, one {# jour} other {# jours}}",
+        "assignments": "Affectations pédagogiques",
+        "noAssignment": "Aucune affectation pour le moment.",
+        "manageAssignments": "Gérer les affectations",
         "parents": "Parents / Tuteurs",
         "noParent": "Aucun parent rattaché.",
         "siblings": "Frères et sœurs",
@@ -387,12 +422,42 @@
           "again": "Nouvel import"
         }
       },
+      "assignments": {
+        "title": "Affectations pédagogiques",
+        "subtitle": "Matières et classes enseignées par {name}.",
+        "empty": "Aucune affectation. Ajoutez-en une depuis le formulaire.",
+        "create": "Ajouter une affectation",
+        "createHint": "Une affectation lie l'enseignant à une matière dans une classe pour une année donnée.",
+        "confirmDelete": "Supprimer cette affectation ?",
+        "table": {
+          "subject": "Matière",
+          "class": "Classe",
+          "year": "Année",
+          "hours": "Heures/sem",
+          "actions": "Actions"
+        },
+        "actions": {
+          "delete": "Supprimer"
+        },
+        "form": {
+          "year": "Année scolaire",
+          "subject": "Matière",
+          "class": "Classe",
+          "hoursPerWeek": "Heures par semaine",
+          "selectSubject": "Choisir une matière",
+          "selectClass": "Choisir une classe",
+          "create": "Ajouter",
+          "creating": "Ajout…",
+          "emptyHint": "Créez d'abord au moins une matière et une classe pour l'année sélectionnée."
+        }
+      },
       "form": {
         "section": {
           "identity": "Identité",
           "contact": "Coordonnées",
           "address": "Adresse",
-          "parents": "Parents / Tuteurs"
+          "parents": "Parents / Tuteurs",
+          "contract": "Contrat de travail"
         },
         "type": "Type",
         "types": {
@@ -425,6 +490,25 @@
         "addParent": "Ajouter un parent",
         "removeParent": "Retirer",
         "noParentAvailable": "Aucun parent enregistré pour le moment. Créez d'abord un parent.",
+        "contractType": "Type de contrat",
+        "contractTypes": {
+          "CDI": "CDI",
+          "CDD": "CDD",
+          "VACATAIRE": "Vacataire",
+          "STAGIAIRE": "Stagiaire",
+          "AUTRE": "Autre"
+        },
+        "hireDate": "Date d'entrée",
+        "contractEndDate": "Fin de contrat (CDD)",
+        "contractFile": "Contrat (PDF)",
+        "contractFileUpload": "Téléverser le contrat (PDF)",
+        "contractFileReplace": "Remplacer",
+        "contractFileDelete": "Supprimer",
+        "contractFileConfirmDelete": "Supprimer le PDF du contrat ?",
+        "contractFileHint": "PDF uniquement, 10 Mo maximum.",
+        "contractFileMustBePdf": "Seul le PDF est accepté.",
+        "contractFileTooLarge": "Fichier trop volumineux (max 10 Mo).",
+        "contractUploadAfterCreate": "L'upload du PDF sera possible une fois la fiche enregistrée.",
         "actions": {
           "save": "Enregistrer",
           "saving": "Enregistrement…",
