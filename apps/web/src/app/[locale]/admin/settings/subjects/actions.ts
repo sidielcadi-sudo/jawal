@@ -64,20 +64,27 @@ export async function updateSubjectAction(id: string, formData: FormData): Promi
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalide' };
 
   const tenantId = session.user.tenantId;
-  await withTenant(tenantId, async (tx) => {
-    const before = await tx.subject.findUnique({ where: { id } });
-    if (!before) throw new Error('Matière introuvable');
-    await tx.subject.update({ where: { id }, data: parsed.data });
-    await logAudit(tx, {
-      tenantId,
-      userId: session.user.id,
-      action: 'update',
-      entityType: 'Subject',
-      entityId: id,
-      before: { label: before.label, coefficient: before.coefficient },
-      after: { label: parsed.data.label, coefficient: parsed.data.coefficient },
+  try {
+    await withTenant(tenantId, async (tx) => {
+      const before = await tx.subject.findUnique({ where: { id } });
+      if (!before) throw new Error('Matière introuvable');
+      await tx.subject.update({ where: { id }, data: parsed.data });
+      await logAudit(tx, {
+        tenantId,
+        userId: session.user.id,
+        action: 'update',
+        entityType: 'Subject',
+        entityId: id,
+        before: { label: before.label, coefficient: before.coefficient },
+        after: { label: parsed.data.label, coefficient: parsed.data.coefficient },
+      });
     });
-  });
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message.includes('Unique constraint')) {
+      return { ok: false, error: 'Ce code existe déjà pour une autre matière.' };
+    }
+    throw e;
+  }
   revalidatePath('/admin/settings/subjects');
   return { ok: true };
 }
