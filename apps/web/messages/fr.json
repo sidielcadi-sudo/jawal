@@ -296,6 +296,7 @@
       "info": {
         "student": "Élève",
         "class": "Classe",
+        "mainTeacher": "Prof. principal",
         "bornOn": "Né(e) le",
         "level": "Niveau",
         "classSize": "Effectif",
@@ -307,7 +308,45 @@
         "gradesCount": "Nb notes",
         "studentAvg": "Moyenne",
         "classAvg": "Moy. classe",
+        "rank": "Rang",
+        "mention": "Mention",
+        "appreciation": "Appréciation",
         "generalAvg": "Moyenne générale"
+      },
+      "mentions": {
+        "EXCELLENT": "Excellent",
+        "TRES_BIEN": "Très bien",
+        "BIEN": "Bien",
+        "ASSEZ_BIEN": "Assez bien",
+        "PASSABLE": "Passable",
+        "INSUFFISANT": "Insuffisant"
+      },
+      "council": {
+        "title": "Conseil de classe",
+        "empty": "Aucune décision saisie.",
+        "decision": "Décision",
+        "generalLabel": "Appréciation générale",
+        "generalPlaceholder": "Synthèse du conseil de classe…",
+        "decisionLabel": "Décision",
+        "heldAtLabel": "Date du conseil",
+        "noDecision": "—",
+        "decisions": {
+          "FELICITATIONS": "Félicitations",
+          "ENCOURAGEMENTS": "Encouragements",
+          "COMPLIMENTS": "Compliments",
+          "AVERTISSEMENT_TRAVAIL": "Avertissement travail",
+          "AVERTISSEMENT_COMP": "Avertissement comportement",
+          "PASSAGE": "Passage",
+          "REDOUBLEMENT": "Redoublement",
+          "ORIENTATION": "Orientation"
+        }
+      },
+      "editor": {
+        "placeholderSubject": "Saisir une appréciation pour cette matière…",
+        "save": "Enregistrer",
+        "saving": "Enregistrement…",
+        "savedAt": "Enregistré à {time}",
+        "unsaved": "Modifié — non enregistré"
       },
       "signatures": {
         "head": "Chef d'établissement",

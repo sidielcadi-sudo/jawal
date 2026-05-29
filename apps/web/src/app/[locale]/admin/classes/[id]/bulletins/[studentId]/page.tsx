@@ -3,8 +3,9 @@ import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant, prismaAdmin } from '@/lib/db';
-import { computeStudentReport, computeClassBook } from '@/lib/grades';
+import { computeStudentReport, computeClassBook, computeMention } from '@/lib/grades';
 import { PrintButton } from './print-button';
+import { AppreciationEditor, CouncilEditor } from './editors';
 
 export default async function BulletinPage({
   params,
@@ -20,8 +21,6 @@ export default async function BulletinPage({
 
   const session = (await auth())!;
   const tenantId = session.user.tenantId;
-
-  // Tenant info pour l'en-tête du bulletin (admin pour s'assurer de l'accès)
   const tenant = await prismaAdmin.tenant.findUnique({ where: { id: tenantId } });
 
   const data = await withTenant(tenantId, async (tx) => {
@@ -34,23 +33,34 @@ export default async function BulletinPage({
           where: { unenrolledAt: null },
           include: { student: { select: { id: true, firstName: true, lastName: true } } },
         },
+        mainTeacher: true,
       },
     });
     if (!cls) return null;
 
     const student = await tx.person.findUnique({ where: { id: studentId } });
     if (!student || student.type !== 'STUDENT') return null;
-
-    const enrollment = cls.students.find((sc) => sc.studentId === studentId);
-    if (!enrollment) return null;
+    if (!cls.students.find((sc) => sc.studentId === studentId)) return null;
 
     const subjects = await tx.subject.findMany({
       orderBy: [{ order: 'asc' }, { label: 'asc' }],
     });
 
     const selectedPeriodId = sp.period ?? cls.academicYear.periods[0]?.id;
-    if (!selectedPeriodId) return { cls, student, subjects, periods: cls.academicYear.periods, selectedPeriodId: null, report: null, classBook: null };
-
+    if (!selectedPeriodId) {
+      return {
+        cls,
+        student,
+        subjects,
+        periods: cls.academicYear.periods,
+        selectedPeriodId: null,
+        period: null,
+        report: null,
+        classBook: null,
+        subjectApprecs: [],
+        council: null,
+      };
+    }
     const period = cls.academicYear.periods.find((p) => p.id === selectedPeriodId);
 
     const allSubjects = subjects.map((s) => ({
@@ -79,6 +89,16 @@ export default async function BulletinPage({
       allSubjects,
     });
 
+    const subjectApprecs = await tx.subjectAppreciation.findMany({
+      where: { studentId, periodId: selectedPeriodId },
+    });
+
+    const council = await tx.councilEntry.findUnique({
+      where: {
+        classId_periodId_studentId: { classId: id, periodId: selectedPeriodId, studentId },
+      },
+    });
+
     return {
       cls,
       student,
@@ -88,11 +108,16 @@ export default async function BulletinPage({
       period,
       report,
       classBook,
+      subjectApprecs,
+      council,
     };
   });
 
   if (!data) notFound();
-  const { cls, student, periods, selectedPeriodId, period, report, classBook } = data;
+  const { cls, student, periods, selectedPeriodId, period, report, classBook, subjectApprecs, council } = data;
+
+  const apprecByS = new Map(subjectApprecs.map((a) => [a.subjectId, a.text]));
+  const studentRow = classBook?.rows.find((r) => r.studentId === studentId);
 
   return (
     <>
@@ -135,8 +160,10 @@ export default async function BulletinPage({
         </div>
       </div>
 
-      {/* Le bulletin lui-même — visible à l'écran et à l'impression */}
-      <article className="mx-auto max-w-4xl bg-white px-6 py-8 print:max-w-none print:px-10 print:py-6" id="bulletin">
+      <article
+        className="mx-auto max-w-4xl bg-white px-6 py-8 print:max-w-none print:px-10 print:py-6"
+        id="bulletin"
+      >
         <header className="border-b border-slate-300 pb-4">
           <div className="flex items-start justify-between gap-6">
             <div>
@@ -156,11 +183,18 @@ export default async function BulletinPage({
         <section className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1 border-b border-slate-300 pb-4 text-sm">
           <div>
             <span className="text-slate-500">{t('info.student')} :</span>{' '}
-            <span className="font-semibold">{student.lastName} {student.firstName}</span>
+            <span className="font-semibold">
+              {student.lastName} {student.firstName}
+            </span>
           </div>
           <div>
             <span className="text-slate-500">{t('info.class')} :</span>{' '}
             <span className="font-semibold">{cls.name}</span>
+            {cls.mainTeacher && (
+              <span className="ms-2 text-xs text-slate-500">
+                · {t('info.mainTeacher')} : {cls.mainTeacher.lastName} {cls.mainTeacher.firstName}
+              </span>
+            )}
           </div>
           {student.birthDate && (
             <div>
@@ -172,48 +206,69 @@ export default async function BulletinPage({
             <span className="text-slate-500">{t('info.level')} :</span>{' '}
             {cls.level.cycle.label} — {cls.level.label}
           </div>
-          {report && (
-            <div>
-              <span className="text-slate-500">{t('info.classSize')} :</span>{' '}
-              {classBook?.rows.length ?? cls.students.length}
-            </div>
-          )}
+          <div>
+            <span className="text-slate-500">{t('info.classSize')} :</span>{' '}
+            {classBook?.rows.length ?? cls.students.length}
+          </div>
           <div>
             <span className="text-slate-500">{t('info.printedOn')} :</span>{' '}
             {new Date().toLocaleDateString(locale)}
           </div>
         </section>
 
-        {report && classBook && (
+        {report && classBook && studentRow && (
           <>
             <table className="mt-4 w-full border-collapse text-sm">
               <thead>
                 <tr className="border-b-2 border-slate-700 bg-slate-100 text-xs uppercase">
                   <th className="px-2 py-2 text-start">{t('table.subject')}</th>
                   <th className="px-2 py-2 text-center">{t('table.coefficient')}</th>
-                  <th className="px-2 py-2 text-center">{t('table.gradesCount')}</th>
                   <th className="px-2 py-2 text-center">{t('table.studentAvg')}</th>
                   <th className="px-2 py-2 text-center">{t('table.classAvg')}</th>
+                  <th className="px-2 py-2 text-center">{t('table.rank')}</th>
+                  <th className="px-2 py-2 text-center">{t('table.mention')}</th>
+                  <th className="px-2 py-2 text-start">{t('table.appreciation')}</th>
                 </tr>
               </thead>
               <tbody>
-                {report.subjects.map((s) => {
+                {studentRow.subjects.map((s) => {
                   const classAvg = classBook.classSubjectAverages.get(s.subjectId);
+                  const mention = computeMention(s.average, s.subjectScale);
+                  const text = apprecByS.get(s.subjectId) ?? '';
                   return (
-                    <tr key={s.subjectId} className="border-b border-slate-200">
+                    <tr key={s.subjectId} className="border-b border-slate-200 align-top">
                       <td className="px-2 py-1.5">
                         <span className="font-medium">{s.subjectLabel}</span>
                         <span className="ms-1 text-xs text-slate-500">/{s.subjectScale}</span>
                       </td>
                       <td className="px-2 py-1.5 text-center tabular-nums">{s.subjectCoefficient}</td>
-                      <td className="px-2 py-1.5 text-center tabular-nums text-slate-500">
-                        {s.gradeCount}
-                      </td>
                       <td className="px-2 py-1.5 text-center font-semibold tabular-nums">
                         {s.average === null ? '—' : s.average.toFixed(2)}
                       </td>
                       <td className="px-2 py-1.5 text-center tabular-nums text-slate-500">
                         {classAvg === null || classAvg === undefined ? '—' : classAvg.toFixed(2)}
+                      </td>
+                      <td className="px-2 py-1.5 text-center tabular-nums text-slate-700">
+                        {s.rank ? `${s.rank}` : '—'}
+                      </td>
+                      <td className="px-2 py-1.5 text-center text-[10px]">
+                        {mention && (
+                          <span className={mentionClasses(mention)}>{t(`mentions.${mention}` as never)}</span>
+                        )}
+                      </td>
+                      <td className="px-2 py-1.5 text-xs">
+                        {/* Texte visible à l'impression */}
+                        <div className="hidden print:block">
+                          {text || <span className="text-slate-300">—</span>}
+                        </div>
+                        <div className="print:hidden">
+                          <AppreciationEditor
+                            studentId={studentId}
+                            subjectId={s.subjectId}
+                            periodId={selectedPeriodId!}
+                            initialText={text}
+                          />
+                        </div>
                       </td>
                     </tr>
                   );
@@ -221,20 +276,63 @@ export default async function BulletinPage({
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-slate-700 bg-slate-100">
-                  <td colSpan={3} className="px-2 py-3 text-end font-bold uppercase">
+                  <td colSpan={2} className="px-2 py-3 text-end font-bold uppercase">
                     {t('table.generalAvg')}
                   </td>
                   <td className="px-2 py-3 text-center text-lg font-bold tabular-nums">
                     {report.generalAverage === null ? '—' : report.generalAverage.toFixed(2)}
                   </td>
                   <td className="px-2 py-3 text-center tabular-nums text-slate-700">
-                    {classBook.classGeneralAverage === null
-                      ? '—'
-                      : classBook.classGeneralAverage.toFixed(2)}
+                    {classBook.classGeneralAverage === null ? '—' : classBook.classGeneralAverage.toFixed(2)}
                   </td>
+                  <td className="px-2 py-3 text-center font-semibold tabular-nums">
+                    {studentRow.generalRank
+                      ? `${studentRow.generalRank}/${studentRow.ratedStudents}`
+                      : '—'}
+                  </td>
+                  <td className="px-2 py-3 text-center text-[10px]">
+                    {(() => {
+                      const m = computeMention(report.generalAverage, 20);
+                      return m && <span className={mentionClasses(m)}>{t(`mentions.${m}` as never)}</span>;
+                    })()}
+                  </td>
+                  <td />
                 </tr>
               </tfoot>
             </table>
+
+            {/* Bloc conseil de classe */}
+            <section className="mt-6 border-t-2 border-slate-700 pt-3">
+              <h2 className="mb-2 text-sm font-bold uppercase">{t('council.title')}</h2>
+              <div className="hidden print:block">
+                {council?.generalAppreciation && (
+                  <p className="whitespace-pre-wrap text-sm">{council.generalAppreciation}</p>
+                )}
+                {council?.decision && (
+                  <p className="mt-2 text-sm font-semibold">
+                    {t('council.decision')} :{' '}
+                    <span className="rounded bg-slate-100 px-2 py-0.5">
+                      {t(`council.decisions.${council.decision}` as never)}
+                    </span>
+                  </p>
+                )}
+                {!council?.generalAppreciation && !council?.decision && (
+                  <p className="text-xs italic text-slate-400">{t('council.empty')}</p>
+                )}
+              </div>
+              <div className="print:hidden">
+                <CouncilEditor
+                  classId={id}
+                  studentId={studentId}
+                  periodId={selectedPeriodId!}
+                  initial={{
+                    generalAppreciation: council?.generalAppreciation ?? '',
+                    decision: (council?.decision as string | null) ?? '',
+                    heldAt: council?.heldAt ? council.heldAt.toISOString().slice(0, 10) : '',
+                  }}
+                />
+              </div>
+            </section>
 
             <section className="mt-6 grid grid-cols-2 gap-6 text-xs text-slate-600">
               <div className="border border-slate-300 p-3">
@@ -255,4 +353,17 @@ export default async function BulletinPage({
       </article>
     </>
   );
+}
+
+function mentionClasses(mention: NonNullable<ReturnType<typeof computeMention>>): string {
+  const base = 'rounded px-1.5 py-0.5 font-semibold';
+  const colors: Record<string, string> = {
+    EXCELLENT: 'bg-purple-100 text-purple-800',
+    TRES_BIEN: 'bg-emerald-100 text-emerald-800',
+    BIEN: 'bg-blue-100 text-blue-800',
+    ASSEZ_BIEN: 'bg-slate-100 text-slate-700',
+    PASSABLE: 'bg-amber-100 text-amber-800',
+    INSUFFISANT: 'bg-red-100 text-red-800',
+  };
+  return `${base} ${colors[mention] ?? ''}`;
 }

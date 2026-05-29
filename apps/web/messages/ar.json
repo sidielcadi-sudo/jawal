@@ -296,6 +296,7 @@
       "info": {
         "student": "التلميذ",
         "class": "القسم",
+        "mainTeacher": "الأستاذ الرئيسي",
         "bornOn": "تاريخ الازدياد",
         "level": "المستوى",
         "classSize": "العدد",
@@ -307,7 +308,45 @@
         "gradesCount": "عدد النقاط",
         "studentAvg": "المعدل",
         "classAvg": "معدل القسم",
+        "rank": "الرتبة",
+        "mention": "الميزة",
+        "appreciation": "التقدير",
         "generalAvg": "المعدل العام"
+      },
+      "mentions": {
+        "EXCELLENT": "ممتاز",
+        "TRES_BIEN": "حسن جدًا",
+        "BIEN": "حسن",
+        "ASSEZ_BIEN": "مستحسن",
+        "PASSABLE": "مقبول",
+        "INSUFFISANT": "ضعيف"
+      },
+      "council": {
+        "title": "مجلس القسم",
+        "empty": "لم يتم تسجيل قرار.",
+        "decision": "القرار",
+        "generalLabel": "التقدير العام",
+        "generalPlaceholder": "خلاصة مجلس القسم…",
+        "decisionLabel": "القرار",
+        "heldAtLabel": "تاريخ المجلس",
+        "noDecision": "—",
+        "decisions": {
+          "FELICITATIONS": "تهانٍ",
+          "ENCOURAGEMENTS": "تشجيعات",
+          "COMPLIMENTS": "تنويه",
+          "AVERTISSEMENT_TRAVAIL": "إنذار عمل",
+          "AVERTISSEMENT_COMP": "إنذار سلوك",
+          "PASSAGE": "انتقال",
+          "REDOUBLEMENT": "إعادة",
+          "ORIENTATION": "توجيه"
+        }
+      },
+      "editor": {
+        "placeholderSubject": "أدخل تقديرًا لهذه المادة…",
+        "save": "حفظ",
+        "saving": "جاري الحفظ…",
+        "savedAt": "تم الحفظ في {time}",
+        "unsaved": "معدّل — لم يتم الحفظ"
       },
       "signatures": {
         "head": "مدير المؤسسة",

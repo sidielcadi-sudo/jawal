@@ -57,7 +57,9 @@ DECLARE
     'absence_justifications',
     'subjects',
     'evaluations',
-    'grades'
+    'grades',
+    'subject_appreciations',
+    'council_entries'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped

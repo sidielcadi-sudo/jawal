@@ -65,6 +65,17 @@ enum JustificationStatus {
   REJECTED
 }
 
+enum CouncilDecision {
+  FELICITATIONS         // Mention spéciale pour excellents résultats
+  ENCOURAGEMENTS        // Encouragements pour effort
+  COMPLIMENTS           // Compliments simples
+  AVERTISSEMENT_TRAVAIL // Avertissement travail insuffisant
+  AVERTISSEMENT_COMP    // Avertissement comportement
+  PASSAGE               // Passage en classe supérieure
+  REDOUBLEMENT          // Redoublement
+  ORIENTATION           // Réorientation conseillée
+}
+
 // ─── Tenants & modules ─────────────────────────────────────
 
 model Tenant {
@@ -98,6 +109,8 @@ model Tenant {
   subjects       Subject[]
   evaluations    Evaluation[]
   grades         Grade[]
+  subjectAppreciations SubjectAppreciation[]
+  councilEntries CouncilEntry[]
   files          FileObject[]
 
   @@map("tenants")
@@ -169,6 +182,8 @@ model Person {
   mainOfClass        Class[]            @relation("MainTeacher")
   attendanceRecords  AttendanceRecord[] @relation("StudentAttendance")
   grades             Grade[]            @relation("StudentGrades")
+  subjectAppreciations SubjectAppreciation[] @relation("StudentSubjectAppreciations")
+  councilEntries     CouncilEntry[]     @relation("StudentCouncil")
 
   @@index([tenantId, type])
   @@index([tenantId, lastName, firstName])
@@ -535,4 +550,49 @@ model Grade {
   @@unique([evaluationId, studentId])
   @@index([tenantId, studentId])
   @@map("grades")
+}
+
+/// Appréciation d'un élève pour une matière sur une période donnée.
+/// Une seule appréciation par triplet (student, subject, period).
+model SubjectAppreciation {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  studentId       String   @map("student_id") @db.Uuid
+  subjectId       String   @map("subject_id") @db.Uuid
+  periodId        String   @map("period_id") @db.Uuid
+  text            String
+  authoredByUserId String? @map("authored_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student Person @relation("StudentSubjectAppreciations", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, subjectId, periodId])
+  @@index([tenantId, periodId])
+  @@map("subject_appreciations")
+}
+
+/// Décision du conseil de classe pour un élève sur une période.
+/// Inclut l'appréciation générale et la décision (passage/redoublement/…).
+/// 1 seule entrée par (student, class, period).
+model CouncilEntry {
+  id                 String           @id @default(uuid()) @db.Uuid
+  tenantId           String           @map("tenant_id") @db.Uuid
+  classId            String           @map("class_id") @db.Uuid
+  periodId           String           @map("period_id") @db.Uuid
+  studentId          String           @map("student_id") @db.Uuid
+  generalAppreciation String?         @map("general_appreciation")
+  decision           CouncilDecision?
+  heldAt             DateTime?        @map("held_at")
+  authoredByUserId   String?          @map("authored_by_user_id") @db.Uuid
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student Person @relation("StudentCouncil", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, periodId, studentId])
+  @@index([tenantId, periodId])
+  @@map("council_entries")
 }

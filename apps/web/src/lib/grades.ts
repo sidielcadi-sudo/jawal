@@ -30,6 +30,8 @@ export type SubjectStat = {
   /** Min / max parmi les notes normalisées à l'échelle de la matière. */
   min: number | null;
   max: number | null;
+  /** Rang de l'élève dans la classe pour cette matière (1 = meilleur). */
+  rank?: number | null;
 };
 
 export type StudentReport = {
@@ -185,6 +187,8 @@ export async function computeClassBook(
     lastName: string;
     subjects: SubjectStat[];
     generalAverage: number | null;
+    generalRank: number | null;
+    ratedStudents: number;
   }>;
   classSubjectAverages: Map<string, number | null>;
   classGeneralAverage: number | null;
@@ -217,6 +221,8 @@ export async function computeClassBook(
       lastName: s.lastName,
       subjects,
       generalAverage,
+      generalRank: null as number | null,
+      ratedStudents: 0,
     };
   });
 
@@ -227,9 +233,85 @@ export async function computeClassBook(
     classSubjectAverages.set(subj.id, vals.length > 0 ? vals.reduce((a, b) => a + b, 0) / vals.length : null);
   }
 
+  // Rangs par matière (1 = meilleure moyenne, égalités → même rang, "1224")
+  const subjectRanks = new Map<string, Map<string, number>>(); // subjectId → studentId → rank
+  for (const subj of params.allSubjects) {
+    const ranked = rows
+      .map((r) => ({
+        studentId: r.studentId,
+        avg: r.subjects.find((x) => x.subjectId === subj.id)?.average ?? null,
+      }))
+      .filter((x): x is { studentId: string; avg: number } => x.avg !== null)
+      .sort((a, b) => b.avg - a.avg);
+
+    const map = new Map<string, number>();
+    let currentRank = 0;
+    let lastAvg: number | null = null;
+    for (let i = 0; i < ranked.length; i++) {
+      if (ranked[i]!.avg !== lastAvg) {
+        currentRank = i + 1;
+        lastAvg = ranked[i]!.avg;
+      }
+      map.set(ranked[i]!.studentId, currentRank);
+    }
+    subjectRanks.set(subj.id, map);
+  }
+
+  // Inject ranks dans chaque row.subjects
+  for (const r of rows) {
+    for (const s of r.subjects) {
+      const rank = subjectRanks.get(s.subjectId)?.get(r.studentId) ?? null;
+      (s as SubjectStat & { rank: number | null }).rank = rank;
+    }
+  }
+
+  // Rang général
+  const generalRanking = rows
+    .filter((r): r is typeof r & { generalAverage: number } => r.generalAverage !== null)
+    .sort((a, b) => b.generalAverage - a.generalAverage);
+  const generalRatedCount = generalRanking.length;
+  let currentRank = 0;
+  let lastAvg: number | null = null;
+  const generalRankMap = new Map<string, number>();
+  for (let i = 0; i < generalRanking.length; i++) {
+    if (generalRanking[i]!.generalAverage !== lastAvg) {
+      currentRank = i + 1;
+      lastAvg = generalRanking[i]!.generalAverage;
+    }
+    generalRankMap.set(generalRanking[i]!.studentId, currentRank);
+  }
+  for (const r of rows) {
+    r.generalRank = generalRankMap.get(r.studentId) ?? null;
+    r.ratedStudents = generalRatedCount;
+  }
+
   // Moyenne générale de classe
   const generals = rows.map((r) => r.generalAverage).filter((v): v is number => v !== null);
   const classGeneralAverage = generals.length > 0 ? generals.reduce((a, b) => a + b, 0) / generals.length : null;
 
   return { rows, classSubjectAverages, classGeneralAverage };
+}
+
+/**
+ * Mention basée sur la moyenne (normalisée /20 si scale ≠ 20).
+ * Convention scolaire Maroc / France.
+ */
+export type Mention =
+  | 'EXCELLENT'   // ≥ 18
+  | 'TRES_BIEN'   // 16-17.99
+  | 'BIEN'        // 14-15.99
+  | 'ASSEZ_BIEN'  // 12-13.99
+  | 'PASSABLE'    // 10-11.99
+  | 'INSUFFISANT' // < 10
+  | null;
+
+export function computeMention(value: number | null, scale = 20): Mention {
+  if (value === null) return null;
+  const v = value * (20 / scale);
+  if (v >= 18) return 'EXCELLENT';
+  if (v >= 16) return 'TRES_BIEN';
+  if (v >= 14) return 'BIEN';
+  if (v >= 12) return 'ASSEZ_BIEN';
+  if (v >= 10) return 'PASSABLE';
+  return 'INSUFFISANT';
 }
