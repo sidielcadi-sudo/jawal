@@ -65,6 +65,15 @@ enum JustificationStatus {
   REJECTED
 }
 
+enum AnnouncementAudience {
+  ALL              // tout l'établissement
+  PARENTS          // tous les parents
+  TEACHERS         // tous les enseignants
+  STAFF            // personnel
+  CLASS            // une classe spécifique (classId requis)
+  LEVEL            // un niveau (levelId requis)
+}
+
 enum CouncilDecision {
   FELICITATIONS         // Mention spéciale pour excellents résultats
   ENCOURAGEMENTS        // Encouragements pour effort
@@ -111,6 +120,10 @@ model Tenant {
   grades         Grade[]
   subjectAppreciations SubjectAppreciation[]
   councilEntries CouncilEntry[]
+  announcements  Announcement[]
+  conversations  Conversation[]
+  messages       Message[]
+  conversationParticipants ConversationParticipant[]
   files          FileObject[]
 
   @@map("tenants")
@@ -595,4 +608,77 @@ model CouncilEntry {
   @@unique([classId, periodId, studentId])
   @@index([tenantId, periodId])
   @@map("council_entries")
+}
+
+// ─── Communication (M09) ───────────────────────────────────
+
+/// Annonce établissement, ciblée selon une audience.
+/// publishedAt=null → brouillon. classId/levelId requis si audience=CLASS/LEVEL.
+model Announcement {
+  id          String               @id @default(uuid()) @db.Uuid
+  tenantId    String               @map("tenant_id") @db.Uuid
+  authorId    String               @map("author_id") @db.Uuid
+  title       String
+  body        String
+  audience    AnnouncementAudience
+  classId     String?              @map("class_id") @db.Uuid
+  levelId     String?              @map("level_id") @db.Uuid
+  publishedAt DateTime?            @map("published_at")
+  createdAt   DateTime             @default(now()) @map("created_at")
+  updatedAt   DateTime             @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, publishedAt])
+  @@map("announcements")
+}
+
+/// Conversation 1↔1 ou de groupe entre utilisateurs (parents, enseignants).
+model Conversation {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  subject   String
+  createdBy String   @map("created_by") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant       Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  participants ConversationParticipant[]
+  messages     Message[]
+
+  @@index([tenantId, updatedAt])
+  @@map("conversations")
+}
+
+/// Participant à une conversation. lastReadAt sert au compteur de non-lus.
+model ConversationParticipant {
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  conversationId String    @map("conversation_id") @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  lastReadAt     DateTime? @map("last_read_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@unique([conversationId, userId])
+  @@index([tenantId, userId])
+  @@map("conversation_participants")
+}
+
+/// Message dans une conversation.
+model Message {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  conversationId String   @map("conversation_id") @db.Uuid
+  senderUserId   String   @map("sender_user_id") @db.Uuid
+  body           String
+  sentAt         DateTime @default(now()) @map("sent_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, sentAt])
+  @@map("messages")
 }

@@ -59,7 +59,11 @@ DECLARE
     'evaluations',
     'grades',
     'subject_appreciations',
-    'council_entries'
+    'council_entries',
+    'announcements',
+    'conversations',
+    'conversation_participants',
+    'messages'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped

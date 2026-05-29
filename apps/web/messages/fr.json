@@ -73,8 +73,69 @@
       "staff": "Personnel",
       "parents": "Parents",
       "classes": "Classes",
+      "announcements": "Annonces",
+      "messages": "Messages",
       "import": "Importer CSV",
       "settings": "Paramètres"
+    },
+    "announcements": {
+      "title": "Annonces",
+      "count": "{count, plural, =0 {Aucune annonce} one {# annonce} other {# annonces}}",
+      "empty": "Aucune annonce publiée pour le moment.",
+      "create": "Nouvelle annonce",
+      "createHint": "Diffusée aux destinataires sélectionnés. Email automatique si publication.",
+      "draft": "Brouillon",
+      "publishedAt": "Publiée le {date}",
+      "actions": {
+        "publish": "Publier",
+        "delete": "Supprimer",
+        "confirmPublish": "Publier cette annonce et envoyer les emails ?",
+        "confirmDelete": "Supprimer définitivement cette annonce ?"
+      },
+      "form": {
+        "title": "Titre",
+        "body": "Message",
+        "audience": "Destinataires",
+        "audiences": {
+          "ALL": "Tout l'établissement",
+          "PARENTS": "Tous les parents",
+          "TEACHERS": "Tous les enseignants",
+          "STAFF": "Personnel",
+          "CLASS": "Une classe",
+          "LEVEL": "Un niveau"
+        },
+        "class": "Classe",
+        "level": "Niveau",
+        "publishImmediately": "Publier immédiatement (envoie les emails)",
+        "create": "Enregistrer",
+        "creating": "Enregistrement…"
+      }
+    },
+    "messages": {
+      "title": "Messages",
+      "count": "{count, plural, =0 {Aucune conversation} one {# conversation} other {# conversations}}",
+      "empty": "Aucune conversation. Démarrez-en une à droite.",
+      "you": "Vous",
+      "create": "Nouvelle conversation",
+      "createHint": "Sélectionnez les destinataires et rédigez le premier message.",
+      "form": {
+        "subject": "Sujet",
+        "recipients": "Destinataires",
+        "searchRecipients": "Rechercher un utilisateur…",
+        "noUsers": "Aucun utilisateur trouvé.",
+        "selectedCount": "{count} sélectionné(s)",
+        "firstMessage": "Premier message",
+        "send": "Envoyer",
+        "sending": "Envoi…"
+      },
+      "thread": {
+        "messages": "Messages",
+        "participants": "Participants",
+        "replyPlaceholder": "Tapez votre réponse…",
+        "shortcut": "Ctrl/⌘ + Entrée pour envoyer",
+        "send": "Envoyer",
+        "sending": "Envoi…"
+      }
     },
     "persons": {
       "title": {

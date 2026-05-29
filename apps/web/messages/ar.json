@@ -73,8 +73,69 @@
       "staff": "الموظفون",
       "parents": "الآباء",
       "classes": "الأقسام",
+      "announcements": "إعلانات",
+      "messages": "الرسائل",
       "import": "استيراد CSV",
       "settings": "الإعدادات"
+    },
+    "announcements": {
+      "title": "الإعلانات",
+      "count": "{count, plural, =0 {لا توجد إعلانات} one {إعلان #} other {# إعلانات}}",
+      "empty": "لا توجد إعلانات منشورة.",
+      "create": "إعلان جديد",
+      "createHint": "يُرسل للمستلمين المحددين. بريد إلكتروني تلقائي عند النشر.",
+      "draft": "مسودة",
+      "publishedAt": "نُشر في {date}",
+      "actions": {
+        "publish": "نشر",
+        "delete": "حذف",
+        "confirmPublish": "هل تريد نشر هذا الإعلان وإرسال الرسائل؟",
+        "confirmDelete": "حذف هذا الإعلان نهائيًا؟"
+      },
+      "form": {
+        "title": "العنوان",
+        "body": "الرسالة",
+        "audience": "المستلمون",
+        "audiences": {
+          "ALL": "كل المؤسسة",
+          "PARENTS": "كل الآباء",
+          "TEACHERS": "كل الأساتذة",
+          "STAFF": "الموظفون",
+          "CLASS": "قسم محدد",
+          "LEVEL": "مستوى محدد"
+        },
+        "class": "القسم",
+        "level": "المستوى",
+        "publishImmediately": "نشر فوري (يرسل الإيميلات)",
+        "create": "حفظ",
+        "creating": "جاري الحفظ…"
+      }
+    },
+    "messages": {
+      "title": "الرسائل",
+      "count": "{count, plural, =0 {لا توجد محادثات} one {محادثة #} other {# محادثات}}",
+      "empty": "لا توجد محادثات.",
+      "you": "أنت",
+      "create": "محادثة جديدة",
+      "createHint": "اختر المستلمين واكتب أول رسالة.",
+      "form": {
+        "subject": "الموضوع",
+        "recipients": "المستلمون",
+        "searchRecipients": "بحث عن مستخدم…",
+        "noUsers": "لا يوجد مستخدمون.",
+        "selectedCount": "{count} مُحدد",
+        "firstMessage": "الرسالة الأولى",
+        "send": "إرسال",
+        "sending": "جاري الإرسال…"
+      },
+      "thread": {
+        "messages": "الرسائل",
+        "participants": "المشاركون",
+        "replyPlaceholder": "اكتب ردك…",
+        "shortcut": "Ctrl/⌘ + Enter للإرسال",
+        "send": "إرسال",
+        "sending": "جاري الإرسال…"
+      }
     },
     "persons": {
       "title": {

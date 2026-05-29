@@ -1,6 +1,7 @@
 export * from './permissions';
 export * from './schemas/attendance';
 export * from './schemas/class';
+export * from './schemas/communication';
 export * from './schemas/council';
 export * from './schemas/grading';
 export * from './schemas/justification';
