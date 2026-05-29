@@ -260,6 +260,53 @@ async function main() {
     });
   }
 
+  // 7.quaterMatières standard + programme par niveau (idempotent)
+  const STD_SUBJECTS = [
+    { code: 'math', label: 'Mathématiques', coefficient: 4, order: 10 },
+    { code: 'fr', label: 'Français', coefficient: 3, order: 20 },
+    { code: 'ar', label: 'Arabe', coefficient: 3, order: 30 },
+    { code: 'phys', label: 'Sciences physiques', coefficient: 2, order: 40 },
+    { code: 'svt', label: 'SVT', coefficient: 2, order: 50 },
+  ] as const;
+  for (const s of STD_SUBJECTS) {
+    await prisma.subject.upsert({
+      where: { tenantId_code: { tenantId: tenant.id, code: s.code } },
+      update: {},
+      create: { tenantId: tenant.id, ...s },
+    });
+  }
+  // Programme par niveau (1AC = collège 1ère année — coef/heures alignés sur Maroc K-12)
+  const level1ac = await prisma.level.findUnique({
+    where: { tenantId_code: { tenantId: tenant.id, code: '1ac' } },
+  });
+  if (level1ac) {
+    const PROGRAMME_1AC = [
+      { code: 'math', weeklyHours: 5, coefficient: 4 },
+      { code: 'fr', weeklyHours: 4, coefficient: 3 },
+      { code: 'ar', weeklyHours: 5, coefficient: 3 },
+      { code: 'phys', weeklyHours: 3, coefficient: 2 },
+      { code: 'svt', weeklyHours: 2, coefficient: 2 },
+    ];
+    for (const [order, p] of PROGRAMME_1AC.entries()) {
+      const subj = await prisma.subject.findUniqueOrThrow({
+        where: { tenantId_code: { tenantId: tenant.id, code: p.code } },
+      });
+      await prisma.curriculumSubject.upsert({
+        where: { levelId_subjectId: { levelId: level1ac.id, subjectId: subj.id } },
+        update: { weeklyHours: p.weeklyHours, coefficient: p.coefficient, order },
+        create: {
+          tenantId: tenant.id,
+          levelId: level1ac.id,
+          subjectId: subj.id,
+          weeklyHours: p.weeklyHours,
+          coefficient: p.coefficient,
+          order,
+        },
+      });
+    }
+    console.log(`  ✓ Programme 1AC : ${PROGRAMME_1AC.length} matières (total ${PROGRAMME_1AC.reduce((s, p) => s + p.weeklyHours, 0)}h/sem)`);
+  }
+
   // 7.quater Contrat démo + matière + affectation pour Amina
   const aminaUpd = await prisma.person.findFirst({
     where: { tenantId: tenant.id, type: PersonType.TEACHER, firstName: 'Amina' },

@@ -19,7 +19,7 @@ export default async function ClassDetailPage({
   const t = await getTranslations('admin.classes');
   const tDetail = await getTranslations('admin.classes.detail');
 
-  const { cls, availableStudents, lastSession } = await withTenant(tenantId, async (tx) => {
+  const { cls, availableStudents, lastSession, curriculum, assignments } = await withTenant(tenantId, async (tx) => {
     const cls = await tx.class.findUnique({
       where: { id },
       include: {
@@ -33,7 +33,20 @@ export default async function ClassDetailPage({
         },
       },
     });
-    if (!cls) return { cls: null, availableStudents: [], lastSession: null };
+    if (!cls)
+      return { cls: null, availableStudents: [], lastSession: null, curriculum: [], assignments: [] };
+
+    const [curriculum, assignments] = await Promise.all([
+      tx.curriculumSubject.findMany({
+        where: { levelId: cls.levelId },
+        include: { subject: true },
+        orderBy: [{ order: 'asc' }, { subject: { label: 'asc' } }],
+      }),
+      tx.teacherAssignment.findMany({
+        where: { classId: id, academicYearId: cls.academicYearId },
+        include: { subject: true, teacher: true },
+      }),
+    ]);
 
     // Élèves disponibles : tous les STUDENT actifs qui ne sont PAS déjà
     // inscrits activement à cette classe (pas dans la liste students[]).
@@ -55,7 +68,7 @@ export default async function ClassDetailPage({
       include: { records: { select: { status: true } } },
     });
 
-    return { cls, availableStudents, lastSession };
+    return { cls, availableStudents, lastSession, curriculum, assignments };
   });
 
   if (!cls) notFound();
@@ -227,6 +240,75 @@ export default async function ClassDetailPage({
           )}
         </aside>
       </div>
+
+      {/* Programme du niveau × profs affectés */}
+      <section className="mt-6">
+        <h2 className="mb-3 text-base font-semibold text-slate-900">{tDetail('programme')}</h2>
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <table className="w-full text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3 text-start">{tDetail('subject')}</th>
+                <th className="px-4 py-3 text-end">{tDetail('coefficient')}</th>
+                <th className="px-4 py-3 text-end">{tDetail('weeklyHours')}</th>
+                <th className="px-4 py-3 text-end">{tDetail('hoursAssigned')}</th>
+                <th className="px-4 py-3 text-start">{tDetail('teachers')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {curriculum.map((c) => {
+                const subjectAssignments = assignments.filter((a) => a.subjectId === c.subjectId);
+                const totalAssigned = subjectAssignments.reduce(
+                  (s, a) => s + (a.hoursPerWeek ?? 0),
+                  0,
+                );
+                const deltaOk = Math.abs(totalAssigned - c.weeklyHours) < 0.01;
+                const noTeacher = subjectAssignments.length === 0;
+                return (
+                  <tr key={c.id}>
+                    <td className="px-4 py-3 font-medium text-slate-900">{c.subject.label}</td>
+                    <td className="px-4 py-3 text-end tabular-nums">×{c.coefficient}</td>
+                    <td className="px-4 py-3 text-end tabular-nums">{c.weeklyHours} h</td>
+                    <td className="px-4 py-3 text-end">
+                      <span
+                        className={`rounded px-2 py-0.5 text-xs font-medium ${
+                          noTeacher
+                            ? 'bg-red-100 text-red-700'
+                            : deltaOk
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-amber-100 text-amber-800'
+                        }`}
+                      >
+                        {totalAssigned} h
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-xs text-slate-600">
+                      {subjectAssignments.length === 0
+                        ? tDetail('noTeacher')
+                        : subjectAssignments
+                            .map((a) => `${a.teacher.lastName} ${a.teacher.firstName}`)
+                            .join(', ')}
+                    </td>
+                  </tr>
+                );
+              })}
+              {curriculum.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-8 text-center text-xs text-slate-500">
+                    {tDetail('programmeEmpty')}
+                    <Link
+                      href={`/${locale}/admin/settings/curriculum/programme?level=${cls.levelId}`}
+                      className="ms-2 text-brand-700 hover:underline"
+                    >
+                      {tDetail('configureProgramme')} →
+                    </Link>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

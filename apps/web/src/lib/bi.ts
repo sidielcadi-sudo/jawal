@@ -115,12 +115,33 @@ export async function computeAcademicOverview(
           maxValue: true,
           classId: true,
           subjectId: true,
-          class: { select: { name: true } },
+          class: { select: { name: true, levelId: true } },
           subject: { select: { id: true, scale: true, coefficient: true } },
         },
       },
     },
   });
+
+  // Coefficients paramétrés au niveau du programme — pour chaque (levelId, subjectId).
+  // Fallback sur Subject.coefficient si aucune entrée.
+  const levelSubjectPairs = new Set<string>();
+  for (const g of grades2) {
+    levelSubjectPairs.add(`${g.evaluation.class.levelId}::${g.evaluation.subjectId}`);
+  }
+  const curriculumEntries =
+    levelSubjectPairs.size > 0
+      ? await tx.curriculumSubject.findMany({
+          where: {
+            OR: [...levelSubjectPairs].map((p) => {
+              const [levelId, subjectId] = p.split('::');
+              return { levelId: levelId!, subjectId: subjectId! };
+            }),
+          },
+          select: { levelId: true, subjectId: true, coefficient: true },
+        })
+      : [];
+  const coefMap = new Map<string, number>();
+  for (const e of curriculumEntries) coefMap.set(`${e.levelId}::${e.subjectId}`, e.coefficient);
 
   // Groupes : (studentId, classId, subjectId) → liste de notes (value, weight, maxValue, scale)
   type SubjAgg = { weighted: number; weights: number; scale: number; coefficient: number };
@@ -134,11 +155,12 @@ export async function computeAcademicOverview(
     }
     let sa = sc.subjects.get(g.evaluation.subjectId);
     if (!sa) {
+      const programmeCoef = coefMap.get(`${g.evaluation.class.levelId}::${g.evaluation.subjectId}`);
       sa = {
         weighted: 0,
         weights: 0,
         scale: g.evaluation.subject.scale,
-        coefficient: g.evaluation.subject.coefficient,
+        coefficient: programmeCoef ?? g.evaluation.subject.coefficient,
       };
       sc.subjects.set(g.evaluation.subjectId, sa);
     }
@@ -304,11 +326,32 @@ export async function findAtRiskStudents(
           weight: true,
           maxValue: true,
           subjectId: true,
+          class: { select: { levelId: true } },
           subject: { select: { scale: true, coefficient: true } },
         },
       },
     },
   });
+
+  // Coef du programme (level × subject) — fallback Subject.coefficient.
+  const lsPairs = new Set<string>();
+  for (const g of grades) {
+    lsPairs.add(`${g.evaluation.class.levelId}::${g.evaluation.subjectId}`);
+  }
+  const lsEntries =
+    lsPairs.size > 0
+      ? await tx.curriculumSubject.findMany({
+          where: {
+            OR: [...lsPairs].map((p) => {
+              const [levelId, subjectId] = p.split('::');
+              return { levelId: levelId!, subjectId: subjectId! };
+            }),
+          },
+          select: { levelId: true, subjectId: true, coefficient: true },
+        })
+      : [];
+  const coefMap = new Map<string, number>();
+  for (const e of lsEntries) coefMap.set(`${e.levelId}::${e.subjectId}`, e.coefficient);
 
   type SubAgg = { weighted: number; weights: number; scale: number; coefficient: number };
   const perStudent = new Map<string, Map<string, SubAgg>>();
@@ -320,11 +363,12 @@ export async function findAtRiskStudents(
     }
     let sa = m.get(g.evaluation.subjectId);
     if (!sa) {
+      const programmeCoef = coefMap.get(`${g.evaluation.class.levelId}::${g.evaluation.subjectId}`);
       sa = {
         weighted: 0,
         weights: 0,
         scale: g.evaluation.subject.scale,
-        coefficient: g.evaluation.subject.coefficient,
+        coefficient: programmeCoef ?? g.evaluation.subject.coefficient,
       };
       m.set(g.evaluation.subjectId, sa);
     }

@@ -580,7 +580,16 @@
         "takeAttendance": "Faire l'appel",
         "lastAttendance": "Dernier appel",
         "manageGrades": "Notes",
-        "gradeBook": "Carnet de notes"
+        "gradeBook": "Carnet de notes",
+        "programme": "Programme & affectations",
+        "subject": "Matière",
+        "coefficient": "Coef",
+        "weeklyHours": "Volume",
+        "hoursAssigned": "Heures profs",
+        "teachers": "Enseignants",
+        "noTeacher": "Aucun prof affecté",
+        "programmeEmpty": "Aucun programme défini pour ce niveau.",
+        "configureProgramme": "Configurer le programme"
       }
     },
     "gradeBook": {
@@ -843,6 +852,7 @@
         "levels": {
           "title": "Niveaux",
           "subtitle": "Niveaux à l'intérieur de chaque cycle (1AP, 6AP, 1AC, etc.).",
+          "openProgramme": "Programme par niveau",
           "table": { "cycle": "Cycle", "code": "Code", "label": "Libellé", "order": "Ordre" },
           "empty": "Aucun niveau.",
           "create": "Créer un niveau",
@@ -854,6 +864,36 @@
             "create": "Créer",
             "creating": "Création…"
           }
+        }
+      },
+      "programme": {
+        "title": "Programme par niveau",
+        "subtitle": "Pour chaque niveau, définissez les matières enseignées avec leur volume horaire hebdomadaire et leur coefficient. Le coefficient remplace celui de la matière dans le calcul des moyennes de ce niveau.",
+        "backToCurriculum": "Cycles & niveaux",
+        "noLevels": "Aucun niveau défini. Créez d'abord un niveau dans Cycles & niveaux.",
+        "empty": "Aucune matière au programme pour ce niveau.",
+        "totalHours": "Total heures hebdo",
+        "addSubject": "Ajouter une matière",
+        "addSubjectHint": "Choisissez la matière, son volume horaire et son coefficient pour ce niveau.",
+        "allSubjectsAdded": "Toutes les matières sont déjà au programme.",
+        "confirmDelete": "Retirer cette matière du programme ?",
+        "table": {
+          "subject": "Matière",
+          "hours": "Heures/sem",
+          "coefficient": "Coefficient",
+          "order": "Ordre",
+          "actions": "Actions"
+        },
+        "actions": {
+          "save": "Enregistrer",
+          "delete": "Retirer"
+        },
+        "form": {
+          "subject": "Matière",
+          "weeklyHours": "Heures/sem",
+          "coefficient": "Coefficient",
+          "add": "Ajouter au programme",
+          "creating": "Ajout…"
         }
       },
       "subjects": {

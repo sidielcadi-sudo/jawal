@@ -162,6 +162,7 @@ model Tenant {
   personRoles    PersonRole[]
   personRelations PersonRelation[]
   teacherAssignments TeacherAssignment[]
+  curriculumSubjects CurriculumSubject[]
 
   @@map("tenants")
 }
@@ -445,13 +446,39 @@ model Level {
   order     Int      @default(0)
   createdAt DateTime @default(now()) @map("created_at")
 
-  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  cycle        Cycle             @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  classes      Class[]
-  feeSchedules FeeScheduleItem[]
+  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cycle             Cycle               @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  classes           Class[]
+  feeSchedules      FeeScheduleItem[]
+  curriculumSubjects CurriculumSubject[]
 
   @@unique([tenantId, code])
   @@map("levels")
+}
+
+/// Programme pédagogique : pour un niveau donné, la liste des matières
+/// enseignées avec leur volume horaire hebdomadaire et leur coefficient.
+/// Source de vérité pour le calcul des moyennes pondérées et la planification
+/// des heures profs (TeacherAssignment).
+model CurriculumSubject {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  levelId      String   @map("level_id") @db.Uuid
+  subjectId    String   @map("subject_id") @db.Uuid
+  weeklyHours  Float    @map("weekly_hours")
+  coefficient  Float    @default(1.0)
+  order        Int      @default(0)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  level   Level   @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([levelId, subjectId])
+  @@index([tenantId, levelId])
+  @@index([tenantId, subjectId])
+  @@map("curriculum_subjects")
 }
 
 model Class {
@@ -645,6 +672,7 @@ model Subject {
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   evaluations Evaluation[]
   teacherAssignments TeacherAssignment[]
+  curriculumEntries CurriculumSubject[]
 
   @@unique([tenantId, code])
   @@map("subjects")

@@ -69,7 +69,8 @@ DECLARE
     'payments',
     'person_roles',
     'person_relations',
-    'teacher_assignments'
+    'teacher_assignments',
+    'curriculum_subjects'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped

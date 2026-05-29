@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
@@ -77,6 +78,12 @@ export default async function CurriculumPage({
             <h2 className="text-lg font-semibold text-slate-900">{t('levels.title')}</h2>
             <p className="text-xs text-slate-500">{t('levels.subtitle')}</p>
           </div>
+          <Link
+            href={`/${locale}/admin/settings/curriculum/programme`}
+            className="rounded-lg border border-brand-300 bg-white px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
+          >
+            📚 {t('levels.openProgramme')}
+          </Link>
         </header>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           <div className="lg:col-span-2">

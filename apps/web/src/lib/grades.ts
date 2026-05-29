@@ -58,33 +58,52 @@ type Tx = Prisma.TransactionClient;
 /**
  * Récupère toutes les notes d'une classe pour une période et les met à plat.
  * Une seule requête — économique même pour 30 élèves × 10 matières × 5 évals.
+ *
+ * Si une entrée CurriculumSubject(level, subject) existe pour le niveau de la
+ * classe, son coefficient remplace celui de Subject.coefficient (fallback).
  */
 async function fetchGradeRows(tx: Tx, classId: string, periodId: string): Promise<RawRow[]> {
-  const grades = await tx.grade.findMany({
-    where: {
-      value: { not: null },
-      evaluation: { classId, periodId },
-    },
-    select: {
-      studentId: true,
-      value: true,
-      evaluation: {
-        select: {
-          weight: true,
-          maxValue: true,
-          subject: {
-            select: {
-              id: true,
-              label: true,
-              scale: true,
-              coefficient: true,
-              order: true,
+  const [grades, classRow] = await Promise.all([
+    tx.grade.findMany({
+      where: {
+        value: { not: null },
+        evaluation: { classId, periodId },
+      },
+      select: {
+        studentId: true,
+        value: true,
+        evaluation: {
+          select: {
+            weight: true,
+            maxValue: true,
+            subject: {
+              select: {
+                id: true,
+                label: true,
+                scale: true,
+                coefficient: true,
+                order: true,
+              },
             },
           },
         },
       },
-    },
-  });
+    }),
+    tx.class.findUnique({ where: { id: classId }, select: { levelId: true } }),
+  ]);
+
+  // Coef paramétré au niveau (programme) — fallback sur Subject.coefficient.
+  const coefMap = new Map<string, number>();
+  if (classRow?.levelId) {
+    const subjectIds = [...new Set(grades.map((g) => g.evaluation.subject.id))];
+    if (subjectIds.length > 0) {
+      const entries = await tx.curriculumSubject.findMany({
+        where: { levelId: classRow.levelId, subjectId: { in: subjectIds } },
+        select: { subjectId: true, coefficient: true, order: true },
+      });
+      for (const e of entries) coefMap.set(e.subjectId, e.coefficient);
+    }
+  }
 
   return grades
     .filter((g): g is typeof g & { value: number } => g.value !== null)
@@ -96,7 +115,8 @@ async function fetchGradeRows(tx: Tx, classId: string, periodId: string): Promis
       subjectId: g.evaluation.subject.id,
       subjectLabel: g.evaluation.subject.label,
       subjectScale: g.evaluation.subject.scale,
-      subjectCoefficient: g.evaluation.subject.coefficient,
+      subjectCoefficient:
+        coefMap.get(g.evaluation.subject.id) ?? g.evaluation.subject.coefficient,
       subjectOrder: g.evaluation.subject.order,
     }));
 }
