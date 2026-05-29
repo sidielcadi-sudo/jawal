@@ -902,12 +902,19 @@
           "label": "Libellé",
           "scale": "Barème",
           "coefficient": "Coef. défaut",
+          "programme": "Programme par niveau",
+          "noProgramme": "Aucun niveau",
           "order": "Ordre",
           "actions": "Actions"
         },
         "empty": "Aucune matière définie.",
         "create": "Ajouter une matière",
-        "createHint": "Le coefficient par défaut s'applique uniquement si la matière n'est pas configurée dans le programme d'un niveau. Définissez plutôt les coefficients dans Cycles & niveaux → Programme.",
+        "createHint": "Une seule fiche par matière (ex : « Mathématiques » une seule fois). Le coefficient différent par niveau se configure dans Programme par niveau, pas ici.",
+        "infoBox": {
+          "title": "Une seule matière, plusieurs niveaux",
+          "body": "Ne créez pas la même matière deux fois pour avoir des coefficients différents. Créez « Mathématiques » une fois, puis définissez son coefficient pour chaque niveau (1AC × 4, TC × 2, …) dans le Programme.",
+          "cta": "Ouvrir le Programme par niveau"
+        },
         "confirmDelete": "Supprimer cette matière ?",
         "actions": {
           "edit": "Modifier",

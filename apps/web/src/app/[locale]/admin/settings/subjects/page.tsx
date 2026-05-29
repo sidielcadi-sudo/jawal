@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
@@ -10,7 +11,15 @@ export default async function SubjectsPage({ params }: { params: Promise<{ local
 
   const session = (await auth())!;
   const subjects = await withTenant(session.user.tenantId, (tx) =>
-    tx.subject.findMany({ orderBy: [{ order: 'asc' }, { label: 'asc' }] }),
+    tx.subject.findMany({
+      orderBy: [{ order: 'asc' }, { label: 'asc' }],
+      include: {
+        curriculumEntries: {
+          include: { level: true },
+          orderBy: { level: { order: 'asc' } },
+        },
+      },
+    }),
   );
 
   return (
@@ -24,6 +33,7 @@ export default async function SubjectsPage({ params }: { params: Promise<{ local
                 <th className="px-4 py-3 text-start">{t('table.label')}</th>
                 <th className="px-4 py-3 text-end">{t('table.scale')}</th>
                 <th className="px-4 py-3 text-end">{t('table.coefficient')}</th>
+                <th className="px-4 py-3 text-start">{t('table.programme')}</th>
                 <th className="px-4 py-3 text-end">{t('table.order')}</th>
                 <th className="px-4 py-3 text-end">{t('table.actions')}</th>
               </tr>
@@ -34,7 +44,26 @@ export default async function SubjectsPage({ params }: { params: Promise<{ local
                   <td className="px-4 py-3 font-mono text-xs">{s.code}</td>
                   <td className="px-4 py-3 font-medium text-slate-900">{s.label}</td>
                   <td className="px-4 py-3 text-end tabular-nums">/{s.scale}</td>
-                  <td className="px-4 py-3 text-end tabular-nums">×{s.coefficient}</td>
+                  <td className="px-4 py-3 text-end tabular-nums text-xs text-slate-500">×{s.coefficient}</td>
+                  <td className="px-4 py-3 text-xs">
+                    {s.curriculumEntries.length === 0 ? (
+                      <span className="text-slate-400">{t('table.noProgramme')}</span>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {s.curriculumEntries.map((c) => (
+                          <Link
+                            key={c.id}
+                            href={`/${locale}/admin/settings/curriculum/programme?level=${c.levelId}`}
+                            className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 hover:bg-brand-100 hover:text-brand-700"
+                            title={`${c.level.label} · coef ${c.coefficient} · ${c.weeklyHours}h/sem`}
+                          >
+                            {c.level.code} ×{c.coefficient}
+                            <span className="ms-1 text-slate-500">({c.weeklyHours}h)</span>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-end text-xs text-slate-500">{s.order}</td>
                   <td className="px-4 py-3 text-end">
                     <SubjectRowActions
@@ -52,7 +81,7 @@ export default async function SubjectsPage({ params }: { params: Promise<{ local
               ))}
               {subjects.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-10 text-center text-slate-500">
                     {t('empty')}
                   </td>
                 </tr>
@@ -62,7 +91,17 @@ export default async function SubjectsPage({ params }: { params: Promise<{ local
         </div>
       </section>
 
-      <aside>
+      <aside className="space-y-4">
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
+          <p className="font-medium">{t('infoBox.title')}</p>
+          <p className="mt-1">{t('infoBox.body')}</p>
+          <Link
+            href={`/${locale}/admin/settings/curriculum/programme`}
+            className="mt-2 inline-block font-medium text-amber-900 underline hover:text-amber-700"
+          >
+            {t('infoBox.cta')} →
+          </Link>
+        </div>
         <div className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="text-base font-semibold text-slate-900">{t('create')}</h2>
           <p className="mt-1 text-xs text-slate-500">{t('createHint')}</p>
