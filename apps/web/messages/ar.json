@@ -52,17 +52,59 @@
   },
   "admin": {
     "dashboard": {
-      "title": "لوحة التحكم",
+      "title": "القيادة",
       "welcome": "مرحبًا، {name}",
       "kpi": {
         "students": "التلاميذ",
         "teachers": "الأساتذة",
         "classes": "الأقسام",
-        "activeYear": "السنة النشطة"
+        "activeYear": "السنة النشطة",
+        "teachersClasses": "{teachers} أستاذ · {classes} قسم",
+        "averageGeneral": "المعدل العام",
+        "successRate": "النجاح : {value}%",
+        "noGrades": "لا توجد نقاط",
+        "attendanceRate": "الحضور",
+        "attendanceRecords": "{count, plural, =0 {لا توجد سجلات} one {سجل #} other {# سجلات}}",
+        "collectionRate": "التحصيل",
+        "remaining": "متبقي {amount} {currency}"
       },
-      "rls": {
-        "title": "إظهار عزل البيانات (RLS)",
-        "explanation": "جميع البيانات أعلاه تتم تصفيتها على مستوى قاعدة البيانات بفضل Row-Level Security: الجلسة عيّنت `app.current_tenant_id = {tenantId}`. أي مؤسسة أخرى تبقى غير مرئية."
+      "academic": {
+        "title": "الأداء الأكاديمي",
+        "empty": "لا توجد نقاط متاحة لهذه الفترة.",
+        "topClasses": "أفضل الأقسام",
+        "bottomClasses": "أقسام تحتاج للدعم"
+      },
+      "attendance": {
+        "title": "الحضور",
+        "empty": "لا يوجد حضور مسجل.",
+        "present": "حاضرون",
+        "absent": "غائبون",
+        "late": "متأخرون",
+        "excused": "مأذونون"
+      },
+      "headcount": {
+        "title": "الأعداد التفصيلية",
+        "totalEnrolled": "التلاميذ المسجلون",
+        "totalCapacity": "السعة الإجمالية",
+        "occupancyRate": "نسبة الإشغال",
+        "staff": "الموظفون",
+        "parents": "حسابات الآباء"
+      },
+      "atRisk": {
+        "title": "التلاميذ في خطر",
+        "student": "التلميذ",
+        "class": "القسم",
+        "absenceRate": "نسبة الغياب",
+        "average": "المعدل",
+        "reasons": "الأسباب",
+        "reasonAbsence": "غياب متكرر",
+        "reasonGrade": "تعثر دراسي",
+        "empty": "لا توجد حالات حالياً."
+      },
+      "actions": {
+        "exports": "تصدير CSV",
+        "finance": "المالية",
+        "announcements": "إعلانات"
       }
     },
     "signOut": "تسجيل الخروج",
@@ -78,6 +120,29 @@
       "finance": "المالية",
       "import": "استيراد CSV",
       "settings": "الإعدادات"
+    },
+    "exports": {
+      "title": "تصدير CSV",
+      "subtitle": "حمّل البيانات للتحليل الخارجي.",
+      "utf8Note": "تنسيق UTF-8 مع BOM، الفاصل فاصلة، متوافق مع Excel.",
+      "actions": {
+        "download": "تنزيل"
+      },
+      "students": {
+        "title": "قائمة التلاميذ",
+        "description": "جميع التلاميذ النشطين مع جهات الاتصال."
+      },
+      "finance": {
+        "title": "حالة المدفوعات",
+        "description": "كل الأقساط مع الحالة والمدفوعات."
+      },
+      "grades": {
+        "title": "دفتر النقاط",
+        "description": "معدلات قسم حسب المواد لفترة معينة.",
+        "class": "القسم",
+        "period": "الفترة",
+        "download": "تنزيل"
+      }
     },
     "finance": {
       "title": "المالية",

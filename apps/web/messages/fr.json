@@ -52,17 +52,59 @@
   },
   "admin": {
     "dashboard": {
-      "title": "Tableau de bord",
+      "title": "Pilotage",
       "welcome": "Bienvenue, {name}",
       "kpi": {
         "students": "Élèves",
         "teachers": "Enseignants",
         "classes": "Classes",
-        "activeYear": "Année active"
+        "activeYear": "Année active",
+        "teachersClasses": "{teachers} enseignant·es · {classes} classes",
+        "averageGeneral": "Moyenne générale",
+        "successRate": "Réussite : {value}%",
+        "noGrades": "Aucune note saisie",
+        "attendanceRate": "Présence",
+        "attendanceRecords": "{count, plural, =0 {Aucun pointage} one {# pointage} other {# pointages}}",
+        "collectionRate": "Recouvrement",
+        "remaining": "Reste {amount} {currency}"
       },
-      "rls": {
-        "title": "Démonstration RLS",
-        "explanation": "Toutes les données ci-dessus sont filtrées par Row-Level Security PostgreSQL : la session a positionné `app.current_tenant_id = {tenantId}`. Tout autre tenant est invisible — même avec une requête mal écrite."
+      "academic": {
+        "title": "Performance académique",
+        "empty": "Aucune note disponible sur la période.",
+        "topClasses": "Top classes",
+        "bottomClasses": "Classes à soutenir"
+      },
+      "attendance": {
+        "title": "Présence",
+        "empty": "Aucun appel finalisé sur la période.",
+        "present": "Présents",
+        "absent": "Absents",
+        "late": "Retards",
+        "excused": "Excusés"
+      },
+      "headcount": {
+        "title": "Effectifs détaillés",
+        "totalEnrolled": "Élèves inscrits",
+        "totalCapacity": "Capacité totale",
+        "occupancyRate": "Taux d'occupation",
+        "staff": "Personnel",
+        "parents": "Comptes parents"
+      },
+      "atRisk": {
+        "title": "Élèves à risque",
+        "student": "Élève",
+        "class": "Classe",
+        "absenceRate": "Absentéisme",
+        "average": "Moyenne",
+        "reasons": "Raisons",
+        "reasonAbsence": "Absentéisme",
+        "reasonGrade": "Difficultés scolaires",
+        "empty": "Aucun élève signalé sur les critères actuels."
+      },
+      "actions": {
+        "exports": "Exports CSV",
+        "finance": "Finances",
+        "announcements": "Annonces"
       }
     },
     "signOut": "Se déconnecter",
@@ -78,6 +120,29 @@
       "finance": "Finances",
       "import": "Importer CSV",
       "settings": "Paramètres"
+    },
+    "exports": {
+      "title": "Exports CSV",
+      "subtitle": "Téléchargez les données pour analyse externe (Excel, comptabilité…).",
+      "utf8Note": "Format UTF-8 avec BOM, séparateur virgule, compatible Excel.",
+      "actions": {
+        "download": "Télécharger"
+      },
+      "students": {
+        "title": "Liste des élèves",
+        "description": "Tous les élèves actifs avec contacts, classe et niveau."
+      },
+      "finance": {
+        "title": "État des paiements",
+        "description": "Toutes les échéances avec statut, paiements et reste dû."
+      },
+      "grades": {
+        "title": "Carnet de notes",
+        "description": "Moyennes d'une classe par matière, sur une période. Sélectionner la classe et la période.",
+        "class": "Classe",
+        "period": "Période",
+        "download": "Télécharger"
+      }
     },
     "finance": {
       "title": "Finances",
