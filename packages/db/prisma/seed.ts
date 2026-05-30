@@ -630,6 +630,94 @@ async function main() {
     }
   }
 
+  // 12. Pointage personnel — 5 jours pour Amina (idempotent)
+  const aminaForAttendance = await prisma.person.findFirst({
+    where: { tenantId: tenant.id, type: PersonType.TEACHER, firstName: 'Amina' },
+    select: { id: true, grossSalary: true },
+  });
+  if (aminaForAttendance) {
+    const existingCount = await prisma.staffAttendance.count({
+      where: { personId: aminaForAttendance.id },
+    });
+    if (existingCount === 0) {
+      const gross = aminaForAttendance.grossSalary
+        ? Number(aminaForAttendance.grossSalary)
+        : 12000;
+      const dailyRate = gross / 26;
+      const hourlyRate = gross / 26 / 8;
+
+      const today = new Date();
+      today.setUTCHours(0, 0, 0, 0);
+
+      // 5 derniers jours ouvrables (skip dim/sam pour rester réaliste FR/MA)
+      const days: { offset: number; status: string; lateMinutes?: number; deduction: number; note?: string }[] = [];
+      let offset = 1;
+      while (days.length < 5) {
+        const candidate = new Date(today);
+        candidate.setUTCDate(candidate.getUTCDate() - offset);
+        const wd = candidate.getUTCDay();
+        if (wd !== 0 && wd !== 6) {
+          let entry: (typeof days)[number];
+          switch (days.length) {
+            case 0:
+              entry = { offset, status: 'PRESENT', deduction: 0 };
+              break;
+            case 1:
+              entry = { offset, status: 'PRESENT', deduction: 0 };
+              break;
+            case 2:
+              // Retard 25 min : 10 min facturables
+              entry = {
+                offset,
+                status: 'LATE',
+                lateMinutes: 25,
+                deduction: Math.round(((hourlyRate * 10) / 60) * 100) / 100,
+                note: 'Retard transport',
+              };
+              break;
+            case 3:
+              entry = {
+                offset,
+                status: 'ABSENT',
+                deduction: Math.round(dailyRate * 100) / 100,
+                note: 'Absence non justifiée',
+              };
+              break;
+            case 4:
+              entry = { offset, status: 'PRESENT', deduction: 0 };
+              break;
+            default:
+              entry = { offset, status: 'PRESENT', deduction: 0 };
+          }
+          days.push(entry);
+        }
+        offset += 1;
+      }
+
+      for (const d of days) {
+        const date = new Date(today);
+        date.setUTCDate(date.getUTCDate() - d.offset);
+        await prisma.staffAttendance.create({
+          data: {
+            tenantId: tenant.id,
+            personId: aminaForAttendance.id,
+            date,
+            status: d.status as 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED' | 'LEAVE',
+            lateMinutes: d.lateMinutes ?? null,
+            deductionAmount: d.deduction,
+            note: d.note ?? null,
+          },
+        });
+      }
+      const totalDeduction = days.reduce((s, d) => s + d.deduction, 0);
+      console.log(
+        `  ✓ Pointage Amina : 5 jours (3 PRESENT, 1 LATE, 1 ABSENT) → retenues calculées ${totalDeduction.toFixed(2)} MAD`,
+      );
+    } else {
+      console.log(`  ✓ Pointage Amina déjà présent (${existingCount} entrées)`);
+    }
+  }
+
   console.log('\n✅ Seed terminé.\n');
   console.log('────────────── Comptes de démonstration ──────────────');
   console.log(`  Admin établissement   : ${DEMO_ADMIN_EMAIL}`);

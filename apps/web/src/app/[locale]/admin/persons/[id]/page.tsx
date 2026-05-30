@@ -54,6 +54,45 @@ export default async function PersonDetailPage({
 
   if (!person) notFound();
 
+  // Récap pointage du mois courant (TEACHER/STAFF uniquement).
+  type AttendanceSummary = {
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+    leave: number;
+    deduction: number;
+    monthLabel: string;
+    monthParam: string;
+  };
+  let attendanceSummary: AttendanceSummary | null = null;
+  if (person.type === 'TEACHER' || person.type === 'STAFF') {
+    const now = new Date();
+    const monthStart = new Date(Date.UTC(now.getFullYear(), now.getMonth(), 1));
+    const monthEnd = new Date(Date.UTC(now.getFullYear(), now.getMonth() + 1, 1));
+    const monthParam = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const monthLabel = now.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+
+    attendanceSummary = await withTenant(tenantId, async (tx) => {
+      const rows = await tx.staffAttendance.findMany({
+        where: { personId: id, date: { gte: monthStart, lt: monthEnd } },
+        select: { status: true, deductionAmount: true },
+      });
+      return rows.reduce<AttendanceSummary>(
+        (acc, r) => {
+          if (r.status === 'PRESENT') acc.present += 1;
+          if (r.status === 'ABSENT') acc.absent += 1;
+          if (r.status === 'LATE') acc.late += 1;
+          if (r.status === 'EXCUSED') acc.excused += 1;
+          if (r.status === 'LEAVE') acc.leave += 1;
+          acc.deduction += Number(r.deductionAmount);
+          return acc;
+        },
+        { present: 0, absent: 0, late: 0, excused: 0, leave: 0, deduction: 0, monthLabel, monthParam },
+      );
+    });
+  }
+
   // Fratrie déduite : autres élèves ayant au moins un parent en commun.
   let siblings: { id: string; firstName: string; lastName: string }[] = [];
   if (person.type === 'STUDENT' && person.relationsAsChild.length > 0) {
@@ -387,6 +426,40 @@ export default async function PersonDetailPage({
             </section>
           )}
 
+          {attendanceSummary && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-slate-700">
+                  {tDetail('attendanceSummary')} —{' '}
+                  <span className="text-slate-500 first-letter:uppercase">
+                    {attendanceSummary.monthLabel}
+                  </span>
+                </h2>
+                <Link
+                  href={`/${locale}/admin/staff-attendance/${person.id}/monthly?month=${attendanceSummary.monthParam}`}
+                  className="text-xs font-medium text-brand-700 hover:underline"
+                >
+                  {tDetail('viewMonth')} →
+                </Link>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
+                <MiniStat label={tDetail('attendance.present')} value={attendanceSummary.present} color="emerald" />
+                <MiniStat label={tDetail('attendance.absent')} value={attendanceSummary.absent} color="red" />
+                <MiniStat label={tDetail('attendance.late')} value={attendanceSummary.late} color="amber" />
+                <MiniStat label={tDetail('attendance.excused')} value={attendanceSummary.excused} color="blue" />
+                <MiniStat label={tDetail('attendance.leave')} value={attendanceSummary.leave} color="slate" />
+              </div>
+              {attendanceSummary.deduction > 0 && (
+                <div className="mt-3 flex items-center justify-between rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm">
+                  <span className="text-red-800">{tDetail('autoDeductionLabel')}</span>
+                  <span className="font-semibold tabular-nums text-red-700">
+                    − {attendanceSummary.deduction.toFixed(2)} MAD
+                  </span>
+                </div>
+              )}
+            </section>
+          )}
+
           {person.type === 'STUDENT' && (
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="text-sm font-semibold text-slate-700">{tDetail('classes')}</h2>
@@ -497,6 +570,30 @@ function Row({ label, value, mono }: { label: string; value?: string; mono?: boo
       <dd className={`flex-1 ${mono ? 'font-mono text-xs' : ''} text-slate-900`}>
         {value ?? <span className="text-slate-400">—</span>}
       </dd>
+    </div>
+  );
+}
+
+function MiniStat({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: 'emerald' | 'red' | 'amber' | 'blue' | 'slate';
+}) {
+  const colors: Record<string, string> = {
+    emerald: 'text-emerald-700',
+    red: 'text-red-700',
+    amber: 'text-amber-700',
+    blue: 'text-blue-700',
+    slate: 'text-slate-600',
+  };
+  return (
+    <div className="rounded-lg border border-slate-100 px-2 py-1.5 text-center">
+      <div className={`text-lg font-semibold tabular-nums ${colors[color]}`}>{value}</div>
+      <div className="text-[10px] uppercase tracking-wide text-slate-500">{label}</div>
     </div>
   );
 }

@@ -73,7 +73,8 @@ DECLARE
     'curriculum_subjects',
     'teacher_specialties',
     'teacher_cycles',
-    'diplomas'
+    'diplomas',
+    'staff_attendance'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped

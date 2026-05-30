@@ -135,6 +135,7 @@
       "classes": "الأقسام",
       "attendance": "الحضور",
       "justifications": "المبررات",
+      "staffAttendance": "تسجيل دوام الموظفين",
       "announcements": "إعلانات",
       "messages": "الرسائل",
       "finance": "المالية",
@@ -209,6 +210,56 @@
       "approve": "قبول",
       "reject": "رفض",
       "rejectNotePlaceholder": "سبب الرفض (اختياري)"
+    },
+    "staffAttendance": {
+      "title": "تسجيل دوام الموظفين",
+      "date": "التاريخ",
+      "apply": "عرض",
+      "save": "تسجيل الدوام",
+      "saving": "جاري الحفظ…",
+      "saved": "مُسجل",
+      "markAllPresent": "الكل حاضرون",
+      "noStaff": "لا يوجد أي موظف للتسجيل.",
+      "totalDeduction": "إجمالي الاقتطاعات المحسوبة",
+      "formulaHint": "اقتطاع الغياب = الراتب ÷ 26 يوم · اقتطاع التأخر = (دقائق التأخر−15) × التعرفة الساعية (الراتب ÷ 26 ÷ 8).",
+      "viewMonthlyHint": "لعرض ملخص شهري لشخص محدد :",
+      "viewMonthlyLink": "افتح ملف أستاذ أو موظف",
+      "lateMinutesPlaceholder": "دقيقة",
+      "grossPerMonth": "إجمالي {amount} درهم/شهر",
+      "counter": {
+        "present": "حاضرون",
+        "absent": "غائبون",
+        "late": "متأخرون",
+        "excused": "معذرون",
+        "leave": "إجازة",
+        "totalDays": "أيام مسجلة"
+      },
+      "status": {
+        "PRESENT": "حاضر",
+        "ABSENT": "غائب",
+        "LATE": "متأخر",
+        "EXCUSED": "معذر",
+        "LEAVE": "إجازة"
+      },
+      "group": {
+        "TEACHER": "الأساتذة",
+        "STAFF": "الموظفون الإداريون"
+      },
+      "monthly": {
+        "title": "تسجيل الشهر",
+        "payroll": "ملخص الراتب",
+        "gross": "الراتب الإجمالي",
+        "net": "الراتب الصافي",
+        "totalDeduction": "إجمالي الاقتطاعات الآلية",
+        "netAfter": "الصافي بعد الاقتطاع",
+        "details": "التفاصيل يوماً بيوم",
+        "day": "اليوم",
+        "statusCol": "الحالة",
+        "lateMinutes": "دقائق التأخر",
+        "deduction": "اقتطاع",
+        "note": "ملاحظة",
+        "empty": "لا يوجد أي تسجيل لهذا الشهر."
+      }
     },
     "exports": {
       "title": "تصدير CSV",
@@ -446,6 +497,16 @@
         "netSalary": "الراتب الصافي",
         "benefits": "المزايا",
         "deductions": "الاقتطاعات",
+        "attendanceSummary": "تسجيل دوام الشهر",
+        "viewMonth": "عرض التفاصيل",
+        "autoDeductionLabel": "إجمالي الاقتطاعات الآلية (الدوام)",
+        "attendance": {
+          "present": "حاضر",
+          "absent": "غائب",
+          "late": "متأخر",
+          "excused": "معذر",
+          "leave": "إجازة"
+        },
         "contractStatus": {
           "NO_CONTRACT": "لا يوجد عقد مسجل",
           "NOT_STARTED": "لم يبدأ بعد",

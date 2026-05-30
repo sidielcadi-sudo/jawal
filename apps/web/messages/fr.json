@@ -135,6 +135,7 @@
       "classes": "Classes",
       "attendance": "Présences",
       "justifications": "Justifications",
+      "staffAttendance": "Pointage personnel",
       "announcements": "Annonces",
       "messages": "Messages",
       "finance": "Finances",
@@ -209,6 +210,56 @@
       "approve": "Approuver",
       "reject": "Rejeter",
       "rejectNotePlaceholder": "Motif du rejet (facultatif)"
+    },
+    "staffAttendance": {
+      "title": "Pointage personnel",
+      "date": "Date",
+      "apply": "Voir",
+      "save": "Enregistrer le pointage",
+      "saving": "Enregistrement…",
+      "saved": "saisi",
+      "markAllPresent": "Tous présents",
+      "noStaff": "Aucun membre du personnel à pointer.",
+      "totalDeduction": "Retenues totales calculées",
+      "formulaHint": "Retenue ABSENT = brut ÷ 26 jours · Retenue LATE = (min−15) × tarif horaire (brut ÷ 26 ÷ 8).",
+      "viewMonthlyHint": "Pour le récap mensuel par personne :",
+      "viewMonthlyLink": "ouvrir une fiche enseignant ou personnel",
+      "lateMinutesPlaceholder": "min",
+      "grossPerMonth": "brut {amount} MAD/mois",
+      "counter": {
+        "present": "Présents",
+        "absent": "Absents",
+        "late": "Retards",
+        "excused": "Excusés",
+        "leave": "Congés",
+        "totalDays": "Jours pointés"
+      },
+      "status": {
+        "PRESENT": "Présent",
+        "ABSENT": "Absent",
+        "LATE": "Retard",
+        "EXCUSED": "Excusé",
+        "LEAVE": "Congé"
+      },
+      "group": {
+        "TEACHER": "Enseignants",
+        "STAFF": "Personnel administratif"
+      },
+      "monthly": {
+        "title": "Pointage du mois",
+        "payroll": "Récapitulatif salaire",
+        "gross": "Salaire brut",
+        "net": "Salaire net",
+        "totalDeduction": "Total retenues automatiques",
+        "netAfter": "Net après retenues",
+        "details": "Détail jour par jour",
+        "day": "Jour",
+        "statusCol": "Statut",
+        "lateMinutes": "Minutes retard",
+        "deduction": "Retenue",
+        "note": "Note",
+        "empty": "Aucun pointage enregistré ce mois-ci."
+      }
     },
     "exports": {
       "title": "Exports CSV",
@@ -446,6 +497,16 @@
         "netSalary": "Salaire net",
         "benefits": "Avantages",
         "deductions": "Retenues",
+        "attendanceSummary": "Pointage du mois",
+        "viewMonth": "Voir le détail",
+        "autoDeductionLabel": "Total retenues automatiques (pointage)",
+        "attendance": {
+          "present": "Présents",
+          "absent": "Absents",
+          "late": "Retards",
+          "excused": "Excusés",
+          "leave": "Congés"
+        },
         "contractStatus": {
           "NO_CONTRACT": "Pas de contrat saisi",
           "NOT_STARTED": "Pas encore débuté",

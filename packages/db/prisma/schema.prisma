@@ -83,6 +83,17 @@ enum AttendanceStatus {
   EXCUSED // dispense, sortie anticipée, retrait justifié
 }
 
+/// Statut de pointage du personnel (enseignants ou administratif).
+/// EXCUSED couvre congés, maladies, formations — sans retenue. ABSENT non
+/// excusé déclenche une retenue calculée pro-rata sur le salaire mensuel.
+enum StaffAttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  EXCUSED
+  LEAVE     // Congé / RTT planifié
+}
+
 enum JustificationStatus {
   PENDING
   APPROVED
@@ -175,6 +186,7 @@ model Tenant {
   teacherSpecialties TeacherSpecialty[]
   teacherCycles      TeacherCycle[]
   diplomas           Diploma[]
+  staffAttendance    StaffAttendance[]
 
   @@map("tenants")
 }
@@ -277,6 +289,7 @@ model Person {
   teacherSpecialties TeacherSpecialty[]
   teacherCycles      TeacherCycle[]
   diplomas           Diploma[]
+  staffAttendance    StaffAttendance[]   @relation("StaffAttendance")
   /// Liens de parenté où cette personne est l'enfant (FROM = student/PARENT-child)
   relationsAsChild   PersonRelation[]   @relation("ChildRelations")
   /// Liens où cette personne est le parent/tuteur (TO = parent/guardian)
@@ -711,6 +724,40 @@ model AttendanceRecord {
   @@unique([sessionId, studentId])
   @@index([tenantId, studentId])
   @@map("attendance_records")
+}
+
+/// Pointage journalier d'un membre du personnel (TEACHER ou STAFF).
+/// Une seule ligne par (personId, date). deductionAmount est calculé au
+/// moment de l'enregistrement à partir du salaire brut et du status, mais
+/// reste stocké pour permettre des ajustements manuels (cas de force
+/// majeure, conventions internes, etc.).
+model StaffAttendance {
+  id               String                @id @default(uuid()) @db.Uuid
+  tenantId         String                @map("tenant_id") @db.Uuid
+  personId         String                @map("person_id") @db.Uuid
+  date             DateTime              @db.Date
+  status           StaffAttendanceStatus @default(PRESENT)
+  checkIn          DateTime?             @map("check_in")
+  checkOut         DateTime?             @map("check_out")
+  lateMinutes      Int?                  @map("late_minutes")
+  /// Montant de la retenue salariale automatique (devise du tenant).
+  /// 0 si PRESENT/EXCUSED/LEAVE. Calculé via computeStaffDeduction().
+  deductionAmount  Decimal               @default(0) @map("deduction_amount") @db.Decimal(12, 2)
+  /// Vrai si l'opérateur a verrouillé la valeur calculée pour ce jour.
+  /// Permet de saisir un montant manuel sans qu'un recalcul ne l'écrase.
+  deductionLocked  Boolean               @default(false) @map("deduction_locked")
+  note             String?
+  recordedByUserId String?               @map("recorded_by_user_id") @db.Uuid
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  person Person @relation("StaffAttendance", fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([personId, date])
+  @@index([tenantId, date])
+  @@index([tenantId, personId])
+  @@map("staff_attendance")
 }
 
 /// Justification d'absence ou de retard. Workflow PENDING → APPROVED/REJECTED.
