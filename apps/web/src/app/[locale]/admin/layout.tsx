@@ -28,11 +28,13 @@ export default async function AdminLayout({
   const tAdmin = await getTranslations('admin');
 
   return (
-    <div className="flex min-h-screen bg-slate-50">
-      <AdminSidebar locale={locale} tenantName={tenant?.name ?? ''} />
+    <div className="flex min-h-screen bg-slate-50 print:block print:min-h-0 print:bg-white">
+      <div className="print:hidden">
+        <AdminSidebar locale={locale} tenantName={tenant?.name ?? ''} />
+      </div>
 
       <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-10 border-b border-slate-200 bg-white">
+        <header className="sticky top-0 z-10 border-b border-slate-200 bg-white print:hidden">
           <div className="flex items-center justify-end gap-3 px-6 py-3">
             <span className="text-sm text-slate-600">{session.user.email}</span>
             <SignOutButton label={tAdmin('signOut')} locale={locale} />

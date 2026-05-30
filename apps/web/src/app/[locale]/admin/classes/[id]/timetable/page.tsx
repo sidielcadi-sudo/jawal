@@ -8,6 +8,10 @@ import {
   type EntryLite,
   type DayKey,
 } from '@/lib/timetable-conflicts';
+import {
+  isInAvailability,
+  type AvailabilityMap,
+} from '@/lib/timetable-validation';
 import { TimetableGrid, type GridEntry, type GridSlot, type SubjectOpt, type TeacherOpt, type RoomOpt } from './grid';
 
 const DAYS: DayKey[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
@@ -38,7 +42,9 @@ export default async function ClassTimetablePage({
       where: { classId: id, academicYearId: cls.academicYearId },
       include: {
         subject: { select: { id: true, label: true } },
-        teacher: { select: { id: true, firstName: true, lastName: true } },
+        teacher: {
+          select: { id: true, firstName: true, lastName: true, availability: true },
+        },
         room: { select: { id: true, code: true, label: true } },
       },
     });
@@ -81,6 +87,31 @@ export default async function ClassTimetablePage({
   const relevantConflicts = conflicts.filter((c) =>
     c.entryIds.some((id) => myEntryIds.has(id)),
   );
+
+  // Violations de dispo prof : pour chaque entry de CETTE classe avec un prof,
+  // on vérifie que le créneau est inclus dans Person.availability.
+  const slotById = new Map(slots.map((s) => [s.id, s]));
+  const availabilityWarnings: Array<{
+    entryId: string;
+    teacherName: string;
+    dayOfWeek: DayKey;
+    slotLabel: string;
+  }> = [];
+  for (const e of entries) {
+    if (!e.teacher || !e.teacherId) continue;
+    const slot = slotById.get(e.slotId);
+    if (!slot || slot.isBreak) continue;
+    const av = (e.teacher.availability as AvailabilityMap | null) ?? null;
+    const dk = e.dayOfWeek as DayKey;
+    if (!isInAvailability(dk, slot.startTime, slot.endTime, av)) {
+      availabilityWarnings.push({
+        entryId: e.id,
+        teacherName: `${e.teacher.lastName} ${e.teacher.firstName}`,
+        dayOfWeek: dk,
+        slotLabel: `${slot.startTime}-${slot.endTime}`,
+      });
+    }
+  }
 
   const gridSlots: GridSlot[] = slots.map((s) => ({
     id: s.id,
@@ -176,6 +207,33 @@ export default async function ClassTimetablePage({
             </div>
           )}
 
+          {availabilityWarnings.length > 0 && (
+            <div className="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+              <strong>{t('availabilityWarningsHeader', { count: availabilityWarnings.length })}</strong>
+              <ul className="mt-2 list-disc ps-5 text-xs">
+                {availabilityWarnings.slice(0, 8).map((w, i) => (
+                  <li key={i}>
+                    {t('availabilityWarning', {
+                      teacher: w.teacherName,
+                      day: t(`days.${w.dayOfWeek}`),
+                      slot: w.slotLabel,
+                    })}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="mb-3 flex justify-end">
+            <Link
+              href={`/${locale}/admin/classes/${cls.id}/timetable/print`}
+              target="_blank"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              🖨 {t('print')}
+            </Link>
+          </div>
+
           <TimetableGrid
             locale={locale}
             classId={cls.id}
@@ -186,6 +244,7 @@ export default async function ClassTimetablePage({
             conflictEntryIds={new Set(
               relevantConflicts.flatMap((c) => c.entryIds).filter((id) => myEntryIds.has(id)),
             )}
+            availabilityWarningIds={new Set(availabilityWarnings.map((w) => w.entryId))}
             subjects={subjectOpts}
             teachers={teacherOpts}
             rooms={roomOpts}

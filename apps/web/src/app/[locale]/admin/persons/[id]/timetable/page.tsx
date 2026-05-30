@@ -4,6 +4,10 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import type { DayKey } from '@/lib/timetable-conflicts';
+import {
+  computeAssignmentDeltas,
+  slotDurationMinutes,
+} from '@/lib/timetable-validation';
 
 const DAYS: DayKey[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -45,15 +49,58 @@ export default async function TeacherTimetablePage({
             subject: { select: { id: true, label: true } },
             class: { select: { id: true, name: true } },
             room: { select: { id: true, code: true, label: true } },
+            slot: { select: { id: true, startTime: true, endTime: true } },
           },
         })
       : [];
 
-    return { teacher, years, yearId, slots, entries };
+    const assignments = yearId
+      ? await tx.teacherAssignment.findMany({
+          where: { teacherId: id, academicYearId: yearId },
+          include: {
+            subject: { select: { id: true, label: true } },
+            class: { select: { id: true, name: true } },
+          },
+        })
+      : [];
+
+    return { teacher, years, yearId, slots, entries, assignments };
   });
 
   if (!data) notFound();
-  const { teacher, years, yearId, slots, entries } = data;
+  const { teacher, years, yearId, slots, entries, assignments } = data;
+
+  // Calcul des deltas volume horaire (programmé vs hoursPerWeek)
+  const deltas = computeAssignmentDeltas(
+    assignments.map((a) => ({
+      teacherId: a.teacherId,
+      subjectId: a.subjectId,
+      classId: a.classId,
+      hoursPerWeek: a.hoursPerWeek,
+    })),
+    entries.map((e) => ({
+      teacherId: e.teacherId,
+      subjectId: e.subjectId,
+      classId: e.classId,
+      durationMinutes: slotDurationMinutes(e.slot.startTime, e.slot.endTime),
+    })),
+  );
+  // Pour le rendu, on enrichit avec les labels
+  const subjectLabels = new Map(
+    assignments.map((a) => [`${a.subjectId}|${a.classId}`, {
+      subject: a.subject.label,
+      className: a.class.name,
+    }]),
+  );
+  // Pour les deltas « extra » sans assignment, on lookup via entries
+  const extraLookup = new Map(
+    entries
+      .filter((e) => e.subject && e.classId)
+      .map((e) => [`${e.subjectId}|${e.classId}`, {
+        subject: e.subject?.label ?? '—',
+        className: e.class.name,
+      }]),
+  );
 
   // Index entries par (day, slot)
   const byKey = new Map<string, (typeof entries)[number]>();
@@ -115,6 +162,72 @@ export default async function TeacherTimetablePage({
           </button>
         </form>
       </header>
+
+      {deltas.length > 0 && (
+        <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-5">
+          <h2 className="text-sm font-semibold text-slate-700">{t('volumeTitle')}</h2>
+          <p className="mt-1 text-xs text-slate-500">{t('volumeSubtitle')}</p>
+          <div className="mt-3 overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-2 py-2 text-start">{t('volume.subject')}</th>
+                  <th className="px-2 py-2 text-start">{t('volume.class')}</th>
+                  <th className="px-2 py-2 text-end">{t('volume.expected')}</th>
+                  <th className="px-2 py-2 text-end">{t('volume.scheduled')}</th>
+                  <th className="px-2 py-2 text-end">{t('volume.delta')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {deltas.map((d, i) => {
+                  const meta =
+                    subjectLabels.get(`${d.subjectId}|${d.classId}`) ??
+                    extraLookup.get(`${d.subjectId}|${d.classId}`);
+                  const isExtra = d.expectedHours === null;
+                  const overShoot =
+                    d.expectedHours !== null && d.deltaHours > 0.01;
+                  const underShoot =
+                    d.expectedHours !== null && d.deltaHours < -0.01;
+                  return (
+                    <tr key={i} className={isExtra ? 'bg-amber-50/40' : ''}>
+                      <td className="px-2 py-2">{meta?.subject ?? '—'}</td>
+                      <td className="px-2 py-2 text-slate-600">{meta?.className ?? '—'}</td>
+                      <td className="px-2 py-2 text-end tabular-nums">
+                        {d.expectedHours !== null ? `${d.expectedHours}h` : '—'}
+                      </td>
+                      <td className="px-2 py-2 text-end tabular-nums">{d.scheduledHours}h</td>
+                      <td className="px-2 py-2 text-end tabular-nums">
+                        {isExtra ? (
+                          <span className="text-amber-700">
+                            ⚠ {t('volume.extra')}
+                          </span>
+                        ) : overShoot ? (
+                          <span className="text-red-700">+{d.deltaHours}h</span>
+                        ) : underShoot ? (
+                          <span className="text-amber-700">{d.deltaHours}h</span>
+                        ) : (
+                          <span className="text-emerald-700">✓ {t('volume.match')}</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      <div className="mb-3 flex justify-end">
+        <a
+          href={`/${locale}/admin/persons/${id}/timetable/print${yearId ? `?year=${yearId}` : ''}`}
+          target="_blank"
+          rel="noopener"
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        >
+          🖨 {t('print')}
+        </a>
+      </div>
 
       {slots.length === 0 ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">

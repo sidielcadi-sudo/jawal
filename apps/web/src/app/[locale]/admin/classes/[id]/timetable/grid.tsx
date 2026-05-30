@@ -48,6 +48,7 @@ export function TimetableGrid({
   slots,
   entries,
   conflictEntryIds,
+  availabilityWarningIds,
   subjects,
   teachers,
   rooms,
@@ -59,6 +60,7 @@ export function TimetableGrid({
   slots: GridSlot[];
   entries: GridEntry[];
   conflictEntryIds: Set<string>;
+  availabilityWarningIds?: Set<string>;
   subjects: SubjectOpt[];
   teachers: TeacherOpt[];
   rooms: RoomOpt[];
@@ -155,6 +157,7 @@ export function TimetableGrid({
                   }
                   const e = entryByKey.get(`${d}|${s.id}`);
                   const inConflict = e && conflictEntryIds.has(e.id);
+                  const outOfAvailability = e && availabilityWarningIds?.has(e.id);
                   return (
                     <td
                       key={d}
@@ -166,7 +169,9 @@ export function TimetableGrid({
                           className={`rounded-lg border p-2 text-[11px] leading-tight ${
                             inConflict
                               ? 'border-red-300 bg-red-50'
-                              : 'border-brand-200 bg-brand-50'
+                              : outOfAvailability
+                                ? 'border-amber-300 bg-amber-50'
+                                : 'border-brand-200 bg-brand-50'
                           }`}
                         >
                           <div className="font-semibold text-slate-900">
@@ -181,6 +186,11 @@ export function TimetableGrid({
                           {inConflict && (
                             <div className="mt-1 text-[10px] font-semibold text-red-700">
                               ⚠ {t('conflictBadge')}
+                            </div>
+                          )}
+                          {outOfAvailability && !inConflict && (
+                            <div className="mt-1 text-[10px] font-semibold text-amber-700">
+                              ⏱ {t('outOfAvailabilityBadge')}
                             </div>
                           )}
                         </div>
