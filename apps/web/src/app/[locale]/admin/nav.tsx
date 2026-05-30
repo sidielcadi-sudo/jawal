@@ -12,7 +12,7 @@ type NavItem = {
 
 // type helper local — pas un vrai schéma de messages, juste pour l'autocomplete
 type IntlMessages = {
-  admin: { nav: { dashboard: string; students: string; teachers: string; staff: string; parents: string; classes: string; announcements: string; messages: string; finance: string; import: string; settings: string } };
+  admin: { nav: { dashboard: string; students: string; teachers: string; staff: string; parents: string; classes: string; attendance: string; justifications: string; announcements: string; messages: string; finance: string; import: string; settings: string } };
 };
 
 function buildItems(locale: string): NavItem[] {
@@ -47,6 +47,18 @@ function buildItems(locale: string): NavItem[] {
       href: `${prefix}/classes`,
       labelKey: 'classes',
       match: (p, _s) => p.startsWith(`${prefix}/classes`),
+    },
+    {
+      href: `${prefix}/attendance`,
+      labelKey: 'attendance',
+      match: (p, _s) =>
+        p === `${prefix}/attendance` ||
+        (p.startsWith(`${prefix}/attendance`) && !p.includes('/justifications')),
+    },
+    {
+      href: `${prefix}/attendance/justifications`,
+      labelKey: 'justifications',
+      match: (p, _s) => p.startsWith(`${prefix}/attendance/justifications`),
     },
     {
       href: `${prefix}/announcements`,

@@ -135,5 +135,7 @@ export async function reviewJustificationAction(formData: FormData): Promise<Res
   });
 
   revalidatePath('/admin/classes');
+  revalidatePath('/admin/attendance');
+  revalidatePath('/admin/attendance/justifications');
   return { ok: true };
 }
