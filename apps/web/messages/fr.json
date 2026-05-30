@@ -218,6 +218,7 @@
       "year": "Année",
       "apply": "Filtrer",
       "newButton": "Nouvelle inscription",
+      "bulkButton": "↻ Réinscrire en lot",
       "empty": "Aucun dossier d'inscription pour cette année.",
       "yes": "Oui",
       "no": "Non",
@@ -294,6 +295,44 @@
         "withdrawReason": "Motif du retrait",
         "withdrawReasonPlaceholder": "Ex : déménagement, transfert, raison médicale…",
         "withdrawBtn": "Confirmer le retrait"
+      },
+      "bulk": {
+        "title": "Réinscription en lot",
+        "subtitle": "Crée des dossiers DRAFT pour la nouvelle année à partir des inscriptions ACTIVE / DRAFT de l'année source. Les dossiers existants sur l'année cible sont préservés.",
+        "breadcrumbEnrollments": "Inscriptions",
+        "needTwoYears": "Il faut au moins 2 années scolaires pour utiliser la réinscription en lot.",
+        "goToYears": "Gérer les années",
+        "sourceYear": "Année source",
+        "targetYear": "Année cible",
+        "targetYearPlaceholder": "Sélectionnez l'année cible…",
+        "selectTargetYear": "Veuillez sélectionner une année cible.",
+        "noSourceEnrollments": "Aucune inscription ACTIVE ou DRAFT sur l'année source.",
+        "applyAll": "Appliquer à tous",
+        "alreadyExistsOnTarget": "Dossier déjà existant sur l'année cible ({status})",
+        "execHint": "Les dossiers seront créés en mode DRAFT. Vous validerez ensuite chaque dossier individuellement (choix de classe + génération échéancier + réduction fratrie).",
+        "execute": "Exécuter le batch",
+        "executing": "Création en cours…",
+        "resultOk": "Batch exécuté.",
+        "resultErr": "Erreur :",
+        "resultDetails": "{created} créés · {graduated} marqués diplômés · {skipped} sautés",
+        "counter": {
+          "reenroll": "Réinscriptions",
+          "repeat": "Redoublements",
+          "graduate": "Diplômés",
+          "skip": "Sautés"
+        },
+        "decision": {
+          "REENROLL": "Réinscrire",
+          "REPEAT": "Redoubler",
+          "GRADUATE": "Diplômer",
+          "SKIP": "Ignorer"
+        },
+        "table": {
+          "student": "Élève",
+          "current": "Niveau / classe actuels",
+          "decision": "Décision",
+          "targetLevel": "Niveau cible"
+        }
       }
     },
     "staffAttendance": {

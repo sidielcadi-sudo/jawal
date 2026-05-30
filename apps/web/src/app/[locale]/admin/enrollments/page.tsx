@@ -101,6 +101,12 @@ export default async function EnrollmentsListPage({
             </button>
           </form>
           <Link
+            href={`/${locale}/admin/enrollments/bulk-reenroll${currentYearId ? `?source=${currentYearId}` : ''}`}
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            {t('bulkButton')}
+          </Link>
+          <Link
             href={`/${locale}/admin/enrollments/new${currentYearId ? `?year=${currentYearId}` : ''}`}
             className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >

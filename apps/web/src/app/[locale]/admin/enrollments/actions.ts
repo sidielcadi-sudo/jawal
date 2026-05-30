@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import {
+  bulkReenrollSchema,
   enrollmentCreateSchema,
   enrollmentValidateSchema,
   enrollmentWithdrawSchema,
@@ -364,6 +365,147 @@ export async function withdrawEnrollmentAction(
     revalidatePath('/admin/enrollments');
     revalidatePath(`/admin/enrollments/${parsed.data.enrollmentId}`);
     return { ok: true };
+  } catch (e: unknown) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur inconnue' };
+  }
+}
+
+/**
+ * Réinscription en lot d'une année source vers une année cible.
+ *
+ * Pour chaque item :
+ *  - REENROLL → crée un Enrollment DRAFT (student × targetYear × targetLevel)
+ *  - REPEAT → DRAFT au même niveau que la source
+ *  - GRADUATE → marque la source enrollment GRADUATED
+ *  - SKIP → no-op
+ *
+ * Idempotent : si un dossier (student × targetYear) existe déjà, on saute
+ * et on incrémente skipped. La création est en DRAFT volontairement —
+ * c'est à l'admin de valider individuellement chaque dossier (choix classe
+ * + génération échéancier + réduction fratrie).
+ */
+export async function bulkReenrollAction(
+  formData: FormData,
+): Promise<
+  Result<{ created: number; graduated: number; skipped: number; errors: string[] }>
+> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requirePermission('tenants.manage');
+
+  const raw = formData.get('payload');
+  if (typeof raw !== 'string') return { ok: false, error: 'Payload manquant' };
+  let parsedJson;
+  try {
+    parsedJson = JSON.parse(raw);
+  } catch {
+    return { ok: false, error: 'JSON invalide' };
+  }
+
+  const parsed = bulkReenrollSchema.safeParse(parsedJson);
+  if (!parsed.success) {
+    return { ok: false, error: 'Données invalides.', fieldErrors: flatten(parsed) };
+  }
+
+  if (parsed.data.sourceYearId === parsed.data.targetYearId) {
+    return { ok: false, error: 'L\'année cible doit être différente de l\'année source.' };
+  }
+
+  const tenantId = session.user.tenantId;
+  const errors: string[] = [];
+  let created = 0;
+  let graduated = 0;
+  let skipped = 0;
+
+  try {
+    await withTenant(tenantId, async (tx) => {
+      const sourceIds = parsed.data.items.map((i) => i.sourceEnrollmentId);
+      const sources = await tx.enrollment.findMany({
+        where: { id: { in: sourceIds }, academicYearId: parsed.data.sourceYearId },
+        select: { id: true, studentId: true, levelId: true, status: true },
+      });
+      const byId = new Map(sources.map((s) => [s.id, s]));
+
+      for (const item of parsed.data.items) {
+        const src = byId.get(item.sourceEnrollmentId);
+        if (!src) {
+          errors.push(`Dossier source introuvable : ${item.sourceEnrollmentId.slice(0, 8)}…`);
+          continue;
+        }
+
+        if (item.decision === 'SKIP') {
+          skipped += 1;
+          continue;
+        }
+
+        if (item.decision === 'GRADUATE') {
+          if (src.status !== 'GRADUATED') {
+            await tx.enrollment.update({
+              where: { id: src.id },
+              data: { status: 'GRADUATED' },
+            });
+          }
+          graduated += 1;
+          continue;
+        }
+
+        const targetLevelId =
+          item.decision === 'REPEAT' ? src.levelId : item.targetLevelId ?? null;
+        if (!targetLevelId) {
+          errors.push(`Niveau cible manquant pour ${src.id.slice(0, 8)}…`);
+          continue;
+        }
+
+        const existing = await tx.enrollment.findUnique({
+          where: {
+            studentId_academicYearId: {
+              studentId: src.studentId,
+              academicYearId: parsed.data.targetYearId,
+            },
+          },
+        });
+        if (existing) {
+          skipped += 1;
+          continue;
+        }
+
+        await tx.enrollment.create({
+          data: {
+            tenantId,
+            studentId: src.studentId,
+            academicYearId: parsed.data.targetYearId,
+            levelId: targetLevelId,
+            status: 'DRAFT',
+            notes:
+              item.decision === 'REPEAT'
+                ? 'Redoublement — créé par réinscription en lot'
+                : 'Réinscription en lot',
+            createdByUserId: session.user.id,
+          },
+        });
+        created += 1;
+      }
+
+      await logAudit(tx, {
+        tenantId,
+        userId: session.user.id,
+        action: 'bulkReenroll',
+        entityType: 'Enrollment',
+        entityId: parsed.data.targetYearId,
+        after: {
+          sourceYearId: parsed.data.sourceYearId,
+          targetYearId: parsed.data.targetYearId,
+          itemsTotal: parsed.data.items.length,
+          created,
+          graduated,
+          skipped,
+          errorsCount: errors.length,
+        },
+      });
+    });
+
+    revalidatePath('/admin/enrollments');
+    return { ok: true, data: { created, graduated, skipped, errors } };
   } catch (e: unknown) {
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur inconnue' };
   }
