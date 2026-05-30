@@ -74,7 +74,8 @@ DECLARE
     'teacher_specialties',
     'teacher_cycles',
     'diplomas',
-    'staff_attendance'
+    'staff_attendance',
+    'enrollments'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped

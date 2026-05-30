@@ -107,6 +107,16 @@ enum InstallmentStatus {
   CANCELLED  // annulé (ex: élève parti)
 }
 
+/// Cycle de vie d'une inscription. DRAFT = préinscription en attente de
+/// validation. ACTIVE = élève inscrit (StudentClass + échéancier générés).
+/// WITHDRAWN = retrait en cours d'année. GRADUATED = clôture par succès.
+enum EnrollmentStatus {
+  DRAFT
+  ACTIVE
+  WITHDRAWN
+  GRADUATED
+}
+
 enum PaymentMethod {
   CASH       // espèces (caisse)
   CHEQUE
@@ -187,6 +197,7 @@ model Tenant {
   teacherCycles      TeacherCycle[]
   diplomas           Diploma[]
   staffAttendance    StaffAttendance[]
+  enrollments        Enrollment[]
 
   @@map("tenants")
 }
@@ -290,6 +301,7 @@ model Person {
   teacherCycles      TeacherCycle[]
   diplomas           Diploma[]
   staffAttendance    StaffAttendance[]   @relation("StaffAttendance")
+  enrollments        Enrollment[]        @relation("StudentEnrollments")
   /// Liens de parenté où cette personne est l'enfant (FROM = student/PARENT-child)
   relationsAsChild   PersonRelation[]   @relation("ChildRelations")
   /// Liens où cette personne est le parent/tuteur (TO = parent/guardian)
@@ -496,6 +508,7 @@ model AcademicYear {
   classes Class[]
   feeSchedules FeeScheduleItem[]
   teacherAssignments TeacherAssignment[]
+  enrollments  Enrollment[]
 
   @@unique([tenantId, label])
   @@map("academic_years")
@@ -548,6 +561,7 @@ model Level {
   classes           Class[]
   feeSchedules      FeeScheduleItem[]
   curriculumSubjects CurriculumSubject[]
+  enrollments       Enrollment[]
 
   @@unique([tenantId, code])
   @@map("levels")
@@ -597,6 +611,7 @@ model Class {
   attendanceSessions AttendanceSession[]
   evaluations  Evaluation[]
   teacherAssignments TeacherAssignment[]
+  enrollments  Enrollment[]
 
   @@unique([tenantId, academicYearId, name])
   @@index([tenantId, levelId])
@@ -904,6 +919,53 @@ model CouncilEntry {
   @@unique([classId, periodId, studentId])
   @@index([tenantId, periodId])
   @@map("council_entries")
+}
+
+// ─── Inscriptions (M11) ────────────────────────────────────
+
+/// Dossier d'inscription pour une année scolaire. Unique par
+/// (studentId, academicYearId) : un élève ne peut pas avoir 2 dossiers
+/// pour la même année. La transition DRAFT → ACTIVE génère le lien
+/// StudentClass + les Installments depuis la grille FeeScheduleItem,
+/// en appliquant la réduction fratrie si applicable.
+model Enrollment {
+  id                  String           @id @default(uuid()) @db.Uuid
+  tenantId            String           @map("tenant_id") @db.Uuid
+  studentId           String           @map("student_id") @db.Uuid
+  academicYearId      String           @map("academic_year_id") @db.Uuid
+  levelId             String           @map("level_id") @db.Uuid
+  classId             String?          @map("class_id") @db.Uuid
+  status              EnrollmentStatus @default(DRAFT)
+  /// Rang fratrie au moment de la validation (1 = aîné).
+  /// Sert à appliquer la réduction `siblingDiscountPct` du tenant.
+  siblingRank         Int?             @map("sibling_rank")
+  /// Réduction effectivement appliquée en pourcentage (issue du tenant
+  /// settings ou écrasée manuellement par l'agent).
+  discountPct         Decimal?         @map("discount_pct") @db.Decimal(5, 2)
+  discountReason      String?          @map("discount_reason")
+  /// True une fois les Installments générés. Permet d'éviter une double
+  /// génération si on repasse par validate().
+  feesGenerated       Boolean          @default(false) @map("fees_generated")
+  enrolledAt          DateTime         @default(now()) @map("enrolled_at")
+  validatedAt         DateTime?        @map("validated_at")
+  withdrawnAt         DateTime?        @map("withdrawn_at")
+  withdrawalReason    String?          @map("withdrawal_reason")
+  notes               String?
+  createdByUserId     String?          @map("created_by_user_id") @db.Uuid
+  validatedByUserId   String?          @map("validated_by_user_id") @db.Uuid
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student      Person       @relation("StudentEnrollments", fields: [studentId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  level        Level        @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  class        Class?       @relation(fields: [classId], references: [id], onDelete: SetNull)
+
+  @@unique([studentId, academicYearId])
+  @@index([tenantId, academicYearId, status])
+  @@index([tenantId, classId])
+  @@map("enrollments")
 }
 
 // ─── Communication (M09) ───────────────────────────────────

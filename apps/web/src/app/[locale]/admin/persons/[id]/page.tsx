@@ -93,6 +93,43 @@ export default async function PersonDetailPage({
     });
   }
 
+  // Dossiers d'inscription (toutes années) — élève uniquement
+  let enrollmentHistory: Array<{
+    id: string;
+    yearLabel: string;
+    levelLabel: string;
+    className: string | null;
+    classId: string | null;
+    status: 'DRAFT' | 'ACTIVE' | 'WITHDRAWN' | 'GRADUATED';
+    siblingRank: number | null;
+    discountPct: number | null;
+    enrolledAt: Date;
+  }> = [];
+  if (person.type === 'STUDENT') {
+    enrollmentHistory = await withTenant(tenantId, async (tx) => {
+      const rows = await tx.enrollment.findMany({
+        where: { studentId: id },
+        include: {
+          academicYear: { select: { label: true } },
+          level: { select: { label: true } },
+          class: { select: { id: true, name: true } },
+        },
+        orderBy: { academicYear: { startDate: 'desc' } },
+      });
+      return rows.map((r) => ({
+        id: r.id,
+        yearLabel: r.academicYear.label,
+        levelLabel: r.level.label,
+        className: r.class?.name ?? null,
+        classId: r.class?.id ?? null,
+        status: r.status as 'DRAFT' | 'ACTIVE' | 'WITHDRAWN' | 'GRADUATED',
+        siblingRank: r.siblingRank,
+        discountPct: r.discountPct !== null ? Number(r.discountPct) : null,
+        enrolledAt: r.enrolledAt,
+      }));
+    });
+  }
+
   // Récap présences élève (TOUTE l'année active : présent/absent/retard/excusé).
   type StudentAttSummary = {
     total: number;
@@ -612,6 +649,66 @@ export default async function PersonDetailPage({
             </section>
           )}
 
+          {person.type === 'STUDENT' && enrollmentHistory.length > 0 && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-slate-700">
+                  {tDetail('enrollmentHistory.title')}
+                </h2>
+                <Link
+                  href={`/${locale}/admin/enrollments/new?studentId=${person.id}`}
+                  className="text-xs font-medium text-brand-700 hover:underline"
+                >
+                  + {tDetail('enrollmentHistory.newAction')}
+                </Link>
+              </div>
+              <ul className="mt-3 space-y-2 text-sm">
+                {enrollmentHistory.map((e) => (
+                  <li
+                    key={e.id}
+                    className="rounded-lg border border-slate-100 px-3 py-2"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Link
+                        href={`/${locale}/admin/enrollments/${e.id}`}
+                        className="font-medium text-slate-900 hover:text-brand-700 hover:underline"
+                      >
+                        {e.yearLabel}
+                      </Link>
+                      <EnrollmentBadge status={e.status} t={tDetail} />
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {e.levelLabel}
+                      {e.className && e.classId && (
+                        <>
+                          {' · '}
+                          <Link
+                            href={`/${locale}/admin/classes/${e.classId}`}
+                            className="hover:text-brand-700"
+                          >
+                            {e.className}
+                          </Link>
+                        </>
+                      )}
+                      {e.siblingRank && (
+                        <>
+                          {' · '}
+                          {tDetail('enrollmentHistory.rank', { rank: e.siblingRank })}
+                        </>
+                      )}
+                      {e.discountPct !== null && (
+                        <>
+                          {' · '}
+                          <span className="text-emerald-700">−{e.discountPct}%</span>
+                        </>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           {person.type === 'STUDENT' && (
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="text-sm font-semibold text-slate-700">{tDetail('classes')}</h2>
@@ -877,6 +974,26 @@ function Row({ label, value, mono }: { label: string; value?: string; mono?: boo
         {value ?? <span className="text-slate-400">—</span>}
       </dd>
     </div>
+  );
+}
+
+function EnrollmentBadge({
+  status,
+  t,
+}: {
+  status: 'DRAFT' | 'ACTIVE' | 'WITHDRAWN' | 'GRADUATED';
+  t: (k: string) => string;
+}) {
+  const map = {
+    DRAFT: 'bg-amber-100 text-amber-700',
+    ACTIVE: 'bg-emerald-100 text-emerald-700',
+    WITHDRAWN: 'bg-red-100 text-red-700',
+    GRADUATED: 'bg-blue-100 text-blue-700',
+  } as const;
+  return (
+    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${map[status]}`}>
+      {t(`enrollmentHistory.status.${status}`)}
+    </span>
   );
 }
 

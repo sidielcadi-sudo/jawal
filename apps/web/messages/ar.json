@@ -133,6 +133,7 @@
       "staff": "الموظفون",
       "parents": "الآباء",
       "classes": "الأقسام",
+      "enrollments": "التسجيلات",
       "attendance": "الحضور",
       "justifications": "المبررات",
       "staffAttendance": "تسجيل دوام الموظفين",
@@ -210,6 +211,90 @@
       "approve": "قبول",
       "reject": "رفض",
       "rejectNotePlaceholder": "سبب الرفض (اختياري)"
+    },
+    "enrollments": {
+      "title": "التسجيلات",
+      "subtitle": "متابعة ملفات التسجيل حسب السنة الدراسية.",
+      "year": "السنة",
+      "apply": "تصفية",
+      "newButton": "تسجيل جديد",
+      "empty": "لا توجد ملفات تسجيل لهذه السنة.",
+      "yes": "نعم",
+      "no": "لا",
+      "status": {
+        "DRAFT": "مسودة",
+        "ACTIVE": "مُسجل",
+        "WITHDRAWN": "منسحب",
+        "GRADUATED": "متخرج"
+      },
+      "filter": {
+        "all": "الكل",
+        "draft": "مسودات",
+        "active": "مُسجلون",
+        "withdrawn": "منسحبون",
+        "graduated": "متخرجون"
+      },
+      "table": {
+        "student": "التلميذ",
+        "level": "المستوى",
+        "class": "القسم",
+        "status": "الحالة",
+        "rank": "الرتبة",
+        "discount": "تخفيض",
+        "enrolledAt": "التاريخ",
+        "open": "فتح"
+      },
+      "new": {
+        "title": "تسجيل جديد",
+        "subtitle": "إنشاء ملف مسودة. المصادقة تنشئ جدول الأقساط وتُسند القسم.",
+        "student": "التلميذ",
+        "studentPlaceholder": "اختر تلميذاً…",
+        "year": "السنة الدراسية",
+        "level": "المستوى",
+        "levelPlaceholder": "اختر مستوى…",
+        "notes": "ملاحظات (اختياري)",
+        "notesPlaceholder": "تفاصيل، طلبات خاصة…",
+        "draftHint": "يُنشأ الملف في وضع المسودة. المصادقة تتم في الخطوة التالية مع إسناد القسم وإنشاء الأقساط.",
+        "cancel": "إلغاء",
+        "create": "إنشاء الملف"
+      },
+      "detail": {
+        "summary": "ملخص",
+        "enrolledAt": "أُنشئ في",
+        "validatedAt": "صودق عليه في",
+        "withdrawnAt": "سُحب في",
+        "siblingRank": "ترتيب الإخوة",
+        "notComputed": "غير محسوب",
+        "discount": "التخفيض المطبق",
+        "noDiscount": "لا شيء",
+        "discountReason": "سبب التخفيض",
+        "withdrawalReason": "سبب الانسحاب",
+        "notes": "ملاحظات",
+        "fees": "الرسوم والأقساط",
+        "feesEmpty": "لم يتم إنشاء أي قسط. ربما تكون شبكة الرسوم فارغة لهذا المستوى.",
+        "feesGenerated": "أقساط مُنشأة",
+        "totalDue": "الإجمالي المستحق",
+        "totalPaid": "الإجمالي المسدد",
+        "remaining": "المتبقي للسداد",
+        "cancelledCount": "أقساط مُلغاة",
+        "viewFinance": "عرض في المالية"
+      },
+      "actions": {
+        "validate": "مصادقة التسجيل",
+        "validateHint": "المصادقة تُسند القسم وتُنشئ الأقساط. تخفيض الإخوة الآلي : {pct}% ابتداءً من الطفل الثاني.",
+        "noCompatibleClass": "لا يوجد قسم متاح لهذا المستوى وهذه السنة. أنشئ قسماً أولاً.",
+        "chooseClass": "القسم المُسند",
+        "chooseClassPlaceholder": "اختر قسماً…",
+        "discountOverride": "تخفيض يدوي (%)",
+        "discountAuto": "آلي : {pct}%",
+        "discountReason": "السبب",
+        "validateBtn": "المصادقة وإنشاء الأقساط",
+        "withdraw": "انسحاب",
+        "withdrawHint": "إلغاء الأقساط المنتظرة/الجزئية وإلغاء تسجيل التلميذ من القسم. المدفوعات المحصلة محفوظة.",
+        "withdrawReason": "سبب الانسحاب",
+        "withdrawReasonPlaceholder": "مثال : انتقال، تحويل، سبب طبي…",
+        "withdrawBtn": "تأكيد الانسحاب"
+      }
     },
     "staffAttendance": {
       "title": "تسجيل دوام الموظفين",
@@ -506,6 +591,17 @@
           "late": "متأخر",
           "excused": "معذر",
           "leave": "إجازة"
+        },
+        "enrollmentHistory": {
+          "title": "سجل التسجيلات",
+          "newAction": "ملف جديد",
+          "rank": "الترتيب {rank}",
+          "status": {
+            "DRAFT": "مسودة",
+            "ACTIVE": "مُسجل",
+            "WITHDRAWN": "منسحب",
+            "GRADUATED": "متخرج"
+          }
         },
         "studentAttendance": {
           "title": "الحضور (السنة الحالية)",

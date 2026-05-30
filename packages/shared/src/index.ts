@@ -3,6 +3,7 @@ export * from './schemas/attendance';
 export * from './schemas/class';
 export * from './schemas/communication';
 export * from './schemas/council';
+export * from './schemas/enrollment';
 export * from './schemas/finance';
 export * from './schemas/grading';
 export * from './schemas/justification';

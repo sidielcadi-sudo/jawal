@@ -630,6 +630,91 @@ async function main() {
     }
   }
 
+  // 11.bis Inscriptions (Enrollments) — rétroactif pour les élèves Benani
+  // déjà rattachés à 1AC-A (Yassine ACTIVE rang 1, Youssra ACTIVE rang 2 avec
+  // réduction fratrie 10%). + Salma en DRAFT pour démo du workflow.
+  const enrollmentsExist = await prisma.enrollment.count({
+    where: { tenantId: tenant.id, academicYearId: year.id },
+  });
+  if (enrollmentsExist === 0) {
+    const level1ac = await prisma.level.findUniqueOrThrow({
+      where: { tenantId_code: { tenantId: tenant.id, code: '1ac' } },
+    });
+    const classe1ac = await prisma.class.findFirstOrThrow({
+      where: { tenantId: tenant.id, levelId: level1ac.id, academicYearId: year.id },
+    });
+
+    const yassineDb = await prisma.person.findFirst({
+      where: { tenantId: tenant.id, type: PersonType.STUDENT, firstName: 'Yassine', lastName: 'Benani' },
+    });
+    const youssraDb = await prisma.person.findFirst({
+      where: { tenantId: tenant.id, type: PersonType.STUDENT, firstName: 'Youssra', lastName: 'Benani' },
+    });
+    const salmaDb = await prisma.person.findFirst({
+      where: { tenantId: tenant.id, type: PersonType.STUDENT, firstName: 'Salma' },
+    });
+
+    if (yassineDb) {
+      await prisma.enrollment.create({
+        data: {
+          tenantId: tenant.id,
+          studentId: yassineDb.id,
+          academicYearId: year.id,
+          levelId: level1ac.id,
+          classId: classe1ac.id,
+          status: 'ACTIVE',
+          siblingRank: 1,
+          discountPct: null,
+          feesGenerated: true,
+          validatedAt: new Date(),
+        },
+      });
+    }
+    if (youssraDb) {
+      await prisma.enrollment.create({
+        data: {
+          tenantId: tenant.id,
+          studentId: youssraDb.id,
+          academicYearId: year.id,
+          levelId: level1ac.id,
+          classId: classe1ac.id,
+          status: 'ACTIVE',
+          siblingRank: 2,
+          discountPct: 10,
+          discountReason: 'Réduction fratrie (2ᵉ enfant Benani)',
+          feesGenerated: true,
+          validatedAt: new Date(),
+        },
+      });
+    }
+    if (salmaDb) {
+      await prisma.enrollment.create({
+        data: {
+          tenantId: tenant.id,
+          studentId: salmaDb.id,
+          academicYearId: year.id,
+          levelId: level1ac.id,
+          status: 'DRAFT',
+          notes: 'Préinscription en attente de validation',
+        },
+      });
+    }
+    console.log(`  ✓ Enrollments démo : Yassine + Youssra ACTIVE (fratrie 10%), Salma DRAFT`);
+  } else {
+    console.log(`  ✓ Enrollments déjà présents (${enrollmentsExist})`);
+  }
+
+  // 11.ter Tenant settings : siblingDiscountPct par défaut 10 (idempotent)
+  const currentTenant = await prisma.tenant.findUnique({ where: { id: tenant.id } });
+  const settings = (currentTenant?.settings ?? {}) as Record<string, unknown>;
+  if (settings.siblingDiscountPct === undefined) {
+    await prisma.tenant.update({
+      where: { id: tenant.id },
+      data: { settings: { ...settings, siblingDiscountPct: 10 } },
+    });
+    console.log(`  ✓ Tenant setting siblingDiscountPct = 10`);
+  }
+
   // 12. Pointage personnel — 5 jours pour Amina (idempotent)
   const aminaForAttendance = await prisma.person.findFirst({
     where: { tenantId: tenant.id, type: PersonType.TEACHER, firstName: 'Amina' },
