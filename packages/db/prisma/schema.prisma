@@ -117,6 +117,16 @@ enum EnrollmentStatus {
   GRADUATED
 }
 
+enum DayOfWeek {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
 enum PaymentMethod {
   CASH       // espèces (caisse)
   CHEQUE
@@ -198,6 +208,8 @@ model Tenant {
   diplomas           Diploma[]
   staffAttendance    StaffAttendance[]
   enrollments        Enrollment[]
+  timetableSlots     TimetableSlot[]
+  timetableEntries   TimetableEntry[]
 
   @@map("tenants")
 }
@@ -302,6 +314,7 @@ model Person {
   diplomas           Diploma[]
   staffAttendance    StaffAttendance[]   @relation("StaffAttendance")
   enrollments        Enrollment[]        @relation("StudentEnrollments")
+  timetableEntries   TimetableEntry[]    @relation("TeacherTimetable")
   /// Liens de parenté où cette personne est l'enfant (FROM = student/PARENT-child)
   relationsAsChild   PersonRelation[]   @relation("ChildRelations")
   /// Liens où cette personne est le parent/tuteur (TO = parent/guardian)
@@ -509,6 +522,7 @@ model AcademicYear {
   feeSchedules FeeScheduleItem[]
   teacherAssignments TeacherAssignment[]
   enrollments  Enrollment[]
+  timetableEntries TimetableEntry[]
 
   @@unique([tenantId, label])
   @@map("academic_years")
@@ -612,6 +626,7 @@ model Class {
   evaluations  Evaluation[]
   teacherAssignments TeacherAssignment[]
   enrollments  Enrollment[]
+  timetableEntries TimetableEntry[]
 
   @@unique([tenantId, academicYearId, name])
   @@index([tenantId, levelId])
@@ -644,6 +659,7 @@ model Room {
   createdAt DateTime @default(now()) @map("created_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  timetableEntries TimetableEntry[]
 
   @@unique([tenantId, code])
   @@map("rooms")
@@ -820,6 +836,7 @@ model Subject {
   teacherAssignments TeacherAssignment[]
   curriculumEntries CurriculumSubject[]
   teacherSpecialties TeacherSpecialty[]
+  timetableEntries  TimetableEntry[]
 
   @@unique([tenantId, code])
   /// Empêche deux matières d'avoir le même libellé dans un même tenant —
@@ -966,6 +983,73 @@ model Enrollment {
   @@index([tenantId, academicYearId, status])
   @@index([tenantId, classId])
   @@map("enrollments")
+}
+
+// ─── Emploi du temps (M12) ─────────────────────────────────
+
+/// Créneau horaire de la grille de l'établissement (semaine type). Réutilisé
+/// par toutes les classes : ex 08h00-09h00, 09h00-10h00, … et créneaux pause
+/// (récré, cantine). Unique par (tenant × startTime × endTime).
+model TimetableSlot {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  /// Heure de début au format HH:MM (24h)
+  startTime String   @map("start_time")
+  /// Heure de fin au format HH:MM (24h)
+  endTime   String   @map("end_time")
+  /// Libellé optionnel (« Récréation », « Pause déjeuner »…). Si null,
+  /// l'UI affiche juste l'intervalle horaire.
+  label     String?
+  /// True si pas de cours saisissable (pause/récré). Aucune TimetableEntry
+  /// ne devrait pointer vers ce slot.
+  isBreak   Boolean  @default(false) @map("is_break")
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entries TimetableEntry[]
+
+  @@unique([tenantId, startTime, endTime])
+  @@index([tenantId, order])
+  @@map("timetable_slots")
+}
+
+/// Une case de l'emploi du temps : pour une (classe × jour × créneau) sur
+/// une année scolaire, on a (matière × prof × salle). Unique sur
+/// (classId × academicYearId × dayOfWeek × slotId).
+///
+/// Les conflits prof (même prof dans 2 classes au même créneau) et
+/// salle (même salle dans 2 classes au même créneau) sont détectés au
+/// vol côté serveur — pas de contrainte SQL pour permettre le rattrapage
+/// (l'admin peut vouloir saisir un conflit puis le résoudre).
+model TimetableEntry {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  academicYearId  String    @map("academic_year_id") @db.Uuid
+  classId         String    @map("class_id") @db.Uuid
+  slotId          String    @map("slot_id") @db.Uuid
+  dayOfWeek       DayOfWeek @map("day_of_week")
+  subjectId       String?   @map("subject_id") @db.Uuid
+  teacherId       String?   @map("teacher_id") @db.Uuid
+  roomId          String?   @map("room_id") @db.Uuid
+  note            String?
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear  @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  class        Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  slot         TimetableSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  subject      Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  teacher      Person?       @relation("TeacherTimetable", fields: [teacherId], references: [id], onDelete: SetNull)
+  room         Room?         @relation(fields: [roomId], references: [id], onDelete: SetNull)
+
+  @@unique([classId, academicYearId, dayOfWeek, slotId])
+  @@index([tenantId, academicYearId, dayOfWeek, slotId])
+  @@index([tenantId, teacherId])
+  @@index([tenantId, roomId])
+  @@map("timetable_entries")
 }
 
 // ─── Communication (M09) ───────────────────────────────────

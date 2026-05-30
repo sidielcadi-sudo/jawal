@@ -803,6 +803,68 @@ async function main() {
     }
   }
 
+  // 13. Emploi du temps — grille horaire standard + EDT type pour 1AC-A
+  const slotsCount = await prisma.timetableSlot.count({ where: { tenantId: tenant.id } });
+  if (slotsCount === 0) {
+    const slotDefs = [
+      { start: '08:00', end: '09:00', label: null, isBreak: false, order: 1 },
+      { start: '09:00', end: '10:00', label: null, isBreak: false, order: 2 },
+      { start: '10:00', end: '10:15', label: 'Récréation', isBreak: true, order: 3 },
+      { start: '10:15', end: '11:15', label: null, isBreak: false, order: 4 },
+      { start: '11:15', end: '12:15', label: null, isBreak: false, order: 5 },
+      { start: '12:15', end: '14:00', label: 'Pause déjeuner', isBreak: true, order: 6 },
+      { start: '14:00', end: '15:00', label: null, isBreak: false, order: 7 },
+      { start: '15:00', end: '16:00', label: null, isBreak: false, order: 8 },
+    ];
+    for (const s of slotDefs) {
+      await prisma.timetableSlot.create({
+        data: {
+          tenantId: tenant.id,
+          startTime: s.start,
+          endTime: s.end,
+          label: s.label,
+          isBreak: s.isBreak,
+          order: s.order,
+        },
+      });
+    }
+    console.log(`  ✓ Grille horaire : ${slotDefs.length} créneaux (6 cours + 2 pauses)`);
+
+    // EDT type pour 1AC-A : place Amina en maths sur lundi 08-09 + 09-10
+    const classe1ac = await prisma.class.findFirst({
+      where: { tenantId: tenant.id, academicYearId: year.id },
+    });
+    const amina = await prisma.person.findFirst({
+      where: { tenantId: tenant.id, type: PersonType.TEACHER, firstName: 'Amina' },
+    });
+    const maths = await prisma.subject.findFirst({
+      where: { tenantId: tenant.id, label: 'Mathématiques' },
+    });
+    const slots = await prisma.timetableSlot.findMany({
+      where: { tenantId: tenant.id, isBreak: false },
+      orderBy: { order: 'asc' },
+    });
+    if (classe1ac && amina && maths && slots.length >= 2) {
+      const monMorning = slots.slice(0, 2);
+      for (const slot of monMorning) {
+        await prisma.timetableEntry.create({
+          data: {
+            tenantId: tenant.id,
+            academicYearId: year.id,
+            classId: classe1ac.id,
+            slotId: slot.id,
+            dayOfWeek: 'MON',
+            subjectId: maths.id,
+            teacherId: amina.id,
+          },
+        });
+      }
+      console.log(`  ✓ EDT démo : Amina · Maths · 1AC-A lundi 08h-10h (2 créneaux)`);
+    }
+  } else {
+    console.log(`  ✓ Grille horaire déjà présente (${slotsCount} créneaux)`);
+  }
+
   console.log('\n✅ Seed terminé.\n');
   console.log('────────────── Comptes de démonstration ──────────────');
   console.log(`  Admin établissement   : ${DEMO_ADMIN_EMAIL}`);

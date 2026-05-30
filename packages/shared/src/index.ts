@@ -10,3 +10,4 @@ export * from './schemas/justification';
 export * from './schemas/person';
 export * from './schemas/staff-attendance';
 export * from './schemas/tenant';
+export * from './schemas/timetable';

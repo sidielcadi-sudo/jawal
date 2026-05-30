@@ -388,6 +388,14 @@ export default async function PersonDetailPage({
               {tDetail('finance')}
             </Link>
           )}
+          {person.type === 'TEACHER' && (
+            <Link
+              href={`/${locale}/admin/persons/${person.id}/timetable`}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              {tDetail('timetable')}
+            </Link>
+          )}
           <PersonActions personId={person.id} isArchived={!!person.deletedAt} locale={locale} />
         </div>
       </header>
