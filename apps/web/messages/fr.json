@@ -507,6 +507,25 @@
           "excused": "Excusés",
           "leave": "Congés"
         },
+        "studentAttendance": {
+          "title": "Présences (année en cours)",
+          "empty": "Aucun appel saisi cette année.",
+          "rate": "Taux de présence",
+          "recentAbsences": "5 dernières absences / retards",
+          "justif": {
+            "PENDING": "Justification en attente",
+            "APPROVED": "Justification approuvée",
+            "REJECTED": "Justification rejetée"
+          }
+        },
+        "family": {
+          "title": "Vue famille",
+          "attendance": "Présence",
+          "absencesCount": "Absences",
+          "remaining": "Reste dû",
+          "upToDate": "À jour",
+          "paidOf": "{paid} / {due} MAD payés"
+        },
         "contractStatus": {
           "NO_CONTRACT": "Pas de contrat saisi",
           "NOT_STARTED": "Pas encore débuté",

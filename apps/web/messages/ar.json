@@ -507,6 +507,25 @@
           "excused": "معذر",
           "leave": "إجازة"
         },
+        "studentAttendance": {
+          "title": "الحضور (السنة الحالية)",
+          "empty": "لم يتم تسجيل أي نداء هذه السنة.",
+          "rate": "نسبة الحضور",
+          "recentAbsences": "آخر 5 غيابات / تأخرات",
+          "justif": {
+            "PENDING": "مبرر قيد المعالجة",
+            "APPROVED": "مبرر مقبول",
+            "REJECTED": "مبرر مرفوض"
+          }
+        },
+        "family": {
+          "title": "عرض العائلة",
+          "attendance": "الحضور",
+          "absencesCount": "غيابات",
+          "remaining": "المتبقي",
+          "upToDate": "محدث",
+          "paidOf": "{paid} / {due} درهم مدفوع"
+        },
         "contractStatus": {
           "NO_CONTRACT": "لا يوجد عقد مسجل",
           "NOT_STARTED": "لم يبدأ بعد",

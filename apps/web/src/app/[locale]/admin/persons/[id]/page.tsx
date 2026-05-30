@@ -93,6 +93,158 @@ export default async function PersonDetailPage({
     });
   }
 
+  // Récap présences élève (TOUTE l'année active : présent/absent/retard/excusé).
+  type StudentAttSummary = {
+    total: number;
+    present: number;
+    absent: number;
+    late: number;
+    excused: number;
+    rate: number | null;
+    recentAbsences: Array<{
+      id: string;
+      date: Date;
+      status: 'ABSENT' | 'LATE' | 'EXCUSED';
+      className: string;
+      justificationStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
+    }>;
+  };
+  let studentAttendance: StudentAttSummary | null = null;
+  if (person.type === 'STUDENT') {
+    studentAttendance = await withTenant(tenantId, async (tx) => {
+      const activeYear = await tx.academicYear.findFirst({ where: { active: true } });
+      if (!activeYear) {
+        return {
+          total: 0,
+          present: 0,
+          absent: 0,
+          late: 0,
+          excused: 0,
+          rate: null,
+          recentAbsences: [],
+        };
+      }
+
+      const records = await tx.attendanceRecord.findMany({
+        where: {
+          studentId: id,
+          session: {
+            date: { gte: activeYear.startDate, lte: activeYear.endDate },
+          },
+        },
+        include: {
+          session: { include: { class: { select: { name: true } } } },
+          justification: { select: { status: true } },
+        },
+        orderBy: { session: { date: 'desc' } },
+      });
+
+      const counts = records.reduce(
+        (acc, r) => {
+          acc.total += 1;
+          if (r.status === 'PRESENT') acc.present += 1;
+          if (r.status === 'ABSENT') acc.absent += 1;
+          if (r.status === 'LATE') acc.late += 1;
+          if (r.status === 'EXCUSED') acc.excused += 1;
+          return acc;
+        },
+        { total: 0, present: 0, absent: 0, late: 0, excused: 0 },
+      );
+
+      const rate = counts.total > 0 ? (counts.present / counts.total) * 100 : null;
+
+      const recentAbsences = records
+        .filter((r) => r.status !== 'PRESENT')
+        .slice(0, 5)
+        .map((r) => ({
+          id: r.id,
+          date: r.session.date,
+          status: r.status as 'ABSENT' | 'LATE' | 'EXCUSED',
+          className: r.session.class.name,
+          justificationStatus:
+            (r.justification?.status as 'PENDING' | 'APPROVED' | 'REJECTED' | undefined) ?? null,
+        }));
+
+      return { ...counts, rate, recentAbsences };
+    });
+  }
+
+  // Vue famille — pour les parents : pour chaque enfant rattaché, agréger
+  // classe actuelle, taux de présence et reste dû sur les échéances de l'année.
+  type FamilyChild = {
+    id: string;
+    firstName: string;
+    lastName: string;
+    relation: string;
+    className: string | null;
+    classId: string | null;
+    attendanceRate: number | null;
+    absences: number;
+    installmentsDue: number;
+    installmentsPaid: number;
+    installmentsRemaining: number;
+  };
+  let familyOverview: FamilyChild[] = [];
+  if (person.type === 'PARENT' && person.relationsAsParent.length > 0) {
+    familyOverview = await withTenant(tenantId, async (tx) => {
+      const activeYear = await tx.academicYear.findFirst({ where: { active: true } });
+      const out: FamilyChild[] = [];
+      for (const r of person.relationsAsParent) {
+        const child = r.child;
+        const sc = await tx.studentClass.findFirst({
+          where: {
+            studentId: child.id,
+            unenrolledAt: null,
+            ...(activeYear ? { class: { academicYearId: activeYear.id } } : {}),
+          },
+          include: { class: { select: { id: true, name: true } } },
+        });
+
+        let attendanceRate: number | null = null;
+        let absences = 0;
+        if (activeYear) {
+          const att = await tx.attendanceRecord.findMany({
+            where: {
+              studentId: child.id,
+              session: { date: { gte: activeYear.startDate, lte: activeYear.endDate } },
+            },
+            select: { status: true },
+          });
+          if (att.length > 0) {
+            const present = att.filter((a) => a.status === 'PRESENT').length;
+            attendanceRate = (present / att.length) * 100;
+            absences = att.filter((a) => a.status === 'ABSENT' || a.status === 'LATE').length;
+          }
+        }
+
+        const installments = await tx.installment.findMany({
+          where: { studentId: child.id, status: { not: 'CANCELLED' } },
+          include: { payments: true },
+        });
+        const due = installments.reduce((s, i) => s + Number(i.amount), 0);
+        const paid = installments.reduce(
+          (s, i) => s + i.payments.reduce((ps, p) => ps + Number(p.amount), 0),
+          0,
+        );
+
+        out.push({
+          id: child.id,
+          firstName: child.firstName,
+          lastName: child.lastName,
+          relation: r.type,
+          className: sc?.class.name ?? null,
+          classId: sc?.class.id ?? null,
+          attendanceRate,
+          absences,
+          installmentsDue: due,
+          installmentsPaid: paid,
+          installmentsRemaining: Math.max(0, due - paid),
+        });
+      }
+      return out;
+    });
+  }
+
   // Fratrie déduite : autres élèves ayant au moins un parent en commun.
   let siblings: { id: string; firstName: string; lastName: string }[] = [];
   if (person.type === 'STUDENT' && person.relationsAsChild.length > 0) {
@@ -480,6 +632,89 @@ export default async function PersonDetailPage({
             </section>
           )}
 
+          {person.type === 'STUDENT' && studentAttendance && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-slate-700">
+                {tDetail('studentAttendance.title')}
+              </h2>
+              {studentAttendance.total === 0 ? (
+                <p className="mt-2 text-xs text-slate-500">{tDetail('studentAttendance.empty')}</p>
+              ) : (
+                <>
+                  <div className="mt-3 flex items-center justify-between">
+                    <span className="text-xs text-slate-500">
+                      {tDetail('studentAttendance.rate')}
+                    </span>
+                    <span
+                      className={`text-lg font-semibold tabular-nums ${
+                        studentAttendance.rate !== null && studentAttendance.rate < 90
+                          ? 'text-red-700'
+                          : 'text-emerald-700'
+                      }`}
+                    >
+                      {studentAttendance.rate !== null
+                        ? `${studentAttendance.rate.toFixed(1)}%`
+                        : '—'}
+                    </span>
+                  </div>
+                  <div className="mt-3 grid grid-cols-4 gap-1.5 text-xs">
+                    <MiniStat
+                      label={tDetail('attendance.present')}
+                      value={studentAttendance.present}
+                      color="emerald"
+                    />
+                    <MiniStat
+                      label={tDetail('attendance.absent')}
+                      value={studentAttendance.absent}
+                      color="red"
+                    />
+                    <MiniStat
+                      label={tDetail('attendance.late')}
+                      value={studentAttendance.late}
+                      color="amber"
+                    />
+                    <MiniStat
+                      label={tDetail('attendance.excused')}
+                      value={studentAttendance.excused}
+                      color="blue"
+                    />
+                  </div>
+
+                  {studentAttendance.recentAbsences.length > 0 && (
+                    <div className="mt-4 border-t border-slate-100 pt-3">
+                      <span className="text-xs font-medium text-slate-700">
+                        {tDetail('studentAttendance.recentAbsences')}
+                      </span>
+                      <ul className="mt-2 space-y-1.5 text-xs">
+                        {studentAttendance.recentAbsences.map((a) => (
+                          <li
+                            key={a.id}
+                            className="flex items-center justify-between rounded-lg border border-slate-100 px-2 py-1.5"
+                          >
+                            <span className="text-slate-700">
+                              {new Date(a.date).toLocaleDateString(locale, {
+                                day: '2-digit',
+                                month: '2-digit',
+                              })}{' '}
+                              ·{' '}
+                              <span className="text-slate-500">{a.className}</span>
+                            </span>
+                            <span className="flex items-center gap-1.5">
+                              <StudentAttBadge status={a.status} t={tDetail} />
+                              {a.justificationStatus && (
+                                <JustifBadge status={a.justificationStatus} t={tDetail} />
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </>
+              )}
+            </section>
+          )}
+
           {person.type === 'STUDENT' && (
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="text-sm font-semibold text-slate-700">{tDetail('parents')}</h2>
@@ -526,22 +761,93 @@ export default async function PersonDetailPage({
 
           {person.type === 'PARENT' && (
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-700">{tDetail('children')}</h2>
-              {person.relationsAsParent.length === 0 ? (
+              <h2 className="text-sm font-semibold text-slate-700">{tDetail('family.title')}</h2>
+              {familyOverview.length === 0 ? (
                 <p className="mt-2 text-xs text-slate-500">{tDetail('noChild')}</p>
               ) : (
-                <ul className="mt-2 space-y-1.5 text-sm">
-                  {person.relationsAsParent.map((r) => (
-                    <li key={r.id} className="rounded-lg border border-slate-100 px-3 py-1.5">
-                      <Link
-                        href={`/${locale}/admin/persons/${r.child.id}`}
-                        className="font-medium text-slate-900 hover:text-brand-700"
-                      >
-                        {r.child.lastName} {r.child.firstName}
-                      </Link>
-                      <span className="ms-1.5 text-xs text-slate-500">
-                        ({tDetail(`relations.${r.type}` as never)})
-                      </span>
+                <ul className="mt-3 space-y-3">
+                  {familyOverview.map((child) => (
+                    <li
+                      key={child.id}
+                      className="rounded-xl border border-slate-200 p-3"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <Link
+                            href={`/${locale}/admin/persons/${child.id}`}
+                            className="font-medium text-slate-900 hover:text-brand-700 hover:underline"
+                          >
+                            {child.lastName} {child.firstName}
+                          </Link>
+                          <span className="ms-1.5 text-[10px] uppercase text-slate-400">
+                            {tDetail(`relations.${child.relation}` as never)}
+                          </span>
+                        </div>
+                        {child.className && child.classId && (
+                          <Link
+                            href={`/${locale}/admin/classes/${child.classId}`}
+                            className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-200"
+                          >
+                            {child.className}
+                          </Link>
+                        )}
+                      </div>
+
+                      <div className="mt-2.5 grid grid-cols-3 gap-2 text-[11px]">
+                        <div className="rounded-lg border border-slate-100 px-2 py-1.5 text-center">
+                          <div
+                            className={`text-sm font-semibold tabular-nums ${
+                              child.attendanceRate !== null && child.attendanceRate < 90
+                                ? 'text-red-700'
+                                : 'text-emerald-700'
+                            }`}
+                          >
+                            {child.attendanceRate !== null
+                              ? `${child.attendanceRate.toFixed(0)}%`
+                              : '—'}
+                          </div>
+                          <div className="text-[10px] uppercase text-slate-500">
+                            {tDetail('family.attendance')}
+                          </div>
+                        </div>
+                        <div className="rounded-lg border border-slate-100 px-2 py-1.5 text-center">
+                          <div
+                            className={`text-sm font-semibold tabular-nums ${
+                              child.absences > 0 ? 'text-red-700' : 'text-slate-600'
+                            }`}
+                          >
+                            {child.absences}
+                          </div>
+                          <div className="text-[10px] uppercase text-slate-500">
+                            {tDetail('family.absencesCount')}
+                          </div>
+                        </div>
+                        <div className="rounded-lg border border-slate-100 px-2 py-1.5 text-center">
+                          <div
+                            className={`text-sm font-semibold tabular-nums ${
+                              child.installmentsRemaining > 0 ? 'text-amber-700' : 'text-emerald-700'
+                            }`}
+                          >
+                            {child.installmentsRemaining > 0
+                              ? `${child.installmentsRemaining.toFixed(0)}`
+                              : '✓'}
+                          </div>
+                          <div className="text-[10px] uppercase text-slate-500">
+                            {child.installmentsRemaining > 0
+                              ? tDetail('family.remaining')
+                              : tDetail('family.upToDate')}
+                          </div>
+                        </div>
+                      </div>
+
+                      {child.installmentsDue > 0 && (
+                        <div className="mt-2 text-[10px] text-slate-500">
+                          {tDetail('family.paidOf', {
+                            paid: child.installmentsPaid.toFixed(0),
+                            due: child.installmentsDue.toFixed(0),
+                          })}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -571,6 +877,52 @@ function Row({ label, value, mono }: { label: string; value?: string; mono?: boo
         {value ?? <span className="text-slate-400">—</span>}
       </dd>
     </div>
+  );
+}
+
+function StudentAttBadge({
+  status,
+  t,
+}: {
+  status: 'ABSENT' | 'LATE' | 'EXCUSED';
+  t: (k: string) => string;
+}) {
+  const map = {
+    ABSENT: 'bg-red-100 text-red-700',
+    LATE: 'bg-amber-100 text-amber-700',
+    EXCUSED: 'bg-blue-100 text-blue-700',
+  } as const;
+  const labelMap = {
+    ABSENT: 'attendance.absent',
+    LATE: 'attendance.late',
+    EXCUSED: 'attendance.excused',
+  } as const;
+  return (
+    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${map[status]}`}>
+      {t(labelMap[status])}
+    </span>
+  );
+}
+
+function JustifBadge({
+  status,
+  t,
+}: {
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  t: (k: string) => string;
+}) {
+  const map = {
+    PENDING: 'bg-amber-100 text-amber-800 border-amber-300',
+    APPROVED: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+    REJECTED: 'bg-red-100 text-red-800 border-red-300',
+  } as const;
+  return (
+    <span
+      className={`rounded border px-1.5 py-0.5 text-[10px] font-medium ${map[status]}`}
+      title={t(`studentAttendance.justif.${status}`)}
+    >
+      {status === 'PENDING' ? '?' : status === 'APPROVED' ? '✓' : '✕'}
+    </span>
   );
 }
 
