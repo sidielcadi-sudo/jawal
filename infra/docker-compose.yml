@@ -10,6 +10,7 @@
 #   - Redis        localhost:6379
 #   - MinIO        localhost:9000 (API) / localhost:9001 (console)
 #   - Mailpit      localhost:1025 (SMTP) / localhost:8025 (UI)
+#   - Solver       localhost:8001   (OR-Tools FastAPI — génération EDT)
 
 name: jawal-dev
 
@@ -79,6 +80,20 @@ services:
       MP_MAX_MESSAGES: 5000
       MP_SMTP_AUTH_ACCEPT_ANY: 1
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+  solver:
+    build:
+      context: ../apps/solver
+      dockerfile: Dockerfile
+    container_name: jawal-solver
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
 
 volumes:
   postgres_data:

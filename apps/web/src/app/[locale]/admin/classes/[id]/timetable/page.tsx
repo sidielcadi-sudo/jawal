@@ -14,6 +14,7 @@ import {
 } from '@/lib/timetable-validation';
 import { TimetableGrid, type GridEntry, type GridSlot, type SubjectOpt, type TeacherOpt, type RoomOpt } from './grid';
 import { OverridesPanel } from './overrides';
+import { GenerateButton } from './generate-button';
 
 const DAYS: DayKey[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -218,12 +219,15 @@ export default async function ClassTimetablePage({
             {cls.level.cycle.label} · {cls.level.label} · {cls.academicYear.label}
           </p>
         </div>
-        <Link
-          href={`/${locale}/admin/settings/timetable-slots`}
-          className="text-xs text-brand-700 hover:underline"
-        >
-          {t('manageSlots')} →
-        </Link>
+        <div className="flex items-center gap-3">
+          <GenerateButton classId={cls.id} />
+          <Link
+            href={`/${locale}/admin/settings/timetable-slots`}
+            className="text-xs text-brand-700 hover:underline"
+          >
+            {t('manageSlots')} →
+          </Link>
+        </div>
       </header>
 
       {slots.length === 0 ? (
