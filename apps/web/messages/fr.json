@@ -104,7 +104,8 @@
       "actions": {
         "exports": "Exports CSV",
         "finance": "Finances",
-        "announcements": "Annonces"
+        "announcements": "Annonces",
+        "generateTimetable": "Générer les EDT"
       },
       "contractAlerts": {
         "title": "Contrats à renouveler",
@@ -410,6 +411,37 @@
       "print": "Imprimer / PDF",
       "printedOn": "Imprimé le {date}",
       "exportIcs": "Exporter (iCal)",
+      "generateMulti": {
+        "title": "Génération automatique des emplois du temps",
+        "subtitle": "Sélectionnez les classes à régénérer simultanément. Le solveur applique les contraintes (anti-conflit prof, dispos, salles) et propose une affectation optimisée.",
+        "breadcrumbAdmin": "Tableau de bord",
+        "year": "Année",
+        "apply": "Voir",
+        "noYear": "Aucune année scolaire — créez-en une dans Paramètres.",
+        "noClasses": "Aucune classe pour cette année.",
+        "classesHeader": "{count}/{total} classes sélectionnées",
+        "selectAll": "Tout sélectionner",
+        "selectNone": "Tout désélectionner",
+        "assignmentCount": "{count, plural, =0 {Aucune affectation} one {# affectation} other {# affectations}}",
+        "hasEntries": "{count} cases déjà saisies",
+        "viewClass": "Voir EDT",
+        "summary": "{count, plural, one {# classe sera générée} other {# classes seront générées}}",
+        "summaryOverwrite": "(dont {count} écraseront un EDT existant)",
+        "summaryEmpty": "Sélectionnez au moins une classe.",
+        "runButton": "Générer les EDT",
+        "running": "Génération…",
+        "confirmTitle": "Lancer la génération ?",
+        "confirmBody": "{count} classes seront régénérées. {count, plural, =0 {} other {Cela peut prendre jusqu'à 30 secondes.}} {overwrite, plural, =0 {} other {⚠ {overwrite} classe(s) ont déjà un EDT qui sera écrasé.}}",
+        "confirm": "Lancer",
+        "cancel": "Annuler",
+        "close": "Fermer",
+        "resultOk": "Génération réussie",
+        "resultPartial": "Génération partielle",
+        "resultError": "Échec de la génération",
+        "consecutiveBlocks": "{count, plural, one {# bloc 2h} other {# blocs 2h}}",
+        "placedHours": "{count, plural, one {# heure placée} other {# heures placées}}",
+        "unplacedCount": "{count, plural, one {# non placée} other {# non placées}}"
+      },
       "generate": {
         "button": "Générer l'EDT",
         "running": "Génération…",

@@ -112,3 +112,69 @@ class GenerateResponse(BaseModel):
     placed: list[PlacedEntry]
     unplaced: list[UnplacedAssignment]
     message: str = ""
+
+
+# ─── Phase B : multi-classes + salles ────────────────────────────
+
+
+class RoomInput(BaseModel):
+    """Salle de cours utilisable par le solveur."""
+
+    id: str
+    label: str
+
+
+class MultiAssignmentInput(BaseModel):
+    """Affectation pédagogique en mode multi-classes.
+
+    Identique à AssignmentInput, mais on documente que `class_id` peut être
+    n'importe lequel des classes du payload.
+    """
+
+    id: str
+    teacher_id: str
+    subject_id: str
+    subject_label: str
+    class_id: str
+    class_name: str
+    weekly_hours: int = Field(..., ge=0, le=40)
+
+
+class MultiGenerateRequest(BaseModel):
+    """Génération simultanée pour plusieurs classes.
+
+    Toutes les contraintes (anti-conflit prof, salle, dispo) sont gérées
+    *au sein du même modèle CSP* : plus de notion de busy_teacher_slots,
+    tout est résolu globalement.
+    """
+
+    class_ids: list[str] = Field(..., min_length=1)
+    slots: list[SlotInput]
+    days: list[DayKey] = Field(default=["MON", "TUE", "WED", "THU", "FRI", "SAT"])
+    teachers: list[TeacherInput]
+    rooms: list[RoomInput] = Field(default_factory=list)
+    assignments: list[MultiAssignmentInput]
+    max_solve_seconds: float = Field(15.0, ge=1.0, le=120.0)
+    # Bonus pour cours consécutifs (heuristique douce).
+    # 0 = neutre, >0 = on favorise les blocs 2h.
+    consecutive_bonus: int = Field(1, ge=0, le=10)
+
+
+class MultiPlacedEntry(BaseModel):
+    assignment_id: str
+    class_id: str
+    subject_id: str
+    teacher_id: str
+    room_id: str | None = None
+    day: DayKey
+    slot_id: str
+
+
+class MultiGenerateResponse(BaseModel):
+    status: Literal["OPTIMAL", "FEASIBLE", "PARTIAL", "INFEASIBLE", "ERROR"]
+    solver_time_ms: int
+    placed: list[MultiPlacedEntry]
+    unplaced: list[UnplacedAssignment]
+    message: str = ""
+    # Nombre de blocs 2h consécutifs créés (qualité de la solution).
+    consecutive_blocks: int = 0

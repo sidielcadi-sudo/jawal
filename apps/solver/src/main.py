@@ -6,8 +6,14 @@ Next.js collecte les données, appelle ce service, persiste le résultat.
 
 from fastapi import FastAPI
 
-from .schemas import GenerateRequest, GenerateResponse
+from .schemas import (
+    GenerateRequest,
+    GenerateResponse,
+    MultiGenerateRequest,
+    MultiGenerateResponse,
+)
 from .solver import solve
+from .solver_multi import solve_multi
 
 app = FastAPI(
     title="Jawal Timetable Solver",
@@ -25,3 +31,9 @@ def health() -> dict[str, str]:
 def solve_endpoint(req: GenerateRequest) -> GenerateResponse:
     """Génère un EDT pour une classe selon les contraintes fournies."""
     return solve(req)
+
+
+@app.post("/solve-multi", response_model=MultiGenerateResponse)
+def solve_multi_endpoint(req: MultiGenerateRequest) -> MultiGenerateResponse:
+    """Génère l'EDT de plusieurs classes simultanément + affecte les salles."""
+    return solve_multi(req)

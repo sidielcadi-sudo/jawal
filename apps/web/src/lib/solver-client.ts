@@ -87,6 +87,50 @@ export async function callSolver(req: SolverRequest): Promise<SolverResponse> {
   return (await res.json()) as SolverResponse;
 }
 
+// ─── Phase B : multi-classes + salles ────────────────────────────
+
+export type SolverRoom = { id: string; label: string };
+
+export type SolverMultiRequest = {
+  class_ids: string[];
+  slots: SolverSlot[];
+  days: DayKey[];
+  teachers: SolverTeacher[];
+  rooms: SolverRoom[];
+  assignments: SolverAssignment[];
+  max_solve_seconds?: number;
+  consecutive_bonus?: number;
+};
+
+export type SolverMultiPlaced = SolverPlacedEntry & {
+  room_id: string | null;
+};
+
+export type SolverMultiResponse = {
+  status: SolverResponse['status'];
+  solver_time_ms: number;
+  placed: SolverMultiPlaced[];
+  unplaced: SolverUnplaced[];
+  message: string;
+  consecutive_blocks: number;
+};
+
+export async function callSolverMulti(
+  req: SolverMultiRequest,
+): Promise<SolverMultiResponse> {
+  const res = await fetch(`${SOLVER_URL}/solve-multi`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+    cache: 'no-store',
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Solver HTTP ${res.status}: ${text.slice(0, 200)}`);
+  }
+  return (await res.json()) as SolverMultiResponse;
+}
+
 export async function solverHealth(): Promise<boolean> {
   try {
     const res = await fetch(`${SOLVER_URL}/health`, { cache: 'no-store' });

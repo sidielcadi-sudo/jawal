@@ -104,7 +104,8 @@
       "actions": {
         "exports": "تصدير CSV",
         "finance": "المالية",
-        "announcements": "إعلانات"
+        "announcements": "إعلانات",
+        "generateTimetable": "توليد الجداول"
       },
       "contractAlerts": {
         "title": "عقود قارب على الانتهاء",
@@ -410,6 +411,37 @@
       "print": "طباعة / PDF",
       "printedOn": "طُبع في {date}",
       "exportIcs": "تصدير (iCal)",
+      "generateMulti": {
+        "title": "التوليد الآلي للجداول الزمنية",
+        "subtitle": "اختر الأقسام لإعادة توليدها مرة واحدة. يطبق الحلال القيود (تعارض الأستاذ، التوفر، القاعات) ويقترح إسناداً مُحسناً.",
+        "breadcrumbAdmin": "لوحة التحكم",
+        "year": "السنة",
+        "apply": "عرض",
+        "noYear": "لا توجد سنة دراسية — أنشئ واحدة في الإعدادات.",
+        "noClasses": "لا توجد أقسام لهذه السنة.",
+        "classesHeader": "{count}/{total} أقسام مختارة",
+        "selectAll": "تحديد الكل",
+        "selectNone": "إلغاء التحديد",
+        "assignmentCount": "{count, plural, =0 {لا توجد تكاليف} one {تكليف واحد} other {# تكاليف}}",
+        "hasEntries": "{count} خانات مسجلة",
+        "viewClass": "عرض الجدول",
+        "summary": "{count, plural, one {سيتم توليد قسم واحد} other {ستُولَّد # أقسام}}",
+        "summaryOverwrite": "(منها {count} سيستبدل جدولاً موجوداً)",
+        "summaryEmpty": "اختر قسماً واحداً على الأقل.",
+        "runButton": "توليد الجداول",
+        "running": "جاري التوليد…",
+        "confirmTitle": "بدء التوليد ؟",
+        "confirmBody": "ستُعاد توليد {count} أقسام. قد يستغرق ذلك حتى 30 ثانية. {overwrite, plural, =0 {} other {⚠ {overwrite} قسم/أقسام لديهم جدول سيُستبدل.}}",
+        "confirm": "بدء",
+        "cancel": "إلغاء",
+        "close": "إغلاق",
+        "resultOk": "تم التوليد بنجاح",
+        "resultPartial": "توليد جزئي",
+        "resultError": "فشل التوليد",
+        "consecutiveBlocks": "{count, plural, one {كتلة واحدة 2س} other {# كتل 2س}}",
+        "placedHours": "{count, plural, one {ساعة واحدة موضوعة} other {# ساعات موضوعة}}",
+        "unplacedCount": "{count, plural, one {# لم تُوضع} other {# لم تُوضع}}"
+      },
       "generate": {
         "button": "توليد الجدول",
         "running": "جاري التوليد…",

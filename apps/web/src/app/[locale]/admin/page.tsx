@@ -417,6 +417,12 @@ export default async function AdminDashboard({
         >
           📢 {t('actions.announcements')}
         </Link>
+        <Link
+          href={`/${locale}/admin/timetable/generate`}
+          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+        >
+          ✨ {t('actions.generateTimetable')}
+        </Link>
       </section>
     </div>
   );
