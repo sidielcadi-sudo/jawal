@@ -1,3 +1,7 @@
+-- Force l'encodage client en UTF-8 (sinon Windows console = WIN1252 et
+-- les caractères accentués/box-drawing cassent le parsing)
+SET CLIENT_ENCODING TO 'UTF8';
+
 -- ─────────────────────────────────────────────────────────────────────────
 -- Seed grandeur nature : collège marocain complet pour tester /solve-multi
 --
