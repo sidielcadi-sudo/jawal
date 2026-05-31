@@ -127,6 +127,15 @@ enum DayOfWeek {
   SUN
 }
 
+/// Type d'exception ponctuelle sur une case d'EDT pour une date précise.
+///  - CANCELLED : le cours n'a pas lieu ce jour-là
+///  - SUBSTITUTION : remplaçant (teacher) ou changement de salle (room) ou
+///    de matière, le reste de la semaine type reste inchangé
+enum TimetableOverrideKind {
+  CANCELLED
+  SUBSTITUTION
+}
+
 enum PaymentMethod {
   CASH       // espèces (caisse)
   CHEQUE
@@ -210,6 +219,7 @@ model Tenant {
   enrollments        Enrollment[]
   timetableSlots     TimetableSlot[]
   timetableEntries   TimetableEntry[]
+  timetableOverrides TimetableOverride[]
 
   @@map("tenants")
 }
@@ -315,6 +325,7 @@ model Person {
   staffAttendance    StaffAttendance[]   @relation("StaffAttendance")
   enrollments        Enrollment[]        @relation("StudentEnrollments")
   timetableEntries   TimetableEntry[]    @relation("TeacherTimetable")
+  substitutionsAsTeacher TimetableOverride[] @relation("SubstituteTeacher")
   /// Liens de parenté où cette personne est l'enfant (FROM = student/PARENT-child)
   relationsAsChild   PersonRelation[]   @relation("ChildRelations")
   /// Liens où cette personne est le parent/tuteur (TO = parent/guardian)
@@ -660,6 +671,7 @@ model Room {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   timetableEntries TimetableEntry[]
+  substitutionsAsRoom TimetableOverride[] @relation("SubstituteRoom")
 
   @@unique([tenantId, code])
   @@map("rooms")
@@ -837,6 +849,7 @@ model Subject {
   curriculumEntries CurriculumSubject[]
   teacherSpecialties TeacherSpecialty[]
   timetableEntries  TimetableEntry[]
+  substitutionsAsSubject TimetableOverride[] @relation("SubstituteSubject")
 
   @@unique([tenantId, code])
   /// Empêche deux matières d'avoir le même libellé dans un même tenant —
@@ -1044,12 +1057,43 @@ model TimetableEntry {
   subject      Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
   teacher      Person?       @relation("TeacherTimetable", fields: [teacherId], references: [id], onDelete: SetNull)
   room         Room?         @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  overrides    TimetableOverride[]
 
   @@unique([classId, academicYearId, dayOfWeek, slotId])
   @@index([tenantId, academicYearId, dayOfWeek, slotId])
   @@index([tenantId, teacherId])
   @@index([tenantId, roomId])
   @@map("timetable_entries")
+}
+
+/// Exception ponctuelle à une case d'EDT pour une date donnée. Permet
+/// d'annuler un cours (jour férié, absence prof) ou de placer un remplaçant
+/// (substitute teacher / changement de salle) sans toucher la semaine type.
+///
+/// Unique sur (entryId × date) : 1 override max par séance.
+model TimetableOverride {
+  id                String                @id @default(uuid()) @db.Uuid
+  tenantId          String                @map("tenant_id") @db.Uuid
+  entryId           String                @map("entry_id") @db.Uuid
+  date              DateTime              @db.Date
+  kind              TimetableOverrideKind
+  substituteTeacherId String?             @map("substitute_teacher_id") @db.Uuid
+  substituteRoomId    String?             @map("substitute_room_id") @db.Uuid
+  substituteSubjectId String?             @map("substitute_subject_id") @db.Uuid
+  reason            String?
+  createdByUserId   String?               @map("created_by_user_id") @db.Uuid
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
+
+  tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entry             TimetableEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  substituteTeacher Person?        @relation("SubstituteTeacher", fields: [substituteTeacherId], references: [id], onDelete: SetNull)
+  substituteRoom    Room?          @relation("SubstituteRoom", fields: [substituteRoomId], references: [id], onDelete: SetNull)
+  substituteSubject Subject?       @relation("SubstituteSubject", fields: [substituteSubjectId], references: [id], onDelete: SetNull)
+
+  @@unique([entryId, date])
+  @@index([tenantId, date])
+  @@map("timetable_overrides")
 }
 
 // ─── Communication (M09) ───────────────────────────────────

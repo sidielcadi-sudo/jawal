@@ -77,7 +77,8 @@ DECLARE
     'staff_attendance',
     'enrollments',
     'timetable_slots',
-    'timetable_entries'
+    'timetable_entries',
+    'timetable_overrides'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped

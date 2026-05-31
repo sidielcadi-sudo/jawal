@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
@@ -37,6 +38,12 @@ export default async function RoomsPage({ params }: { params: Promise<{ locale: 
                     {r.equipment.length > 0 ? r.equipment.join(', ') : '—'}
                   </td>
                   <td className="px-4 py-3 text-end">
+                    <Link
+                      href={`/${locale}/admin/settings/rooms/${r.id}/timetable`}
+                      className="me-3 text-xs text-brand-700 hover:underline"
+                    >
+                      {t('viewTimetable')}
+                    </Link>
                     <RoomActions
                       id={r.id}
                       initial={{

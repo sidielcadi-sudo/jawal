@@ -218,7 +218,13 @@ export default async function TeacherTimetablePage({
         </section>
       )}
 
-      <div className="mb-3 flex justify-end">
+      <div className="mb-3 flex flex-wrap justify-end gap-2">
+        <a
+          href={`/api/admin/timetable/teacher/${id}${yearId ? `?year=${yearId}` : ''}`}
+          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+        >
+          📅 {t('exportIcs')}
+        </a>
         <a
           href={`/${locale}/admin/persons/${id}/timetable/print${yearId ? `?year=${yearId}` : ''}`}
           target="_blank"

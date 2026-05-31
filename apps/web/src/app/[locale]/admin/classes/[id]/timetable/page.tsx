@@ -13,6 +13,7 @@ import {
   type AvailabilityMap,
 } from '@/lib/timetable-validation';
 import { TimetableGrid, type GridEntry, type GridSlot, type SubjectOpt, type TeacherOpt, type RoomOpt } from './grid';
+import { OverridesPanel } from './overrides';
 
 const DAYS: DayKey[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -49,6 +50,29 @@ export default async function ClassTimetablePage({
       },
     });
 
+    // Overrides à venir sur les séances de cette classe (à partir d'aujourd'hui)
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const overrides = await tx.timetableOverride.findMany({
+      where: {
+        entry: { classId: id, academicYearId: cls.academicYearId },
+        date: { gte: today },
+      },
+      include: {
+        entry: {
+          include: {
+            subject: { select: { label: true } },
+            teacher: { select: { firstName: true, lastName: true } },
+            slot: { select: { startTime: true, endTime: true } },
+          },
+        },
+        substituteTeacher: { select: { firstName: true, lastName: true } },
+        substituteRoom: { select: { label: true } },
+        substituteSubject: { select: { label: true } },
+      },
+      orderBy: { date: 'asc' },
+    });
+
     // Pour la détection conflits : on charge TOUTES les entries de l'année sur
     // les mêmes slots/days afin de détecter prof/salle déjà occupés ailleurs.
     const allEntriesYear = await tx.timetableEntry.findMany({
@@ -63,12 +87,12 @@ export default async function ClassTimetablePage({
     });
     const rooms = await tx.room.findMany({ orderBy: { code: 'asc' } });
 
-    return { cls, slots, entries, allEntriesYear, subjects, teachers, rooms };
+    return { cls, slots, entries, allEntriesYear, overrides, subjects, teachers, rooms };
   });
 
   if (!data) notFound();
 
-  const { cls, slots, entries, allEntriesYear, subjects, teachers, rooms } = data;
+  const { cls, slots, entries, allEntriesYear, overrides, subjects, teachers, rooms } = data;
 
   // Détection conflits sur l'année entière (l'UI met en évidence les cases
   // de CETTE classe qui sont en conflit ailleurs)
@@ -142,6 +166,34 @@ export default async function ClassTimetablePage({
     id: r.id,
     label: `${r.code} — ${r.label}`,
   }));
+
+  // Options pour le panel overrides : "Lundi 08:00 — Mathématiques"
+  const entryOpts = entries
+    .map((e) => {
+      const slot = slotById.get(e.slotId);
+      if (!slot) return null;
+      return {
+        id: e.id,
+        label: `${t(`days.${e.dayOfWeek as DayKey}`)} ${slot.startTime} — ${e.subject?.label ?? '—'}`,
+      };
+    })
+    .filter((v): v is { id: string; label: string } => v !== null);
+
+  const overridesView = overrides.map((o) => {
+    const slot = slotById.get(o.entry.slotId);
+    return {
+      id: o.id,
+      date: o.date.toISOString().slice(0, 10),
+      kind: o.kind as 'CANCELLED' | 'SUBSTITUTION',
+      reason: o.reason,
+      entryLabel: `${t(`days.${o.entry.dayOfWeek as DayKey}`)} ${slot?.startTime ?? ''} — ${o.entry.subject?.label ?? '—'}`,
+      substituteTeacher: o.substituteTeacher
+        ? `${o.substituteTeacher.lastName} ${o.substituteTeacher.firstName}`
+        : null,
+      substituteRoom: o.substituteRoom?.label ?? null,
+      substituteSubject: o.substituteSubject?.label ?? null,
+    };
+  });
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
@@ -224,7 +276,22 @@ export default async function ClassTimetablePage({
             </div>
           )}
 
-          <div className="mb-3 flex justify-end">
+          <OverridesPanel
+            classId={cls.id}
+            entries={entryOpts}
+            teachers={teacherOpts}
+            rooms={roomOpts}
+            subjects={subjectOpts}
+            overrides={overridesView}
+          />
+
+          <div className="mb-3 flex flex-wrap justify-end gap-2">
+            <a
+              href={`/api/admin/timetable/class/${cls.id}`}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+            >
+              📅 {t('exportIcs')}
+            </a>
             <Link
               href={`/${locale}/admin/classes/${cls.id}/timetable/print`}
               target="_blank"
