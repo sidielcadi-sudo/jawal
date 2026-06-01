@@ -202,33 +202,31 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
     ET.SubElement(basic_t, "Active").text = "true"
     ET.SubElement(basic_t, "Comments").text = ""
 
-    # Phase E1 : (day, slot) interdits pour TOUTES les classes
-    forbidden_set: set[Tuple[str, str]] = {
-        (f.day, f.slot_id) for f in req.forbidden_class_slots
-    }
+    # Phase E1 : (class_id, day, slot) interdits — par cycle
+    forbidden_per_class: Dict[str, List[Tuple[str, str]]] = {}
+    for f in req.forbidden_class_slots:
+        # Trouve le start_time du slot
+        slot = next((s for s in placeable_slots_sorted if s.id == f.slot_id), None)
+        if not slot:
+            continue
+        forbidden_per_class.setdefault(f.class_id, []).append(
+            (DAY_KEY_TO_FET[f.day], _hour_name(slot.start_time))
+        )
 
-    # On modélise les forbidden_class_slots comme indisponibilités sur CHAQUE
-    # prof (équivalent à "personne ne peut être là") + comme contrainte de
-    # set d'étudiants (ConstraintStudentsSetNotAvailableTimes)
-    for cid in req.class_ids:
-        not_available_class: List[Tuple[str, str]] = []
-        for d in days:
-            for s in placeable_slots_sorted:
-                if (d, s.id) in forbidden_set:
-                    not_available_class.append((DAY_KEY_TO_FET[d], _hour_name(s.start_time)))
-        if not_available_class:
-            cons = ET.SubElement(time_constraints, "ConstraintStudentsSetNotAvailableTimes")
-            ET.SubElement(cons, "Weight_Percentage").text = "100"
-            ET.SubElement(cons, "Students").text = class_slugs[cid]
-            ET.SubElement(cons, "Number_of_Not_Available_Times").text = str(
-                len(not_available_class)
-            )
-            for day_name, hour_name in not_available_class:
-                slot_node = ET.SubElement(cons, "Not_Available_Time")
-                ET.SubElement(slot_node, "Day").text = day_name
-                ET.SubElement(slot_node, "Hour").text = hour_name
-            ET.SubElement(cons, "Active").text = "true"
-            ET.SubElement(cons, "Comments").text = ""
+    # Chaque classe avec des forbidden → ConstraintStudentsSetNotAvailableTimes
+    for cid, not_avail in forbidden_per_class.items():
+        if not not_avail or cid not in class_slugs:
+            continue
+        cons = ET.SubElement(time_constraints, "ConstraintStudentsSetNotAvailableTimes")
+        ET.SubElement(cons, "Weight_Percentage").text = "100"
+        ET.SubElement(cons, "Students").text = class_slugs[cid]
+        ET.SubElement(cons, "Number_of_Not_Available_Times").text = str(len(not_avail))
+        for day_name, hour_name in not_avail:
+            slot_node = ET.SubElement(cons, "Not_Available_Time")
+            ET.SubElement(slot_node, "Day").text = day_name
+            ET.SubElement(slot_node, "Hour").text = hour_name
+        ET.SubElement(cons, "Active").text = "true"
+        ET.SubElement(cons, "Comments").text = ""
 
     # Dispos prof : ConstraintTeacherNotAvailableTimes (on liste les
     # créneaux PAS dispos)

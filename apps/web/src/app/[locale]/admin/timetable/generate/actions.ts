@@ -7,7 +7,7 @@ import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
 import {
   isSlotAllowedOnDay,
-  readTimetableSettings,
+  readEffectiveTimetableSettings,
   type DayKey as SettingsDayKey,
 } from '@jawal/shared';
 import {
@@ -68,11 +68,15 @@ export async function generateMultiTimetableAction(
     const collected = await withTenant(tenantId, async (tx) => {
       // Phase E1 : settings établissement (jours, pause déjeuner, etc.)
       const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: tenantId } });
-      const ttSettings = readTimetableSettings(tenant.settings);
 
       const classes = await tx.class.findMany({
         where: { id: { in: classIds }, academicYearId, deletedAt: null },
-        select: { id: true, name: true, levelId: true },
+        select: {
+          id: true,
+          name: true,
+          levelId: true,
+          level: { select: { cycleId: true, cycle: { select: { settings: true } } } },
+        },
       });
       if (classes.length !== classIds.length) {
         throw new Error('Certaines classes sont introuvables ou archivées.');
@@ -153,19 +157,18 @@ export async function generateMultiTimetableAction(
         is_break: s.isBreak,
       }));
 
-      // Phase E1 : calcule la liste (day, slot) interdits depuis les settings
+      // Phase E1 : pour chaque classe, calcule les (day, slot) interdits
+      // avec les settings effectifs (cycle override > tenant default).
       const forbidden: ForbiddenClassSlot[] = [];
-      for (const d of DAYS) {
-        for (const s of slots) {
-          if (s.isBreak) continue;
-          const allowed = isSlotAllowedOnDay(
-            d as SettingsDayKey,
-            s.startTime,
-            s.endTime,
-            ttSettings,
-          );
-          if (!allowed) {
-            forbidden.push({ day: d, slot_id: s.id });
+      for (const cls of classes) {
+        const cycleSettings = cls.level.cycle.settings;
+        const effective = readEffectiveTimetableSettings(cycleSettings, tenant.settings);
+        for (const d of DAYS) {
+          for (const s of slots) {
+            if (s.isBreak) continue;
+            if (!isSlotAllowedOnDay(d as SettingsDayKey, s.startTime, s.endTime, effective)) {
+              forbidden.push({ class_id: cls.id, day: d, slot_id: s.id });
+            }
           }
         }
       }

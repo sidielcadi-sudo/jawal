@@ -100,7 +100,11 @@ export type SolverConstraints = {
 
 export type SolverEngine = 'ortools' | 'fet';
 
-export type ForbiddenClassSlot = { day: DayKey; slot_id: string };
+export type ForbiddenClassSlot = {
+  class_id: string;
+  day: DayKey;
+  slot_id: string;
+};
 
 export type SolverMultiRequest = {
   class_ids: string[];

@@ -94,6 +94,35 @@ export function readTimetableSettings(raw: unknown): TimetableSettings {
   };
 }
 
+/**
+ * Indique si un cycle a son propre paramétrage timetable (override).
+ * Si false → le cycle hérite des défauts établissement.
+ */
+export function cycleHasOwnTimetableSettings(cycleSettingsRaw: unknown): boolean {
+  if (!cycleSettingsRaw || typeof cycleSettingsRaw !== 'object') return false;
+  const tt = (cycleSettingsRaw as Record<string, unknown>).timetable;
+  return !!tt && typeof tt === 'object';
+}
+
+/**
+ * Renvoie les settings effectifs pour un cycle donné, avec priorité :
+ *   1. cycle.settings.timetable (si présent et valide)
+ *   2. tenant.settings.timetable (défaut établissement)
+ *   3. TIMETABLE_SETTINGS_DEFAULTS
+ *
+ * Utilisé par l'orchestrateur pour calculer les forbidden_class_slots
+ * propres à chaque classe selon son cycle.
+ */
+export function readEffectiveTimetableSettings(
+  cycleSettingsRaw: unknown,
+  tenantSettingsRaw: unknown,
+): TimetableSettings {
+  if (cycleHasOwnTimetableSettings(cycleSettingsRaw)) {
+    return readTimetableSettings(cycleSettingsRaw);
+  }
+  return readTimetableSettings(tenantSettingsRaw);
+}
+
 /** Helpers pour le solveur : pour un jour donné, est-ce que ce slot est autorisé ? */
 export function isSlotAllowedOnDay(
   day: DayKey,

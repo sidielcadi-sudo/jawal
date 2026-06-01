@@ -4,17 +4,141 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import type { DayKey, DayMode, TimetableSettings } from '@jawal/shared';
-import { upsertTimetableSettingsAction } from './actions';
+import {
+  resetCycleTimetableSettingsAction,
+  upsertCycleTimetableSettingsAction,
+  upsertTimetableSettingsAction,
+} from './actions';
 
 const DAY_KEYS: DayKey[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 const MODES: DayMode[] = ['FULL', 'MORNING_ONLY', 'AFTERNOON_ONLY', 'OFF'];
 
-export function SettingsForm({
+export type CycleRow = {
+  id: string;
+  code: string;
+  label: string;
+  hasOverride: boolean;
+  settings: TimetableSettings;
+};
+
+export function SettingsManager({
+  locale,
+  tenantSettings,
+  cycles,
+}: {
+  locale: string;
+  tenantSettings: TimetableSettings;
+  cycles: CycleRow[];
+}) {
+  const t = useTranslations('admin.timetableSettings');
+
+  return (
+    <div className="space-y-6">
+      <section>
+        <div className="mb-3 flex items-baseline justify-between">
+          <h2 className="text-base font-semibold text-slate-900">{t('tenantLevel.title')}</h2>
+          <p className="text-xs text-slate-500">{t('tenantLevel.subtitle')}</p>
+        </div>
+        <SettingsForm
+          locale={locale}
+          initial={tenantSettings}
+          context={{ kind: 'tenant' }}
+        />
+      </section>
+
+      {cycles.length > 0 && (
+        <section>
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="text-base font-semibold text-slate-900">{t('cycleLevel.title')}</h2>
+            <p className="text-xs text-slate-500">{t('cycleLevel.subtitle')}</p>
+          </div>
+          <div className="space-y-4">
+            {cycles.map((c) => (
+              <CycleCard key={c.id} locale={locale} cycle={c} />
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function CycleCard({ locale, cycle }: { locale: string; cycle: CycleRow }) {
+  const t = useTranslations('admin.timetableSettings');
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  const [expanded, setExpanded] = useState(cycle.hasOverride);
+
+  const onReset = () => {
+    if (!confirm(t('cycleLevel.confirmReset', { cycle: cycle.label }))) return;
+    startTransition(async () => {
+      await resetCycleTimetableSettingsAction(cycle.id);
+      router.refresh();
+    });
+  };
+
+  return (
+    <div
+      className={`rounded-2xl border ${
+        cycle.hasOverride
+          ? 'border-brand-300 bg-brand-50/40'
+          : 'border-slate-200 bg-white'
+      } p-5`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">{cycle.label}</h3>
+          <p className="text-xs text-slate-500">
+            {cycle.hasOverride
+              ? t('cycleLevel.statusOverride')
+              : t('cycleLevel.statusInherit')}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {cycle.hasOverride && (
+            <button
+              type="button"
+              onClick={onReset}
+              disabled={pending}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            >
+              {t('cycleLevel.resetButton')}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setExpanded((v) => !v)}
+            className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700"
+          >
+            {expanded
+              ? t('cycleLevel.collapseButton')
+              : cycle.hasOverride
+                ? t('cycleLevel.editButton')
+                : t('cycleLevel.customizeButton')}
+          </button>
+        </div>
+      </div>
+      {expanded && (
+        <div className="mt-5">
+          <SettingsForm
+            locale={locale}
+            initial={cycle.settings}
+            context={{ kind: 'cycle', cycleId: cycle.id }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SettingsForm({
   locale: _locale,
   initial,
+  context,
 }: {
   locale: string;
   initial: TimetableSettings;
+  context: { kind: 'tenant' } | { kind: 'cycle'; cycleId: string };
 }) {
   const t = useTranslations('admin.timetableSettings');
   const router = useRouter();
@@ -28,7 +152,10 @@ export function SettingsForm({
     setSaved(false);
     const fd = new FormData(e.currentTarget);
     startTransition(async () => {
-      const res = await upsertTimetableSettingsAction(fd);
+      const res =
+        context.kind === 'tenant'
+          ? await upsertTimetableSettingsAction(fd)
+          : await upsertCycleTimetableSettingsAction(context.cycleId, fd);
       if (!res.ok) {
         setError(res.error);
       } else {
@@ -42,7 +169,7 @@ export function SettingsForm({
   return (
     <form onSubmit={onSubmit} className="space-y-5">
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-slate-700">{t('days.title')}</h2>
+        <h3 className="text-sm font-semibold text-slate-700">{t('days.title')}</h3>
         <p className="mt-1 text-xs text-slate-500">{t('days.hint')}</p>
 
         <div className="mt-4 space-y-2">
@@ -100,7 +227,7 @@ export function SettingsForm({
       </section>
 
       <section className="rounded-2xl border border-slate-200 bg-white p-5">
-        <h2 className="text-sm font-semibold text-slate-700">{t('lunch.title')}</h2>
+        <h3 className="text-sm font-semibold text-slate-700">{t('lunch.title')}</h3>
         <p className="mt-1 text-xs text-slate-500">{t('lunch.hint')}</p>
 
         <label className="mt-3 flex items-center gap-2 text-sm">

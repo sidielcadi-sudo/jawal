@@ -534,10 +534,25 @@
     },
     "timetableSettings": {
       "title": "Paramètres établissement",
-      "subtitle": "Définissez les règles globales appliquées par le solveur lors de la génération automatique : jours travaillés, demi-journées (Mercredi/Samedi), pause déjeuner.",
+      "subtitle": "Définissez les règles globales appliquées par le solveur lors de la génération automatique : jours travaillés, demi-journées (Mercredi/Samedi), pause déjeuner. Vous pouvez surcharger ces réglages par cycle (ex : Mercredi matin pour le collège, journée complète pour le lycée).",
       "save": "Enregistrer",
       "saving": "Enregistrement…",
       "saved": "Enregistré",
+      "tenantLevel": {
+        "title": "Défaut établissement",
+        "subtitle": "Appliqué à toutes les classes par défaut."
+      },
+      "cycleLevel": {
+        "title": "Réglages par cycle",
+        "subtitle": "Si un cycle a un comportement particulier (ex : Mercredi matin only pour le collège), personnalisez ici.",
+        "statusInherit": "Hérite des défauts établissement",
+        "statusOverride": "Réglages spécifiques actifs",
+        "customizeButton": "Personnaliser",
+        "editButton": "Modifier",
+        "collapseButton": "Replier",
+        "resetButton": "Réinitialiser",
+        "confirmReset": "Supprimer le paramétrage spécifique pour {cycle} ? Le cycle utilisera à nouveau les défauts établissement."
+      },
       "morningEndsAt": "Fin du matin",
       "morningEndsAtHint": "Limite utilisée par « Matin uniquement » : les créneaux doivent se terminer avant cette heure.",
       "afternoonStartsAt": "Début de l'après-midi",

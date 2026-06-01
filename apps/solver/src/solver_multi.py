@@ -70,10 +70,10 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
     teacher_of: Dict[str, str] = {a.id: a.teacher_id for a in request.assignments}
     class_of: Dict[str, str] = {a.id: a.class_id for a in request.assignments}
 
-    # Phase E1 : (day, slot) interdits pour toutes les classes
-    # (Mercredi matin only, samedi off, pause déjeuner, etc.)
-    forbidden_set: set[Tuple[str, str]] = {
-        (f.day, f.slot_id) for f in request.forbidden_class_slots
+    # Phase E1 : (class_id, day, slot) interdits — permet le multi-cycles
+    # (collège mercredi matin only, lycée samedi off, etc.)
+    forbidden_set: set[Tuple[str, str, str]] = {
+        (f.class_id, f.day, f.slot_id) for f in request.forbidden_class_slots
     }
 
     model = cp_model.CpModel()
@@ -87,8 +87,8 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
             for s in placeable_slots:
                 if not _is_teacher_available(teacher, d, s):
                     continue
-                # Phase E1 : skip si (day, slot) interdit pour tout le monde
-                if (d, s.id) in forbidden_set:
+                # Phase E1 : skip si (class, day, slot) interdit (par cycle)
+                if (a.class_id, d, s.id) in forbidden_set:
                     continue
                 for r in room_ids:
                     x[(a.id, d, s.id, r)] = model.NewBoolVar(

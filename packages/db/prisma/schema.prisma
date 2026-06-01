@@ -587,6 +587,10 @@ model Cycle {
   code      String   // "primaire", "college", "lycee", "licence", "master"
   label     String
   order     Int      @default(0)
+  /// Réglages spécifiques au cycle (JSON). Overrides les défauts du tenant.
+  /// Structure : { "timetable": TimetableSettings }
+  /// Si absent ou champ manquant, hérite de Tenant.settings.timetable.
+  settings  Json     @default("{}")
   createdAt DateTime @default(now()) @map("created_at")
 
   tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)

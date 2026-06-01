@@ -192,6 +192,11 @@ class MultiGenerateRequest(BaseModel):
 
 
 class ForbiddenClassSlot(BaseModel):
+    """Une (classe, jour, créneau) interdit. Permet d'appliquer des règles
+    différentes par cycle (collège vs lycée n'ont pas les mêmes jours).
+    """
+
+    class_id: str
     day: DayKey
     slot_id: str
 
