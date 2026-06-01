@@ -98,6 +98,8 @@ export type SolverConstraints = {
   max_hours_per_day_teacher?: number | null;
 };
 
+export type SolverEngine = 'ortools' | 'fet';
+
 export type SolverMultiRequest = {
   class_ids: string[];
   slots: SolverSlot[];
@@ -108,6 +110,7 @@ export type SolverMultiRequest = {
   max_solve_seconds?: number;
   consecutive_bonus?: number;
   constraints?: SolverConstraints;
+  engine?: SolverEngine;
 };
 
 export type SolverMultiPlaced = SolverPlacedEntry & {

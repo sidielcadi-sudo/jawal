@@ -46,6 +46,7 @@ export function GenerateGlobalForm({
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [engine, setEngine] = useState<'ortools' | 'fet'>('fet');
   const [selected, setSelected] = useState<Set<string>>(
     new Set(classes.filter((c) => c.assignmentCount > 0).map((c) => c.id)),
   );
@@ -73,7 +74,7 @@ export function GenerateGlobalForm({
     setConfirmOpen(false);
     setResult(null);
     startTransition(async () => {
-      const res = await generateMultiTimetableAction(academicYearId, [...selected]);
+      const res = await generateMultiTimetableAction(academicYearId, [...selected], engine);
       setResult(res);
       if (res.ok) router.refresh();
     });
@@ -140,6 +141,32 @@ export function GenerateGlobalForm({
         </ul>
       </section>
 
+      {/* Sélecteur de moteur */}
+      <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-5">
+        <h2 className="mb-1 text-sm font-semibold text-slate-700">{t('engineTitle')}</h2>
+        <p className="mb-3 text-xs text-slate-500">{t('engineHint')}</p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <EngineCard
+            kind="fet"
+            selected={engine === 'fet'}
+            onSelect={() => setEngine('fet')}
+            title={t('engine.fet.title')}
+            description={t('engine.fet.description')}
+            badge={t('engine.fet.badge')}
+            badgeColor="emerald"
+          />
+          <EngineCard
+            kind="ortools"
+            selected={engine === 'ortools'}
+            onSelect={() => setEngine('ortools')}
+            title={t('engine.ortools.title')}
+            description={t('engine.ortools.description')}
+            badge={t('engine.ortools.badge')}
+            badgeColor="blue"
+          />
+        </div>
+      </section>
+
       <div className="mt-4 flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-3">
         <p className="text-xs text-slate-500">
           {selected.size > 0 ? (
@@ -150,6 +177,9 @@ export function GenerateGlobalForm({
                   {t('summaryOverwrite', { count: willOverwrite })}
                 </span>
               )}
+              <span className="ms-2 text-slate-400">
+                · {t('engineSummary', { engine: engine.toUpperCase() })}
+              </span>
             </>
           ) : (
             t('summaryEmpty')
@@ -301,5 +331,55 @@ function ResultModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function EngineCard({
+  kind,
+  selected,
+  onSelect,
+  title,
+  description,
+  badge,
+  badgeColor,
+}: {
+  kind: 'ortools' | 'fet';
+  selected: boolean;
+  onSelect: () => void;
+  title: string;
+  description: string;
+  badge: string;
+  badgeColor: 'emerald' | 'blue';
+}) {
+  const badgeClass =
+    badgeColor === 'emerald'
+      ? 'bg-emerald-100 text-emerald-700'
+      : 'bg-blue-100 text-blue-700';
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`relative cursor-pointer rounded-2xl border p-4 text-start transition-all ${
+        selected
+          ? 'border-brand-500 bg-brand-50/50 ring-2 ring-brand-200'
+          : 'border-slate-200 bg-white hover:border-slate-300'
+      }`}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+          <span
+            className={`mt-1 inline-block rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${badgeClass}`}
+          >
+            {badge}
+          </span>
+        </div>
+        {selected && (
+          <span className="text-brand-700">●</span>
+        )}
+      </div>
+      <p className="mt-2 text-xs text-slate-600">{description}</p>
+      <p className="mt-1 text-[10px] uppercase text-slate-400">{kind}</p>
+    </button>
   );
 }

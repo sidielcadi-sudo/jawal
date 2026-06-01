@@ -10,6 +10,7 @@ import {
   type DayKey,
   type SolverAssignment,
   type SolverConstraints,
+  type SolverEngine,
   type SolverMultiRequest,
   type SolverRoom,
   type SolverSlot,
@@ -42,6 +43,7 @@ const DAYS: DayKey[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 export async function generateMultiTimetableAction(
   academicYearId: string,
   classIds: string[],
+  engine: SolverEngine = 'ortools',
 ): Promise<Result> {
   const session = await auth();
   if (!session?.user) return { ok: false, error: 'Non authentifié' };
@@ -173,9 +175,11 @@ export async function generateMultiTimetableAction(
           teachers: [...teacherMap.values()],
           rooms: solverRooms,
           assignments: solverAssignments,
-          max_solve_seconds: 60,
+          // FET tourne en ~1s sur 240h ; OR-Tools peut prendre 1-3 min.
+          max_solve_seconds: engine === 'fet' ? 180 : 60,
           consecutive_bonus: 1,
           constraints,
+          engine,
         } as SolverMultiRequest,
         classNames: new Map(classes.map((c) => [c.id, c.name])),
       };

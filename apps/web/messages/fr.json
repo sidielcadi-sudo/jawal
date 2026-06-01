@@ -428,6 +428,21 @@
         "summary": "{count, plural, one {# classe sera générée} other {# classes seront générées}}",
         "summaryOverwrite": "(dont {count} écraseront un EDT existant)",
         "summaryEmpty": "Sélectionnez au moins une classe.",
+        "engineTitle": "Moteur de génération",
+        "engineHint": "FET (spécialisé EDT scolaire) excelle sur l'anti-trous et la vitesse. OR-Tools (généraliste) reste utile pour cas particuliers ou comparaison.",
+        "engineSummary": "Moteur : {engine}",
+        "engine": {
+          "fet": {
+            "title": "FET",
+            "badge": "Recommandé",
+            "description": "Solveur tabu-search spécialisé EDT scolaire. Anti-trous natif quasi-parfait, très rapide (≈ 1 s pour 240 h sur 9 classes)."
+          },
+          "ortools": {
+            "title": "OR-Tools (Google)",
+            "badge": "Généraliste",
+            "description": "Solveur CP-SAT généraliste. Plus flexible sur des contraintes inhabituelles mais plus lent et moins efficace sur l'anti-trous."
+          }
+        },
         "runButton": "Générer les EDT",
         "running": "Génération…",
         "confirmTitle": "Lancer la génération ?",

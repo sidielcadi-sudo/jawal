@@ -176,12 +176,15 @@ class MultiGenerateRequest(BaseModel):
     teachers: list[TeacherInput]
     rooms: list[RoomInput] = Field(default_factory=list)
     assignments: list[MultiAssignmentInput]
-    max_solve_seconds: float = Field(15.0, ge=1.0, le=120.0)
+    max_solve_seconds: float = Field(15.0, ge=1.0, le=600.0)
     # Bonus pour cours consécutifs (heuristique douce).
     # 0 = neutre, >0 = on favorise les blocs 2h.
     consecutive_bonus: int = Field(1, ge=0, le=10)
     # Contraintes paramétrables (phase C)
     constraints: ConstraintsInput = Field(default_factory=ConstraintsInput)
+    # Moteur de résolution : "ortools" (default, généraliste) ou "fet"
+    # (spécialisé EDT scolaire, excellent anti-gaps).
+    engine: Literal["ortools", "fet"] = "ortools"
 
 
 class MultiPlacedEntry(BaseModel):

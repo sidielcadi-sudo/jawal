@@ -1,0 +1,33 @@
+{
+  "class_ids": ["c1"],
+  "slots": [
+    {"id": "s1", "start_time": "08:00", "end_time": "09:00", "is_break": false},
+    {"id": "s2", "start_time": "09:00", "end_time": "10:00", "is_break": false},
+    {"id": "s3", "start_time": "10:00", "end_time": "10:15", "is_break": true},
+    {"id": "s4", "start_time": "10:15", "end_time": "11:15", "is_break": false},
+    {"id": "s5", "start_time": "11:15", "end_time": "12:15", "is_break": false}
+  ],
+  "days": ["MON", "TUE", "WED"],
+  "teachers": [
+    {
+      "id": "t1",
+      "name": "Amina",
+      "availability": {
+        "MON": [{"from": "08:00", "to": "13:00"}],
+        "TUE": [{"from": "08:00", "to": "13:00"}],
+        "WED": [{"from": "08:00", "to": "13:00"}]
+      }
+    }
+  ],
+  "rooms": [
+    {"id": "r1", "label": "A101"}
+  ],
+  "assignments": [
+    {"id": "a1", "teacher_id": "t1", "subject_id": "math", "subject_label": "Maths", "class_id": "c1", "class_name": "6A", "weekly_hours": 5}
+  ],
+  "engine": "fet",
+  "max_solve_seconds": 30,
+  "constraints": {
+    "no_gaps_weight": 50
+  }
+}

@@ -6,8 +6,11 @@ FROM python:3.12-slim
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl ca-certificates \
+    curl ca-certificates fet \
     && rm -rf /var/lib/apt/lists/*
+
+# Vérif binaire FET disponible (fet-cl est la version CLI)
+RUN fet-cl --version | head -1 || (echo "FET non installé" && exit 1)
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
