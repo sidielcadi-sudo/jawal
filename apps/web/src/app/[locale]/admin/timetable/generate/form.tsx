@@ -268,8 +268,14 @@ function ResultModal({
             <p className="mt-2 text-sm text-slate-600">
               {result.data.message}
               <span className="ms-2 text-xs text-slate-400">
-                ({result.data.solverTimeMs} ms · {result.data.consecutiveBlocks}{' '}
-                {t('consecutiveBlocks')})
+                ({result.data.solverTimeMs} ms
+                {result.data.consecutiveBlocks > 0 && (
+                  <>
+                    {' · '}
+                    {t('consecutiveBlocks', { count: result.data.consecutiveBlocks })}
+                  </>
+                )}
+                )
               </span>
             </p>
 
