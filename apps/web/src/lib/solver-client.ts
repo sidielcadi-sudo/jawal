@@ -100,6 +100,8 @@ export type SolverConstraints = {
 
 export type SolverEngine = 'ortools' | 'fet';
 
+export type ForbiddenClassSlot = { day: DayKey; slot_id: string };
+
 export type SolverMultiRequest = {
   class_ids: string[];
   slots: SolverSlot[];
@@ -111,6 +113,7 @@ export type SolverMultiRequest = {
   consecutive_bonus?: number;
   constraints?: SolverConstraints;
   engine?: SolverEngine;
+  forbidden_class_slots?: ForbiddenClassSlot[];
 };
 
 export type SolverMultiPlaced = SolverPlacedEntry & {

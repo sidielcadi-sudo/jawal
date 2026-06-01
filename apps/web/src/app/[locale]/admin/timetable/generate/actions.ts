@@ -6,8 +6,14 @@ import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
 import {
+  isSlotAllowedOnDay,
+  readTimetableSettings,
+  type DayKey as SettingsDayKey,
+} from '@jawal/shared';
+import {
   callSolverMulti,
   type DayKey,
+  type ForbiddenClassSlot,
   type SolverAssignment,
   type SolverConstraints,
   type SolverEngine,
@@ -60,6 +66,10 @@ export async function generateMultiTimetableAction(
 
   try {
     const collected = await withTenant(tenantId, async (tx) => {
+      // Phase E1 : settings établissement (jours, pause déjeuner, etc.)
+      const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: tenantId } });
+      const ttSettings = readTimetableSettings(tenant.settings);
+
       const classes = await tx.class.findMany({
         where: { id: { in: classIds }, academicYearId, deletedAt: null },
         select: { id: true, name: true, levelId: true },
@@ -143,6 +153,23 @@ export async function generateMultiTimetableAction(
         is_break: s.isBreak,
       }));
 
+      // Phase E1 : calcule la liste (day, slot) interdits depuis les settings
+      const forbidden: ForbiddenClassSlot[] = [];
+      for (const d of DAYS) {
+        for (const s of slots) {
+          if (s.isBreak) continue;
+          const allowed = isSlotAllowedOnDay(
+            d as SettingsDayKey,
+            s.startTime,
+            s.endTime,
+            ttSettings,
+          );
+          if (!allowed) {
+            forbidden.push({ day: d, slot_id: s.id });
+          }
+        }
+      }
+
       // Contraintes paramétrables (TimetableConstraint actives)
       const constraintRows = await tx.timetableConstraint.findMany({
         where: { enabled: true },
@@ -180,6 +207,7 @@ export async function generateMultiTimetableAction(
           consecutive_bonus: 1,
           constraints,
           engine,
+          forbidden_class_slots: forbidden,
         } as SolverMultiRequest,
         classNames: new Map(classes.map((c) => [c.id, c.name])),
       };

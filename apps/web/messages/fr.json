@@ -532,6 +532,41 @@
         "SUN": "Dimanche"
       }
     },
+    "timetableSettings": {
+      "title": "Paramètres établissement",
+      "subtitle": "Définissez les règles globales appliquées par le solveur lors de la génération automatique : jours travaillés, demi-journées (Mercredi/Samedi), pause déjeuner.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "saved": "Enregistré",
+      "morningEndsAt": "Fin du matin",
+      "morningEndsAtHint": "Limite utilisée par « Matin uniquement » : les créneaux doivent se terminer avant cette heure.",
+      "afternoonStartsAt": "Début de l'après-midi",
+      "afternoonStartsAtHint": "Limite utilisée par « Après-midi uniquement » : les créneaux doivent commencer après cette heure.",
+      "days": {
+        "title": "Jours travaillés",
+        "hint": "Pour chaque jour, choisissez si l'établissement a cours toute la journée, le matin uniquement (typique Mercredi collège), l'après-midi uniquement, ou aucun cours.",
+        "MON": "Lundi",
+        "TUE": "Mardi",
+        "WED": "Mercredi",
+        "THU": "Jeudi",
+        "FRI": "Vendredi",
+        "SAT": "Samedi",
+        "SUN": "Dimanche"
+      },
+      "modes": {
+        "FULL": "Toute la journée",
+        "MORNING_ONLY": "Matin uniquement",
+        "AFTERNOON_ONLY": "Après-midi uniquement",
+        "OFF": "Aucun cours"
+      },
+      "lunch": {
+        "title": "Pause déjeuner obligatoire",
+        "hint": "Si activée, le solveur n'autorisera aucun cours pendant cette plage horaire, tous jours confondus.",
+        "enabled": "Activer la pause déjeuner",
+        "from": "De",
+        "to": "À"
+      }
+    },
     "timetableConstraints": {
       "title": "Contraintes de génération d'EDT",
       "subtitle": "Pilotent le solveur OR-Tools lors de la génération automatique. Activez celles qui s'appliquent à votre établissement.",
@@ -1360,6 +1395,7 @@
         "curriculum": "Cycles & niveaux",
         "subjects": "Matières",
         "rooms": "Salles",
+        "timetable-settings": "Établissement",
         "timetable-slots": "Créneaux horaires",
         "timetable-constraints": "Contraintes EDT",
         "fees": "Frais",

@@ -70,6 +70,12 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
     teacher_of: Dict[str, str] = {a.id: a.teacher_id for a in request.assignments}
     class_of: Dict[str, str] = {a.id: a.class_id for a in request.assignments}
 
+    # Phase E1 : (day, slot) interdits pour toutes les classes
+    # (Mercredi matin only, samedi off, pause déjeuner, etc.)
+    forbidden_set: set[Tuple[str, str]] = {
+        (f.day, f.slot_id) for f in request.forbidden_class_slots
+    }
+
     model = cp_model.CpModel()
     x: Dict[Tuple[str, str, str, str], cp_model.IntVar] = {}
 
@@ -80,6 +86,9 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
         for d in days:
             for s in placeable_slots:
                 if not _is_teacher_available(teacher, d, s):
+                    continue
+                # Phase E1 : skip si (day, slot) interdit pour tout le monde
+                if (d, s.id) in forbidden_set:
                     continue
                 for r in room_ids:
                     x[(a.id, d, s.id, r)] = model.NewBoolVar(

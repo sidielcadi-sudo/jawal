@@ -13,3 +13,4 @@ export * from './schemas/tenant';
 export * from './schemas/timetable';
 export * from './schemas/timetable-constraint';
 export * from './schemas/timetable-override';
+export * from './schemas/timetable-settings';

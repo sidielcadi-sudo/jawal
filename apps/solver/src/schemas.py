@@ -185,6 +185,18 @@ class MultiGenerateRequest(BaseModel):
     # Moteur de résolution : "ortools" (default, généraliste) ou "fet"
     # (spécialisé EDT scolaire, excellent anti-gaps).
     engine: Literal["ortools", "fet"] = "ortools"
+    # Phase E1 : (jour, slot) interdits pour TOUTES les classes (paramètres
+    # établissement : Mercredi matin only, pause déjeuner, samedi off, etc.)
+    # Format : [{ "day": "WED", "slot_id": "..." }]
+    forbidden_class_slots: list["ForbiddenClassSlot"] = Field(default_factory=list)
+
+
+class ForbiddenClassSlot(BaseModel):
+    day: DayKey
+    slot_id: str
+
+
+MultiGenerateRequest.model_rebuild()
 
 
 class MultiPlacedEntry(BaseModel):

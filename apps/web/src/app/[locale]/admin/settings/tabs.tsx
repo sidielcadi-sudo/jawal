@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 
-const TABS = ['years', 'curriculum', 'subjects', 'rooms', 'timetable-slots', 'timetable-constraints', 'fees', 'roles', 'users', 'audit'] as const;
+const TABS = ['years', 'curriculum', 'subjects', 'rooms', 'timetable-settings', 'timetable-slots', 'timetable-constraints', 'fees', 'roles', 'users', 'audit'] as const;
 type Tab = (typeof TABS)[number];
 
 export function SettingsTabs({ locale }: { locale: string }) {
