@@ -189,6 +189,8 @@ class MultiGenerateRequest(BaseModel):
     # établissement : Mercredi matin only, pause déjeuner, samedi off, etc.)
     # Format : [{ "day": "WED", "slot_id": "..." }]
     forbidden_class_slots: list["ForbiddenClassSlot"] = Field(default_factory=list)
+    # Phase E2 : contraintes par classe (max/min h/jour)
+    class_constraints: list["ClassConstraintInput"] = Field(default_factory=list)
 
 
 class ForbiddenClassSlot(BaseModel):
@@ -199,6 +201,18 @@ class ForbiddenClassSlot(BaseModel):
     class_id: str
     day: DayKey
     slot_id: str
+
+
+class ClassConstraintInput(BaseModel):
+    """Contraintes par classe (phase E2).
+
+    Toutes optionnelles. Si null/absent → pas de contrainte, on retombe sur
+    les défauts globaux.
+    """
+
+    class_id: str
+    max_hours_per_day: int | None = None
+    min_hours_per_day: int | None = None
 
 
 MultiGenerateRequest.model_rebuild()

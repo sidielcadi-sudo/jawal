@@ -129,6 +129,12 @@ export default async function ClassDetailPage({
               >
                 {tDetail('timetable')}
               </Link>
+              <Link
+                href={`/${locale}/admin/classes/${cls.id}/constraints`}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                {tDetail('timetableConstraints')}
+              </Link>
             </>
           )}
           <ClassActions classId={cls.id} isArchived={!!cls.deletedAt} locale={locale} />

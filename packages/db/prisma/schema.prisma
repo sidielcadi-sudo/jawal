@@ -654,6 +654,9 @@ model Class {
   name            String    // "1AC-A", "TD-Info-1"
   capacity        Int       @default(30)
   mainTeacherId   String?   @map("main_teacher_id") @db.Uuid
+  /// Métadonnées de la classe, dont contraintes EDT (E2).
+  /// Structure : { "timetableConstraints": ClassTimetableConstraints }
+  metadata        Json      @default("{}")
   createdAt       DateTime  @default(now()) @map("created_at")
   deletedAt       DateTime? @map("deleted_at")
 

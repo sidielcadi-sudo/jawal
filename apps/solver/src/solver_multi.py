@@ -101,6 +101,15 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
         if vars_a:
             model.Add(sum(vars_a) <= a.weekly_hours)
 
+    # Phase E2 : contraintes par classe (max/min h/jour)
+    max_h_per_class: Dict[str, int] = {}
+    min_h_per_class: Dict[str, int] = {}
+    for cc in request.class_constraints:
+        if cc.max_hours_per_day is not None:
+            max_h_per_class[cc.class_id] = cc.max_hours_per_day
+        if cc.min_hours_per_day is not None:
+            min_h_per_class[cc.class_id] = cc.min_hours_per_day
+
     # C2 : ≤ 1 cours par (classe × d × s)
     classes = set(class_of.values())
     for cls_id in classes:
@@ -113,6 +122,40 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
                 ]
                 if vars_cell:
                     model.Add(sum(vars_cell) <= 1)
+
+    # E2 : MAX heures par jour par classe (dure)
+    for cls_id, max_h in max_h_per_class.items():
+        for d in days:
+            vars_day = [
+                v
+                for k, v in x.items()
+                if class_of[k[0]] == cls_id and k[1] == d
+            ]
+            if vars_day:
+                model.Add(sum(vars_day) <= max_h)
+
+    # E2 : MIN heures par jour par classe (dure, conditionnel)
+    # Sémantique : SI la journée a au moins 1 cours, alors elle en a ≥ min_h.
+    # Encodage : pour chaque slot s, x[cls, d, s, *] ≤ min_h × (somme totale > 0)
+    # Plus simple : on impose un "indicateur" y_cls_d = 1 si au moins 1 cours
+    # ce jour, puis sum ≥ min_h * y. On encode ça naturellement avec une
+    # variable booléenne et reified constraints.
+    for cls_id, min_h in min_h_per_class.items():
+        for d in days:
+            vars_day = [
+                v
+                for k, v in x.items()
+                if class_of[k[0]] == cls_id and k[1] == d
+            ]
+            if not vars_day:
+                continue
+            # y = 1 ⇔ au moins 1 cours ce (cls, d)
+            y = model.NewBoolVar(f"day_active_{cls_id[:4]}_{d}")
+            # y = 1 ⇒ sum ≥ 1 (suit naturellement, on l'ajoute pour cohérence)
+            model.Add(sum(vars_day) >= 1).OnlyEnforceIf(y)
+            model.Add(sum(vars_day) == 0).OnlyEnforceIf(y.Not())
+            # y = 1 ⇒ sum ≥ min_h
+            model.Add(sum(vars_day) >= min_h).OnlyEnforceIf(y)
 
     # C3 : ≤ 1 cours par (prof × d × s)
     for t_id in teachers_by_id:

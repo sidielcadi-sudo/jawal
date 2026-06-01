@@ -14,3 +14,4 @@ export * from './schemas/timetable';
 export * from './schemas/timetable-constraint';
 export * from './schemas/timetable-override';
 export * from './schemas/timetable-settings';
+export * from './schemas/class-constraints';

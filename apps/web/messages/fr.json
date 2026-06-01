@@ -532,6 +532,39 @@
         "SUN": "Dimanche"
       }
     },
+    "classConstraints": {
+      "title": "Contraintes EDT",
+      "subtitle": "Ces réglages s'appliquent uniquement à cette classe et viennent s'ajouter aux contraintes globales de l'établissement et du cycle. Champ vide = pas de contrainte côté classe (hérite des défauts).",
+      "breadcrumbClasses": "Classes",
+      "saved": "Enregistré",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "reset": "Réinitialiser tout",
+      "confirmReset": "Supprimer toutes les contraintes spécifiques à cette classe ?",
+      "days": {
+        "MON": "Lun", "TUE": "Mar", "WED": "Mer", "THU": "Jeu",
+        "FRI": "Ven", "SAT": "Sam", "SUN": "Dim"
+      },
+      "hours": {
+        "title": "Volume horaire quotidien",
+        "hint": "Bornez le nombre d'heures que cette classe peut/doit avoir par jour. Laissez vide pour ne pas contraindre.",
+        "max": "Max heures / jour",
+        "min": "Min heures / jour",
+        "maxHint": "Empêche les journées surchargées. Ex : 6 pour collège.",
+        "minHint": "Force au moins N heures dans les jours actifs (évite « 1 cours isolé »).",
+        "inherit": "—"
+      },
+      "forbiddenDays": {
+        "title": "Jours sans cours pour cette classe",
+        "hint": "S'ajoute aux jours OFF du cycle/établissement. Utile pour des classes spécifiques (ex : 3AC sans cours le vendredi)."
+      },
+      "forbiddenSlots": {
+        "title": "Créneaux interdits pour cette classe",
+        "hint": "Cochez les cases (créneau × jour) où aucun cours ne doit être placé. S'ajoute aux interdictions globales.",
+        "slot": "Créneau",
+        "noSlots": "Aucun créneau horaire défini. Configurez-les d'abord dans Paramètres > Créneaux horaires."
+      }
+    },
     "timetableSettings": {
       "title": "Paramètres établissement",
       "subtitle": "Définissez les règles globales appliquées par le solveur lors de la génération automatique : jours travaillés, demi-journées (Mercredi/Samedi), pause déjeuner. Vous pouvez surcharger ces réglages par cycle (ex : Mercredi matin pour le collège, journée complète pour le lycée).",
@@ -1191,6 +1224,7 @@
         "manageGrades": "Notes",
         "gradeBook": "Carnet de notes",
         "timetable": "Emploi du temps",
+        "timetableConstraints": "Contraintes EDT",
         "programme": "Programme & affectations",
         "subject": "Matière",
         "coefficient": "Coef",

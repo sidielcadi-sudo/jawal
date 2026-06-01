@@ -264,6 +264,27 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
             ET.SubElement(cons, "Active").text = "true"
             ET.SubElement(cons, "Comments").text = ""
 
+    # Phase E2 : contraintes par classe (max/min h/jour)
+    for cc in req.class_constraints:
+        if cc.class_id not in class_slugs:
+            continue
+        cls_slug = class_slugs[cc.class_id]
+        if cc.max_hours_per_day is not None:
+            cons = ET.SubElement(time_constraints, "ConstraintStudentsSetMaxHoursDaily")
+            ET.SubElement(cons, "Weight_Percentage").text = "100"
+            ET.SubElement(cons, "Maximum_Hours_Daily").text = str(cc.max_hours_per_day)
+            ET.SubElement(cons, "Students").text = cls_slug
+            ET.SubElement(cons, "Active").text = "true"
+            ET.SubElement(cons, "Comments").text = ""
+        if cc.min_hours_per_day is not None:
+            cons = ET.SubElement(time_constraints, "ConstraintStudentsSetMinHoursDaily")
+            ET.SubElement(cons, "Weight_Percentage").text = "100"
+            ET.SubElement(cons, "Minimum_Hours_Daily").text = str(cc.min_hours_per_day)
+            ET.SubElement(cons, "Allow_Empty_Days").text = "true"
+            ET.SubElement(cons, "Students").text = cls_slug
+            ET.SubElement(cons, "Active").text = "true"
+            ET.SubElement(cons, "Comments").text = ""
+
     # MAX_HOURS_PER_DAY_TEACHER → ConstraintTeacherMaxHoursDaily
     if cons_params.max_hours_per_day_teacher is not None:
         for t in req.teachers:

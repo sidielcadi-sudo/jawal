@@ -106,6 +106,12 @@ export type ForbiddenClassSlot = {
   slot_id: string;
 };
 
+export type ClassConstraint = {
+  class_id: string;
+  max_hours_per_day?: number | null;
+  min_hours_per_day?: number | null;
+};
+
 export type SolverMultiRequest = {
   class_ids: string[];
   slots: SolverSlot[];
@@ -118,6 +124,7 @@ export type SolverMultiRequest = {
   constraints?: SolverConstraints;
   engine?: SolverEngine;
   forbidden_class_slots?: ForbiddenClassSlot[];
+  class_constraints?: ClassConstraint[];
 };
 
 export type SolverMultiPlaced = SolverPlacedEntry & {

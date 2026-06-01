@@ -7,11 +7,13 @@ import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
 import {
   isSlotAllowedOnDay,
+  readClassTimetableConstraints,
   readEffectiveTimetableSettings,
   type DayKey as SettingsDayKey,
 } from '@jawal/shared';
 import {
   callSolverMulti,
+  type ClassConstraint,
   type DayKey,
   type ForbiddenClassSlot,
   type SolverAssignment,
@@ -75,6 +77,7 @@ export async function generateMultiTimetableAction(
           id: true,
           name: true,
           levelId: true,
+          metadata: true,
           level: { select: { cycleId: true, cycle: { select: { settings: true } } } },
         },
       });
@@ -159,17 +162,50 @@ export async function generateMultiTimetableAction(
 
       // Phase E1 : pour chaque classe, calcule les (day, slot) interdits
       // avec les settings effectifs (cycle override > tenant default).
+      // Phase E2 : ajoute jours OFF + plages interdites propres à la classe,
+      // et collecte max/min h/jour.
       const forbidden: ForbiddenClassSlot[] = [];
+      const classConstraints: ClassConstraint[] = [];
       for (const cls of classes) {
         const cycleSettings = cls.level.cycle.settings;
         const effective = readEffectiveTimetableSettings(cycleSettings, tenant.settings);
+        const classCons = readClassTimetableConstraints(cls.metadata);
+
+        const classForbiddenDaySet = new Set(classCons.forbiddenDays);
+        const classForbiddenSlotSet = new Set(
+          classCons.forbiddenSlots.map((f) => `${f.day}|${f.slotId}`),
+        );
+
         for (const d of DAYS) {
+          const dayIsForbiddenForClass = classForbiddenDaySet.has(
+            d as SettingsDayKey,
+          );
           for (const s of slots) {
             if (s.isBreak) continue;
-            if (!isSlotAllowedOnDay(d as SettingsDayKey, s.startTime, s.endTime, effective)) {
+            const settingsAllow = isSlotAllowedOnDay(
+              d as SettingsDayKey,
+              s.startTime,
+              s.endTime,
+              effective,
+            );
+            const classBlocks =
+              dayIsForbiddenForClass ||
+              classForbiddenSlotSet.has(`${d}|${s.id}`);
+            if (!settingsAllow || classBlocks) {
               forbidden.push({ class_id: cls.id, day: d, slot_id: s.id });
             }
           }
+        }
+
+        if (
+          classCons.maxHoursPerDay !== null ||
+          classCons.minHoursPerDay !== null
+        ) {
+          classConstraints.push({
+            class_id: cls.id,
+            max_hours_per_day: classCons.maxHoursPerDay,
+            min_hours_per_day: classCons.minHoursPerDay,
+          });
         }
       }
 
@@ -211,6 +247,7 @@ export async function generateMultiTimetableAction(
           constraints,
           engine,
           forbidden_class_slots: forbidden,
+          class_constraints: classConstraints,
         } as SolverMultiRequest,
         classNames: new Map(classes.map((c) => [c.id, c.name])),
       };
