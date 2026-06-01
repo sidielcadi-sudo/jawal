@@ -143,6 +143,89 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
                 if vars_room:
                     model.Add(sum(vars_room) <= 1)
 
+    # ─── Contraintes paramétrables (phase C) ─────────────────────────
+    cons = request.constraints
+
+    # C7 : MAX_SAME_SUBJECT_PER_DAY — pour chaque (classe × jour × matière)
+    if cons.max_same_subject_per_day is not None:
+        subj_of = {a.id: a.subject_id for a in request.assignments}
+        for cls_id in classes:
+            for d in days:
+                # Group assignments by subject for this class
+                subjects_for_class: Dict[str, List[cp_model.IntVar]] = {}
+                for (aid, day, sid, r), v in x.items():
+                    if day != d:
+                        continue
+                    if class_of[aid] != cls_id:
+                        continue
+                    subj = subj_of[aid]
+                    subjects_for_class.setdefault(subj, []).append(v)
+                for vars_subj in subjects_for_class.values():
+                    if len(vars_subj) > cons.max_same_subject_per_day:
+                        model.Add(sum(vars_subj) <= cons.max_same_subject_per_day)
+
+    # C8 : MAX_HOURS_PER_DAY_TEACHER — chaque prof a ≤ N heures/jour
+    if cons.max_hours_per_day_teacher is not None:
+        for t_id in teachers_by_id:
+            for d in days:
+                vars_day = [
+                    v
+                    for k, v in x.items()
+                    if teacher_of[k[0]] == t_id and k[1] == d
+                ]
+                if len(vars_day) > cons.max_hours_per_day_teacher:
+                    model.Add(sum(vars_day) <= cons.max_hours_per_day_teacher)
+
+    # C9 : REQUIRES_CONSECUTIVE_SUBJECTS — matières en blocs 2h obligatoires
+    # Implémentation : pour ces matières, x[a,d,s] = 1 implique l'existence
+    # d'une séance adjacente (s-1 ou s+1) sauf si c'est la seule séance
+    # demandée dans la semaine.
+    forced_consec_subjects = set(cons.consecutive_subject_ids)
+    if forced_consec_subjects:
+        # Index slots par position
+        slot_pos: Dict[str, int] = {s.id: i for i, s in enumerate(placeable_slots_sorted)}
+        for a in request.assignments:
+            if a.subject_id not in forced_consec_subjects:
+                continue
+            if a.weekly_hours < 2:
+                continue
+            # Total séances de cette affectation
+            total = sum(
+                1 for k in x if k[0] == a.id
+            )
+            if total == 0:
+                continue
+            # Pour chaque (d, s), si occupied, alors (occupied à s-1) OU (occupied à s+1)
+            for d in days:
+                for s in placeable_slots:
+                    pos = slot_pos.get(s.id, -1)
+                    if pos < 0:
+                        continue
+                    # Variable "occupé pour cette assignment sur (d,s)" (somme sur r)
+                    here = [v for k, v in x.items() if k[0] == a.id and k[1] == d and k[2] == s.id]
+                    if not here:
+                        continue
+                    occupied = sum(here)  # 0 ou 1 vu C2
+
+                    neighbor_vars: List[cp_model.IntVar] = []
+                    if pos > 0:
+                        prev = placeable_slots_sorted[pos - 1]
+                        neighbor_vars.extend(
+                            v for k, v in x.items() if k[0] == a.id and k[1] == d and k[2] == prev.id
+                        )
+                    if pos + 1 < len(placeable_slots_sorted):
+                        nxt = placeable_slots_sorted[pos + 1]
+                        neighbor_vars.extend(
+                            v for k, v in x.items() if k[0] == a.id and k[1] == d and k[2] == nxt.id
+                        )
+                    if not neighbor_vars:
+                        # Pas de voisin possible → forcer 0
+                        model.Add(occupied == 0)
+                    else:
+                        # occupied = 1 ⇒ au moins 1 voisin = 1
+                        # Encodage : occupied ≤ sum(neighbors)
+                        model.Add(occupied <= sum(neighbor_vars))
+
     # Heuristique consécutivité : pour chaque (a, d, paire de slots adjacents),
     # bonus si les deux sont occupés
     pairs: List[cp_model.IntVar] = []
@@ -170,10 +253,50 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
                 # pour la pondération maximum)
                 pairs.append(pair)
 
+    # ─── NO_GAPS : pénalise patterns « cours ⋯ vide ⋯ cours » ────────
+    # Pour chaque (classe × jour × triplet de slots adjacents) :
+    #   gap[c, d, i] = occupied_class[i] AND NOT occupied_class[i+1] AND occupied_class[i+2]
+    # On maximise donc -no_gaps_weight * sum(gap)
+    gaps_vars: List[cp_model.IntVar] = []
+    if cons.no_gaps_weight is not None and cons.no_gaps_weight > 0:
+        # occupied_class[cls, d, slot_id] = somme x sur (a, *, r) tels que class=cls
+        for cls_id in classes:
+            for d in days:
+                # Booléen "occupé" par slot
+                occ_by_slot: Dict[str, cp_model.IntVar] = {}
+                for i, s in enumerate(placeable_slots_sorted):
+                    vars_cell = [
+                        v
+                        for k, v in x.items()
+                        if class_of[k[0]] == cls_id and k[1] == d and k[2] == s.id
+                    ]
+                    if not vars_cell:
+                        # Pas de var = ne sera jamais occupé
+                        occ_var = model.NewConstant(0)
+                    else:
+                        occ_var = model.NewBoolVar(f"occ_{cls_id[:4]}_{d}_{i}")
+                        model.Add(occ_var == sum(vars_cell))
+                    occ_by_slot[s.id] = occ_var
+
+                # Triplets adjacents
+                for i in range(len(placeable_slots_sorted) - 2):
+                    a_slot = placeable_slots_sorted[i].id
+                    b_slot = placeable_slots_sorted[i + 1].id
+                    c_slot = placeable_slots_sorted[i + 2].id
+                    gap = model.NewBoolVar(f"gap_{cls_id[:4]}_{d}_{i}")
+                    # gap = occ[a] AND (1 - occ[b]) AND occ[c]
+                    model.Add(gap <= occ_by_slot[a_slot])
+                    model.Add(gap <= 1 - occ_by_slot[b_slot])
+                    model.Add(gap <= occ_by_slot[c_slot])
+                    # gap = 1 ⇒ occ[a]=1 AND occ[b]=0 AND occ[c]=1 (implication suffisante
+                    # pour la pénalisation : on n'a pas besoin du reverse car on minimise)
+                    gaps_vars.append(gap)
+
     # Objectif :
     #   10 par séance placée (motivation principale)
     #   +1 par séance placée dans une salle réelle (préférence vs NO_ROOM)
     #   + consecutive_bonus par bloc 2h consécutif
+    #   - no_gaps_weight par gap détecté (si activé)
     if x:
         objective_terms: List[cp_model.IntVar | int] = []
         for (aid, d, sid, r), v in x.items():
@@ -183,6 +306,8 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
             objective_terms.append(v * weight)
         if request.consecutive_bonus > 0 and pairs:
             objective_terms.extend(p * request.consecutive_bonus for p in pairs)
+        if cons.no_gaps_weight is not None and cons.no_gaps_weight > 0 and gaps_vars:
+            objective_terms.extend(-int(cons.no_gaps_weight) * g for g in gaps_vars)
         model.Maximize(sum(objective_terms))
 
     solver = cp_model.CpSolver()

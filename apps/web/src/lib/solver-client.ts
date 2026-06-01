@@ -91,6 +91,13 @@ export async function callSolver(req: SolverRequest): Promise<SolverResponse> {
 
 export type SolverRoom = { id: string; label: string };
 
+export type SolverConstraints = {
+  max_same_subject_per_day?: number | null;
+  no_gaps_weight?: number | null;
+  consecutive_subject_ids?: string[];
+  max_hours_per_day_teacher?: number | null;
+};
+
 export type SolverMultiRequest = {
   class_ids: string[];
   slots: SolverSlot[];
@@ -100,6 +107,7 @@ export type SolverMultiRequest = {
   assignments: SolverAssignment[];
   max_solve_seconds?: number;
   consecutive_bonus?: number;
+  constraints?: SolverConstraints;
 };
 
 export type SolverMultiPlaced = SolverPlacedEntry & {

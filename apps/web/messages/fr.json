@@ -517,6 +517,41 @@
         "SUN": "Dimanche"
       }
     },
+    "timetableConstraints": {
+      "title": "Contraintes de génération d'EDT",
+      "subtitle": "Pilotent le solveur OR-Tools lors de la génération automatique. Activez celles qui s'appliquent à votre établissement.",
+      "enabled": "Activée",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "saved": "Enregistré",
+      "fields": {
+        "max": "Valeur",
+        "weight": "Poids (importance)",
+        "subjectIds": "Matières concernées"
+      },
+      "kinds": {
+        "MAX_SAME_SUBJECT_PER_DAY": {
+          "title": "Max heures d'une même matière par jour",
+          "description": "Empêche d'avoir 2 fois la même matière dans la même journée pour une classe (sauf si elle dépasse cette limite dans le programme).",
+          "hint": "Recommandé : 2. Mettre 1 pour interdire totalement deux séances de la même matière sur la même journée."
+        },
+        "NO_GAPS": {
+          "title": "Éviter les heures creuses",
+          "description": "Pénalise les patterns « cours · créneau vide · cours » dans la grille élève. Plus le poids est élevé, plus le solveur évitera les trous.",
+          "hint": "Recommandé : 5 (modéré). 100 = anti-trous strict mais risque de ne pas trouver de solution."
+        },
+        "REQUIRES_CONSECUTIVE_SUBJECTS": {
+          "title": "Blocs 2h consécutifs obligatoires",
+          "description": "Pour les matières cochées (PC, SVT, Info…), force le solveur à placer les séances par paires adjacentes quand il y en a ≥ 2 dans la semaine.",
+          "hint": "Idéal pour les matières expérimentales qui nécessitent une installation."
+        },
+        "MAX_HOURS_PER_DAY_TEACHER": {
+          "title": "Max heures de cours par jour et par prof",
+          "description": "Empêche un enseignant d'enchaîner trop d'heures sur la même journée.",
+          "hint": "Recommandé : 6 pour un temps plein, 4 pour un mi-temps."
+        }
+      }
+    },
     "timetableSlots": {
       "title": "Créneaux horaires",
       "subtitle": "Définissez la grille horaire de l'établissement (semaine type, réutilisée par toutes les classes).",
@@ -1311,6 +1346,7 @@
         "subjects": "Matières",
         "rooms": "Salles",
         "timetable-slots": "Créneaux horaires",
+        "timetable-constraints": "Contraintes EDT",
         "fees": "Frais",
         "roles": "Rôles",
         "users": "Utilisateurs",

@@ -11,4 +11,5 @@ export * from './schemas/person';
 export * from './schemas/staff-attendance';
 export * from './schemas/tenant';
 export * from './schemas/timetable';
+export * from './schemas/timetable-constraint';
 export * from './schemas/timetable-override';

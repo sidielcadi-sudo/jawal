@@ -165,6 +165,9 @@ export async function generateTimetableAction(
         assignments: solverAssignments,
         busy_teacher_slots: busy,
         max_solve_seconds: 15,
+        // Note : la phase A (/solve mono-classe) ne lit pas encore les
+        // contraintes paramétrables — utiliser /solve-multi via la page
+        // /admin/timetable/generate pour bénéficier des contraintes.
       };
     });
   } catch (e: unknown) {

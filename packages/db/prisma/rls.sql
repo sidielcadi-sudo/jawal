@@ -78,7 +78,8 @@ DECLARE
     'enrollments',
     'timetable_slots',
     'timetable_entries',
-    'timetable_overrides'
+    'timetable_overrides',
+    'timetable_constraints'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped

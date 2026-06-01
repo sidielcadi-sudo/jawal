@@ -9,6 +9,7 @@ import {
   callSolverMulti,
   type DayKey,
   type SolverAssignment,
+  type SolverConstraints,
   type SolverMultiRequest,
   type SolverRoom,
   type SolverSlot,
@@ -140,6 +141,30 @@ export async function generateMultiTimetableAction(
         is_break: s.isBreak,
       }));
 
+      // Contraintes paramétrables (TimetableConstraint actives)
+      const constraintRows = await tx.timetableConstraint.findMany({
+        where: { enabled: true },
+      });
+      const constraints: SolverConstraints = {};
+      for (const c of constraintRows) {
+        const cfg = (c.config as Record<string, unknown>) ?? {};
+        switch (c.kind) {
+          case 'MAX_SAME_SUBJECT_PER_DAY':
+            if (typeof cfg.max === 'number') constraints.max_same_subject_per_day = cfg.max;
+            break;
+          case 'NO_GAPS':
+            if (typeof cfg.weight === 'number') constraints.no_gaps_weight = cfg.weight;
+            break;
+          case 'REQUIRES_CONSECUTIVE_SUBJECTS':
+            if (Array.isArray(cfg.subjectIds))
+              constraints.consecutive_subject_ids = cfg.subjectIds as string[];
+            break;
+          case 'MAX_HOURS_PER_DAY_TEACHER':
+            if (typeof cfg.max === 'number') constraints.max_hours_per_day_teacher = cfg.max;
+            break;
+        }
+      }
+
       return {
         payload: {
           class_ids: classIds,
@@ -148,8 +173,9 @@ export async function generateMultiTimetableAction(
           teachers: [...teacherMap.values()],
           rooms: solverRooms,
           assignments: solverAssignments,
-          max_solve_seconds: 30,
+          max_solve_seconds: 60,
           consecutive_bonus: 1,
+          constraints,
         } as SolverMultiRequest,
         classNames: new Map(classes.map((c) => [c.id, c.name])),
       };

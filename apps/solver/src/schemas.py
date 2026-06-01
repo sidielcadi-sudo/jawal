@@ -140,6 +140,28 @@ class MultiAssignmentInput(BaseModel):
     weekly_hours: int = Field(..., ge=0, le=40)
 
 
+class ConstraintsInput(BaseModel):
+    """Contraintes paramétrables pilotées par le tenant.
+
+    Toutes optionnelles. Quand un champ est `None`, la contrainte n'est pas
+    appliquée.
+    """
+
+    # Hard : max d'occurrences d'une matière sur 1 jour pour 1 classe
+    max_same_subject_per_day: int | None = Field(None, ge=1, le=10)
+
+    # Soft : pénalité par pattern « cours ⋯ vide ⋯ cours » dans la journée
+    # d'une classe. Si None, pas de pénalité.
+    no_gaps_weight: int | None = Field(None, ge=0, le=100)
+
+    # Hard : matières dont les séances doivent être consécutives (blocs 2h)
+    # quand weekly_hours ≥ 2
+    consecutive_subject_ids: list[str] = Field(default_factory=list)
+
+    # Hard : max heures de cours par jour pour chaque prof
+    max_hours_per_day_teacher: int | None = Field(None, ge=1, le=12)
+
+
 class MultiGenerateRequest(BaseModel):
     """Génération simultanée pour plusieurs classes.
 
@@ -158,6 +180,8 @@ class MultiGenerateRequest(BaseModel):
     # Bonus pour cours consécutifs (heuristique douce).
     # 0 = neutre, >0 = on favorise les blocs 2h.
     consecutive_bonus: int = Field(1, ge=0, le=10)
+    # Contraintes paramétrables (phase C)
+    constraints: ConstraintsInput = Field(default_factory=ConstraintsInput)
 
 
 class MultiPlacedEntry(BaseModel):

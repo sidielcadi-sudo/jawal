@@ -136,6 +136,30 @@ enum TimetableOverrideKind {
   SUBSTITUTION
 }
 
+/// Types de contraintes paramétrables qui pilotent le solveur d'EDT.
+///
+/// MAX_SAME_SUBJECT_PER_DAY (hard)
+///   config: { max: int } — applique à toutes les classes : max N heures
+///   d'une même matière sur la même journée pour la même classe.
+///   Évite « 2× Maths le lundi ».
+///
+/// NO_GAPS (soft, poids élevé)
+///   config: { weight: int } — pénalise tout pattern « cours … vide … cours »
+///   dans la journée d'une classe. Réduit les heures creuses.
+///
+/// REQUIRES_CONSECUTIVE_SUBJECTS (hard)
+///   config: { subjectIds: string[] } — pour ces matières, si weekly_hours
+///   ≥ 2, force les séances à être consécutives par paires (blocs 2h).
+///
+/// MAX_HOURS_PER_DAY_TEACHER (hard)
+///   config: { max: int } — chaque prof a au plus N heures de cours par jour.
+enum TimetableConstraintKind {
+  MAX_SAME_SUBJECT_PER_DAY
+  NO_GAPS
+  REQUIRES_CONSECUTIVE_SUBJECTS
+  MAX_HOURS_PER_DAY_TEACHER
+}
+
 enum PaymentMethod {
   CASH       // espèces (caisse)
   CHEQUE
@@ -220,6 +244,7 @@ model Tenant {
   timetableSlots     TimetableSlot[]
   timetableEntries   TimetableEntry[]
   timetableOverrides TimetableOverride[]
+  timetableConstraints TimetableConstraint[]
 
   @@map("tenants")
 }
@@ -1094,6 +1119,23 @@ model TimetableOverride {
   @@unique([entryId, date])
   @@index([tenantId, date])
   @@map("timetable_overrides")
+}
+
+/// Contrainte paramétrable qui pilote le solveur d'EDT. Une ligne par
+/// (tenant × kind) — activable/désactivable + config JSON par type.
+model TimetableConstraint {
+  id        String                  @id @default(uuid()) @db.Uuid
+  tenantId  String                  @map("tenant_id") @db.Uuid
+  kind      TimetableConstraintKind
+  enabled   Boolean                 @default(true)
+  config    Json                    @default("{}")
+  createdAt DateTime                @default(now()) @map("created_at")
+  updatedAt DateTime                @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, kind])
+  @@map("timetable_constraints")
 }
 
 // ─── Communication (M09) ───────────────────────────────────
