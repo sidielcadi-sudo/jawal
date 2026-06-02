@@ -420,39 +420,109 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
 
     consecutive_blocks = sum(1 for p in pairs if solver.Value(p) == 1)
 
+    # ─── Diagnostic enrichi pour les unplaced ──────────────────────
+    # Pré-calculs réutilisés pour identifier la cause précise.
+
+    # Heures totales attendues par prof
+    teacher_total_expected: Dict[str, int] = {}
+    for ax in request.assignments:
+        teacher_total_expected[ax.teacher_id] = (
+            teacher_total_expected.get(ax.teacher_id, 0) + ax.weekly_hours
+        )
+
+    # Heures effectivement placées par prof
+    teacher_total_placed: Dict[str, int] = {}
+    for ax in request.assignments:
+        teacher_total_placed[ax.teacher_id] = (
+            teacher_total_placed.get(ax.teacher_id, 0) + placed_hours[ax.id]
+        )
+
+    # Cellules compatibles globalement par prof (dispo + au moins une classe
+    # autorisée à ce créneau)
+    teacher_total_compat_cells: Dict[str, int] = {}
+    for t in request.teachers:
+        cnt = 0
+        for d in days:
+            for s in placeable_slots:
+                if not _is_teacher_available(t, d, s):
+                    continue
+                # Cellule utile s'il existe au moins UNE classe du prof
+                # qui peut accueillir un cours à ce (d, s)
+                if any(
+                    (ax.class_id, d, s.id) not in forbidden_set
+                    for ax in request.assignments
+                    if ax.teacher_id == t.id
+                ):
+                    cnt += 1
+        teacher_total_compat_cells[t.id] = cnt
+
     unplaced: List[UnplacedAssignment] = []
     for a in request.assignments:
-        if placed_hours[a.id] < a.weekly_hours:
-            teacher = teachers_by_id.get(a.teacher_id)
-            if not teacher:
-                reason = "Prof introuvable."
-            else:
-                free_compat = sum(
-                    1
-                    for d in days
-                    for s in placeable_slots
-                    if _is_teacher_available(teacher, d, s)
-                )
-                if free_compat < a.weekly_hours:
-                    reason = (
-                        f"Seulement {free_compat} créneau(x) compatibles avec "
-                        f"{teacher.name} (besoin {a.weekly_hours})."
-                    )
-                else:
-                    reason = (
-                        "Contraintes croisées (autres classes/profs) empêchent "
-                        "le placement complet."
-                    )
-            unplaced.append(
-                UnplacedAssignment(
-                    assignment_id=a.id,
-                    subject_label=a.subject_label,
-                    teacher_id=a.teacher_id,
-                    requested_hours=a.weekly_hours,
-                    placed_hours=placed_hours[a.id],
-                    reason=reason,
-                )
+        missing = a.weekly_hours - placed_hours[a.id]
+        if missing <= 0:
+            continue
+
+        teacher = teachers_by_id.get(a.teacher_id)
+        if not teacher:
+            reason = "Prof introuvable dans la liste fournie."
+        else:
+            # Cellules compatibles SPÉCIFIQUEMENT pour ce triplet (classe × prof × subject)
+            class_compat = sum(
+                1
+                for d in days
+                for s in placeable_slots
+                if _is_teacher_available(teacher, d, s)
+                and (a.class_id, d, s.id) not in forbidden_set
             )
+            t_expected = teacher_total_expected.get(a.teacher_id, 0)
+            t_placed = teacher_total_placed.get(a.teacher_id, 0)
+            t_compat = teacher_total_compat_cells.get(a.teacher_id, 0)
+            t_missing = t_expected - t_placed
+
+            if class_compat < missing:
+                # Pas assez de créneaux pour cette classe spécifiquement
+                reason = (
+                    f"Seulement {class_compat} créneau(x) compatibles dans cette "
+                    f"classe pour {teacher.name} (besoin {missing}). "
+                    f"→ Réduire les jours/plages interdits de cette classe ou "
+                    f"libérer la dispo du prof."
+                )
+            elif t_missing > 0 and t_compat < t_expected:
+                # Le prof est globalement saturé
+                deficit = t_expected - t_compat
+                reason = (
+                    f"{teacher.name} a {t_expected} h à enseigner sur l'ensemble "
+                    f"de ses classes, mais seulement {t_compat} créneaux dispos "
+                    f"({t_placed} placées). Déficit ≈ {deficit} h. "
+                    f"→ Ajouter un autre prof ou augmenter ses disponibilités."
+                )
+            elif t_missing > 0:
+                # Contraintes croisées entre les classes du prof
+                reason = (
+                    f"{teacher.name} ({t_placed}/{t_expected} h placées) est en "
+                    f"conflit avec ses autres classes au mêmes créneaux. "
+                    f"→ Libérer un créneau dans une autre classe enseignée par "
+                    f"ce prof, ou dédoubler le poste."
+                )
+            else:
+                # Tout placé pour le prof, mais cette classe spécifique pas complète
+                # → conflit avec d'autres profs/salles dans cette classe
+                reason = (
+                    f"Cette classe a déjà ses créneaux occupés par d'autres "
+                    f"matières aux moments où {teacher.name} est dispo. "
+                    f"→ Réorganiser les autres affectations de cette classe."
+                )
+
+        unplaced.append(
+            UnplacedAssignment(
+                assignment_id=a.id,
+                subject_label=a.subject_label,
+                teacher_id=a.teacher_id,
+                requested_hours=a.weekly_hours,
+                placed_hours=placed_hours[a.id],
+                reason=reason,
+            )
+        )
 
     if not unplaced:
         out = "OPTIMAL" if status == cp_model.OPTIMAL else "FEASIBLE"
