@@ -455,7 +455,25 @@
         "resultError": "Échec de la génération",
         "consecutiveBlocks": "{count, plural, one {# bloc 2h} other {# blocs 2h}}",
         "placedHours": "{count, plural, one {# heure placée} other {# heures placées}}",
-        "unplacedCount": "{count, plural, one {# non placée} other {# non placées}}"
+        "unplacedCount": "{count, plural, one {# non placée} other {# non placées}}",
+        "analysis": {
+          "title": "Analyse globale",
+          "suggestions": "Leviers d'action suggérés",
+          "teacherLoad": "Charge des enseignants",
+          "teacher": "Enseignant",
+          "expected": "Attendu",
+          "placed": "Placé",
+          "capacity": "Capacité",
+          "utilization": "Util.",
+          "status": "Statut",
+          "helpHint": "« Capacité » = nombre de créneaux compatibles (dispo prof × au moins une classe ouverte). Si Attendu > Capacité = déficit structurel.",
+          "statusLabel": {
+            "OK": "OK",
+            "TIGHT": "Saturé",
+            "DEFICIT": "Déficit",
+            "UNDERLOADED": "Sous-utilisé"
+          }
+        }
       },
       "generate": {
         "button": "Générer l'EDT",

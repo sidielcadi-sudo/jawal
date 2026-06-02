@@ -30,6 +30,7 @@ import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import Dict, List, Tuple
 
+from .analysis import compute_analysis
 from .schemas import (
     DayKey,
     MultiAssignmentInput,
@@ -512,6 +513,8 @@ def solve_with_fet(request: MultiGenerateRequest) -> MultiGenerateResponse:
         status = "PARTIAL"
         msg = f"FET : {total_placed}/{total_req} heures placées."
 
+    analysis = compute_analysis(request, placed)
+
     return MultiGenerateResponse(
         status=status,  # type: ignore[arg-type]
         solver_time_ms=solver_time_ms,
@@ -519,4 +522,5 @@ def solve_with_fet(request: MultiGenerateRequest) -> MultiGenerateResponse:
         unplaced=unplaced,
         message=msg,
         consecutive_blocks=0,  # FET ne calcule pas cette métrique
+        analysis=analysis,
     )

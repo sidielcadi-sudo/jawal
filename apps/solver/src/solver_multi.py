@@ -32,6 +32,7 @@ from typing import Dict, List, Tuple
 
 from ortools.sat.python import cp_model
 
+from .analysis import compute_analysis
 from .schemas import (
     MultiAssignmentInput,
     MultiGenerateRequest,
@@ -533,6 +534,8 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
         total_placed = sum(placed_hours.values())
         msg = f"{total_placed}/{total_req} heures placées."
 
+    analysis = compute_analysis(request, placed)
+
     return MultiGenerateResponse(
         status=out,  # type: ignore[arg-type]
         solver_time_ms=solver_time_ms,
@@ -540,4 +543,5 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
         unplaced=unplaced,
         message=msg,
         consecutive_blocks=consecutive_blocks,
+        analysis=analysis,
     )

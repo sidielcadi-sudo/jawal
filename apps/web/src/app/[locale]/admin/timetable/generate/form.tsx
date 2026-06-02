@@ -14,6 +14,27 @@ type ClassRow = {
   entryCount: number;
 };
 
+type AnalysisData = {
+  teachers: Array<{
+    teacher_id: string;
+    teacher_name: string;
+    expected_hours: number;
+    placed_hours: number;
+    compatible_cells: number;
+    utilization_pct: number;
+    status: 'OK' | 'TIGHT' | 'DEFICIT' | 'UNDERLOADED';
+    deficit_hours: number;
+  }>;
+  classes: Array<{
+    class_id: string;
+    class_name: string;
+    expected_hours: number;
+    placed_hours: number;
+    missing_subjects: string[];
+  }>;
+  suggestions: string[];
+};
+
 type ResultData = {
   status: string;
   message: string;
@@ -31,6 +52,7 @@ type ResultData = {
       reason: string;
     }>;
   }>;
+  analysis: AnalysisData | null;
 };
 
 export function GenerateGlobalForm({
@@ -318,6 +340,8 @@ function ResultModal({
                 </li>
               ))}
             </ul>
+
+            {result.data.analysis && <AnalysisPanel analysis={result.data.analysis} />}
           </>
         ) : (
           <>
@@ -337,6 +361,124 @@ function ResultModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function AnalysisPanel({ analysis }: { analysis: AnalysisData }) {
+  const t = useTranslations('admin.timetable.generateMulti.analysis');
+
+  // On affiche le panneau seulement s'il y a quelque chose d'intéressant
+  const interestingTeachers = analysis.teachers.filter(
+    (td) => td.status === 'DEFICIT' || td.status === 'TIGHT',
+  );
+  const hasContent =
+    analysis.suggestions.length > 0 ||
+    interestingTeachers.length > 0 ||
+    analysis.classes.length > 0;
+  if (!hasContent) return null;
+
+  return (
+    <section className="mt-6 rounded-2xl border border-slate-200 bg-slate-50/50 p-4">
+      <h4 className="mb-3 text-sm font-semibold text-slate-700">🔍 {t('title')}</h4>
+
+      {/* Suggestions actionables */}
+      {analysis.suggestions.length > 0 && (
+        <div className="mb-4">
+          <h5 className="mb-2 text-[11px] font-semibold uppercase text-slate-500">
+            {t('suggestions')}
+          </h5>
+          <ul className="space-y-2">
+            {analysis.suggestions.map((s, i) => (
+              <li
+                key={i}
+                className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"
+              >
+                {s}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Profs saturés / en déficit */}
+      {interestingTeachers.length > 0 && (
+        <div className="mb-3">
+          <h5 className="mb-2 text-[11px] font-semibold uppercase text-slate-500">
+            {t('teacherLoad')}
+          </h5>
+          <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50 text-[10px] uppercase text-slate-500">
+                <tr>
+                  <th className="px-3 py-2 text-start">{t('teacher')}</th>
+                  <th className="px-3 py-2 text-end">{t('expected')}</th>
+                  <th className="px-3 py-2 text-end">{t('placed')}</th>
+                  <th className="px-3 py-2 text-end">{t('capacity')}</th>
+                  <th className="px-3 py-2 text-end">{t('utilization')}</th>
+                  <th className="px-3 py-2 text-start">{t('status')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {interestingTeachers.map((td) => (
+                  <tr key={td.teacher_id}>
+                    <td className="px-3 py-1.5 font-medium text-slate-900">
+                      {td.teacher_name}
+                    </td>
+                    <td className="px-3 py-1.5 text-end tabular-nums">
+                      {td.expected_hours} h
+                    </td>
+                    <td className="px-3 py-1.5 text-end tabular-nums">
+                      {td.placed_hours} h
+                    </td>
+                    <td className="px-3 py-1.5 text-end tabular-nums">
+                      {td.compatible_cells}
+                    </td>
+                    <td className="px-3 py-1.5 text-end tabular-nums">
+                      <span
+                        className={
+                          td.utilization_pct >= 95
+                            ? 'text-red-700'
+                            : td.utilization_pct >= 90
+                              ? 'text-amber-700'
+                              : 'text-slate-700'
+                        }
+                      >
+                        {td.utilization_pct}%
+                      </span>
+                    </td>
+                    <td className="px-3 py-1.5">
+                      <StatusBadge status={td.status} t={t} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <p className="mt-2 text-[10px] text-slate-400">{t('helpHint')}</p>
+    </section>
+  );
+}
+
+function StatusBadge({
+  status,
+  t,
+}: {
+  status: 'OK' | 'TIGHT' | 'DEFICIT' | 'UNDERLOADED';
+  t: (k: string) => string;
+}) {
+  const map = {
+    OK: 'bg-emerald-100 text-emerald-700',
+    TIGHT: 'bg-amber-100 text-amber-700',
+    DEFICIT: 'bg-red-100 text-red-700',
+    UNDERLOADED: 'bg-slate-100 text-slate-600',
+  } as const;
+  return (
+    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${map[status]}`}>
+      {t(`statusLabel.${status}`)}
+    </span>
   );
 }
 

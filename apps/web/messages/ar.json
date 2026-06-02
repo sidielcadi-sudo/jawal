@@ -455,7 +455,25 @@
         "resultError": "فشل التوليد",
         "consecutiveBlocks": "{count, plural, one {كتلة واحدة 2س} other {# كتل 2س}}",
         "placedHours": "{count, plural, one {ساعة واحدة موضوعة} other {# ساعات موضوعة}}",
-        "unplacedCount": "{count, plural, one {# لم تُوضع} other {# لم تُوضع}}"
+        "unplacedCount": "{count, plural, one {# لم تُوضع} other {# لم تُوضع}}",
+        "analysis": {
+          "title": "تحليل شامل",
+          "suggestions": "روافع العمل المقترحة",
+          "teacherLoad": "حمل الأساتذة",
+          "teacher": "الأستاذ",
+          "expected": "المتوقع",
+          "placed": "الموضوع",
+          "capacity": "الطاقة",
+          "utilization": "الاستخدام",
+          "status": "الحالة",
+          "helpHint": "« الطاقة » = عدد الخانات المتوافقة (توفر الأستاذ × قسم واحد على الأقل متاح). إذا المتوقع > الطاقة = عجز هيكلي.",
+          "statusLabel": {
+            "OK": "ملائم",
+            "TIGHT": "مشبع",
+            "DEFICIT": "عجز",
+            "UNDERLOADED": "غير مستغل"
+          }
+        }
       },
       "generate": {
         "button": "توليد الجدول",

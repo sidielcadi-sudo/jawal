@@ -131,6 +131,31 @@ export type SolverMultiPlaced = SolverPlacedEntry & {
   room_id: string | null;
 };
 
+export type TeacherDiagnostic = {
+  teacher_id: string;
+  teacher_name: string;
+  expected_hours: number;
+  placed_hours: number;
+  compatible_cells: number;
+  utilization_pct: number;
+  status: 'OK' | 'TIGHT' | 'DEFICIT' | 'UNDERLOADED';
+  deficit_hours: number;
+};
+
+export type ClassDiagnostic = {
+  class_id: string;
+  class_name: string;
+  expected_hours: number;
+  placed_hours: number;
+  missing_subjects: string[];
+};
+
+export type SolverAnalysis = {
+  teachers: TeacherDiagnostic[];
+  classes: ClassDiagnostic[];
+  suggestions: string[];
+};
+
 export type SolverMultiResponse = {
   status: SolverResponse['status'];
   solver_time_ms: number;
@@ -138,6 +163,7 @@ export type SolverMultiResponse = {
   unplaced: SolverUnplaced[];
   message: string;
   consecutive_blocks: number;
+  analysis?: SolverAnalysis | null;
 };
 
 export async function callSolverMulti(

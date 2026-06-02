@@ -228,6 +228,36 @@ class MultiPlacedEntry(BaseModel):
     slot_id: str
 
 
+class TeacherDiagnostic(BaseModel):
+    """Bilan d'utilisation d'un prof à l'issue du solving."""
+
+    teacher_id: str
+    teacher_name: str
+    expected_hours: int  # somme weekly_hours sur toutes ses affectations
+    placed_hours: int
+    compatible_cells: int  # cellules (jour × créneau) dispo × au moins 1 classe ouverte
+    utilization_pct: int  # 0-100
+    status: Literal["OK", "TIGHT", "DEFICIT", "UNDERLOADED"]
+    deficit_hours: int  # max(0, expected - compatible_cells)
+
+
+class ClassDiagnostic(BaseModel):
+    """Bilan par classe : matières non complétées."""
+
+    class_id: str
+    class_name: str
+    expected_hours: int
+    placed_hours: int
+    missing_subjects: list[str]  # subject_label, déduplis
+
+
+class AnalysisOutput(BaseModel):
+    teachers: list[TeacherDiagnostic] = []
+    classes: list[ClassDiagnostic] = []
+    # Suggestions humaines actionables (1 par ligne)
+    suggestions: list[str] = []
+
+
 class MultiGenerateResponse(BaseModel):
     status: Literal["OPTIMAL", "FEASIBLE", "PARTIAL", "INFEASIBLE", "ERROR"]
     solver_time_ms: int
@@ -236,3 +266,6 @@ class MultiGenerateResponse(BaseModel):
     message: str = ""
     # Nombre de blocs 2h consécutifs créés (qualité de la solution).
     consecutive_blocks: int = 0
+    # Analyse globale (phase 4E2++) pour aider l'admin à débloquer
+    # les cas où des heures restent non placées.
+    analysis: AnalysisOutput | None = None

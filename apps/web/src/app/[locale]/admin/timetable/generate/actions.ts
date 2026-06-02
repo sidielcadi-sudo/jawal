@@ -16,6 +16,7 @@ import {
   type ClassConstraint,
   type DayKey,
   type ForbiddenClassSlot,
+  type SolverAnalysis,
   type SolverAssignment,
   type SolverConstraints,
   type SolverEngine,
@@ -42,6 +43,7 @@ type Result =
         consecutiveBlocks: number;
         solverTimeMs: number;
         byClass: ClassResult[];
+        analysis: SolverAnalysis | null;
       };
     }
   | { ok: false; error: string };
@@ -367,6 +369,7 @@ export async function generateMultiTimetableAction(
       consecutiveBlocks: solverResp.consecutive_blocks,
       solverTimeMs: solverResp.solver_time_ms,
       byClass,
+      analysis: solverResp.analysis ?? null,
     },
   };
 }
