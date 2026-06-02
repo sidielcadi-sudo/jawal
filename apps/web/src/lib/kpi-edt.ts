@@ -65,7 +65,12 @@ export type AvailabilityMap = Partial<
   Record<'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN', Array<{ from: string; to: string }>>
 >;
 
-/** Estime la capacité hebdomadaire d'un prof à partir de sa dispo (heures × coeff). */
+/**
+ * @deprecated Utiliser Person.contractualHoursPerWeek directement. Ce
+ * helper restait pour transition et sera supprimé. Le volume horaire
+ * contractuel est désormais saisi explicitement dans la fiche prof,
+ * indépendant de la disponibilité horaire.
+ */
 export function estimateTeacherCapacity(av: AvailabilityMap | null): number {
   if (!av) return 0;
   let total = 0;
@@ -75,7 +80,6 @@ export function estimateTeacherCapacity(av: AvailabilityMap | null): number {
       total += hhmmToMin(r.to) - hhmmToMin(r.from);
     }
   }
-  // Multiplier par 0.7 pour tenir compte des heures de prép et conflits
   return Math.round((total / 60) * 0.7);
 }
 
@@ -85,10 +89,26 @@ function hhmmToMin(s: string): number {
 }
 
 export type KpiResult = {
+  /**
+   * KPI 1 — Couverture horaire profs (capacité contractuelle ≥ demande)
+   * pct est CAPÉ à 100% : si la capacité dépasse la demande, on affiche 100%.
+   * Vert si pct=100, amber si 90-99, rouge si <90.
+   */
   coverageHours: {
+    expected: number; // somme TeacherAssignment.hoursPerWeek
+    contractual: number; // somme Person.contractualHoursPerWeek (TEACHER)
+    pct: number; // min(100, contractual/expected × 100)
+    teachersWithoutContractual: number; // alerte : profs avec valeur null
+    totalTeachers: number;
+  };
+  /**
+   * KPI 1bis — Taux d'utilisation prévisionnel (proportion réellement
+   * mobilisée par les affectations). Peut dépasser 100% = surcharge structurelle.
+   */
+  utilizationRate: {
     expected: number;
-    available: number;
-    pct: number;
+    contractual: number;
+    pct: number; // expected/contractual × 100, peut > 100
   };
   classRooms: {
     classes: number;
@@ -174,6 +194,7 @@ export async function computeKpis(
       firstName: true,
       lastName: true,
       availability: true,
+      contractualHoursPerWeek: true,
     },
   });
 
@@ -181,13 +202,24 @@ export async function computeKpis(
     (s, a) => s + (a.hoursPerWeek ?? 0),
     0,
   );
-  const availableHours = teachers.reduce(
-    (s, t) => s + estimateTeacherCapacity(t.availability as AvailabilityMap | null),
+
+  // KPI 1 : Couverture horaire — basée sur les heures CONTRACTUELLES
+  // (indépendant des dispos et des heures réellement enseignées).
+  // Profs sans valeur saisie sont exclus → alerte dédiée.
+  const contractualHours = teachers.reduce(
+    (s, t) => s + (t.contractualHoursPerWeek ?? 0),
     0,
   );
+  const teachersWithoutContractual = teachers.filter(
+    (t) => t.contractualHoursPerWeek === null || t.contractualHoursPerWeek === undefined,
+  ).length;
   const coveragePct = expectedHours > 0
-    ? Math.min(100, Math.round((availableHours / expectedHours) * 100))
+    ? Math.min(100, Math.round((contractualHours / expectedHours) * 100))
     : 100;
+  // Taux d'utilisation prévisionnel — non capé, peut dépasser 100%
+  const utilizationPct = contractualHours > 0
+    ? Math.round((expectedHours / contractualHours) * 100)
+    : 0;
 
   // ─── KPI 2 : Classes physiques disponibles ────────────────────
   const classes = await tx.class.findMany({
@@ -426,8 +458,15 @@ export async function computeKpis(
   return {
     coverageHours: {
       expected: expectedHours,
-      available: availableHours,
+      contractual: contractualHours,
       pct: coveragePct,
+      teachersWithoutContractual,
+      totalTeachers: teachers.length,
+    },
+    utilizationRate: {
+      expected: expectedHours,
+      contractual: contractualHours,
+      pct: utilizationPct,
     },
     classRooms: { classes: classesCount, rooms: roomsCount, okPct: classRoomsPct },
     teacherAvailability: {

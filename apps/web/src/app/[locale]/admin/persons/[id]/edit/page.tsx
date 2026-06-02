@@ -101,6 +101,7 @@ export default async function EditPersonPage({
               ? person.contractEndDate.toISOString().slice(0, 10)
               : undefined,
             contractType: person.contractType ?? undefined,
+            contractualHoursPerWeek: person.contractualHoursPerWeek ?? undefined,
             contractFile: person.contractFile
               ? {
                   id: person.contractFile.id,

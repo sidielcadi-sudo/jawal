@@ -398,7 +398,19 @@
       "generateButton": "توليد الجدول",
       "coverage": {
         "title": "تغطية الحجم الساعي للأساتذة",
-        "hint": "{available} ساعة متاحة من أصل {expected} ساعة للتدريس"
+        "hint": "{contractual} ساعة تعاقدية / {expected} ساعة للتدريس",
+        "warningMissing": "{count}/{total} أستاذ بدون ساعات تعاقدية مسجلة"
+      },
+      "utilization": {
+        "title": "نسبة الاستخدام التوقعية",
+        "hint": "{expected} ساعة تدريس / {contractual} ساعة تعاقدية",
+        "surcharge": "⚠ تجاوز : الطلب يفوق القدرة التعاقدية",
+        "label": {
+          "emerald": "مثالي",
+          "amber": "ضيق",
+          "red": "حمل زائد",
+          "blue": "غير مستغل"
+        }
       },
       "score": {
         "title": "درجة جدوى الجدول",
@@ -987,6 +999,7 @@
         "timetable": "الجدول الزمني",
         "contract": "العقد",
         "contractType": "النوع",
+        "contractualHoursPerWeek": "الساعات التعاقدية / أسبوع",
         "hireDate": "تاريخ الالتحاق",
         "contractEndDate": "نهاية العقد",
         "specialties": "التخصصات",
@@ -1226,6 +1239,9 @@
         "removeParent": "حذف",
         "noParentAvailable": "لا يوجد ولي مسجَّل بعد. أنشئ وليًا أولاً.",
         "contractType": "نوع العقد",
+        "contractualHoursPerWeek": "الساعات التعاقدية / أسبوع",
+        "contractualHoursPerWeekPlaceholder": "مثال : 24",
+        "contractualHoursPerWeekHint": "الحجم الساعي الأسبوعي المحدد في العقد (مستقل عن التوفر الزمني وعن الساعات المُدرَّسة فعلاً).",
         "contractTypes": {
           "CDI": "عقد غير محدد المدة",
           "CDD": "عقد محدد المدة",

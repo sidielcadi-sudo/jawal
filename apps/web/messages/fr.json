@@ -398,7 +398,19 @@
       "generateButton": "Générer l'EDT",
       "coverage": {
         "title": "Couverture horaire profs",
-        "hint": "{available}h disponibles sur {expected}h à enseigner"
+        "hint": "{contractual}h contractuelles / {expected}h à enseigner",
+        "warningMissing": "{count}/{total} profs sans heures contractuelles saisies"
+      },
+      "utilization": {
+        "title": "Taux d'utilisation prévisionnel",
+        "hint": "{expected}h enseignées / {contractual}h contractuelles",
+        "surcharge": "⚠ Dépassement : la demande excède la capacité contractuelle",
+        "label": {
+          "emerald": "Optimal",
+          "amber": "Tendu",
+          "red": "Surcharge",
+          "blue": "Sous-utilisé"
+        }
       },
       "score": {
         "title": "Score de faisabilité EDT",
@@ -987,6 +999,7 @@
         "timetable": "Emploi du temps",
         "contract": "Contrat",
         "contractType": "Type",
+        "contractualHoursPerWeek": "Heures contractuelles / semaine",
         "hireDate": "Date d'entrée",
         "contractEndDate": "Fin de contrat",
         "specialties": "Spécialités",
@@ -1226,6 +1239,9 @@
         "removeParent": "Retirer",
         "noParentAvailable": "Aucun parent enregistré pour le moment. Créez d'abord un parent.",
         "contractType": "Type de contrat",
+        "contractualHoursPerWeek": "Heures contractuelles / semaine",
+        "contractualHoursPerWeekPlaceholder": "ex. 24",
+        "contractualHoursPerWeekHint": "Volume horaire hebdomadaire défini par le contrat (indépendant des dispos horaires et des heures effectivement enseignées).",
         "contractTypes": {
           "CDI": "CDI",
           "CDD": "CDD",

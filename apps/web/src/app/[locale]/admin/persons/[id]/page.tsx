@@ -433,6 +433,16 @@ export default async function PersonDetailPage({
                       : undefined
                   }
                 />
+                {person.type === 'TEACHER' && (
+                  <Row
+                    label={tDetail('contractualHoursPerWeek')}
+                    value={
+                      person.contractualHoursPerWeek !== null
+                        ? `${person.contractualHoursPerWeek} h / sem`
+                        : undefined
+                    }
+                  />
+                )}
                 <Row
                   label={tDetail('hireDate')}
                   value={

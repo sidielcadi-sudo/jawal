@@ -312,6 +312,11 @@ model Person {
   /// Date de sortie / fin de contrat. Null = encore en poste.
   contractEndDate DateTime?    @map("contract_end_date") @db.Date
   contractType   ContractType? @map("contract_type")
+  /// Volume horaire contractuel hebdomadaire (TEACHER uniquement).
+  /// Indépendant des heures réellement enseignées (TeacherAssignment) et
+  /// des disponibilités horaires (availability). Sert au KPI de couverture
+  /// horaire de l'établissement (capacité totale dispo pour le solveur EDT).
+  contractualHoursPerWeek Int?   @map("contractual_hours_per_week")
   /// PDF du contrat — stocké dans MinIO via FileObject.
   contractFileId String?       @unique @map("contract_file_id") @db.Uuid
   /// RH — uniquement TEACHER/STAFF

@@ -13,6 +13,7 @@ import {
   TeacherAvailabilityCard,
   TeacherLoadCard,
   PedagogicalCard,
+  UtilizationCard,
 } from './dashboard-cards';
 
 export default async function TimetableDashboardPage({
@@ -97,18 +98,33 @@ export default async function TimetableDashboardPage({
         </div>
       ) : (
         <>
-          {/* Score global en haut */}
-          <div className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {/* Score global + couverture en haut */}
+          <div className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-4">
             <CircularGauge
               label={t('coverage.title')}
-              value={kpis.coverageHours.available}
+              value={kpis.coverageHours.contractual}
               max={kpis.coverageHours.expected}
               pct={kpis.coverageHours.pct}
               unit="h"
               hint={t('coverage.hint', {
-                available: kpis.coverageHours.available,
+                contractual: kpis.coverageHours.contractual,
                 expected: kpis.coverageHours.expected,
               })}
+              alert={
+                kpis.coverageHours.teachersWithoutContractual > 0
+                  ? t('coverage.warningMissing', {
+                      count: kpis.coverageHours.teachersWithoutContractual,
+                      total: kpis.coverageHours.totalTeachers,
+                    })
+                  : null
+              }
+            />
+
+            <UtilizationCard
+              expected={kpis.utilizationRate.expected}
+              contractual={kpis.utilizationRate.contractual}
+              pct={kpis.utilizationRate.pct}
+              t={t}
             />
 
             <ScoreCard score={kpis.globalScore} t={t} />

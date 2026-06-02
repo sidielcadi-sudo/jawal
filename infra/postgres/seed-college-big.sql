@@ -299,90 +299,90 @@ BEGIN
   v_t_en   := ARRAY[]::uuid[];
   v_t_eps  := ARRAY[]::uuid[];
 
-  -- 3 profs Maths
+  -- 3 profs Maths (CDI 24h)
   FOR v_i IN 1..3 LOOP
     v_t_math := v_t_math || gen_random_uuid();
-    INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, updated_at)
+    INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, contractual_hours_per_week, updated_at)
     VALUES (v_t_math[v_i], v_tenant_id, 'TEACHER',
             (ARRAY['Karim', 'Amina', 'Mehdi'])[v_i],
             (ARRAY['El Fassi', 'Bennani', 'Lahcen'])[v_i],
             (ARRAY['M', 'F', 'M'])[v_i]::"Gender", v_availability_full,
-            '{"big_seed": true, "subject": "math"}'::jsonb, 10, NOW());
+            '{"big_seed": true, "subject": "math"}'::jsonb, 10, 24, NOW());
   END LOOP;
 
-  -- 2 profs Français
+  -- 2 profs Français (CDI 20h)
   FOR v_i IN 1..2 LOOP
     v_t_fr := v_t_fr || gen_random_uuid();
-    INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, updated_at)
+    INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, contractual_hours_per_week, updated_at)
     VALUES (v_t_fr[v_i], v_tenant_id, 'TEACHER',
             (ARRAY['Sophie', 'Hicham'])[v_i],
             (ARRAY['Tazi', 'Cherkaoui'])[v_i],
             (ARRAY['F', 'M'])[v_i]::"Gender", v_availability_full,
-            '{"big_seed": true, "subject": "fr"}'::jsonb, 8, NOW());
+            '{"big_seed": true, "subject": "fr"}'::jsonb, 8, 20, NOW());
   END LOOP;
 
-  -- 2 profs Arabe
+  -- 2 profs Arabe (CDI 20h)
   FOR v_i IN 1..2 LOOP
     v_t_ar := v_t_ar || gen_random_uuid();
-    INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, updated_at)
+    INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, contractual_hours_per_week, updated_at)
     VALUES (v_t_ar[v_i], v_tenant_id, 'TEACHER',
             (ARRAY['Abdellah', 'Fatima'])[v_i],
             (ARRAY['Mansouri', 'Alaoui'])[v_i],
             (ARRAY['M', 'F'])[v_i]::"Gender", v_availability_full,
-            '{"big_seed": true, "subject": "ar"}'::jsonb, 12, NOW());
+            '{"big_seed": true, "subject": "ar"}'::jsonb, 12, 20, NOW());
   END LOOP;
 
-  -- 2 profs Anglais
+  -- 2 profs Anglais (CDI 18h)
   FOR v_i IN 1..2 LOOP
     v_t_en := v_t_en || gen_random_uuid();
-    INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, updated_at)
+    INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, contractual_hours_per_week, updated_at)
     VALUES (v_t_en[v_i], v_tenant_id, 'TEACHER',
             (ARRAY['John', 'Yasmina'])[v_i],
             (ARRAY['Smith', 'Berrada'])[v_i],
             (ARRAY['M', 'F'])[v_i]::"Gender", v_availability_full,
-            '{"big_seed": true, "subject": "en"}'::jsonb, 6, NOW());
+            '{"big_seed": true, "subject": "en"}'::jsonb, 6, 18, NOW());
   END LOOP;
 
-  -- 1 prof HG
+  -- 1 prof HG (CDI 24h)
   v_t_hg := gen_random_uuid();
-  INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, updated_at)
+  INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, contractual_hours_per_week, updated_at)
   VALUES (v_t_hg, v_tenant_id, 'TEACHER', 'Rachid', 'Skalli', 'M', v_availability_full,
-          '{"big_seed": true, "subject": "hg"}'::jsonb, 15, NOW());
+          '{"big_seed": true, "subject": "hg"}'::jsonb, 15, 24, NOW());
 
-  -- 1 prof SVT
+  -- 1 prof SVT (CDI 24h)
   v_t_svt := gen_random_uuid();
-  INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, updated_at)
+  INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, contractual_hours_per_week, updated_at)
   VALUES (v_t_svt, v_tenant_id, 'TEACHER', 'Naima', 'Bouhassoun', 'F', v_availability_full,
-          '{"big_seed": true, "subject": "svt"}'::jsonb, 9, NOW());
+          '{"big_seed": true, "subject": "svt"}'::jsonb, 9, 24, NOW());
 
-  -- 1 prof PC
+  -- 1 prof PC (CDI 24h)
   v_t_pc := gen_random_uuid();
-  INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, updated_at)
+  INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, contractual_hours_per_week, updated_at)
   VALUES (v_t_pc, v_tenant_id, 'TEACHER', 'Othmane', 'Fassi', 'M', v_availability_full,
-          '{"big_seed": true, "subject": "pc"}'::jsonb, 11, NOW());
+          '{"big_seed": true, "subject": "pc"}'::jsonb, 11, 24, NOW());
 
-  -- 2 profs EPS
+  -- 2 profs EPS (CDI 18h)
   FOR v_i IN 1..2 LOOP
     v_t_eps := v_t_eps || gen_random_uuid();
-    INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, updated_at)
+    INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, contractual_hours_per_week, updated_at)
     VALUES (v_t_eps[v_i], v_tenant_id, 'TEACHER',
             (ARRAY['Hassan', 'Imane'])[v_i],
             (ARRAY['Ouazzani', 'Sefrioui'])[v_i],
             (ARRAY['M', 'F'])[v_i]::"Gender", v_availability_full,
-            '{"big_seed": true, "subject": "eps"}'::jsonb, 7, NOW());
+            '{"big_seed": true, "subject": "eps"}'::jsonb, 7, 18, NOW());
   END LOOP;
 
-  -- 1 prof Éducation islamique (mi-temps matin uniquement)
+  -- 1 prof Éducation islamique (mi-temps matin 12h)
   v_t_ei := gen_random_uuid();
-  INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, updated_at)
+  INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, contractual_hours_per_week, updated_at)
   VALUES (v_t_ei, v_tenant_id, 'TEACHER', 'Mohammed', 'El Idrissi', 'M', v_availability_morning,
-          '{"big_seed": true, "subject": "ei"}'::jsonb, 20, NOW());
+          '{"big_seed": true, "subject": "ei"}'::jsonb, 20, 12, NOW());
 
-  -- 1 prof Informatique
+  -- 1 prof Informatique (CDI 18h)
   v_t_info := gen_random_uuid();
-  INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, updated_at)
+  INSERT INTO persons (id, tenant_id, type, first_name, last_name, gender, availability, metadata, experience_years, contractual_hours_per_week, updated_at)
   VALUES (v_t_info, v_tenant_id, 'TEACHER', 'Sami', 'Lazrak', 'M', v_availability_full,
-          '{"big_seed": true, "subject": "info"}'::jsonb, 5, NOW());
+          '{"big_seed": true, "subject": "info"}'::jsonb, 5, 18, NOW());
 
   -- ─── 8. 9 classes (3 niveaux × A, B, C) ──────────────────────────
   RAISE NOTICE 'Création 9 classes…';

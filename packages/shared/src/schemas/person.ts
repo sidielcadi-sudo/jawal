@@ -71,6 +71,10 @@ export const personCreateSchema = z.object({
   hireDate: z.coerce.date().optional(),
   contractEndDate: z.coerce.date().optional(),
   contractType: contractTypeSchema.optional(),
+  /// Volume horaire contractuel hebdomadaire (TEACHER uniquement) — sert
+  /// au KPI de couverture horaire de l'établissement. Indépendant de
+  /// availability et des heures réellement enseignées.
+  contractualHoursPerWeek: z.coerce.number().int().min(0).max(60).optional(),
   /// Compétences pédagogiques (TEACHER uniquement)
   specialtySubjectIds: z.array(z.string().uuid()).optional(),
   cycleIds: z.array(z.string().uuid()).optional(),

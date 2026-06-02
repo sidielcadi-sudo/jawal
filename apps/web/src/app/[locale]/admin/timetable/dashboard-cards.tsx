@@ -14,6 +14,7 @@ export function CircularGauge({
   pct,
   unit,
   hint,
+  alert,
 }: {
   label: string;
   value: number;
@@ -21,6 +22,7 @@ export function CircularGauge({
   pct: number;
   unit: string;
   hint: string;
+  alert?: string | null;
 }) {
   const radius = 60;
   const stroke = 10;
@@ -84,6 +86,55 @@ export function CircularGauge({
         </span>
       </div>
       <p className="mt-2 text-center text-xs text-slate-500">{hint}</p>
+      {alert && (
+        <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-center text-[10px] text-amber-800">
+          ⚠ {alert}
+        </p>
+      )}
+    </div>
+  );
+}
+
+// ─── Taux d'utilisation prévisionnel ───────────────────────────
+
+export function UtilizationCard({
+  expected,
+  contractual,
+  pct,
+  t,
+}: {
+  expected: number;
+  contractual: number;
+  pct: number;
+  t: T;
+}) {
+  const color =
+    pct > 100 ? 'red' : pct >= 85 ? 'amber' : pct >= 50 ? 'emerald' : 'blue';
+  const colorClasses: Record<string, { bg: string; text: string; bar: string }> = {
+    emerald: { bg: 'bg-emerald-100', text: 'text-emerald-700', bar: 'bg-emerald-500' },
+    amber: { bg: 'bg-amber-100', text: 'text-amber-700', bar: 'bg-amber-500' },
+    red: { bg: 'bg-red-100', text: 'text-red-700', bar: 'bg-red-500' },
+    blue: { bg: 'bg-blue-100', text: 'text-blue-700', bar: 'bg-blue-500' },
+  };
+  const c = colorClasses[color]!;
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <h3 className="text-sm font-semibold text-slate-700">{t('utilization.title')}</h3>
+      <div className="mt-3 flex items-baseline gap-3">
+        <span className={`text-4xl font-bold ${c.text}`}>{pct}%</span>
+        <span className={`rounded px-2 py-0.5 text-xs font-medium ${c.bg} ${c.text}`}>
+          {t(`utilization.label.${color}`)}
+        </span>
+      </div>
+      <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
+        <div className={`h-full ${c.bar}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+      </div>
+      <p className="mt-3 text-xs text-slate-600">
+        {t('utilization.hint', { expected, contractual })}
+      </p>
+      {pct > 100 && (
+        <p className="mt-2 text-[10px] text-red-700">{t('utilization.surcharge')}</p>
+      )}
     </div>
   );
 }

@@ -90,6 +90,7 @@ function formToInput(formData: FormData) {
     hireDate: get('hireDate'),
     contractEndDate: get('contractEndDate'),
     contractType: get('contractType'),
+    contractualHoursPerWeek: get('contractualHoursPerWeek'),
     specialtySubjectIds,
     cycleIds,
     experienceYears: get('experienceYears'),
@@ -124,6 +125,9 @@ export async function createPersonAction(formData: FormData): Promise<ActionResu
   const hireDate = isEmployee ? parsed.data.hireDate ?? null : null;
   const contractEndDate = isEmployee ? parsed.data.contractEndDate ?? null : null;
   const contractType = isEmployee ? parsed.data.contractType ?? null : null;
+  const contractualHoursPerWeek = isTeacher
+    ? parsed.data.contractualHoursPerWeek ?? null
+    : null;
 
   const created = await withTenant(tenantId, async (tx) => {
     const person = await tx.person.create({
@@ -142,6 +146,7 @@ export async function createPersonAction(formData: FormData): Promise<ActionResu
         hireDate,
         contractEndDate,
         contractType,
+        contractualHoursPerWeek,
         experienceYears: isEmployee ? parsed.data.experienceYears ?? null : null,
         availability: isEmployee ? parsed.data.availability ?? {} : {},
         rib: isEmployee ? parsed.data.rib ?? null : null,
@@ -247,6 +252,9 @@ export async function updatePersonAction(
     const hireDate = isEmployee ? parsed.data.hireDate ?? null : null;
     const contractEndDate = isEmployee ? parsed.data.contractEndDate ?? null : null;
     const contractType = isEmployee ? parsed.data.contractType ?? null : null;
+    const contractualHoursPerWeek = isTeacher
+      ? parsed.data.contractualHoursPerWeek ?? null
+      : null;
 
     const updated = await tx.person.update({
       where: { id },
@@ -263,6 +271,7 @@ export async function updatePersonAction(
         hireDate,
         contractEndDate,
         contractType,
+        contractualHoursPerWeek,
         experienceYears: isEmployee ? parsed.data.experienceYears ?? null : null,
         availability: isEmployee && parsed.data.availability !== undefined
           ? parsed.data.availability

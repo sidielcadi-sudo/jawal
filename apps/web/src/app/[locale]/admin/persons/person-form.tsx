@@ -52,6 +52,7 @@ type PersonInitial = {
   hireDate?: string;
   contractEndDate?: string;
   contractType?: ContractType;
+  contractualHoursPerWeek?: number;
   contractFile?: ContractFile;
   specialtySubjectIds?: string[];
   cycleIds?: string[];
@@ -328,6 +329,20 @@ export function PersonForm({
                 className={inputCls}
               />
             </Field>
+            {type === 'TEACHER' && (
+              <Field label={t('contractualHoursPerWeek')}>
+                <input
+                  type="number"
+                  name="contractualHoursPerWeek"
+                  min={0}
+                  max={60}
+                  defaultValue={initial?.contractualHoursPerWeek ?? ''}
+                  placeholder={t('contractualHoursPerWeekPlaceholder')}
+                  className={inputCls}
+                />
+                <p className="mt-1 text-xs text-slate-500">{t('contractualHoursPerWeekHint')}</p>
+              </Field>
+            )}
           </div>
           {mode === 'edit' && initial?.id && (
             <ContractUpload personId={initial.id} current={initial.contractFile ?? null} />
