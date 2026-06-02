@@ -135,6 +135,7 @@
       "parents": "Parents",
       "classes": "Classes",
       "enrollments": "Inscriptions",
+      "timetable": "Emploi du temps",
       "attendance": "Présences",
       "justifications": "Justifications",
       "staffAttendance": "Pointage personnel",
@@ -384,6 +385,80 @@
         "deduction": "Retenue",
         "note": "Note",
         "empty": "Aucun pointage enregistré ce mois-ci."
+      }
+    },
+    "timetableDashboard": {
+      "title": "Tableau de bord — Préparation EDT",
+      "subtitle": "Vérifie la cohérence de la configuration avant de lancer la génération automatique. Anticipe les problèmes structurels.",
+      "year": "Année",
+      "apply": "Voir",
+      "manageSlots": "Créneaux →",
+      "manageSettings": "Paramètres établissement →",
+      "noData": "Aucune année scolaire — créez-en une dans Paramètres.",
+      "generateButton": "Générer l'EDT",
+      "coverage": {
+        "title": "Couverture horaire profs",
+        "hint": "{available}h disponibles sur {expected}h à enseigner"
+      },
+      "score": {
+        "title": "Score de faisabilité EDT",
+        "label": {
+          "emerald": "Excellent",
+          "amber": "Acceptable",
+          "orange": "À risque",
+          "red": "Critique"
+        },
+        "hintOk": "Configuration saine. La génération devrait réussir avec un EDT complet.",
+        "hintWarn": "Quelques anomalies détectées. Vérifiez les cards en alerte avant de générer.",
+        "hintErr": "Configuration incomplète ou contradictoire. Corrigez les anomalies avant de lancer la génération."
+      },
+      "coherence": {
+        "title": "Cohérence Matière → Prof → Classe",
+        "subjectsNoTeacher": "Matières sans prof affecté",
+        "teachersNoSubject": "Profs sans affectation",
+        "duplicates": "Affectations en doublon"
+      },
+      "rooms": {
+        "title": "Disponibilité des salles",
+        "classes": "{count} classes",
+        "available": "{count} salles totales",
+        "types": {
+          "LABO_PC": "Labo Physique-Chimie ({available} salles, {needed}h demandées)",
+          "LABO_SVT": "Labo SVT ({available} salles, {needed}h demandées)",
+          "INFO": "Salles info ({available} salles, {needed}h demandées)",
+          "EPS": "Gymnase / EPS ({available} salles, {needed}h demandées)",
+          "STD": "Salles standard ({available})"
+        }
+      },
+      "teacherAvailability": {
+        "title": "Disponibilités profs vs grille",
+        "emptyDispos": "Profs sans disponibilités saisies",
+        "uncoveredSlots": "Créneaux sans aucun prof dispo",
+        "avg": "Profs dispos en moyenne par créneau"
+      },
+      "conflicts": {
+        "title": "Conflits détectés (sur EDT actuel)",
+        "none": "Aucun conflit",
+        "teacher": "Conflits prof (même créneau, 2 classes)",
+        "room": "Conflits salle",
+        "class": "Conflits classe"
+      },
+      "teacherLoad": {
+        "title": "Charge horaire des profs",
+        "empty": "Aucun enseignant avec affectations.",
+        "thresholds": "Seuils : surchargé > 24h/sem · sous-utilisé < 8h/sem"
+      },
+      "schedule": {
+        "title": "Grille horaire",
+        "slots": "Créneaux placables",
+        "breaks": "Pauses",
+        "daysActive": "Jours actifs"
+      },
+      "pedagogical": {
+        "title": "Contraintes pédagogiques classes",
+        "ok": "Classes OK",
+        "overloaded": "Classes surchargées",
+        "avg": "Heures hebdo moyennes"
       }
     },
     "timetable": {
