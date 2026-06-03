@@ -205,7 +205,9 @@ function ConstraintFields({
         </div>
       );
     }
-    case 'NO_GAPS': {
+    case 'NO_GAPS':
+    case 'MINIMIZE_ROOM_CHANGES':
+    case 'BALANCE_DAILY_LOAD': {
       const def = Number(row.config.weight ?? 5);
       return (
         <label className="block text-sm">
@@ -221,7 +223,7 @@ function ConstraintFields({
             required
             className="w-32 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
           />
-          <p className="mt-1 text-xs text-slate-500">{t('kinds.NO_GAPS.hint')}</p>
+          <p className="mt-1 text-xs text-slate-500">{t(`kinds.${row.kind}.hint`)}</p>
         </label>
       );
     }

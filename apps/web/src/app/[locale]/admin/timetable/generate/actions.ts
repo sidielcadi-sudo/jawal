@@ -253,6 +253,12 @@ export async function generateMultiTimetableAction(
           case 'REQUIRE_SUBJECT_ROOM_TYPE':
             constraints.enforce_room_type = true;
             break;
+          case 'MINIMIZE_ROOM_CHANGES':
+            if (typeof cfg.weight === 'number') constraints.minimize_room_changes_weight = cfg.weight;
+            break;
+          case 'BALANCE_DAILY_LOAD':
+            if (typeof cfg.weight === 'number') constraints.balance_daily_load_weight = cfg.weight;
+            break;
         }
       }
 

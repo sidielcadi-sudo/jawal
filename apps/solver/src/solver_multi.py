@@ -403,11 +403,59 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
                     # pour la pénalisation : on n'a pas besoin du reverse car on minimise)
                     gaps_vars.append(gap)
 
+    # ─── E5a : MINIMIZE_ROOM_CHANGES — récompense le maintien de la même salle
+    # sur deux créneaux adjacents d'une classe (moins de déménagements). ──────
+    room_change_rewards: List[cp_model.IntVar] = []
+    if cons.minimize_room_changes_weight and cons.minimize_room_changes_weight > 0:
+        # Index (classe, jour, slot, salle réelle) → vars ; somme = la classe
+        # occupe cette salle à ce créneau (0/1 vu C2 + une seule salle).
+        cell_room_vars: Dict[Tuple[str, str, str, str], List[cp_model.IntVar]] = {}
+        for (aid, d, sid, r), v in x.items():
+            if r == NO_ROOM:
+                continue
+            cell_room_vars.setdefault((class_of[aid], d, sid, r), []).append(v)
+        real_rooms = [r for r in room_ids if r != NO_ROOM]
+        for cls_id in classes:
+            for d in days:
+                for i in range(len(placeable_slots_sorted) - 1):
+                    s1 = placeable_slots_sorted[i].id
+                    s2 = placeable_slots_sorted[i + 1].id
+                    for r in real_rooms:
+                        v1 = cell_room_vars.get((cls_id, d, s1, r))
+                        v2 = cell_room_vars.get((cls_id, d, s2, r))
+                        if not v1 or not v2:
+                            continue
+                        same = model.NewBoolVar(f"same_{cls_id[:4]}_{d}_{i}_{r[:4]}")
+                        model.Add(same <= sum(v1))
+                        model.Add(same <= sum(v2))
+                        room_change_rewards.append(same)
+
+    # ─── E5b : BALANCE_DAILY_LOAD — pénalise la journée la plus chargée de
+    # chaque classe (répartit les heures, évite les journées trop longues). ──
+    balance_penalties: List[cp_model.IntVar] = []
+    if cons.balance_daily_load_weight and cons.balance_daily_load_weight > 0:
+        n_slots_total = len(placeable_slots_sorted)
+        for cls_id in classes:
+            day_loads: List[object] = []
+            for d in days:
+                vars_day = [
+                    v for k, v in x.items() if class_of[k[0]] == cls_id and k[1] == d
+                ]
+                if vars_day:
+                    day_loads.append(sum(vars_day))
+            if len(day_loads) > 1:
+                maxload = model.NewIntVar(0, n_slots_total, f"maxload_{cls_id[:4]}")
+                for dl in day_loads:
+                    model.Add(maxload >= dl)
+                balance_penalties.append(maxload)
+
     # Objectif :
     #   10 par séance placée (motivation principale)
     #   +1 par séance placée dans une salle réelle (préférence vs NO_ROOM)
     #   + consecutive_bonus par bloc 2h consécutif
     #   - no_gaps_weight par gap détecté (si activé)
+    #   + minimize_room_changes_weight par salle conservée (E5a)
+    #   - balance_daily_load_weight × journée la plus chargée par classe (E5b)
     if x:
         objective_terms: List[cp_model.IntVar | int] = []
         for (aid, d, sid, r), v in x.items():
@@ -419,6 +467,12 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
             objective_terms.extend(p * request.consecutive_bonus for p in pairs)
         if cons.no_gaps_weight is not None and cons.no_gaps_weight > 0 and gaps_vars:
             objective_terms.extend(-int(cons.no_gaps_weight) * g for g in gaps_vars)
+        if cons.minimize_room_changes_weight and room_change_rewards:
+            w_rc = int(cons.minimize_room_changes_weight)
+            objective_terms.extend(w_rc * s for s in room_change_rewards)
+        if cons.balance_daily_load_weight and balance_penalties:
+            w_bal = int(cons.balance_daily_load_weight)
+            objective_terms.extend(-w_bal * m for m in balance_penalties)
         model.Maximize(sum(objective_terms))
 
     solver = cp_model.CpSolver()

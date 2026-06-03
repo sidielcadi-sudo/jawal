@@ -63,8 +63,13 @@ Page `/admin/timetable` (entrée sidebar « Emploi du temps »). 9 KPI : couvert
 - Solveur : à la création des variables, restreint les salles aux types compatibles (NO_ROOM exclu) ; raison unplaced dédiée si aucune salle compatible. RoomInput.room_type + MultiAssignmentInput.required_room_type + ConstraintsInput.enforce_room_type.
 - Validé : typecheck shared+web OK, py_compile OK, **test solveur direct OK** (Physique→labo PC placée ; sans labo → unplaced avec raison). db push appliqué, solveur rebuildé.
 
-## Prochaines phases potentielles
-- S8.4E5 Objectifs qualité OR-Tools : min changements salle, journées longues
+## S8.4E5 — Objectifs qualité (livré, commité)
+- 2 kinds pondérés (mous) : `MINIMIZE_ROOM_CHANGES` {weight} + `BALANCE_DAILY_LOAD` {weight}.
+- Solveur (objectif CP-SAT) : +weight × salle conservée d'un créneau au suivant (var `same` ≤ occ classe sur les 2 slots) ; −weight × journée la plus chargée par classe (`maxload` ≥ charge/jour). Aucun nouveau modèle de données.
+- Chaîne identique 4E3/4E4 : enum → shared (configs weight + défauts 5) → UI (groupe poids avec NO_GAPS) → solver-client → orchestrateur → schemas.py.
+- Validé : typecheck shared+web OK, py_compile OK, **test solveur direct OK** (6h → 3/3 sur 2 jours = équilibré ; tout dans 1 salle = 0 changement).
+
+## Série S8.4E terminée (4E1→4E5). Prochaines phases potentielles
 - S10 phase 2 : intégration CMI réelle (init paiement, HMAC, page hébergée, callback → Payment)
 - S11 Documents auto (réutilise pipeline PDF S9)
 

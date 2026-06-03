@@ -2,9 +2,11 @@
 
 import { revalidatePath } from 'next/cache';
 import {
+  balanceDailyLoadConfigSchema,
   maxConsecutiveHoursTeacherConfigSchema,
   maxHoursPerDayTeacherConfigSchema,
   maxSameSubjectPerDayConfigSchema,
+  minimizeRoomChangesConfigSchema,
   noGapsConfigSchema,
   requireSubjectRoomTypeConfigSchema,
   requiresConsecutiveSubjectsConfigSchema,
@@ -57,6 +59,16 @@ function parseConfig(
     }
     case 'REQUIRE_SUBJECT_ROOM_TYPE': {
       const r = requireSubjectRoomTypeConfigSchema.safeParse(raw);
+      if (!r.success) return { ok: false, error: r.error.issues[0]?.message ?? 'Invalide' };
+      return { ok: true, config: r.data };
+    }
+    case 'MINIMIZE_ROOM_CHANGES': {
+      const r = minimizeRoomChangesConfigSchema.safeParse(raw);
+      if (!r.success) return { ok: false, error: r.error.issues[0]?.message ?? 'Invalide' };
+      return { ok: true, config: r.data };
+    }
+    case 'BALANCE_DAILY_LOAD': {
+      const r = balanceDailyLoadConfigSchema.safeParse(raw);
       if (!r.success) return { ok: false, error: r.error.issues[0]?.message ?? 'Invalide' };
       return { ok: true, config: r.data };
     }

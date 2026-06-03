@@ -179,6 +179,14 @@ class ConstraintsInput(BaseModel):
     # salle de ce type (NO_ROOM exclu). Inactif si False.
     enforce_room_type: bool = False
 
+    # Phase 4E5 — Soft : récompense le maintien de la même salle (classe) sur
+    # créneaux adjacents → moins de changements de salle. None/0 = inactif.
+    minimize_room_changes_weight: int | None = Field(None, ge=0, le=100)
+
+    # Phase 4E5 — Soft : pénalise la journée la plus chargée de chaque classe
+    # → équilibre la charge, évite les journées trop longues. None/0 = inactif.
+    balance_daily_load_weight: int | None = Field(None, ge=0, le=100)
+
 
 class MultiGenerateRequest(BaseModel):
     """Génération simultanée pour plusieurs classes.

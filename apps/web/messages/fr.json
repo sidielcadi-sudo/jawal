@@ -769,6 +769,16 @@
           "title": "Type de salle obligatoire",
           "description": "Les matières nécessitant une salle spécialisée (Physique-Chimie, SVT, Informatique, EPS) ne sont placées que dans une salle compatible.",
           "hint": "Le type de salle est déduit automatiquement du code / libellé / équipement (ex. « Labo SVT », « Salle Info »). Si aucune salle compatible, le cours reste non placé avec un diagnostic. (Moteur OR-Tools.)"
+        },
+        "MINIMIZE_ROOM_CHANGES": {
+          "title": "Minimiser les changements de salle",
+          "description": "Encourage une classe à rester dans la même salle d'un créneau au suivant, pour réduire les déménagements dans la journée.",
+          "hint": "Recommandé : 5 (modéré). Objectif mou : n'empêche pas de placer un cours, oriente seulement vers moins de changements. (Moteur OR-Tools.)"
+        },
+        "BALANCE_DAILY_LOAD": {
+          "title": "Équilibrer les journées",
+          "description": "Pénalise la journée la plus chargée de chaque classe pour répartir les heures et éviter les journées trop longues.",
+          "hint": "Recommandé : 5 (modéré). Objectif mou : pousse à étaler les heures sur la semaine plutôt que de surcharger un jour. (Moteur OR-Tools.)"
         }
       }
     },

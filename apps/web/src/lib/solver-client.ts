@@ -103,6 +103,9 @@ export type SolverConstraints = {
   teacher_lunch_break_slot_ids?: string[];
   // Phase 4E4 : impose le type de salle requis par matière (heuristique)
   enforce_room_type?: boolean;
+  // Phase 4E5 : objectifs qualité (poids mous)
+  minimize_room_changes_weight?: number | null;
+  balance_daily_load_weight?: number | null;
 };
 
 export type SolverEngine = 'ortools' | 'fet';

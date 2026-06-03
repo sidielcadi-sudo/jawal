@@ -167,6 +167,14 @@ enum TimetableOverrideKind {
 ///   config: {} — les matières nécessitant un type de salle spécifique
 ///   (PC/SVT/Info/EPS, déduit par heuristique) ne sont placées que dans une
 ///   salle compatible. Sinon le cours reste non placé (diagnostic dédié).
+///
+/// MINIMIZE_ROOM_CHANGES (soft, phase 4E5)
+///   config: { weight: int } — récompense le maintien de la même salle d'un
+///   créneau au suivant pour une classe (moins de déménagements).
+///
+/// BALANCE_DAILY_LOAD (soft, phase 4E5)
+///   config: { weight: int } — pénalise la journée la plus chargée de chaque
+///   classe (répartit les heures, évite les journées trop longues).
 enum TimetableConstraintKind {
   MAX_SAME_SUBJECT_PER_DAY
   NO_GAPS
@@ -175,6 +183,8 @@ enum TimetableConstraintKind {
   MAX_CONSECUTIVE_HOURS_TEACHER
   TEACHER_LUNCH_BREAK
   REQUIRE_SUBJECT_ROOM_TYPE
+  MINIMIZE_ROOM_CHANGES
+  BALANCE_DAILY_LOAD
 }
 
 enum PaymentMethod {
