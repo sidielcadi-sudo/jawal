@@ -85,8 +85,15 @@ Page `/admin/timetable` (entrée sidebar « Emploi du temps »). 9 KPI : couvert
 - UI : composant partagé `components/documents-panel.tsx` (sélecteur année+période + 4 boutons) sur fiche élève admin ET page enfant parent.
 - i18n `admin.documents` (titles/types/body/figures/mentions) fr+ar. Validé : typecheck web OK, JSON OK. Test navigateur à faire.
 
-## Série S8.4E terminée (4E1→4E5). Prochaines phases potentielles
-- S10 phase 2 : intégration CMI réelle (init paiement, HMAC, page hébergée, callback → Payment)
+## Finitions (hors CMI) — livré
+- Dette `pnpm db typecheck` corrigée (rootDir `.` au lieu de `./src`).
+- Notification email au parent quand l'école répond à un message (admin `sendMessageAction` → safeSendEmail aux participants parents).
+- **Validation end-to-end réelle** (login NextAuth programmatique) : les 5 routes PDF (bulletin élève, lot classe, certificat ; admin + parent) renvoient de vrais PDF (`%PDF`, 54–77 Ko) ; accès enfant non rattaché → 403. Pipeline auth → route → Playwright → PDF OK.
+- Signataire/chef d'établissement sur les documents : **volontairement non fait** (bloc signature blanc = conventionnel, signé/cacheté à la main ; pas de page identité établissement → périmètre inventé évité).
+- « Mot de passe oublié » parent : reporté (nécessite une table de tokens = nouveau modèle).
+
+## Reste : S10 phase 2 — CMI (seul module non couvert)
+- Intégration CMI réelle (init paiement, HMAC, page hébergée, callback → Payment). Nécessite identifiants marchand sandbox.
 
 ## Conventions
 - Working dir : `c:\Users\idris\Documents\01-GitHub\jawal`
