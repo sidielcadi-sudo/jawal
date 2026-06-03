@@ -1836,7 +1836,33 @@
     "nav": {
       "home": "الرئيسية",
       "children": "أبنائي",
-      "announcements": "الإعلانات"
+      "announcements": "الإعلانات",
+      "messages": "الرسائل",
+      "account": "حسابي"
+    },
+    "account": {
+      "title": "حسابي",
+      "changePassword": "تغيير كلمة المرور",
+      "current": "كلمة المرور الحالية",
+      "new": "كلمة المرور الجديدة",
+      "confirm": "تأكيد كلمة المرور الجديدة",
+      "save": "حفظ",
+      "saving": "جارٍ الحفظ…",
+      "done": "تم تحديث كلمة المرور."
+    },
+    "messages": {
+      "title": "الرسائل",
+      "empty": "لا توجد محادثات. راسل المدرسة من الجهة المقابلة.",
+      "newTitle": "رسالة جديدة",
+      "newHint": "اطرح سؤالًا على المدرسة أو الطاقم التربوي.",
+      "subjectPlaceholder": "الموضوع",
+      "bodyPlaceholder": "رسالتك…",
+      "replyPlaceholder": "ردّك…",
+      "send": "إرسال",
+      "sending": "جارٍ الإرسال…",
+      "reply": "رد",
+      "you": "أنت",
+      "school": "المدرسة"
     },
     "home": {
       "title": "فضاء ولي الأمر",
@@ -1853,6 +1879,8 @@
     "child": {
       "breadcrumbHome": "الرئيسية",
       "noClass": "لا يوجد قسم للسنة الحالية.",
+      "year": "السنة",
+      "viewYear": "عرض",
       "bulletins": {
         "title": "كشوف النقاط",
         "empty": "لا يوجد كشف متاح.",

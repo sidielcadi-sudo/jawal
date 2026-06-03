@@ -1898,7 +1898,33 @@
     "nav": {
       "home": "Accueil",
       "children": "Mes enfants",
-      "announcements": "Annonces"
+      "announcements": "Annonces",
+      "messages": "Messages",
+      "account": "Mon compte"
+    },
+    "account": {
+      "title": "Mon compte",
+      "changePassword": "Changer le mot de passe",
+      "current": "Mot de passe actuel",
+      "new": "Nouveau mot de passe",
+      "confirm": "Confirmer le nouveau mot de passe",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "done": "Mot de passe mis à jour."
+    },
+    "messages": {
+      "title": "Messages",
+      "empty": "Aucune conversation. Écrivez à l'école ci-contre.",
+      "newTitle": "Nouveau message",
+      "newHint": "Posez une question à l'école ou à l'équipe pédagogique.",
+      "subjectPlaceholder": "Objet",
+      "bodyPlaceholder": "Votre message…",
+      "replyPlaceholder": "Votre réponse…",
+      "send": "Envoyer",
+      "sending": "Envoi…",
+      "reply": "Répondre",
+      "you": "Vous",
+      "school": "École"
     },
     "home": {
       "title": "Espace parent",
@@ -1915,6 +1941,8 @@
     "child": {
       "breadcrumbHome": "Accueil",
       "noClass": "Aucune classe pour l'année active.",
+      "year": "Année",
+      "viewYear": "Voir",
       "bulletins": {
         "title": "Bulletins",
         "empty": "Aucun bulletin disponible.",

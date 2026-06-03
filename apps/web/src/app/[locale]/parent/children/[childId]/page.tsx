@@ -14,10 +14,13 @@ const STATUS_TONE: Record<string, string> = {
 
 export default async function ParentChildPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; childId: string }>;
+  searchParams: Promise<{ year?: string }>;
 }) {
   const { locale, childId } = await params;
+  const sp = await searchParams;
   setRequestLocale(locale);
   const session = (await auth())!;
   const tenantId = session.user.tenantId;
@@ -32,26 +35,30 @@ export default async function ParentChildPage({
     });
     if (!child) return null;
 
-    const activeYear = await tx.academicYear.findFirst({
-      where: { active: true },
+    // Historique multi-années : on liste toutes les années et on sélectionne
+    // celle demandée (?year=), sinon l'année active, sinon la plus récente.
+    const years = await tx.academicYear.findMany({
+      orderBy: { startDate: 'desc' },
       include: { periods: { orderBy: { startDate: 'asc' } } },
     });
+    const selectedYear =
+      years.find((y) => y.id === sp.year) ?? years.find((y) => y.active) ?? years[0] ?? null;
 
     const sc = await tx.studentClass.findFirst({
       where: {
         studentId: childId,
         unenrolledAt: null,
-        ...(activeYear ? { class: { academicYearId: activeYear.id } } : {}),
+        ...(selectedYear ? { class: { academicYearId: selectedYear.id } } : {}),
       },
       include: { class: { select: { id: true, name: true, level: { select: { cycle: { select: { label: true } }, label: true } } } } },
     });
 
-    // Présences sur l'année active.
-    const records = activeYear
+    // Présences sur l'année sélectionnée.
+    const records = selectedYear
       ? await tx.attendanceRecord.findMany({
           where: {
             studentId: childId,
-            session: { date: { gte: activeYear.startDate, lte: activeYear.endDate } },
+            session: { date: { gte: selectedYear.startDate, lte: selectedYear.endDate } },
           },
           include: {
             session: { include: { class: { select: { name: true } } } },
@@ -107,7 +114,9 @@ export default async function ParentChildPage({
     return {
       child,
       classInfo: sc?.class ?? null,
-      periods: activeYear?.periods ?? [],
+      periods: selectedYear?.periods ?? [],
+      years: years.map((y) => ({ id: y.id, label: y.label, active: y.active })),
+      selectedYearId: selectedYear?.id ?? null,
       att,
       rate,
       recentAbsences,
@@ -119,7 +128,7 @@ export default async function ParentChildPage({
   });
 
   if (!data) notFound();
-  const { child, classInfo, periods, att, rate, recentAbsences, fees, totalDue, totalPaid, totalRemaining } = data;
+  const { child, classInfo, periods, years, selectedYearId, att, rate, recentAbsences, fees, totalDue, totalPaid, totalRemaining } = data;
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
@@ -133,18 +142,45 @@ export default async function ParentChildPage({
         </span>
       </nav>
 
-      <header className="mb-6 flex items-center gap-4">
-        <div className="grid h-14 w-14 place-items-center rounded-xl bg-slate-200 text-xl font-semibold text-slate-600">
-          {(child.firstName[0] ?? '') + (child.lastName[0] ?? '')}
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="grid h-14 w-14 place-items-center rounded-xl bg-slate-200 text-xl font-semibold text-slate-600">
+            {(child.firstName[0] ?? '') + (child.lastName[0] ?? '')}
+          </div>
+          <div>
+            <h1 className="text-2xl font-semibold text-slate-900">
+              {child.firstName} {child.lastName}
+            </h1>
+            <p className="mt-0.5 text-sm text-slate-500">
+              {classInfo ? `${classInfo.level.cycle.label} · ${classInfo.name}` : t('noClass')}
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
-            {child.firstName} {child.lastName}
-          </h1>
-          <p className="mt-0.5 text-sm text-slate-500">
-            {classInfo ? `${classInfo.level.cycle.label} · ${classInfo.name}` : t('noClass')}
-          </p>
-        </div>
+
+        {years.length > 1 && (
+          <form method="get" className="flex items-end gap-2">
+            <label className="block">
+              <span className="block text-xs text-slate-500">{t('year')}</span>
+              <select
+                name="year"
+                defaultValue={selectedYearId ?? ''}
+                className="mt-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm shadow-sm"
+              >
+                {years.map((y) => (
+                  <option key={y.id} value={y.id}>
+                    {y.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              type="submit"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              {t('viewYear')}
+            </button>
+          </form>
+        )}
       </header>
 
       {/* Bulletins */}

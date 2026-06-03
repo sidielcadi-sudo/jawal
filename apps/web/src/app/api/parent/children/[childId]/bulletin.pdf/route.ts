@@ -31,12 +31,17 @@ export async function GET(req: Request, ctx: { params: Promise<{ childId: string
   const data = await withTenant(tenantId, async (tx) => {
     if (!(await parentCanAccessChild(tx, session.user.id, childId))) return 'forbidden' as const;
 
-    const activeYear = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
+    // Résout la classe via l'année de la période demandée (support multi-années).
+    const period = await tx.period.findUnique({
+      where: { id: periodId },
+      select: { academicYearId: true },
+    });
+    if (!period) return null;
     const sc = await tx.studentClass.findFirst({
       where: {
         studentId: childId,
         unenrolledAt: null,
-        ...(activeYear ? { class: { academicYearId: activeYear.id } } : {}),
+        class: { academicYearId: period.academicYearId },
       },
       select: { classId: true },
     });

@@ -69,6 +69,14 @@ Page `/admin/timetable` (entrée sidebar « Emploi du temps »). 9 KPI : couvert
 - Chaîne identique 4E3/4E4 : enum → shared (configs weight + défauts 5) → UI (groupe poids avec NO_GAPS) → solver-client → orchestrateur → schemas.py.
 - Validé : typecheck shared+web OK, py_compile OK, **test solveur direct OK** (6h → 3/3 sur 2 jours = équilibré ; tout dans 1 salle = 0 changement).
 
+## S10 phase 1 — finitions (en cours, non commité)
+- Email mdp temporaire : `safeSendEmail` dans `createParentAccessAction` (Mailpit en dev).
+- Changement mdp parent : `/parent/account` + `changeParentPasswordAction` (vérif bcrypt).
+- Historique multi-années : sélecteur d'année sur `/parent/children/[id]` (présences + bulletins par année ; route PDF résout la classe via l'année de la période).
+- Messagerie parent↔école : **l'admin avait déjà une messagerie** (participant-based, perm `communication.write`). Intégration : le parent ouvre une conversation → ajoute le personnel (users non-parent, non super-admin) comme participants → l'admin la voit dans sa boîte existante. Pas d'UI admin à refaire.
+  - `lib/messaging.ts` (listConversationsForParticipant, getThread, isParticipant, resolveSenderNames) ; actions parent (start/reply/markRead, gardées par isParticipant) ; pages `/parent/messages` + `[id]` ; nav parent (Messages, Mon compte).
+- Validé : typecheck web OK, JSON fr/ar OK. Test navigateur à faire.
+
 ## Série S8.4E terminée (4E1→4E5). Prochaines phases potentielles
 - S10 phase 2 : intégration CMI réelle (init paiement, HMAC, page hébergée, callback → Payment)
 - S11 Documents auto (réutilise pipeline PDF S9)

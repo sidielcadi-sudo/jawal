@@ -7,7 +7,8 @@ import { randomBytes } from 'node:crypto';
 import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
-import { withTenant } from '@/lib/db';
+import { withTenant, prismaAdmin } from '@/lib/db';
+import { safeSendEmail } from '@/lib/email';
 
 type Result =
   | { ok: true; data: { email: string; tempPassword: string } }
@@ -84,6 +85,27 @@ export async function createParentAccessAction(formData: FormData): Promise<Resu
       });
 
       return email;
+    });
+
+    // Email d'invitation au parent (best-effort : n'interrompt pas la création).
+    const tenant = await prismaAdmin.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+    const tenantName = tenant?.name ?? 'votre établissement';
+    await safeSendEmail({
+      to: email,
+      subject: `Accès à l'espace parent — ${tenantName}`,
+      html:
+        `<p>Bonjour,</p>` +
+        `<p>Un accès à l'espace parent de <strong>${tenantName}</strong> a été créé pour vous.</p>` +
+        `<p>Identifiant : <strong>${email}</strong><br/>` +
+        `Mot de passe temporaire : <strong>${tempPassword}</strong></p>` +
+        `<p>Merci de le modifier après votre première connexion.</p>`,
+      text:
+        `Accès à l'espace parent — ${tenantName}\n` +
+        `Identifiant : ${email}\nMot de passe temporaire : ${tempPassword}\n` +
+        `Modifiez-le après votre première connexion.`,
     });
 
     revalidatePath('/admin/persons');

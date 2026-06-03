@@ -73,6 +73,22 @@ export function ParentSidebar({
               {t('announcements')}
             </Link>
           </li>
+          <li>
+            <Link
+              href={`${prefix}/messages`}
+              className={linkCls(pathname.startsWith(`${prefix}/messages`))}
+            >
+              {t('messages')}
+            </Link>
+          </li>
+          <li>
+            <Link
+              href={`${prefix}/account`}
+              className={linkCls(pathname.startsWith(`${prefix}/account`))}
+            >
+              {t('account')}
+            </Link>
+          </li>
         </ul>
       </nav>
     </aside>
