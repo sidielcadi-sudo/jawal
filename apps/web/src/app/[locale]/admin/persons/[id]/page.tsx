@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { PersonActions } from './person-actions';
 import { ParentAccess } from './parent-access';
+import { TeacherAccess } from './teacher-access';
 import { DocumentsPanel } from '@/components/documents-panel';
 import { computeContractStatus, contractStatusBadgeClass } from '@/lib/contract-status';
 
@@ -296,6 +297,18 @@ export default async function PersonDetailPage({
     });
   }
 
+  // Accès portail enseignant : email du compte rattaché s'il existe déjà.
+  let teacherUserEmail: string | null = null;
+  if (person.type === 'TEACHER') {
+    teacherUserEmail = await withTenant(tenantId, async (tx) => {
+      const up = await tx.userPerson.findFirst({
+        where: { personId: id },
+        include: { user: { select: { email: true } } },
+      });
+      return up?.user.email ?? null;
+    });
+  }
+
   // Fratrie déduite : autres élèves ayant au moins un parent en commun.
   let siblings: { id: string; firstName: string; lastName: string }[] = [];
   if (person.type === 'STUDENT' && person.relationsAsChild.length > 0) {
@@ -472,6 +485,17 @@ export default async function PersonDetailPage({
                 hrefBase={`/api/admin/persons/${person.id}/document.pdf`}
                 years={documentYears}
                 periods={documentPeriods}
+              />
+            </section>
+          )}
+
+          {person.type === 'TEACHER' && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="mb-3 text-sm font-semibold text-slate-700">{tDetail('portalAccessTeacher')}</h2>
+              <TeacherAccess
+                personId={person.id}
+                defaultEmail={contacts.email ?? ''}
+                existingEmail={teacherUserEmail}
               />
             </section>
           )}

@@ -1182,6 +1182,7 @@
           "GUARDIAN": "Tuteur"
         },
         "portalAccess": "Accès portail parent",
+        "portalAccessTeacher": "Accès portail enseignant",
         "documents": "Documents officiels"
       },
       "parentAccess": {
@@ -1191,6 +1192,14 @@
         "create": "Créer l'accès",
         "creating": "Création…",
         "tempPasswordHint": "Mot de passe temporaire à communiquer au parent (affiché une seule fois) :"
+      },
+      "teacherAccess": {
+        "active": "Actif",
+        "description": "Crée un compte de connexion au portail enseignant pour cette personne.",
+        "emailPlaceholder": "Email de connexion",
+        "create": "Créer l'accès",
+        "creating": "Création…",
+        "tempPasswordHint": "Mot de passe temporaire à communiquer à l'enseignant (affiché une seule fois) :"
       },
       "import": {
         "parentTitle": "Personnes",
@@ -2118,6 +2127,59 @@
         "CLASS": "Classe",
         "LEVEL": "Niveau"
       }
+    }
+  },
+  "enseignant": {
+    "signOut": "Déconnexion",
+    "nav": {
+      "home": "Tableau de bord",
+      "timetable": "Emploi du temps",
+      "classes": "Mes classes",
+      "messages": "Messages",
+      "account": "Mon compte"
+    },
+    "home": {
+      "title": "Tableau de bord",
+      "noTeacher": "Aucun enseignant rattaché à votre compte. Contactez l'établissement."
+    },
+    "timetable": {
+      "title": "Mon emploi du temps",
+      "weeklyHoursCount": "{count} créneau(x) cette semaine",
+      "hour": "Heure",
+      "empty": "Aucun cours planifié.",
+      "days": {
+        "MON": "Lundi",
+        "TUE": "Mardi",
+        "WED": "Mercredi",
+        "THU": "Jeudi",
+        "FRI": "Vendredi",
+        "SAT": "Samedi"
+      }
+    },
+    "classes": {
+      "title": "Mes classes",
+      "empty": "Aucune classe affectée.",
+      "studentCount": "{count} élève(s)"
+    },
+    "messages": {
+      "title": "Messages",
+      "hint": "Conversations vous incluant. Vous pouvez répondre.",
+      "empty": "Aucune conversation.",
+      "replyPlaceholder": "Votre réponse…",
+      "sending": "Envoi…",
+      "reply": "Répondre",
+      "you": "Vous",
+      "school": "École"
+    },
+    "account": {
+      "title": "Mon compte",
+      "changePassword": "Changer le mot de passe",
+      "current": "Mot de passe actuel",
+      "new": "Nouveau mot de passe",
+      "confirm": "Confirmer le nouveau mot de passe",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "done": "Mot de passe mis à jour."
     }
   }
 }

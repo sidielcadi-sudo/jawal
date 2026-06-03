@@ -68,6 +68,8 @@ const SUPER_ADMIN_EMAIL = 'super@jawal.ma';
 const SUPER_ADMIN_PASSWORD = 'super1234';
 const DEMO_PARENT_EMAIL = 'hassan.benani@demo.jawal.ma';
 const DEMO_PARENT_PASSWORD = 'parent1234';
+const DEMO_TEACHER_EMAIL = 'amina.prof@demo.jawal.ma';
+const DEMO_TEACHER_PASSWORD = 'prof1234';
 
 async function main() {
   console.log('🌱 Seed Jawal…');
@@ -668,6 +670,44 @@ async function main() {
       },
     });
     console.log(`  ✓ Accès portail parent : ${DEMO_PARENT_EMAIL} / ${DEMO_PARENT_PASSWORD}`);
+  }
+
+  // 8.quinquies Accès portail enseignant de démo (Amina) — idempotent.
+  const teacherForLogin = await prisma.person.findFirst({
+    where: { tenantId: tenant.id, type: PersonType.TEACHER, firstName: 'Amina' },
+  });
+  if (teacherForLogin) {
+    const teacherPasswordHash = await bcrypt.hash(DEMO_TEACHER_PASSWORD, 10);
+    const teacherUser = await prisma.user.upsert({
+      where: { tenantId_email: { tenantId: tenant.id, email: DEMO_TEACHER_EMAIL } },
+      update: { passwordHash: teacherPasswordHash },
+      create: {
+        tenantId: tenant.id,
+        email: DEMO_TEACHER_EMAIL,
+        passwordHash: teacherPasswordHash,
+        emailVerified: new Date(),
+        locale: 'fr',
+      },
+    });
+    const teacherRoleId = rolesByCode.get('enseignant');
+    if (teacherRoleId) {
+      await prisma.userRole.upsert({
+        where: { userId_roleId: { userId: teacherUser.id, roleId: teacherRoleId } },
+        update: {},
+        create: { tenantId: tenant.id, userId: teacherUser.id, roleId: teacherRoleId },
+      });
+    }
+    await prisma.userPerson.upsert({
+      where: { userId_personId: { userId: teacherUser.id, personId: teacherForLogin.id } },
+      update: {},
+      create: {
+        tenantId: tenant.id,
+        userId: teacherUser.id,
+        personId: teacherForLogin.id,
+        relationship: 'self',
+      },
+    });
+    console.log(`  ✓ Accès portail enseignant : ${DEMO_TEACHER_EMAIL} / ${DEMO_TEACHER_PASSWORD}`);
   }
 
   // 11.bis Inscriptions (Enrollments) — rétroactif pour les élèves Benani

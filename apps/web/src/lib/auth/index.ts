@@ -60,8 +60,10 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           where: { userId: user.id },
           select: { role: { select: { code: true } } },
         });
-        const isParent =
-          !user.isSuperAdmin && roles.some((r) => r.role.code === 'parent');
+        const roleCodes = roles.map((r) => r.role.code);
+        const isParent = !user.isSuperAdmin && roleCodes.includes('parent');
+        const isTeacher =
+          !user.isSuperAdmin && !isParent && roleCodes.includes('enseignant');
 
         await prismaAdmin.user.update({
           where: { id: user.id },
@@ -74,6 +76,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           tenantId: user.tenantId,
           isSuperAdmin: user.isSuperAdmin,
           isParent,
+          isTeacher,
         };
       },
     }),

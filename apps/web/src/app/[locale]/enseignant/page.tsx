@@ -1,39 +1,37 @@
-import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
+import { getTeacherPersonId } from '@/lib/teacher';
 import { computeTeacherDashboard } from '@/lib/kpi-teacher';
 import { TeacherDashboardView } from '@/components/teacher-dashboard-view';
 
-export default async function TeacherDashboardPage({
+export default async function TeacherHomePage({
   params,
   searchParams,
 }: {
-  params: Promise<{ locale: string; id: string }>;
+  params: Promise<{ locale: string }>;
   searchParams: Promise<{ period?: string }>;
 }) {
-  const { locale, id } = await params;
+  const { locale } = await params;
   const sp = await searchParams;
   setRequestLocale(locale);
   const session = (await auth())!;
   const t = await getTranslations('admin.teacherDashboard');
+  const tNav = await getTranslations('enseignant');
 
   const data = await withTenant(session.user.tenantId, async (tx) => {
-    const teacher = await tx.person.findUnique({
-      where: { id },
-      select: { firstName: true, lastName: true, type: true },
-    });
-    if (!teacher || teacher.type !== 'TEACHER') return null;
+    const teacherId = await getTeacherPersonId(tx, session.user.id);
     const activeYear = await tx.academicYear.findFirst({
       where: { active: true },
       include: { periods: { orderBy: { startDate: 'asc' } } },
     });
     const periods = activeYear?.periods ?? [];
     const selectedPeriodId = sp.period ?? periods[0]?.id ?? null;
-    const dash = await computeTeacherDashboard(tx, { teacherId: id, periodId: selectedPeriodId });
+    const dash = teacherId
+      ? await computeTeacherDashboard(tx, { teacherId, periodId: selectedPeriodId })
+      : null;
     return {
-      teacher,
+      hasTeacher: !!teacherId,
       yearLabel: activeYear?.label ?? '—',
       periods: periods.map((p) => ({ id: p.id, label: p.label })),
       selectedPeriodId,
@@ -41,24 +39,14 @@ export default async function TeacherDashboardPage({
     };
   });
 
-  if (!data) notFound();
-
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
-      <nav className="mb-3 text-xs text-slate-500">
-        <Link href={`/${locale}/admin/persons/${id}`} className="hover:text-brand-700">
-          {data.teacher.lastName} {data.teacher.firstName}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <span>{t('title')}</span>
-      </nav>
-
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">{tNav('home.title')}</h1>
           <p className="mt-1 text-sm text-slate-500">
-            {data.teacher.lastName} {data.teacher.firstName} · {data.yearLabel}
-            {data.dash.subjects.length > 0 && ` · ${data.dash.subjects.join(', ')}`}
+            {data.yearLabel}
+            {data.dash && data.dash.subjects.length > 0 && ` · ${data.dash.subjects.join(', ')}`}
           </p>
         </div>
         {data.periods.length > 0 && (
@@ -87,7 +75,13 @@ export default async function TeacherDashboardPage({
         )}
       </header>
 
-      <TeacherDashboardView dash={data.dash} />
+      {data.dash ? (
+        <TeacherDashboardView dash={data.dash} />
+      ) : (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
+          {tNav('home.noTeacher')}
+        </div>
+      )}
     </div>
   );
 }
