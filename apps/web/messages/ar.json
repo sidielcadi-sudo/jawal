@@ -1109,7 +1109,8 @@
           "LEGAL_GUARDIAN": "الوصي القانوني",
           "GUARDIAN": "الوصي"
         },
-        "portalAccess": "الدخول إلى بوابة ولي الأمر"
+        "portalAccess": "الدخول إلى بوابة ولي الأمر",
+        "documents": "الوثائق الرسمية"
       },
       "parentAccess": {
         "active": "مُفعّل",
@@ -1398,6 +1399,54 @@
         "actions": "الكشف",
         "bulletin": "عرض"
       }
+    },
+    "documents": {
+      "fields": {
+        "student": "التلميذ(ة)",
+        "bornOn": "المزداد(ة) في",
+        "class": "القسم",
+        "year": "السنة الدراسية",
+        "period": "الفترة"
+      },
+      "title": {
+        "CERTIFICAT_SCOLARITE": "شهادة مدرسية",
+        "ATTESTATION_PRESENCE": "شهادة حضور",
+        "ATTESTATION_PAIEMENT": "شهادة أداء",
+        "ATTESTATION_REUSSITE": "شهادة نجاح"
+      },
+      "types": {
+        "CERTIFICAT_SCOLARITE": "شهادة مدرسية",
+        "ATTESTATION_PRESENCE": "شهادة حضور",
+        "ATTESTATION_PAIEMENT": "شهادة أداء",
+        "ATTESTATION_REUSSITE": "شهادة نجاح"
+      },
+      "body": {
+        "CERTIFICAT_SCOLARITE": "أشهد أنا الموقّع(ة) أسفله، مسؤول(ة) مؤسسة {school}، أن التلميذ(ة) المشار إليه(ا) أعلاه مسجّل(ة) بصفة نظامية برسم السنة الدراسية {year}. وقد سُلّمت له(ا) هذه الشهادة للإدلاء بها عند الاقتضاء.",
+        "ATTESTATION_PRESENCE": "أشهد أنا الموقّع(ة) أسفله، مسؤول(ة) مؤسسة {school}، أن التلميذ(ة) المشار إليه(ا) أعلاه تابع(ت) دراسته(ا) خلال {period}، بنسبة الحضور المبيّنة أدناه.",
+        "ATTESTATION_PAIEMENT": "أشهد أنا الموقّع(ة) أسفله، مسؤول(ة) مؤسسة {school}، بالوضعية المالية التالية للتلميذ(ة) المشار إليه(ا) أعلاه برسم السنة الدراسية {year}.",
+        "ATTESTATION_REUSSITE": "أشهد أنا الموقّع(ة) أسفله، مسؤول(ة) مؤسسة {school}، بالنتائج المحصّل عليها من طرف التلميذ(ة) المشار إليه(ا) أعلاه خلال {period}."
+      },
+      "figures": {
+        "attendance": "نسبة الحضور",
+        "upToDate": "في وضعية مالية سليمة",
+        "paid": "المؤدّى",
+        "balance": "الرصيد المتبقّي",
+        "average": "المعدل العام",
+        "rank": "الرتبة"
+      },
+      "mentions": {
+        "EXCELLENT": "ممتاز",
+        "TRES_BIEN": "حسن جدًا",
+        "BIEN": "حسن",
+        "ASSEZ_BIEN": "مستحسن",
+        "PASSABLE": "مقبول",
+        "INSUFFISANT": "ضعيف"
+      },
+      "refLabel": "مرجع",
+      "delivered": "سُلّمت بتاريخ {date} للإدلاء بها عند الاقتضاء.",
+      "signature": "رئيس(ة) المؤسسة",
+      "footer": "وثيقة مُنشأة بواسطة {school} · مرجع {ref}",
+      "needPeriod": "اختر فترة."
     },
     "bulletin": {
       "classes": "الأقسام",
@@ -1881,6 +1930,7 @@
       "noClass": "لا يوجد قسم للسنة الحالية.",
       "year": "السنة",
       "viewYear": "عرض",
+      "documentsTitle": "الوثائق الرسمية",
       "bulletins": {
         "title": "كشوف النقاط",
         "empty": "لا يوجد كشف متاح.",

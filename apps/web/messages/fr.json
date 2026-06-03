@@ -1109,7 +1109,8 @@
           "LEGAL_GUARDIAN": "Tuteur légal",
           "GUARDIAN": "Tuteur"
         },
-        "portalAccess": "Accès portail parent"
+        "portalAccess": "Accès portail parent",
+        "documents": "Documents officiels"
       },
       "parentAccess": {
         "active": "Actif",
@@ -1398,6 +1399,54 @@
         "actions": "Bulletin",
         "bulletin": "Voir"
       }
+    },
+    "documents": {
+      "fields": {
+        "student": "Élève",
+        "bornOn": "Né(e) le",
+        "class": "Classe",
+        "year": "Année scolaire",
+        "period": "Période"
+      },
+      "title": {
+        "CERTIFICAT_SCOLARITE": "Certificat de scolarité",
+        "ATTESTATION_PRESENCE": "Attestation de présence",
+        "ATTESTATION_PAIEMENT": "Attestation de paiement",
+        "ATTESTATION_REUSSITE": "Attestation de réussite"
+      },
+      "types": {
+        "CERTIFICAT_SCOLARITE": "Certificat de scolarité",
+        "ATTESTATION_PRESENCE": "Attestation de présence",
+        "ATTESTATION_PAIEMENT": "Attestation de paiement",
+        "ATTESTATION_REUSSITE": "Attestation de réussite"
+      },
+      "body": {
+        "CERTIFICAT_SCOLARITE": "Je soussigné(e), responsable de l'établissement {school}, certifie que l'élève désigné(e) ci-dessus est régulièrement inscrit(e) au titre de l'année scolaire {year}. Le présent certificat lui est délivré pour servir et valoir ce que de droit.",
+        "ATTESTATION_PRESENCE": "Je soussigné(e), responsable de l'établissement {school}, atteste que l'élève désigné(e) ci-dessus a suivi sa scolarité durant {period}, avec le taux de présence indiqué ci-dessous.",
+        "ATTESTATION_PAIEMENT": "Je soussigné(e), responsable de l'établissement {school}, atteste de la situation financière suivante de l'élève désigné(e) ci-dessus au titre de l'année scolaire {year}.",
+        "ATTESTATION_REUSSITE": "Je soussigné(e), responsable de l'établissement {school}, atteste des résultats obtenus par l'élève désigné(e) ci-dessus durant {period}."
+      },
+      "figures": {
+        "attendance": "Taux de présence",
+        "upToDate": "À jour de ses paiements",
+        "paid": "Réglé",
+        "balance": "Solde restant",
+        "average": "Moyenne générale",
+        "rank": "Rang"
+      },
+      "mentions": {
+        "EXCELLENT": "Excellent",
+        "TRES_BIEN": "Très bien",
+        "BIEN": "Bien",
+        "ASSEZ_BIEN": "Assez bien",
+        "PASSABLE": "Passable",
+        "INSUFFISANT": "Insuffisant"
+      },
+      "refLabel": "Réf",
+      "delivered": "Délivré le {date} pour servir et valoir ce que de droit.",
+      "signature": "Le Chef d'établissement",
+      "footer": "Document généré par {school} · Réf {ref}",
+      "needPeriod": "Sélectionnez une période."
     },
     "bulletin": {
       "classes": "Classes",
@@ -1943,6 +1992,7 @@
       "noClass": "Aucune classe pour l'année active.",
       "year": "Année",
       "viewYear": "Voir",
+      "documentsTitle": "Documents officiels",
       "bulletins": {
         "title": "Bulletins",
         "empty": "Aucun bulletin disponible.",

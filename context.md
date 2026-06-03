@@ -77,9 +77,16 @@ Page `/admin/timetable` (entrée sidebar « Emploi du temps »). 9 KPI : couvert
   - `lib/messaging.ts` (listConversationsForParticipant, getThread, isParticipant, resolveSenderNames) ; actions parent (start/reply/markRead, gardées par isParticipant) ; pages `/parent/messages` + `[id]` ; nav parent (Messages, Mon compte).
 - Validé : typecheck web OK, JSON fr/ar OK. Test navigateur à faire.
 
+## S11 — Documents auto (en cours, non commité)
+- 4 documents officiels PDF réutilisant le pipeline S9 (HTML autonome → Playwright) : `CERTIFICAT_SCOLARITE`, `ATTESTATION_PRESENCE`, `ATTESTATION_PAIEMENT`, `ATTESTATION_REUSSITE`.
+- `lib/document-data.ts` : loader par type (classe/année via StudentClass, présence par période, finance all-time, réussite via loadBulletinData). Renvoie null si prérequis manquants → HTTP 422.
+- `lib/document-html.ts` : `renderDocumentHTML` (layout commun : en-tête établissement, infos élève, corps i18n par type, ligne « figure », mention/signature/réf/footer).
+- Routes : `/api/admin/persons/[id]/document.pdf?type=&year=&period=` + `/api/parent/children/[childId]/document.pdf` (garde de propriété).
+- UI : composant partagé `components/documents-panel.tsx` (sélecteur année+période + 4 boutons) sur fiche élève admin ET page enfant parent.
+- i18n `admin.documents` (titles/types/body/figures/mentions) fr+ar. Validé : typecheck web OK, JSON OK. Test navigateur à faire.
+
 ## Série S8.4E terminée (4E1→4E5). Prochaines phases potentielles
 - S10 phase 2 : intégration CMI réelle (init paiement, HMAC, page hébergée, callback → Payment)
-- S11 Documents auto (réutilise pipeline PDF S9)
 
 ## Conventions
 - Working dir : `c:\Users\idris\Documents\01-GitHub\jawal`

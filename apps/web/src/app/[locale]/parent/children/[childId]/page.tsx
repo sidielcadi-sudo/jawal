@@ -4,6 +4,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { parentCanAccessChild } from '@/lib/parent';
+import { DocumentsPanel } from '@/components/documents-panel';
 
 const STATUS_TONE: Record<string, string> = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -203,6 +204,16 @@ export default async function ParentChildPage({
             ))}
           </ul>
         )}
+      </section>
+
+      {/* Documents officiels */}
+      <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
+        <h2 className="mb-3 text-sm font-semibold text-slate-700">{t('documentsTitle')}</h2>
+        <DocumentsPanel
+          hrefBase={`/api/parent/children/${child.id}/document.pdf`}
+          years={years.map((y) => ({ id: y.id, label: y.label }))}
+          periods={periods.map((p) => ({ id: p.id, label: p.label }))}
+        />
       </section>
 
       {/* Présences */}

@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { PersonActions } from './person-actions';
 import { ParentAccess } from './parent-access';
+import { DocumentsPanel } from '@/components/documents-panel';
 import { computeContractStatus, contractStatusBadgeClass } from '@/lib/contract-status';
 
 export default async function PersonDetailPage({
@@ -316,6 +317,28 @@ export default async function PersonDetailPage({
     });
   }
 
+  // Documents officiels (élève) : années + périodes de l'année active.
+  let documentYears: { id: string; label: string }[] = [];
+  let documentPeriods: { id: string; label: string }[] = [];
+  if (person.type === 'STUDENT') {
+    const dd = await withTenant(tenantId, async (tx) => {
+      const years = await tx.academicYear.findMany({ orderBy: { startDate: 'desc' } });
+      const active = years.find((y) => y.active) ?? years[0];
+      const periods = active
+        ? await tx.period.findMany({
+            where: { academicYearId: active.id },
+            orderBy: { startDate: 'asc' },
+          })
+        : [];
+      return {
+        years: years.map((y) => ({ id: y.id, label: y.label })),
+        periods: periods.map((p) => ({ id: p.id, label: p.label })),
+      };
+    });
+    documentYears = dd.years;
+    documentPeriods = dd.periods;
+  }
+
   const contacts = (person.contacts ?? {}) as { email?: string; phone?: string; whatsapp?: string };
   const address = (person.address ?? {}) as {
     line1?: string;
@@ -434,6 +457,17 @@ export default async function PersonDetailPage({
         </section>
 
         <aside className="space-y-4">
+          {person.type === 'STUDENT' && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="mb-3 text-sm font-semibold text-slate-700">{tDetail('documents')}</h2>
+              <DocumentsPanel
+                hrefBase={`/api/admin/persons/${person.id}/document.pdf`}
+                years={documentYears}
+                periods={documentPeriods}
+              />
+            </section>
+          )}
+
           {isEmployee && (
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="text-sm font-semibold text-slate-700">{tDetail('contract')}</h2>
