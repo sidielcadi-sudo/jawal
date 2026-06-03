@@ -400,6 +400,12 @@ export default async function AdminDashboard({
 
       <section className="mt-6 flex flex-wrap gap-3">
         <Link
+          href={`/${locale}/admin/pilotage`}
+          className="rounded-lg border border-brand-300 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100"
+        >
+          📊 {t('actions.pilotage')}
+        </Link>
+        <Link
           href={`/${locale}/admin/exports`}
           className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
         >

@@ -102,6 +102,7 @@
         "empty": "Aucun élève signalé sur les critères actuels."
       },
       "actions": {
+        "pilotage": "Pilotage",
         "exports": "Exports CSV",
         "finance": "Finances",
         "announcements": "Annonces",
@@ -129,6 +130,7 @@
     "signOut": "Se déconnecter",
     "nav": {
       "dashboard": "Tableau de bord",
+      "pilotage": "Pilotage",
       "students": "Élèves",
       "teachers": "Enseignants",
       "staff": "Personnel",
@@ -144,6 +146,35 @@
       "finance": "Finances",
       "import": "Importer CSV",
       "settings": "Paramètres"
+    },
+    "pilotage": {
+      "title": "Pilotage",
+      "subtitle": "Indicateurs clés de direction",
+      "period": "Période",
+      "apply": "Voir",
+      "noData": "Donnée non disponible (à brancher)",
+      "empty": "Aucune note pour cette période.",
+      "kpi": {
+        "successRate": "Taux de réussite",
+        "absenteeism": "Taux d'absentéisme",
+        "collection": "Recouvrement des paiements",
+        "teacherLoad": "Charge horaire moy. / prof",
+        "satisfaction": "Satisfaction parents / élèves",
+        "conformiteMassar": "Conformité Massar",
+        "levelAverages": "Moyennes par niveau"
+      },
+      "status": {
+        "green": "Vert",
+        "orange": "Orange",
+        "red": "Rouge",
+        "na": "N/A"
+      },
+      "legend": {
+        "title": "Signification des couleurs",
+        "green": "Bon niveau, objectifs atteints — situation saine.",
+        "orange": "Situation moyenne ou instable — à surveiller.",
+        "red": "Niveau critique — action urgente nécessaire."
+      }
     },
     "attendanceIndex": {
       "title": "Présences",
