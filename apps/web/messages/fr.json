@@ -1367,6 +1367,8 @@
       "classes": "Classes",
       "title": "Bulletin",
       "print": "Imprimer",
+      "downloadPdf": "Télécharger PDF",
+      "downloadClassPdf": "Bulletins de la classe (PDF)",
       "filter": {
         "period": "Période",
         "apply": "Voir"

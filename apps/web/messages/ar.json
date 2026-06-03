@@ -1367,6 +1367,8 @@
       "classes": "الأقسام",
       "title": "كشف النقاط",
       "print": "طباعة",
+      "downloadPdf": "تحميل PDF",
+      "downloadClassPdf": "كشوف نقاط القسم (PDF)",
       "filter": {
         "period": "الفترة",
         "apply": "عرض"
