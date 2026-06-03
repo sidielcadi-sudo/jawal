@@ -176,6 +176,46 @@
         "red": "Niveau critique — action urgente nécessaire."
       }
     },
+    "teacherDashboard": {
+      "title": "Tableau de bord enseignant",
+      "period": "Période",
+      "apply": "Voir",
+      "na": "N/A",
+      "program": {
+        "title": "Progression du programme",
+        "progress": "Avancement du programme",
+        "chapters": "Chapitres restants"
+      },
+      "eval": {
+        "title": "Évaluation & notes",
+        "average": "Moyenne (ma matière)",
+        "distribution": "Distribution des notes",
+        "below10": "< 10",
+        "mid": "10–14",
+        "above14": "> 14"
+      },
+      "attendance": {
+        "title": "Présence & discipline",
+        "rate": "Taux de présence des élèves",
+        "discipline": "Incidents / Retards",
+        "incidents": "incidents",
+        "lates": "retards"
+      },
+      "load": {
+        "title": "Charge horaire & planning",
+        "weekly": "Charge horaire hebdomadaire",
+        "hoursPerWeek": "h / sem",
+        "quota": "Quota horaire",
+        "quotaUsed": "du quota utilisé",
+        "noContract": "Aucune heure contractuelle saisie."
+      },
+      "comm": {
+        "title": "Communication & feedback",
+        "feedback": "Feedback parents / élèves",
+        "unread": "Messages non lus",
+        "noAccount": "Pas de compte de connexion."
+      }
+    },
     "attendanceIndex": {
       "title": "Présences",
       "date": "Date",
@@ -1055,6 +1095,7 @@
         "updatedAt": "Mis à jour le",
         "finance": "Finances",
         "timetable": "Emploi du temps",
+        "dashboard": "Tableau de bord",
         "contract": "Contrat",
         "contractType": "Type",
         "contractualHoursPerWeek": "Heures contractuelles / semaine",

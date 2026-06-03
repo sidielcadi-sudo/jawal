@@ -11,6 +11,7 @@ SaaS multi-tenant de gestion scolaire (K-12 Maghreb, priorité Maroc). Next.js 1
 - **S10 Espace parent (phase 1)** : portail `/[locale]/parent` cloisonné (flag `isParent`), enfants via `lib/parent.ts`, bulletins/présences/scolarité, annonces, messagerie parent↔école (réutilise la messagerie admin participant-based), changement de mot de passe, historique multi-années. Provisioning depuis la fiche PARENT (+ email mdp temporaire via Mailpit). Compte démo `hassan.benani@demo.jawal.ma` / `parent1234`.
 - **S11 Documents auto** : 4 PDF officiels (certificat scolarité, attestations présence/paiement/réussite) via le pipeline S9. `lib/document-{data,html}.ts`, `components/documents-panel.tsx`, routes admin + parent.
 - **Pilotage** : cockpit direction `/admin/pilotage` (entrée sidebar + tuile dashboard). 7 KPI à code couleur vert/orange/rouge + légende ; 5 calculés (réussite, absentéisme, recouvrement, charge prof, moyennes par niveau), 2 en N/A faute de source (satisfaction, conformité Massar). `lib/kpi-pilotage.ts` (réutilise `lib/bi.ts`).
+- **Tableau de bord enseignant** : `/admin/persons/[id]/dashboard` (bouton sur la fiche prof). Moyenne matière + distribution (jauge + histogramme), présence + retards, charge horaire + quota, messages non lus ; programme/incidents/feedback en N/A (pas de modèle). `lib/kpi-teacher.ts`.
 
 ## Solveur EDT
 - Docker Compose : `solver` sur `localhost:8001` (FastAPI + OR-Tools CP-SAT + FET 7.0.8). Endpoints `/solve`, `/solve-multi`, `/engines`.

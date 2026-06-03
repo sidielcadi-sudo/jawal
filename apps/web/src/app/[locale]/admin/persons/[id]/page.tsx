@@ -425,12 +425,20 @@ export default async function PersonDetailPage({
             </Link>
           )}
           {person.type === 'TEACHER' && (
-            <Link
-              href={`/${locale}/admin/persons/${person.id}/timetable`}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              {tDetail('timetable')}
-            </Link>
+            <>
+              <Link
+                href={`/${locale}/admin/persons/${person.id}/dashboard`}
+                className="rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100"
+              >
+                📊 {tDetail('dashboard')}
+              </Link>
+              <Link
+                href={`/${locale}/admin/persons/${person.id}/timetable`}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                {tDetail('timetable')}
+              </Link>
+            </>
           )}
           <PersonActions personId={person.id} isArchived={!!person.deletedAt} locale={locale} />
         </div>
