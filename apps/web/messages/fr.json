@@ -103,6 +103,7 @@
       },
       "actions": {
         "pilotage": "Pilotage",
+        "vieScolaire": "Vie scolaire",
         "exports": "Exports CSV",
         "finance": "Finances",
         "announcements": "Annonces",
@@ -131,6 +132,7 @@
     "nav": {
       "dashboard": "Tableau de bord",
       "pilotage": "Pilotage",
+      "vieScolaire": "Vie scolaire",
       "students": "Élèves",
       "teachers": "Enseignants",
       "staff": "Personnel",
@@ -175,6 +177,37 @@
         "orange": "Situation moyenne ou instable — à surveiller.",
         "red": "Niveau critique — action urgente nécessaire."
       }
+    },
+    "vieScolaire": {
+      "title": "Tableau de bord — Vie scolaire",
+      "period": "Période",
+      "apply": "Voir",
+      "na": "N/A",
+      "block1": "Bloc 1 — Présence & absences",
+      "block2": "Bloc 2 — Discipline",
+      "block3": "Bloc 3 — Communication",
+      "block4": "Bloc 4 — Administration",
+      "block5": "Bloc 5 — Sécurité & bien-être",
+      "presence": "Taux de présence du jour",
+      "presenceCount": "{count} pointage(s) aujourd'hui",
+      "unjustified": "Absences non justifiées",
+      "unjustifiedLabel": "Absences sans motif approuvé (période)",
+      "incidents": "Incidents disciplinaires",
+      "incidentsLabel": "Incidents déclarés",
+      "lates": "Retards cumulés",
+      "latesLabel": "Retards enregistrés (période)",
+      "trend6w": "tendance 6 sem.",
+      "notifications": "Notifications aux parents",
+      "notificationsLabel": "Absences notifiées aux parents",
+      "records": "Dossiers élèves complets",
+      "recordsLabel": "Naissance + contact + parent rattaché",
+      "medical": "Incidents médicaux",
+      "medicalLabel": "Signalements santé",
+      "atRisk": "Élèves à risque",
+      "atRiskLabel": "Suivi prioritaire",
+      "atRiskEmpty": "Aucun élève à risque.",
+      "reasonAbsence": "Absences",
+      "reasonGrade": "Notes"
     },
     "teacherDashboard": {
       "title": "Tableau de bord enseignant",
