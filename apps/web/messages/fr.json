@@ -761,7 +761,9 @@
       "fields": {
         "max": "Valeur",
         "weight": "Poids (importance)",
-        "subjectIds": "Matières concernées"
+        "subjectIds": "Matières concernées",
+        "from": "Début",
+        "to": "Fin"
       },
       "kinds": {
         "MAX_SAME_SUBJECT_PER_DAY": {
@@ -783,6 +785,31 @@
           "title": "Max heures de cours par jour et par prof",
           "description": "Empêche un enseignant d'enchaîner trop d'heures sur la même journée.",
           "hint": "Recommandé : 6 pour un temps plein, 4 pour un mi-temps."
+        },
+        "MAX_CONSECUTIVE_HOURS_TEACHER": {
+          "title": "Max heures consécutives par prof",
+          "description": "Impose une pause à l'enseignant au-delà de N heures de cours d'affilée dans la journée.",
+          "hint": "Recommandé : 3. Au-delà, le solveur insère un trou dans la journée du prof. (Moteur OR-Tools.)"
+        },
+        "TEACHER_LUNCH_BREAK": {
+          "title": "Pause déjeuner des profs (échelonnée)",
+          "description": "Chaque enseignant garde au moins un créneau libre dans la plage déjeuner, sans bloquer toute la plage pour l'établissement.",
+          "hint": "Définissez la plage déjeuner. Déjeuner échelonné : les profs ne déjeunent pas tous au même créneau. (Moteur OR-Tools.)"
+        },
+        "REQUIRE_SUBJECT_ROOM_TYPE": {
+          "title": "Type de salle obligatoire",
+          "description": "Les matières nécessitant une salle spécialisée (Physique-Chimie, SVT, Informatique, EPS) ne sont placées que dans une salle compatible.",
+          "hint": "Le type de salle est déduit automatiquement du code / libellé / équipement (ex. « Labo SVT », « Salle Info »). Si aucune salle compatible, le cours reste non placé avec un diagnostic. (Moteur OR-Tools.)"
+        },
+        "MINIMIZE_ROOM_CHANGES": {
+          "title": "Minimiser les changements de salle",
+          "description": "Encourage une classe à rester dans la même salle d'un créneau au suivant, pour réduire les déménagements dans la journée.",
+          "hint": "Recommandé : 5 (modéré). Objectif mou : n'empêche pas de placer un cours, oriente seulement vers moins de changements. (Moteur OR-Tools.)"
+        },
+        "BALANCE_DAILY_LOAD": {
+          "title": "Équilibrer les journées",
+          "description": "Pénalise la journée la plus chargée de chaque classe pour répartir les heures et éviter les journées trop longues.",
+          "hint": "Recommandé : 5 (modéré). Objectif mou : pousse à étaler les heures sur la semaine plutôt que de surcharger un jour. (Moteur OR-Tools.)"
         }
       }
     },
@@ -1112,7 +1139,17 @@
           "MOTHER": "Mère",
           "LEGAL_GUARDIAN": "Tuteur légal",
           "GUARDIAN": "Tuteur"
-        }
+        },
+        "portalAccess": "Accès portail parent",
+        "documents": "Documents officiels"
+      },
+      "parentAccess": {
+        "active": "Actif",
+        "description": "Crée un compte de connexion au portail parent pour cette personne.",
+        "emailPlaceholder": "Email de connexion",
+        "create": "Créer l'accès",
+        "creating": "Création…",
+        "tempPasswordHint": "Mot de passe temporaire à communiquer au parent (affiché une seule fois) :"
       },
       "import": {
         "parentTitle": "Personnes",
@@ -1394,10 +1431,60 @@
         "bulletin": "Voir"
       }
     },
+    "documents": {
+      "fields": {
+        "student": "Élève",
+        "bornOn": "Né(e) le",
+        "class": "Classe",
+        "year": "Année scolaire",
+        "period": "Période"
+      },
+      "title": {
+        "CERTIFICAT_SCOLARITE": "Certificat de scolarité",
+        "ATTESTATION_PRESENCE": "Attestation de présence",
+        "ATTESTATION_PAIEMENT": "Attestation de paiement",
+        "ATTESTATION_REUSSITE": "Attestation de réussite"
+      },
+      "types": {
+        "CERTIFICAT_SCOLARITE": "Certificat de scolarité",
+        "ATTESTATION_PRESENCE": "Attestation de présence",
+        "ATTESTATION_PAIEMENT": "Attestation de paiement",
+        "ATTESTATION_REUSSITE": "Attestation de réussite"
+      },
+      "body": {
+        "CERTIFICAT_SCOLARITE": "Je soussigné(e), responsable de l'établissement {school}, certifie que l'élève désigné(e) ci-dessus est régulièrement inscrit(e) au titre de l'année scolaire {year}. Le présent certificat lui est délivré pour servir et valoir ce que de droit.",
+        "ATTESTATION_PRESENCE": "Je soussigné(e), responsable de l'établissement {school}, atteste que l'élève désigné(e) ci-dessus a suivi sa scolarité durant {period}, avec le taux de présence indiqué ci-dessous.",
+        "ATTESTATION_PAIEMENT": "Je soussigné(e), responsable de l'établissement {school}, atteste de la situation financière suivante de l'élève désigné(e) ci-dessus au titre de l'année scolaire {year}.",
+        "ATTESTATION_REUSSITE": "Je soussigné(e), responsable de l'établissement {school}, atteste des résultats obtenus par l'élève désigné(e) ci-dessus durant {period}."
+      },
+      "figures": {
+        "attendance": "Taux de présence",
+        "upToDate": "À jour de ses paiements",
+        "paid": "Réglé",
+        "balance": "Solde restant",
+        "average": "Moyenne générale",
+        "rank": "Rang"
+      },
+      "mentions": {
+        "EXCELLENT": "Excellent",
+        "TRES_BIEN": "Très bien",
+        "BIEN": "Bien",
+        "ASSEZ_BIEN": "Assez bien",
+        "PASSABLE": "Passable",
+        "INSUFFISANT": "Insuffisant"
+      },
+      "refLabel": "Réf",
+      "delivered": "Délivré le {date} pour servir et valoir ce que de droit.",
+      "signature": "Le Chef d'établissement",
+      "footer": "Document généré par {school} · Réf {ref}",
+      "needPeriod": "Sélectionnez une période."
+    },
     "bulletin": {
       "classes": "Classes",
       "title": "Bulletin",
       "print": "Imprimer",
+      "downloadPdf": "Télécharger PDF",
+      "downloadClassPdf": "Bulletins de la classe (PDF)",
       "filter": {
         "period": "Période",
         "apply": "Voir"
@@ -1883,6 +1970,112 @@
         "slug": "Slug (URL)",
         "profile": "Profil",
         "submit": "Créer l'établissement"
+      }
+    }
+  },
+  "parent": {
+    "signOut": "Déconnexion",
+    "nav": {
+      "home": "Accueil",
+      "children": "Mes enfants",
+      "announcements": "Annonces",
+      "messages": "Messages",
+      "account": "Mon compte"
+    },
+    "account": {
+      "title": "Mon compte",
+      "changePassword": "Changer le mot de passe",
+      "current": "Mot de passe actuel",
+      "new": "Nouveau mot de passe",
+      "confirm": "Confirmer le nouveau mot de passe",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "done": "Mot de passe mis à jour."
+    },
+    "messages": {
+      "title": "Messages",
+      "empty": "Aucune conversation. Écrivez à l'école ci-contre.",
+      "newTitle": "Nouveau message",
+      "newHint": "Posez une question à l'école ou à l'équipe pédagogique.",
+      "subjectPlaceholder": "Objet",
+      "bodyPlaceholder": "Votre message…",
+      "replyPlaceholder": "Votre réponse…",
+      "send": "Envoyer",
+      "sending": "Envoi…",
+      "reply": "Répondre",
+      "you": "Vous",
+      "school": "École"
+    },
+    "home": {
+      "title": "Espace parent",
+      "subtitle": "Suivez la scolarité de vos enfants.",
+      "noChild": "Aucun enfant rattaché à votre compte. Contactez l'établissement.",
+      "attendance": "Présence",
+      "absences": "Absences",
+      "remaining": "Reste dû",
+      "upToDate": "À jour",
+      "latestAnnouncements": "Dernières annonces",
+      "seeAll": "Tout voir",
+      "noAnnouncement": "Aucune annonce pour le moment."
+    },
+    "child": {
+      "breadcrumbHome": "Accueil",
+      "noClass": "Aucune classe pour l'année active.",
+      "year": "Année",
+      "viewYear": "Voir",
+      "documentsTitle": "Documents officiels",
+      "bulletins": {
+        "title": "Bulletins",
+        "empty": "Aucun bulletin disponible.",
+        "download": "Télécharger PDF"
+      },
+      "attendance": {
+        "title": "Présences",
+        "empty": "Aucune présence enregistrée.",
+        "present": "Présent",
+        "absent": "Absent",
+        "late": "Retard",
+        "excused": "Excusé",
+        "ABSENT": "Absent",
+        "LATE": "Retard",
+        "EXCUSED": "Excusé",
+        "recent": "Absences & retards récents",
+        "justif": {
+          "PENDING": "Justification en attente",
+          "APPROVED": "Justification acceptée",
+          "REJECTED": "Justification refusée"
+        }
+      },
+      "finance": {
+        "title": "Scolarité",
+        "empty": "Aucune échéance pour le moment.",
+        "label": "Libellé",
+        "dueDate": "Échéance",
+        "amount": "Montant",
+        "remaining": "Reste",
+        "status": "Statut",
+        "paidOf": "{paid} / {due} MAD payés",
+        "totalRemaining": "Total restant dû",
+        "payOnline": "Payer en ligne",
+        "soon": "bientôt",
+        "payOnlineSoon": "Le paiement en ligne CMI arrive bientôt.",
+        "statuses": {
+          "PENDING": "À payer",
+          "PARTIAL": "Partiel",
+          "PAID": "Payé"
+        }
+      }
+    },
+    "announcements": {
+      "title": "Annonces",
+      "empty": "Aucune annonce pour le moment.",
+      "audiences": {
+        "ALL": "Tous",
+        "PARENTS": "Parents",
+        "TEACHERS": "Enseignants",
+        "STAFF": "Personnel",
+        "CLASS": "Classe",
+        "LEVEL": "Niveau"
       }
     }
   }

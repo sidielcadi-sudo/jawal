@@ -153,11 +153,38 @@ enum TimetableOverrideKind {
 ///
 /// MAX_HOURS_PER_DAY_TEACHER (hard)
 ///   config: { max: int } — chaque prof a au plus N heures de cours par jour.
+///
+/// MAX_CONSECUTIVE_HOURS_TEACHER (hard, phase 4E3)
+///   config: { max: int } — chaque prof a au plus N heures de cours d'affilée
+///   (au-delà, une pause est imposée dans la journée).
+///
+/// TEACHER_LUNCH_BREAK (hard, phase 4E3)
+///   config: { from: "HH:MM", to: "HH:MM" } — chaque prof garde au moins un
+///   créneau libre dans la plage déjeuner les jours où il enseigne (déjeuner
+///   échelonné, sans bloquer la plage pour tout le monde).
+///
+/// REQUIRE_SUBJECT_ROOM_TYPE (hard, phase 4E4)
+///   config: {} — les matières nécessitant un type de salle spécifique
+///   (PC/SVT/Info/EPS, déduit par heuristique) ne sont placées que dans une
+///   salle compatible. Sinon le cours reste non placé (diagnostic dédié).
+///
+/// MINIMIZE_ROOM_CHANGES (soft, phase 4E5)
+///   config: { weight: int } — récompense le maintien de la même salle d'un
+///   créneau au suivant pour une classe (moins de déménagements).
+///
+/// BALANCE_DAILY_LOAD (soft, phase 4E5)
+///   config: { weight: int } — pénalise la journée la plus chargée de chaque
+///   classe (répartit les heures, évite les journées trop longues).
 enum TimetableConstraintKind {
   MAX_SAME_SUBJECT_PER_DAY
   NO_GAPS
   REQUIRES_CONSECUTIVE_SUBJECTS
   MAX_HOURS_PER_DAY_TEACHER
+  MAX_CONSECUTIVE_HOURS_TEACHER
+  TEACHER_LUNCH_BREAK
+  REQUIRE_SUBJECT_ROOM_TYPE
+  MINIMIZE_ROOM_CHANGES
+  BALANCE_DAILY_LOAD
 }
 
 enum PaymentMethod {

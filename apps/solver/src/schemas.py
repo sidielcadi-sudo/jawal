@@ -122,6 +122,8 @@ class RoomInput(BaseModel):
 
     id: str
     label: str
+    # Phase 4E4 : type de salle (STD/LABO_PC/LABO_SVT/INFO/EPS), heuristique.
+    room_type: str | None = None
 
 
 class MultiAssignmentInput(BaseModel):
@@ -138,6 +140,8 @@ class MultiAssignmentInput(BaseModel):
     class_id: str
     class_name: str
     weekly_hours: int = Field(..., ge=0, le=40)
+    # Phase 4E4 : type de salle requis (heuristique). None = indifférent.
+    required_room_type: str | None = None
 
 
 class ConstraintsInput(BaseModel):
@@ -160,6 +164,28 @@ class ConstraintsInput(BaseModel):
 
     # Hard : max heures de cours par jour pour chaque prof
     max_hours_per_day_teacher: int | None = Field(None, ge=1, le=12)
+
+    # Phase 4E3 — Hard : max heures CONSÉCUTIVES par jour pour chaque prof.
+    # Au-delà, une pause est imposée (fenêtre glissante de max+1 ≤ max).
+    max_consecutive_hours_teacher: int | None = Field(None, ge=1, le=8)
+
+    # Phase 4E3 — Hard : pause déjeuner échelonnée. Liste des créneaux de la
+    # plage déjeuner ; chaque prof garde ≥ 1 de ces créneaux libre chaque jour.
+    # Vide = contrainte inactive.
+    teacher_lunch_break_slot_ids: list[str] = Field(default_factory=list)
+
+    # Phase 4E4 — Hard : impose le type de salle. Une affectation dont la
+    # matière requiert un type (required_room_type) n'est placée que dans une
+    # salle de ce type (NO_ROOM exclu). Inactif si False.
+    enforce_room_type: bool = False
+
+    # Phase 4E5 — Soft : récompense le maintien de la même salle (classe) sur
+    # créneaux adjacents → moins de changements de salle. None/0 = inactif.
+    minimize_room_changes_weight: int | None = Field(None, ge=0, le=100)
+
+    # Phase 4E5 — Soft : pénalise la journée la plus chargée de chaque classe
+    # → équilibre la charge, évite les journées trop longues. None/0 = inactif.
+    balance_daily_load_weight: int | None = Field(None, ge=0, le=100)
 
 
 class MultiGenerateRequest(BaseModel):

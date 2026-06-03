@@ -143,8 +143,15 @@ function ConstraintFields({
 }) {
   switch (row.kind) {
     case 'MAX_SAME_SUBJECT_PER_DAY':
-    case 'MAX_HOURS_PER_DAY_TEACHER': {
+    case 'MAX_HOURS_PER_DAY_TEACHER':
+    case 'MAX_CONSECUTIVE_HOURS_TEACHER': {
       const def = Number(row.config.max ?? 2);
+      const maxBound =
+        row.kind === 'MAX_HOURS_PER_DAY_TEACHER'
+          ? 12
+          : row.kind === 'MAX_CONSECUTIVE_HOURS_TEACHER'
+            ? 8
+            : 10;
       return (
         <label className="block text-sm">
           <span className="mb-1 block text-xs font-medium uppercase text-slate-500">
@@ -154,7 +161,7 @@ function ConstraintFields({
             type="number"
             name="max"
             min={1}
-            max={row.kind === 'MAX_HOURS_PER_DAY_TEACHER' ? 12 : 10}
+            max={maxBound}
             defaultValue={def}
             required
             className="w-32 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
@@ -165,7 +172,42 @@ function ConstraintFields({
         </label>
       );
     }
-    case 'NO_GAPS': {
+    case 'TEACHER_LUNCH_BREAK': {
+      const from = typeof row.config.from === 'string' ? row.config.from : '12:00';
+      const to = typeof row.config.to === 'string' ? row.config.to : '14:00';
+      return (
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="block text-sm">
+            <span className="mb-1 block text-xs font-medium uppercase text-slate-500">
+              {t('fields.from')}
+            </span>
+            <input
+              type="time"
+              name="from"
+              defaultValue={from}
+              required
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </label>
+          <label className="block text-sm">
+            <span className="mb-1 block text-xs font-medium uppercase text-slate-500">
+              {t('fields.to')}
+            </span>
+            <input
+              type="time"
+              name="to"
+              defaultValue={to}
+              required
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+            />
+          </label>
+          <p className="w-full text-xs text-slate-500">{t('kinds.TEACHER_LUNCH_BREAK.hint')}</p>
+        </div>
+      );
+    }
+    case 'NO_GAPS':
+    case 'MINIMIZE_ROOM_CHANGES':
+    case 'BALANCE_DAILY_LOAD': {
       const def = Number(row.config.weight ?? 5);
       return (
         <label className="block text-sm">
@@ -181,7 +223,7 @@ function ConstraintFields({
             required
             className="w-32 rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
           />
-          <p className="mt-1 text-xs text-slate-500">{t('kinds.NO_GAPS.hint')}</p>
+          <p className="mt-1 text-xs text-slate-500">{t(`kinds.${row.kind}.hint`)}</p>
         </label>
       );
     }
@@ -218,5 +260,9 @@ function ConstraintFields({
         </div>
       );
     }
+    case 'REQUIRE_SUBJECT_ROOM_TYPE':
+      return (
+        <p className="text-xs text-slate-500">{t('kinds.REQUIRE_SUBJECT_ROOM_TYPE.hint')}</p>
+      );
   }
 }

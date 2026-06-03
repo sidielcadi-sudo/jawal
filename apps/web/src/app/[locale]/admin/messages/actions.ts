@@ -6,7 +6,8 @@ import { conversationCreateSchema, messageSendSchema } from '@jawal/shared';
 import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
-import { withTenant } from '@/lib/db';
+import { withTenant, prismaAdmin } from '@/lib/db';
+import { safeSendEmail } from '@/lib/email';
 
 type Result<T = void> =
   | { ok: true; data?: T }
@@ -89,12 +90,17 @@ export async function sendMessageAction(formData: FormData): Promise<Result> {
   if (!parsed.success) return { ok: false, error: 'Données invalides.', fieldErrors: fl(parsed) };
 
   const tenantId = session.user.tenantId;
-  await withTenant(tenantId, async (tx) => {
+  const notify = await withTenant(tenantId, async (tx) => {
     // Vérif que le sender est bien participant
     const p = await tx.conversationParticipant.findUnique({
       where: { conversationId_userId: { conversationId: parsed.data.conversationId, userId: session.user.id } },
     });
     if (!p) throw new Error('Vous n\'êtes pas participant à cette conversation');
+
+    const conv = await tx.conversation.findUnique({
+      where: { id: parsed.data.conversationId },
+      select: { subject: true },
+    });
 
     await tx.message.create({
       data: {
@@ -108,7 +114,48 @@ export async function sendMessageAction(formData: FormData): Promise<Result> {
       where: { id: parsed.data.conversationId },
       data: { updatedAt: new Date() },
     });
+
+    // Destinataires de la notif : participants parents (hors expéditeur).
+    const others = await tx.conversationParticipant.findMany({
+      where: { conversationId: parsed.data.conversationId, userId: { not: session.user.id } },
+      select: { userId: true },
+    });
+    const parentUsers =
+      others.length > 0
+        ? await tx.user.findMany({
+            where: {
+              id: { in: others.map((o) => o.userId) },
+              disabledAt: null,
+              userRoles: { some: { role: { code: 'parent' } } },
+            },
+            select: { email: true },
+          })
+        : [];
+    return { subject: conv?.subject ?? '', emails: parentUsers.map((u) => u.email) };
   });
+
+  // Notification email aux parents (best-effort, hors transaction).
+  if (notify.emails.length > 0) {
+    const tenant = await prismaAdmin.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true, localeDefault: true },
+    });
+    const base = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? '';
+    const link = `${base}/${tenant?.localeDefault ?? 'fr'}/parent/messages/${parsed.data.conversationId}`;
+    await Promise.all(
+      notify.emails.map((to) =>
+        safeSendEmail({
+          to,
+          subject: `Nouveau message — ${tenant?.name ?? 'votre établissement'}`,
+          html:
+            `<p>Bonjour,</p>` +
+            `<p>L'établissement <strong>${tenant?.name ?? ''}</strong> vous a répondu dans la conversation « ${notify.subject} ».</p>` +
+            `<p><a href="${link}">Consulter le message</a> depuis votre espace parent.</p>`,
+          text: `L'établissement vous a répondu dans « ${notify.subject} ». Espace parent : ${link}`,
+        }),
+      ),
+    );
+  }
 
   revalidatePath('/admin/messages');
   revalidatePath(`/admin/messages/${parsed.data.conversationId}`);

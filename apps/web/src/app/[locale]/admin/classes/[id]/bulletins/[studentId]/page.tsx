@@ -156,7 +156,25 @@ export default async function BulletinPage({
               {t('filter.apply')}
             </button>
           </form>
-          <PrintButton label={t('print')} />
+          <div className="flex flex-wrap items-end gap-2">
+            {selectedPeriodId && (
+              <>
+                <a
+                  href={`/api/admin/classes/${id}/bulletin.pdf?studentId=${studentId}&period=${selectedPeriodId}`}
+                  className="rounded-lg border border-brand-600 bg-white px-4 py-2 text-sm font-medium text-brand-700 shadow-sm hover:bg-brand-50"
+                >
+                  ⬇ {t('downloadPdf')}
+                </a>
+                <a
+                  href={`/api/admin/classes/${id}/bulletins.pdf?period=${selectedPeriodId}`}
+                  className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50"
+                >
+                  ⬇ {t('downloadClassPdf')}
+                </a>
+              </>
+            )}
+            <PrintButton label={t('print')} />
+          </div>
         </div>
       </div>
 

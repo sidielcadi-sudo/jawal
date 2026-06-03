@@ -11,6 +11,7 @@ import {
   readEffectiveTimetableSettings,
   type DayKey as SettingsDayKey,
 } from '@jawal/shared';
+import { classifyRoom, subjectRoomRequirement } from '@/lib/kpi-edt';
 import {
   callSolverMulti,
   type ClassConstraint,
@@ -134,6 +135,8 @@ export async function generateMultiTimetableAction(
           class_id: a.classId,
           class_name: a.class.name,
           weekly_hours: Math.max(0, Math.round(hours)),
+          // Phase 4E4 : type de salle requis déduit du libellé matière.
+          required_room_type: subjectRoomRequirement(a.subject.label),
         };
       });
 
@@ -153,6 +156,8 @@ export async function generateMultiTimetableAction(
       const solverRooms: SolverRoom[] = rooms.map((r) => ({
         id: r.id,
         label: `${r.code} — ${r.label}`,
+        // Phase 4E4 : type de salle déduit par heuristique (code/label/équipement).
+        room_type: classifyRoom(r.code, r.label, r.equipment),
       }));
 
       const solverSlots: SolverSlot[] = slots.map((s) => ({
@@ -231,6 +236,28 @@ export async function generateMultiTimetableAction(
             break;
           case 'MAX_HOURS_PER_DAY_TEACHER':
             if (typeof cfg.max === 'number') constraints.max_hours_per_day_teacher = cfg.max;
+            break;
+          case 'MAX_CONSECUTIVE_HOURS_TEACHER':
+            if (typeof cfg.max === 'number') constraints.max_consecutive_hours_teacher = cfg.max;
+            break;
+          case 'TEACHER_LUNCH_BREAK': {
+            // Calcule les créneaux (placables) chevauchant la plage déjeuner.
+            const from = typeof cfg.from === 'string' ? cfg.from : '12:00';
+            const to = typeof cfg.to === 'string' ? cfg.to : '14:00';
+            const lunchIds = slots
+              .filter((s) => !s.isBreak && s.startTime < to && s.endTime > from)
+              .map((s) => s.id);
+            if (lunchIds.length > 0) constraints.teacher_lunch_break_slot_ids = lunchIds;
+            break;
+          }
+          case 'REQUIRE_SUBJECT_ROOM_TYPE':
+            constraints.enforce_room_type = true;
+            break;
+          case 'MINIMIZE_ROOM_CHANGES':
+            if (typeof cfg.weight === 'number') constraints.minimize_room_changes_weight = cfg.weight;
+            break;
+          case 'BALANCE_DAILY_LOAD':
+            if (typeof cfg.weight === 'number') constraints.balance_daily_load_weight = cfg.weight;
             break;
         }
       }

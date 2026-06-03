@@ -19,6 +19,7 @@ export default async function AdminLayout({
   const session = await auth();
   if (!session?.user) redirect(`/${locale}/login`);
   if (session.user.isSuperAdmin) redirect(`/${locale}/super-admin/tenants`);
+  if (session.user.isParent) redirect(`/${locale}/parent`);
 
   const tenant = await prismaAdmin.tenant.findUnique({
     where: { id: session.user.tenantId },

@@ -18,10 +18,16 @@ export const authConfig = {
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        const u = user as { id?: string; tenantId: string; isSuperAdmin: boolean };
+        const u = user as {
+          id?: string;
+          tenantId: string;
+          isSuperAdmin: boolean;
+          isParent: boolean;
+        };
         token.uid = u.id!;
         token.tenantId = u.tenantId;
         token.isSuperAdmin = u.isSuperAdmin;
+        token.isParent = u.isParent;
       }
       return token;
     },
@@ -30,6 +36,7 @@ export const authConfig = {
         session.user.id = String(token.uid);
         session.user.tenantId = String(token.tenantId);
         session.user.isSuperAdmin = Boolean(token.isSuperAdmin);
+        session.user.isParent = Boolean(token.isParent);
       }
       return session;
     },
@@ -37,19 +44,32 @@ export const authConfig = {
       const isLoggedIn = Boolean(auth?.user);
       // Routes nues (sans /[locale] prefix) — le middleware i18n redirige
       const path = nextUrl.pathname.replace(/^\/(fr|ar)/, '') || '/';
+      const locale = nextUrl.pathname.match(/^\/(fr|ar)/)?.[1] ?? 'fr';
       const isProtected =
         path.startsWith('/admin') ||
         path.startsWith('/super-admin') ||
+        path.startsWith('/parent') ||
         path.startsWith('/dashboard');
       const isSuperAdminRoute = path.startsWith('/super-admin');
+      const isAdminRoute = path.startsWith('/admin') || path.startsWith('/dashboard');
+      const isParentRoute = path.startsWith('/parent');
       const isLoginPage = path.startsWith('/login');
+
+      /** Destination par défaut d'un utilisateur connecté selon son profil. */
+      const home = (u: NonNullable<typeof auth>['user']) =>
+        u.isSuperAdmin ? '/super-admin/tenants' : u.isParent ? '/parent' : '/admin';
 
       if (isProtected && !isLoggedIn) return false;
       if (isSuperAdminRoute && !auth?.user.isSuperAdmin) return false;
+      // Cloisonnement : un parent n'accède pas à l'admin, et inversement.
+      if (isAdminRoute && isLoggedIn && auth!.user.isParent) {
+        return Response.redirect(new URL(`/${locale}/parent`, nextUrl));
+      }
+      if (isParentRoute && isLoggedIn && !auth!.user.isParent && !auth!.user.isSuperAdmin) {
+        return Response.redirect(new URL(`/${locale}/admin`, nextUrl));
+      }
       if (isLoginPage && isLoggedIn) {
-        const target = auth!.user.isSuperAdmin ? '/super-admin/tenants' : '/admin';
-        const locale = nextUrl.pathname.match(/^\/(fr|ar)/)?.[1] ?? 'fr';
-        return Response.redirect(new URL(`/${locale}${target}`, nextUrl));
+        return Response.redirect(new URL(`/${locale}${home(auth!.user)}`, nextUrl));
       }
       return true;
     },

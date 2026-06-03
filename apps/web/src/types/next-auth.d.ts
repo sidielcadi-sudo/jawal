@@ -4,6 +4,8 @@ declare module 'next-auth' {
   interface User {
     tenantId: string;
     isSuperAdmin: boolean;
+    /** Compte rattaché au portail parent (rôle `parent`). */
+    isParent: boolean;
   }
 
   interface Session {
@@ -11,6 +13,7 @@ declare module 'next-auth' {
       id: string;
       tenantId: string;
       isSuperAdmin: boolean;
+      isParent: boolean;
     } & DefaultSession['user'];
   }
 }
@@ -22,6 +25,7 @@ declare module '@auth/core/types' {
   interface User {
     tenantId: string;
     isSuperAdmin: boolean;
+    isParent: boolean;
   }
 }
 
@@ -30,6 +34,7 @@ declare module 'next-auth/jwt' {
     uid: string;
     tenantId: string;
     isSuperAdmin: boolean;
+    isParent: boolean;
   }
 }
 
@@ -38,5 +43,6 @@ declare module '@auth/core/jwt' {
     uid: string;
     tenantId: string;
     isSuperAdmin: boolean;
+    isParent: boolean;
   }
 }
