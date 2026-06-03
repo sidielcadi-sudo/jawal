@@ -39,11 +39,23 @@ Page `/admin/timetable` (entrée sidebar « Emploi du temps »). 9 KPI : couvert
 - Validé : typecheck OK, smoke Chromium → PDF OK (arabe inclus), test navigateur sur seed OK.
 - Déploiement : `playwright install chromium` requis (app web hors Docker).
 
+## S10 — Espace parent (phase 1, en cours, non commité)
+- Décision : portail d'abord, **CMI en phase 2** (bouton « Payer en ligne » présent mais désactivé « bientôt »).
+- Auth : flag `isParent` (rôle `parent`) calculé dans `authorize`, propagé JWT/session/types. Cloisonnement parent/admin dans le callback `authorized` (config.ts) + redirections layout.
+- `lib/parent.ts` : `getParentChildren` (via UserPerson → PersonRelation), `parentCanAccessChild` (garde de propriété), `getParentAnnouncements` (ALL/PARENTS/CLASS/LEVEL des enfants).
+- Routes `/[locale]/parent` : layout + sidebar (`nav.tsx`), dashboard (cartes enfants + annonces), page enfant `children/[childId]` (bulletins+présences+scolarité), `announcements`.
+- Route PDF parent sécurisée : `/api/parent/children/[childId]/bulletin.pdf?period=` (réutilise pipeline S9 + garde de propriété).
+- Provisioning : action `createParentAccessAction` + composant `ParentAccess` sur fiche personne PARENT (crée User+rôle parent+UserPerson, mdp temporaire affiché 1×).
+- Seed : compte parent démo `hassan.benani@demo.jawal.ma` / `parent1234` (lié à Yassine + Youssra Benani). **Re-seed requis** pour tester.
+- Validé : typecheck web OK. Reste : test navigateur (login parent), puis commit.
+- Note : `pnpm db typecheck` échoue sur rootDir/seed.ts — **préexistant**, sans rapport.
+
 ## Prochaines phases potentielles
+- S10 phase 2 : intégration CMI réelle (init paiement, HMAC, page hébergée, callback → Payment)
 - S8.4E3 Profs : pause obligatoire, max consécutives
 - S8.4E4 Matières+Salles : durée séance, type salle obligatoire
 - S8.4E5 Objectifs qualité OR-Tools : min changements salle, journées longues
-- S10 Espace parent + CMI, S11 Documents auto
+- S11 Documents auto (réutilise pipeline PDF S9)
 
 ## Conventions
 - Working dir : `c:\Users\idris\Documents\01-GitHub\jawal`

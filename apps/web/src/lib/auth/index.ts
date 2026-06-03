@@ -53,6 +53,16 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         const ok = await bcrypt.compare(password, user.passwordHash);
         if (!ok) return null;
 
+        // Profil portail : un compte porteur du rôle `parent` est routé vers
+        // l'espace parent (cloisonné de l'admin). Déterministe — le rôle est
+        // posé au provisioning du compte parent.
+        const roles = await prismaAdmin.userRole.findMany({
+          where: { userId: user.id },
+          select: { role: { select: { code: true } } },
+        });
+        const isParent =
+          !user.isSuperAdmin && roles.some((r) => r.role.code === 'parent');
+
         await prismaAdmin.user.update({
           where: { id: user.id },
           data: { lastLoginAt: new Date() },
@@ -63,6 +73,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           email: user.email,
           tenantId: user.tenantId,
           isSuperAdmin: user.isSuperAdmin,
+          isParent,
         };
       },
     }),

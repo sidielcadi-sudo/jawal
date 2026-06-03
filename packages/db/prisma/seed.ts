@@ -66,6 +66,8 @@ const DEMO_ADMIN_EMAIL = 'admin@demo.jawal.ma';
 const DEMO_ADMIN_PASSWORD = 'demo1234';
 const SUPER_ADMIN_EMAIL = 'super@jawal.ma';
 const SUPER_ADMIN_PASSWORD = 'super1234';
+const DEMO_PARENT_EMAIL = 'hassan.benani@demo.jawal.ma';
+const DEMO_PARENT_PASSWORD = 'parent1234';
 
 async function main() {
   console.log('🌱 Seed Jawal…');
@@ -628,6 +630,44 @@ async function main() {
       }
       console.log(`  ✓ Famille Benani démo : 2 parents + 1 sœur (Youssra) → fratrie déduite OK`);
     }
+  }
+
+  // 8.quater Accès portail parent de démo (Hassan Benani) — idempotent.
+  const fatherForLogin = await prisma.person.findFirst({
+    where: { tenantId: tenant.id, type: PersonType.PARENT, lastName: 'Benani', firstName: 'Hassan' },
+  });
+  if (fatherForLogin) {
+    const parentPasswordHash = await bcrypt.hash(DEMO_PARENT_PASSWORD, 10);
+    const parentUser = await prisma.user.upsert({
+      where: { tenantId_email: { tenantId: tenant.id, email: DEMO_PARENT_EMAIL } },
+      update: { passwordHash: parentPasswordHash },
+      create: {
+        tenantId: tenant.id,
+        email: DEMO_PARENT_EMAIL,
+        passwordHash: parentPasswordHash,
+        emailVerified: new Date(),
+        locale: 'fr',
+      },
+    });
+    const parentRoleId = rolesByCode.get('parent');
+    if (parentRoleId) {
+      await prisma.userRole.upsert({
+        where: { userId_roleId: { userId: parentUser.id, roleId: parentRoleId } },
+        update: {},
+        create: { tenantId: tenant.id, userId: parentUser.id, roleId: parentRoleId },
+      });
+    }
+    await prisma.userPerson.upsert({
+      where: { userId_personId: { userId: parentUser.id, personId: fatherForLogin.id } },
+      update: {},
+      create: {
+        tenantId: tenant.id,
+        userId: parentUser.id,
+        personId: fatherForLogin.id,
+        relationship: 'parent',
+      },
+    });
+    console.log(`  ✓ Accès portail parent : ${DEMO_PARENT_EMAIL} / ${DEMO_PARENT_PASSWORD}`);
   }
 
   // 11.bis Inscriptions (Enrollments) — rétroactif pour les élèves Benani

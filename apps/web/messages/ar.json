@@ -1081,7 +1081,16 @@
           "MOTHER": "الأم",
           "LEGAL_GUARDIAN": "الوصي القانوني",
           "GUARDIAN": "الوصي"
-        }
+        },
+        "portalAccess": "الدخول إلى بوابة ولي الأمر"
+      },
+      "parentAccess": {
+        "active": "مُفعّل",
+        "description": "إنشاء حساب دخول إلى بوابة ولي الأمر لهذا الشخص.",
+        "emailPlaceholder": "البريد الإلكتروني للدخول",
+        "create": "إنشاء الدخول",
+        "creating": "جارٍ الإنشاء…",
+        "tempPasswordHint": "كلمة مرور مؤقتة تُسلَّم لولي الأمر (تظهر مرة واحدة فقط):"
       },
       "import": {
         "parentTitle": "الأشخاص",
@@ -1792,6 +1801,83 @@
         "slug": "المعرّف (URL)",
         "profile": "النمط",
         "submit": "إنشاء المؤسسة"
+      }
+    }
+  },
+  "parent": {
+    "signOut": "تسجيل الخروج",
+    "nav": {
+      "home": "الرئيسية",
+      "children": "أبنائي",
+      "announcements": "الإعلانات"
+    },
+    "home": {
+      "title": "فضاء ولي الأمر",
+      "subtitle": "تابع المسار الدراسي لأبنائك.",
+      "noChild": "لا يوجد ابن مرتبط بحسابك. يرجى الاتصال بالمؤسسة.",
+      "attendance": "الحضور",
+      "absences": "الغيابات",
+      "remaining": "المتبقّي",
+      "upToDate": "مُسدَّد",
+      "latestAnnouncements": "آخر الإعلانات",
+      "seeAll": "عرض الكل",
+      "noAnnouncement": "لا توجد إعلانات حاليًا."
+    },
+    "child": {
+      "breadcrumbHome": "الرئيسية",
+      "noClass": "لا يوجد قسم للسنة الحالية.",
+      "bulletins": {
+        "title": "كشوف النقاط",
+        "empty": "لا يوجد كشف متاح.",
+        "download": "تحميل PDF"
+      },
+      "attendance": {
+        "title": "الحضور",
+        "empty": "لا توجد سجلات حضور.",
+        "present": "حاضر",
+        "absent": "غائب",
+        "late": "متأخر",
+        "excused": "بعذر",
+        "ABSENT": "غائب",
+        "LATE": "متأخر",
+        "EXCUSED": "بعذر",
+        "recent": "الغيابات والتأخّرات الأخيرة",
+        "justif": {
+          "PENDING": "تبرير قيد الانتظار",
+          "APPROVED": "تبرير مقبول",
+          "REJECTED": "تبرير مرفوض"
+        }
+      },
+      "finance": {
+        "title": "الرسوم الدراسية",
+        "empty": "لا توجد أقساط حاليًا.",
+        "label": "البيان",
+        "dueDate": "تاريخ الاستحقاق",
+        "amount": "المبلغ",
+        "remaining": "المتبقّي",
+        "status": "الحالة",
+        "paidOf": "{paid} / {due} درهم مدفوعة",
+        "totalRemaining": "إجمالي المتبقّي",
+        "payOnline": "الدفع عبر الإنترنت",
+        "soon": "قريبًا",
+        "payOnlineSoon": "الدفع الإلكتروني عبر CMI قادم قريبًا.",
+        "statuses": {
+          "PENDING": "للدفع",
+          "PARTIAL": "جزئي",
+          "PAID": "مدفوع"
+        }
+      }
+    },
+    "announcements": {
+      "title": "الإعلانات",
+      "empty": "لا توجد إعلانات حاليًا.",
+      "audiences": {
+        "ALL": "الجميع",
+        "PARENTS": "أولياء الأمور",
+        "TEACHERS": "الأساتذة",
+        "STAFF": "الموظفون",
+        "CLASS": "القسم",
+        "LEVEL": "المستوى"
       }
     }
   }

@@ -4,6 +4,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { PersonActions } from './person-actions';
+import { ParentAccess } from './parent-access';
 import { computeContractStatus, contractStatusBadgeClass } from '@/lib/contract-status';
 
 export default async function PersonDetailPage({
@@ -279,6 +280,18 @@ export default async function PersonDetailPage({
         });
       }
       return out;
+    });
+  }
+
+  // Accès portail parent : email du compte rattaché s'il existe déjà.
+  let parentUserEmail: string | null = null;
+  if (person.type === 'PARENT') {
+    parentUserEmail = await withTenant(tenantId, async (tx) => {
+      const up = await tx.userPerson.findFirst({
+        where: { personId: id },
+        include: { user: { select: { email: true } } },
+      });
+      return up?.user.email ?? null;
     });
   }
 
@@ -871,6 +884,17 @@ export default async function PersonDetailPage({
                 ))}
               </ul>
               <p className="mt-2 text-[10px] text-slate-400">{tDetail('siblingsHint')}</p>
+            </section>
+          )}
+
+          {person.type === 'PARENT' && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="mb-3 text-sm font-semibold text-slate-700">{tDetail('portalAccess')}</h2>
+              <ParentAccess
+                personId={person.id}
+                defaultEmail={contacts.email ?? ''}
+                existingEmail={parentUserEmail}
+              />
             </section>
           )}
 

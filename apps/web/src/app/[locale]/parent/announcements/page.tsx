@@ -1,0 +1,56 @@
+import { setRequestLocale, getTranslations } from 'next-intl/server';
+import { auth } from '@/lib/auth';
+import { withTenant } from '@/lib/db';
+import { getParentChildren, getParentAnnouncements } from '@/lib/parent';
+
+const AUDIENCE_TONE: Record<string, string> = {
+  ALL: 'bg-slate-100 text-slate-600',
+  PARENTS: 'bg-brand-50 text-brand-700',
+  CLASS: 'bg-blue-100 text-blue-700',
+  LEVEL: 'bg-violet-100 text-violet-700',
+};
+
+export default async function ParentAnnouncementsPage({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const session = (await auth())!;
+  const t = await getTranslations('parent.announcements');
+
+  const announcements = await withTenant(session.user.tenantId, async (tx) => {
+    const children = await getParentChildren(tx, session.user.id);
+    return getParentAnnouncements(tx, children, 100);
+  });
+
+  return (
+    <div className="mx-auto max-w-3xl px-6 py-8">
+      <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
+
+      {announcements.length === 0 ? (
+        <p className="mt-6 text-sm text-slate-500">{t('empty')}</p>
+      ) : (
+        <ul className="mt-6 space-y-3">
+          {announcements.map((a) => (
+            <li key={a.id} className="rounded-2xl border border-slate-200 bg-white p-5">
+              <div className="flex items-start justify-between gap-3">
+                <h2 className="font-semibold text-slate-900">{a.title}</h2>
+                <span
+                  className={`shrink-0 rounded px-2 py-0.5 text-[10px] font-medium uppercase ${AUDIENCE_TONE[a.audience] ?? 'bg-slate-100 text-slate-600'}`}
+                >
+                  {t(`audiences.${a.audience}`)}
+                </span>
+              </div>
+              <p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">{a.body}</p>
+              <div className="mt-3 text-[11px] text-slate-400">
+                {a.publishedAt ? new Date(a.publishedAt).toLocaleDateString(locale, { dateStyle: 'long' }) : ''}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}

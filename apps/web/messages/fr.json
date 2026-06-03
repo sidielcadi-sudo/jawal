@@ -1081,7 +1081,16 @@
           "MOTHER": "Mère",
           "LEGAL_GUARDIAN": "Tuteur légal",
           "GUARDIAN": "Tuteur"
-        }
+        },
+        "portalAccess": "Accès portail parent"
+      },
+      "parentAccess": {
+        "active": "Actif",
+        "description": "Crée un compte de connexion au portail parent pour cette personne.",
+        "emailPlaceholder": "Email de connexion",
+        "create": "Créer l'accès",
+        "creating": "Création…",
+        "tempPasswordHint": "Mot de passe temporaire à communiquer au parent (affiché une seule fois) :"
       },
       "import": {
         "parentTitle": "Personnes",
@@ -1854,6 +1863,83 @@
         "slug": "Slug (URL)",
         "profile": "Profil",
         "submit": "Créer l'établissement"
+      }
+    }
+  },
+  "parent": {
+    "signOut": "Déconnexion",
+    "nav": {
+      "home": "Accueil",
+      "children": "Mes enfants",
+      "announcements": "Annonces"
+    },
+    "home": {
+      "title": "Espace parent",
+      "subtitle": "Suivez la scolarité de vos enfants.",
+      "noChild": "Aucun enfant rattaché à votre compte. Contactez l'établissement.",
+      "attendance": "Présence",
+      "absences": "Absences",
+      "remaining": "Reste dû",
+      "upToDate": "À jour",
+      "latestAnnouncements": "Dernières annonces",
+      "seeAll": "Tout voir",
+      "noAnnouncement": "Aucune annonce pour le moment."
+    },
+    "child": {
+      "breadcrumbHome": "Accueil",
+      "noClass": "Aucune classe pour l'année active.",
+      "bulletins": {
+        "title": "Bulletins",
+        "empty": "Aucun bulletin disponible.",
+        "download": "Télécharger PDF"
+      },
+      "attendance": {
+        "title": "Présences",
+        "empty": "Aucune présence enregistrée.",
+        "present": "Présent",
+        "absent": "Absent",
+        "late": "Retard",
+        "excused": "Excusé",
+        "ABSENT": "Absent",
+        "LATE": "Retard",
+        "EXCUSED": "Excusé",
+        "recent": "Absences & retards récents",
+        "justif": {
+          "PENDING": "Justification en attente",
+          "APPROVED": "Justification acceptée",
+          "REJECTED": "Justification refusée"
+        }
+      },
+      "finance": {
+        "title": "Scolarité",
+        "empty": "Aucune échéance pour le moment.",
+        "label": "Libellé",
+        "dueDate": "Échéance",
+        "amount": "Montant",
+        "remaining": "Reste",
+        "status": "Statut",
+        "paidOf": "{paid} / {due} MAD payés",
+        "totalRemaining": "Total restant dû",
+        "payOnline": "Payer en ligne",
+        "soon": "bientôt",
+        "payOnlineSoon": "Le paiement en ligne CMI arrive bientôt.",
+        "statuses": {
+          "PENDING": "À payer",
+          "PARTIAL": "Partiel",
+          "PAID": "Payé"
+        }
+      }
+    },
+    "announcements": {
+      "title": "Annonces",
+      "empty": "Aucune annonce pour le moment.",
+      "audiences": {
+        "ALL": "Tous",
+        "PARENTS": "Parents",
+        "TEACHERS": "Enseignants",
+        "STAFF": "Personnel",
+        "CLASS": "Classe",
+        "LEVEL": "Niveau"
       }
     }
   }
