@@ -258,5 +258,9 @@ function ConstraintFields({
         </div>
       );
     }
+    case 'REQUIRE_SUBJECT_ROOM_TYPE':
+      return (
+        <p className="text-xs text-slate-500">{t('kinds.REQUIRE_SUBJECT_ROOM_TYPE.hint')}</p>
+      );
   }
 }

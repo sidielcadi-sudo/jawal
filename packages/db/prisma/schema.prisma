@@ -162,6 +162,11 @@ enum TimetableOverrideKind {
 ///   config: { from: "HH:MM", to: "HH:MM" } — chaque prof garde au moins un
 ///   créneau libre dans la plage déjeuner les jours où il enseigne (déjeuner
 ///   échelonné, sans bloquer la plage pour tout le monde).
+///
+/// REQUIRE_SUBJECT_ROOM_TYPE (hard, phase 4E4)
+///   config: {} — les matières nécessitant un type de salle spécifique
+///   (PC/SVT/Info/EPS, déduit par heuristique) ne sont placées que dans une
+///   salle compatible. Sinon le cours reste non placé (diagnostic dédié).
 enum TimetableConstraintKind {
   MAX_SAME_SUBJECT_PER_DAY
   NO_GAPS
@@ -169,6 +174,7 @@ enum TimetableConstraintKind {
   MAX_HOURS_PER_DAY_TEACHER
   MAX_CONSECUTIVE_HOURS_TEACHER
   TEACHER_LUNCH_BREAK
+  REQUIRE_SUBJECT_ROOM_TYPE
 }
 
 enum PaymentMethod {

@@ -11,6 +11,7 @@ import {
   readEffectiveTimetableSettings,
   type DayKey as SettingsDayKey,
 } from '@jawal/shared';
+import { classifyRoom, subjectRoomRequirement } from '@/lib/kpi-edt';
 import {
   callSolverMulti,
   type ClassConstraint,
@@ -134,6 +135,8 @@ export async function generateMultiTimetableAction(
           class_id: a.classId,
           class_name: a.class.name,
           weekly_hours: Math.max(0, Math.round(hours)),
+          // Phase 4E4 : type de salle requis déduit du libellé matière.
+          required_room_type: subjectRoomRequirement(a.subject.label),
         };
       });
 
@@ -153,6 +156,8 @@ export async function generateMultiTimetableAction(
       const solverRooms: SolverRoom[] = rooms.map((r) => ({
         id: r.id,
         label: `${r.code} — ${r.label}`,
+        // Phase 4E4 : type de salle déduit par heuristique (code/label/équipement).
+        room_type: classifyRoom(r.code, r.label, r.equipment),
       }));
 
       const solverSlots: SolverSlot[] = slots.map((s) => ({
@@ -245,6 +250,9 @@ export async function generateMultiTimetableAction(
             if (lunchIds.length > 0) constraints.teacher_lunch_break_slot_ids = lunchIds;
             break;
           }
+          case 'REQUIRE_SUBJECT_ROOM_TYPE':
+            constraints.enforce_room_type = true;
+            break;
         }
       }
 

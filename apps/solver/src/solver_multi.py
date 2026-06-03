@@ -68,6 +68,22 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
     # Rooms : ajout sentinel NO_ROOM
     room_ids: List[str] = [r.id for r in request.rooms] + [NO_ROOM]
 
+    # Phase 4E4 : type de salle par salle + salles autorisées par affectation.
+    # Si enforce_room_type et la matière requiert un type, on restreint aux
+    # salles compatibles (NO_ROOM exclu : un labo/info est obligatoire).
+    room_type_of: Dict[str, str | None] = {r.id: r.room_type for r in request.rooms}
+    enforce_rt = request.constraints.enforce_room_type
+    allowed_rooms: Dict[str, List[str]] = {}
+    for a in request.assignments:
+        if enforce_rt and a.required_room_type:
+            allowed_rooms[a.id] = [
+                rid
+                for rid in room_ids
+                if rid != NO_ROOM and room_type_of.get(rid) == a.required_room_type
+            ]
+        else:
+            allowed_rooms[a.id] = room_ids
+
     teacher_of: Dict[str, str] = {a.id: a.teacher_id for a in request.assignments}
     class_of: Dict[str, str] = {a.id: a.class_id for a in request.assignments}
 
@@ -91,7 +107,8 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
                 # Phase E1 : skip si (class, day, slot) interdit (par cycle)
                 if (a.class_id, d, s.id) in forbidden_set:
                     continue
-                for r in room_ids:
+                # Phase 4E4 : restreint aux salles compatibles avec la matière.
+                for r in allowed_rooms[a.id]:
                     x[(a.id, d, s.id, r)] = model.NewBoolVar(
                         f"x_{a.id[:6]}_{d}_{s.id[:6]}_{r[:6]}"
                     )
@@ -505,7 +522,14 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
             continue
 
         teacher = teachers_by_id.get(a.teacher_id)
-        if not teacher:
+        if enforce_rt and a.required_room_type and not allowed_rooms[a.id]:
+            reason = (
+                f"Aucune salle de type {a.required_room_type} pour "
+                f"{a.subject_label}. → Étiquetez une salle compatible "
+                f"(code/label/équipement) ou désactivez la contrainte « type de "
+                f"salle »."
+            )
+        elif not teacher:
             reason = "Prof introuvable dans la liste fournie."
         else:
             # Cellules compatibles SPÉCIFIQUEMENT pour ce triplet (classe × prof × subject)

@@ -122,6 +122,8 @@ class RoomInput(BaseModel):
 
     id: str
     label: str
+    # Phase 4E4 : type de salle (STD/LABO_PC/LABO_SVT/INFO/EPS), heuristique.
+    room_type: str | None = None
 
 
 class MultiAssignmentInput(BaseModel):
@@ -138,6 +140,8 @@ class MultiAssignmentInput(BaseModel):
     class_id: str
     class_name: str
     weekly_hours: int = Field(..., ge=0, le=40)
+    # Phase 4E4 : type de salle requis (heuristique). None = indifférent.
+    required_room_type: str | None = None
 
 
 class ConstraintsInput(BaseModel):
@@ -169,6 +173,11 @@ class ConstraintsInput(BaseModel):
     # plage déjeuner ; chaque prof garde ≥ 1 de ces créneaux libre chaque jour.
     # Vide = contrainte inactive.
     teacher_lunch_break_slot_ids: list[str] = Field(default_factory=list)
+
+    # Phase 4E4 — Hard : impose le type de salle. Une affectation dont la
+    # matière requiert un type (required_room_type) n'est placée que dans une
+    # salle de ce type (NO_ROOM exclu). Inactif si False.
+    enforce_room_type: bool = False
 
 
 class MultiGenerateRequest(BaseModel):

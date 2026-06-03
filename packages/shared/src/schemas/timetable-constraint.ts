@@ -7,6 +7,7 @@ export const timetableConstraintKindSchema = z.enum([
   'MAX_HOURS_PER_DAY_TEACHER',
   'MAX_CONSECUTIVE_HOURS_TEACHER',
   'TEACHER_LUNCH_BREAK',
+  'REQUIRE_SUBJECT_ROOM_TYPE',
 ]);
 export type TimetableConstraintKindInput = z.infer<
   typeof timetableConstraintKindSchema
@@ -47,6 +48,9 @@ export const teacherLunchBreakConfigSchema = z
   })
   .refine((c) => c.from < c.to, { message: 'L’heure de fin doit suivre l’heure de début.' });
 
+/** Contrainte sans paramètre : simple bascule on/off. */
+export const requireSubjectRoomTypeConfigSchema = z.object({}).default({});
+
 /** Valeurs par défaut suggérées dans l'UI quand on active la contrainte. */
 export const TIMETABLE_CONSTRAINT_DEFAULTS = {
   MAX_SAME_SUBJECT_PER_DAY: { max: 2 },
@@ -55,6 +59,7 @@ export const TIMETABLE_CONSTRAINT_DEFAULTS = {
   MAX_HOURS_PER_DAY_TEACHER: { max: 6 },
   MAX_CONSECUTIVE_HOURS_TEACHER: { max: 3 },
   TEACHER_LUNCH_BREAK: { from: '12:00', to: '14:00' },
+  REQUIRE_SUBJECT_ROOM_TYPE: {},
 } as const;
 
 /** Schéma d'écriture (UI → action). */

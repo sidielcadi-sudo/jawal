@@ -57,10 +57,15 @@ Page `/admin/timetable` (entrée sidebar « Emploi du temps »). 9 KPI : couvert
 - i18n fr/ar (kinds + fields.from/to). Validé : typecheck shared+web OK, py_compile OK, prisma generate OK.
 - ⚠️ **`prisma db push` requis** (Docker 5433 doit tourner) pour appliquer les valeurs enum à la base, sinon l'enregistrement d'une contrainte échoue. Solveur Python à redémarrer. Test génération non fait (base down).
 
+## S8.4E4 — Type de salle obligatoire (livré, non commité→commité)
+- Nouveau kind `REQUIRE_SUBJECT_ROOM_TYPE` (toggle, config {}). Réutilise l'heuristique existante `classifyRoom` + `subjectRoomRequirement` (kpi-edt.ts) → **zéro migration data-model**.
+- Volet « durée de séance » : couvert par `REQUIRES_CONSECUTIVE_SUBJECTS` existant (décidé avec l'utilisateur, pas de modèle de durée séparé).
+- Solveur : à la création des variables, restreint les salles aux types compatibles (NO_ROOM exclu) ; raison unplaced dédiée si aucune salle compatible. RoomInput.room_type + MultiAssignmentInput.required_room_type + ConstraintsInput.enforce_room_type.
+- Validé : typecheck shared+web OK, py_compile OK, **test solveur direct OK** (Physique→labo PC placée ; sans labo → unplaced avec raison). db push appliqué, solveur rebuildé.
+
 ## Prochaines phases potentielles
-- S10 phase 2 : intégration CMI réelle (init paiement, HMAC, page hébergée, callback → Payment)
-- S8.4E4 Matières+Salles : durée séance, type salle obligatoire
 - S8.4E5 Objectifs qualité OR-Tools : min changements salle, journées longues
+- S10 phase 2 : intégration CMI réelle (init paiement, HMAC, page hébergée, callback → Payment)
 - S11 Documents auto (réutilise pipeline PDF S9)
 
 ## Conventions

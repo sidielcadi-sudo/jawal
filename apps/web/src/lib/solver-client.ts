@@ -29,6 +29,8 @@ export type SolverAssignment = {
   class_id: string;
   class_name: string;
   weekly_hours: number;
+  // Phase 4E4 : type de salle requis (heuristique), null = indifférent.
+  required_room_type?: string | null;
 };
 
 export type SolverBusySlot = {
@@ -89,7 +91,7 @@ export async function callSolver(req: SolverRequest): Promise<SolverResponse> {
 
 // ─── Phase B : multi-classes + salles ────────────────────────────
 
-export type SolverRoom = { id: string; label: string };
+export type SolverRoom = { id: string; label: string; room_type?: string | null };
 
 export type SolverConstraints = {
   max_same_subject_per_day?: number | null;
@@ -99,6 +101,8 @@ export type SolverConstraints = {
   // Phase 4E3 : contraintes profs
   max_consecutive_hours_teacher?: number | null;
   teacher_lunch_break_slot_ids?: string[];
+  // Phase 4E4 : impose le type de salle requis par matière (heuristique)
+  enforce_room_type?: boolean;
 };
 
 export type SolverEngine = 'ortools' | 'fet';

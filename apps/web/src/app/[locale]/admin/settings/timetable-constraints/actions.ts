@@ -6,6 +6,7 @@ import {
   maxHoursPerDayTeacherConfigSchema,
   maxSameSubjectPerDayConfigSchema,
   noGapsConfigSchema,
+  requireSubjectRoomTypeConfigSchema,
   requiresConsecutiveSubjectsConfigSchema,
   teacherLunchBreakConfigSchema,
   TIMETABLE_CONSTRAINT_DEFAULTS,
@@ -51,6 +52,11 @@ function parseConfig(
     }
     case 'TEACHER_LUNCH_BREAK': {
       const r = teacherLunchBreakConfigSchema.safeParse(raw);
+      if (!r.success) return { ok: false, error: r.error.issues[0]?.message ?? 'Invalide' };
+      return { ok: true, config: r.data };
+    }
+    case 'REQUIRE_SUBJECT_ROOM_TYPE': {
+      const r = requireSubjectRoomTypeConfigSchema.safeParse(raw);
       if (!r.success) return { ok: false, error: r.error.issues[0]?.message ?? 'Invalide' };
       return { ok: true, config: r.data };
     }

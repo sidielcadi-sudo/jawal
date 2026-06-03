@@ -764,6 +764,11 @@
           "title": "Pause déjeuner des profs (échelonnée)",
           "description": "Chaque enseignant garde au moins un créneau libre dans la plage déjeuner, sans bloquer toute la plage pour l'établissement.",
           "hint": "Définissez la plage déjeuner. Déjeuner échelonné : les profs ne déjeunent pas tous au même créneau. (Moteur OR-Tools.)"
+        },
+        "REQUIRE_SUBJECT_ROOM_TYPE": {
+          "title": "Type de salle obligatoire",
+          "description": "Les matières nécessitant une salle spécialisée (Physique-Chimie, SVT, Informatique, EPS) ne sont placées que dans une salle compatible.",
+          "hint": "Le type de salle est déduit automatiquement du code / libellé / équipement (ex. « Labo SVT », « Salle Info »). Si aucune salle compatible, le cours reste non placé avec un diagnostic. (Moteur OR-Tools.)"
         }
       }
     },
