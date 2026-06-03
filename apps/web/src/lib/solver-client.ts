@@ -96,6 +96,9 @@ export type SolverConstraints = {
   no_gaps_weight?: number | null;
   consecutive_subject_ids?: string[];
   max_hours_per_day_teacher?: number | null;
+  // Phase 4E3 : contraintes profs
+  max_consecutive_hours_teacher?: number | null;
+  teacher_lunch_break_slot_ids?: string[];
 };
 
 export type SolverEngine = 'ortools' | 'fet';

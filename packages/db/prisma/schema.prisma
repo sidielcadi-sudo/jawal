@@ -153,11 +153,22 @@ enum TimetableOverrideKind {
 ///
 /// MAX_HOURS_PER_DAY_TEACHER (hard)
 ///   config: { max: int } — chaque prof a au plus N heures de cours par jour.
+///
+/// MAX_CONSECUTIVE_HOURS_TEACHER (hard, phase 4E3)
+///   config: { max: int } — chaque prof a au plus N heures de cours d'affilée
+///   (au-delà, une pause est imposée dans la journée).
+///
+/// TEACHER_LUNCH_BREAK (hard, phase 4E3)
+///   config: { from: "HH:MM", to: "HH:MM" } — chaque prof garde au moins un
+///   créneau libre dans la plage déjeuner les jours où il enseigne (déjeuner
+///   échelonné, sans bloquer la plage pour tout le monde).
 enum TimetableConstraintKind {
   MAX_SAME_SUBJECT_PER_DAY
   NO_GAPS
   REQUIRES_CONSECUTIVE_SUBJECTS
   MAX_HOURS_PER_DAY_TEACHER
+  MAX_CONSECUTIVE_HOURS_TEACHER
+  TEACHER_LUNCH_BREAK
 }
 
 enum PaymentMethod {

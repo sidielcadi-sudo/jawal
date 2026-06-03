@@ -730,7 +730,9 @@
       "fields": {
         "max": "Valeur",
         "weight": "Poids (importance)",
-        "subjectIds": "Matières concernées"
+        "subjectIds": "Matières concernées",
+        "from": "Début",
+        "to": "Fin"
       },
       "kinds": {
         "MAX_SAME_SUBJECT_PER_DAY": {
@@ -752,6 +754,16 @@
           "title": "Max heures de cours par jour et par prof",
           "description": "Empêche un enseignant d'enchaîner trop d'heures sur la même journée.",
           "hint": "Recommandé : 6 pour un temps plein, 4 pour un mi-temps."
+        },
+        "MAX_CONSECUTIVE_HOURS_TEACHER": {
+          "title": "Max heures consécutives par prof",
+          "description": "Impose une pause à l'enseignant au-delà de N heures de cours d'affilée dans la journée.",
+          "hint": "Recommandé : 3. Au-delà, le solveur insère un trou dans la journée du prof. (Moteur OR-Tools.)"
+        },
+        "TEACHER_LUNCH_BREAK": {
+          "title": "Pause déjeuner des profs (échelonnée)",
+          "description": "Chaque enseignant garde au moins un créneau libre dans la plage déjeuner, sans bloquer toute la plage pour l'établissement.",
+          "hint": "Définissez la plage déjeuner. Déjeuner échelonné : les profs ne déjeunent pas tous au même créneau. (Moteur OR-Tools.)"
         }
       }
     },

@@ -2,10 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import {
+  maxConsecutiveHoursTeacherConfigSchema,
   maxHoursPerDayTeacherConfigSchema,
   maxSameSubjectPerDayConfigSchema,
   noGapsConfigSchema,
   requiresConsecutiveSubjectsConfigSchema,
+  teacherLunchBreakConfigSchema,
   TIMETABLE_CONSTRAINT_DEFAULTS,
   timetableConstraintKindSchema,
   type TimetableConstraintKindInput,
@@ -42,6 +44,16 @@ function parseConfig(
       if (!r.success) return { ok: false, error: r.error.issues[0]?.message ?? 'Invalide' };
       return { ok: true, config: r.data };
     }
+    case 'MAX_CONSECUTIVE_HOURS_TEACHER': {
+      const r = maxConsecutiveHoursTeacherConfigSchema.safeParse(raw);
+      if (!r.success) return { ok: false, error: r.error.issues[0]?.message ?? 'Invalide' };
+      return { ok: true, config: r.data };
+    }
+    case 'TEACHER_LUNCH_BREAK': {
+      const r = teacherLunchBreakConfigSchema.safeParse(raw);
+      if (!r.success) return { ok: false, error: r.error.issues[0]?.message ?? 'Invalide' };
+      return { ok: true, config: r.data };
+    }
   }
 }
 
@@ -72,10 +84,14 @@ export async function upsertConstraintAction(formData: FormData): Promise<Result
     const max = formData.get('max');
     const weight = formData.get('weight');
     const subjectIds = formData.getAll('subjectIds');
+    const from = formData.get('from');
+    const to = formData.get('to');
     if (max !== null) configRaw.max = max;
     if (weight !== null) configRaw.weight = weight;
     if (subjectIds.length > 0)
       configRaw.subjectIds = subjectIds.map((s) => String(s)).filter(Boolean);
+    if (typeof from === 'string' && from) configRaw.from = from;
+    if (typeof to === 'string' && to) configRaw.to = to;
   }
 
   const parsed = parseConfig(kind, configRaw);

@@ -232,6 +232,19 @@ export async function generateMultiTimetableAction(
           case 'MAX_HOURS_PER_DAY_TEACHER':
             if (typeof cfg.max === 'number') constraints.max_hours_per_day_teacher = cfg.max;
             break;
+          case 'MAX_CONSECUTIVE_HOURS_TEACHER':
+            if (typeof cfg.max === 'number') constraints.max_consecutive_hours_teacher = cfg.max;
+            break;
+          case 'TEACHER_LUNCH_BREAK': {
+            // Calcule les créneaux (placables) chevauchant la plage déjeuner.
+            const from = typeof cfg.from === 'string' ? cfg.from : '12:00';
+            const to = typeof cfg.to === 'string' ? cfg.to : '14:00';
+            const lunchIds = slots
+              .filter((s) => !s.isBreak && s.startTime < to && s.endTime > from)
+              .map((s) => s.id);
+            if (lunchIds.length > 0) constraints.teacher_lunch_break_slot_ids = lunchIds;
+            break;
+          }
         }
       }
 

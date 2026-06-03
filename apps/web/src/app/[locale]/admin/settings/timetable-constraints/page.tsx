@@ -12,6 +12,8 @@ const KINDS: TimetableConstraintKindInput[] = [
   'NO_GAPS',
   'REQUIRES_CONSECUTIVE_SUBJECTS',
   'MAX_HOURS_PER_DAY_TEACHER',
+  'MAX_CONSECUTIVE_HOURS_TEACHER',
+  'TEACHER_LUNCH_BREAK',
 ];
 
 export default async function TimetableConstraintsPage({

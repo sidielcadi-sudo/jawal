@@ -161,6 +161,15 @@ class ConstraintsInput(BaseModel):
     # Hard : max heures de cours par jour pour chaque prof
     max_hours_per_day_teacher: int | None = Field(None, ge=1, le=12)
 
+    # Phase 4E3 — Hard : max heures CONSÉCUTIVES par jour pour chaque prof.
+    # Au-delà, une pause est imposée (fenêtre glissante de max+1 ≤ max).
+    max_consecutive_hours_teacher: int | None = Field(None, ge=1, le=8)
+
+    # Phase 4E3 — Hard : pause déjeuner échelonnée. Liste des créneaux de la
+    # plage déjeuner ; chaque prof garde ≥ 1 de ces créneaux libre chaque jour.
+    # Vide = contrainte inactive.
+    teacher_lunch_break_slot_ids: list[str] = Field(default_factory=list)
+
 
 class MultiGenerateRequest(BaseModel):
     """Génération simultanée pour plusieurs classes.

@@ -229,6 +229,47 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
                 if len(vars_day) > cons.max_hours_per_day_teacher:
                     model.Add(sum(vars_day) <= cons.max_hours_per_day_teacher)
 
+    # E3a : MAX_CONSECUTIVE_HOURS_TEACHER — pas plus de N heures d'affilée.
+    # Pour chaque (prof, jour), sur toute fenêtre glissante de (max+1) créneaux
+    # adjacents triés par heure, la somme des heures enseignées ≤ max.
+    if cons.max_consecutive_hours_teacher is not None:
+        maxc = cons.max_consecutive_hours_teacher
+        n_slots = len(placeable_slots_sorted)
+        for t_id in teachers_by_id:
+            for d in days:
+                # Occupation (0/1 vu C3) du prof par créneau, dans l'ordre horaire.
+                occ_by_pos: List[object] = []
+                for s in placeable_slots_sorted:
+                    vs = [
+                        v
+                        for k, v in x.items()
+                        if teacher_of[k[0]] == t_id and k[1] == d and k[2] == s.id
+                    ]
+                    occ_by_pos.append(sum(vs) if vs else 0)
+                for i in range(0, n_slots - maxc):
+                    window = occ_by_pos[i : i + maxc + 1]
+                    # Inutile si la fenêtre n'a aucune variable (que des 0 constants).
+                    if any(not isinstance(w, int) for w in window):
+                        model.Add(sum(window) <= maxc)
+
+    # E3b : TEACHER_LUNCH_BREAK — déjeuner échelonné. Chaque prof garde ≥ 1
+    # créneau libre parmi les créneaux déjeuner, chaque jour. Encodage dur :
+    # somme des créneaux déjeuner occupés ≤ (nb créneaux déjeuner − 1).
+    lunch_ids = set(cons.teacher_lunch_break_slot_ids)
+    if lunch_ids:
+        lunch_present = [s for s in placeable_slots_sorted if s.id in lunch_ids]
+        k_lunch = len(lunch_present)
+        if k_lunch >= 1:
+            for t_id in teachers_by_id:
+                for d in days:
+                    vs = [
+                        v
+                        for k, v in x.items()
+                        if teacher_of[k[0]] == t_id and k[1] == d and k[2] in lunch_ids
+                    ]
+                    if vs:
+                        model.Add(sum(vs) <= k_lunch - 1)
+
     # C9 : REQUIRES_CONSECUTIVE_SUBJECTS — matières en blocs 2h obligatoires
     # Implémentation : pour ces matières, x[a,d,s] = 1 implique l'existence
     # d'une séance adjacente (s-1 ou s+1) sauf si c'est la seule séance

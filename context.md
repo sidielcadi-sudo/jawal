@@ -50,9 +50,15 @@ Page `/admin/timetable` (entrée sidebar « Emploi du temps »). 9 KPI : couvert
 - Validé : typecheck web OK. Reste : test navigateur (login parent), puis commit.
 - Note : `pnpm db typecheck` échoue sur rootDir/seed.ts — **préexistant**, sans rapport.
 
+## S8.4E3 — Contraintes profs (en cours, non commité)
+- 2 nouveaux kinds `TimetableConstraint` : `MAX_CONSECUTIVE_HOURS_TEACHER` (config {max}) + `TEACHER_LUNCH_BREAK` (config {from,to}).
+- CP-SAT (solver_multi.py, moteur OR-Tools) : max consécutives = fenêtre glissante (max+1)≤max par prof/jour ; pause déjeuner échelonnée = somme créneaux déjeuner occupés ≤ (n-1) par prof/jour (≥1 libre). FET non concerné.
+- Chaîne : schema.prisma (enum) → shared (schémas config + défauts) → settings UI (page/client/actions) → solver-client (SolverConstraints) → orchestrateur generate/actions.ts (mapping, calcul lunch slot ids depuis la plage) → schemas.py ConstraintsInput.
+- i18n fr/ar (kinds + fields.from/to). Validé : typecheck shared+web OK, py_compile OK, prisma generate OK.
+- ⚠️ **`prisma db push` requis** (Docker 5433 doit tourner) pour appliquer les valeurs enum à la base, sinon l'enregistrement d'une contrainte échoue. Solveur Python à redémarrer. Test génération non fait (base down).
+
 ## Prochaines phases potentielles
 - S10 phase 2 : intégration CMI réelle (init paiement, HMAC, page hébergée, callback → Payment)
-- S8.4E3 Profs : pause obligatoire, max consécutives
 - S8.4E4 Matières+Salles : durée séance, type salle obligatoire
 - S8.4E5 Objectifs qualité OR-Tools : min changements salle, journées longues
 - S11 Documents auto (réutilise pipeline PDF S9)
