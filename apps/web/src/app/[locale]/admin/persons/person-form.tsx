@@ -32,7 +32,10 @@ type PayrollMethod = 'BANK_TRANSFER' | 'CHECK' | 'CASH' | 'OTHER';
 type Diploma = { title: string; institution?: string; year?: number };
 type Benefit = { label: string; amount: number };
 type Deduction = { label: string; amount: number; date?: string };
-type Availability = Record<'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN', Array<{ from: string; to: string }>>;
+type Availability = Record<
+  'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN',
+  Array<{ from: string; to: string }>
+>;
 
 type ContractFile = { id: string; filename: string; sizeBytes: number } | null;
 
@@ -40,6 +43,7 @@ type PersonInitial = {
   id?: string;
   type?: PersonType;
   roleId?: string;
+  service?: string;
   firstName?: string;
   lastName?: string;
   birthDate?: string;
@@ -56,6 +60,7 @@ type PersonInitial = {
   contractFile?: ContractFile;
   specialtySubjectIds?: string[];
   cycleIds?: string[];
+  priorityClassIds?: string[];
   experienceYears?: number;
   diplomas?: Diploma[];
   availability?: Availability;
@@ -76,6 +81,7 @@ export function PersonForm({
   availableParents,
   allSubjects,
   allCycles,
+  allClasses,
 }: {
   mode: 'create' | 'edit';
   initial?: PersonInitial;
@@ -84,6 +90,7 @@ export function PersonForm({
   availableParents: ParentOption[];
   allSubjects: { id: string; label: string }[];
   allCycles: { id: string; label: string }[];
+  allClasses: { id: string; label: string }[];
 }) {
   const t = useTranslations('admin.persons.form');
   const tRel = useTranslations('admin.persons.detail.relations');
@@ -169,6 +176,10 @@ export function PersonForm({
                 ))}
               </select>
             </Field>
+          )}
+
+          {(type === 'STAFF' || type === 'TEACHER') && (
+            <p className="text-xs text-slate-500">{t('serviceDerivedHint')}</p>
           )}
 
           <Field label={t('gender')} error={fieldErrors.gender}>
@@ -370,6 +381,13 @@ export function PersonForm({
             options={allCycles}
             initial={initial?.cycleIds ?? []}
           />
+          <MultiPicker
+            name="priorityClassIds"
+            label={t('priorityClasses')}
+            hint={t('priorityClassesHint')}
+            options={allClasses}
+            initial={initial?.priorityClassIds ?? []}
+          />
         </section>
       )}
 
@@ -476,9 +494,14 @@ export function PersonForm({
           <p className="mt-1 text-xs text-slate-500">{t('parentsHint')}</p>
           <div className="mt-3 space-y-2">
             {parents.map((p, idx) => (
-              <div key={idx} className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 p-2">
-                <div className="flex-1 min-w-[200px]">
-                  <label className="block text-xs font-medium text-slate-700">{t('parentLabel')}</label>
+              <div
+                key={idx}
+                className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 p-2"
+              >
+                <div className="min-w-[200px] flex-1">
+                  <label className="block text-xs font-medium text-slate-700">
+                    {t('parentLabel')}
+                  </label>
                   <select
                     value={p.parentId}
                     onChange={(e) => setParent(idx, { parentId: e.target.value })}
@@ -494,7 +517,9 @@ export function PersonForm({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700">{t('relationLabel')}</label>
+                  <label className="block text-xs font-medium text-slate-700">
+                    {t('relationLabel')}
+                  </label>
                   <select
                     value={p.type}
                     onChange={(e) => setParent(idx, { type: e.target.value as RelationType })}
@@ -546,7 +571,7 @@ export function PersonForm({
         <button
           type="submit"
           disabled={isPending}
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-brand-700 disabled:opacity-50"
+          className="bg-brand-600 hover:bg-brand-700 rounded-lg px-4 py-2 text-sm font-medium text-white shadow disabled:opacity-50"
         >
           {isPending ? t('actions.saving') : t('actions.save')}
         </button>
@@ -555,7 +580,15 @@ export function PersonForm({
   );
 }
 
-function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
+function Field({
+  label,
+  error,
+  children,
+}: {
+  label: string;
+  error?: string;
+  children: React.ReactNode;
+}) {
   return (
     <label className="block">
       <span className="block text-xs font-medium text-slate-700">{label}</span>
@@ -565,13 +598,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
   );
 }
 
-function ContractUpload({
-  personId,
-  current,
-}: {
-  personId: string;
-  current: ContractFile;
-}) {
+function ContractUpload({ personId, current }: { personId: string; current: ContractFile }) {
   const t = useTranslations('admin.persons.form');
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -622,7 +649,7 @@ function ContractUpload({
             href={`/api/admin/persons/${personId}/contract/download`}
             target="_blank"
             rel="noopener"
-            className="rounded-lg border border-brand-300 bg-white px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
+            className="border-brand-300 text-brand-700 hover:bg-brand-50 rounded-lg border bg-white px-3 py-1.5 text-sm font-medium"
           >
             📄 {current.filename}
           </a>
@@ -637,7 +664,7 @@ function ContractUpload({
           >
             {t('contractFileDelete')}
           </button>
-          <label className="ms-auto cursor-pointer text-xs text-slate-600 hover:text-brand-700">
+          <label className="hover:text-brand-700 ms-auto cursor-pointer text-xs text-slate-600">
             {t('contractFileReplace')}
             <input
               type="file"

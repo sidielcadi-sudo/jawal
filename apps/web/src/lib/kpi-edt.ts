@@ -14,11 +14,7 @@ type Tx = typeof prisma;
 export type RoomType = 'STD' | 'LABO_SVT' | 'LABO_PC' | 'INFO' | 'EPS';
 
 /** Heuristique : classifie une salle à partir de son code/label/équipement. */
-export function classifyRoom(
-  code: string,
-  label: string,
-  equipment: string[],
-): RoomType {
+export function classifyRoom(code: string, label: string, equipment: string[]): RoomType {
   const text = `${code} ${label} ${equipment.join(' ')}`.toUpperCase();
   if (
     text.includes('MICROSCOPE') ||
@@ -54,8 +50,7 @@ export function classifyRoom(
 export function subjectRoomRequirement(subjectLabel: string): RoomType | null {
   const u = subjectLabel.toUpperCase();
   if (u.includes('PHYSIQUE') || u.includes('CHIMIE') || u.includes('PC ')) return 'LABO_PC';
-  if (u.includes('SVT') || u.includes('BIOLOGIE') || u.includes('NATUREL'))
-    return 'LABO_SVT';
+  if (u.includes('SVT') || u.includes('BIOLOGIE') || u.includes('NATUREL')) return 'LABO_SVT';
   if (u.includes('INFO')) return 'INFO';
   if (u.includes('EPS') || u.includes('SPORT')) return 'EPS';
   return null;
@@ -110,6 +105,18 @@ export type KpiResult = {
     contractual: number;
     pct: number; // expected/contractual × 100, peut > 100
   };
+  /**
+   * KPI 1ter — Couverture PRÉVISIONNELLE (avant toute affectation).
+   * La demande = volume du programme (Σ CurriculumSubject.weeklyHours sur les
+   * classes de l'année), indépendante des TeacherAssignment. Permet d'évaluer
+   * la faisabilité dès que le programme + les heures contractuelles sont saisis,
+   * AVANT la pré-affectation.
+   */
+  forecastCoverage: {
+    contractual: number; // Σ Person.contractualHoursPerWeek (TEACHER)
+    programHours: number; // Σ CurriculumSubject.weeklyHours sur les classes de l'année
+    utilizationPct: number; // programHours/contractual × 100, peut > 100 = capacité insuffisante
+  };
   classRooms: {
     classes: number;
     rooms: number;
@@ -118,7 +125,13 @@ export type KpiResult = {
   teacherAvailability: {
     totalTeachers: number;
     teachersWithEmptyAvailability: number;
+    /** Noms des profs sans aucune disponibilité saisie. */
+    teachersWithEmptyList: string[];
+    /** Noms des profs sans aucune spécialité (matière maîtrisée). */
+    teachersWithoutSpecialtyList: string[];
     uncoveredSlots: number;
+    /** Détail des cellules (jour × créneau) sans aucun prof disponible. */
+    uncoveredCells: Array<{ day: string; startTime: string; endTime: string }>;
     totalSlotCells: number;
     avgTeachersPerSlot: number;
   };
@@ -195,31 +208,24 @@ export async function computeKpis(
       lastName: true,
       availability: true,
       contractualHoursPerWeek: true,
+      teacherSpecialties: { select: { subjectId: true } },
     },
   });
 
-  const expectedHours = assignments.reduce(
-    (s, a) => s + (a.hoursPerWeek ?? 0),
-    0,
-  );
+  const expectedHours = assignments.reduce((s, a) => s + (a.hoursPerWeek ?? 0), 0);
 
   // KPI 1 : Couverture horaire — basée sur les heures CONTRACTUELLES
   // (indépendant des dispos et des heures réellement enseignées).
   // Profs sans valeur saisie sont exclus → alerte dédiée.
-  const contractualHours = teachers.reduce(
-    (s, t) => s + (t.contractualHoursPerWeek ?? 0),
-    0,
-  );
+  const contractualHours = teachers.reduce((s, t) => s + (t.contractualHoursPerWeek ?? 0), 0);
   const teachersWithoutContractual = teachers.filter(
     (t) => t.contractualHoursPerWeek === null || t.contractualHoursPerWeek === undefined,
   ).length;
-  const coveragePct = expectedHours > 0
-    ? Math.min(100, Math.round((contractualHours / expectedHours) * 100))
-    : 100;
+  const coveragePct =
+    expectedHours > 0 ? Math.min(100, Math.round((contractualHours / expectedHours) * 100)) : 100;
   // Taux d'utilisation prévisionnel — non capé, peut dépasser 100%
-  const utilizationPct = contractualHours > 0
-    ? Math.round((expectedHours / contractualHours) * 100)
-    : 0;
+  const utilizationPct =
+    contractualHours > 0 ? Math.round((expectedHours / contractualHours) * 100) : 0;
 
   // ─── KPI 2 : Classes physiques disponibles ────────────────────
   const classes = await tx.class.findMany({
@@ -232,9 +238,8 @@ export async function computeKpis(
   const rooms = await tx.room.findMany();
   const classesCount = classes.length;
   const roomsCount = rooms.length;
-  const classRoomsPct = classesCount > 0
-    ? Math.min(100, Math.round((roomsCount / classesCount) * 100))
-    : 100;
+  const classRoomsPct =
+    classesCount > 0 ? Math.min(100, Math.round((roomsCount / classesCount) * 100)) : 100;
 
   // ─── KPI 3 : Disponibilités profs vs grille ───────────────────
   const slots = await tx.timetableSlot.findMany({
@@ -249,6 +254,7 @@ export async function computeKpis(
   const totalSlotCells = placeableSlots.length * daysActiveList.length;
   let uncoveredSlots = 0;
   let teachersAvailPerCellSum = 0;
+  const uncoveredCells: Array<{ day: string; startTime: string; endTime: string }> = [];
 
   for (const d of daysActiveList) {
     for (const s of placeableSlots) {
@@ -260,18 +266,30 @@ export async function computeKpis(
           availCount++;
         }
       }
-      if (availCount === 0) uncoveredSlots++;
+      if (availCount === 0) {
+        uncoveredSlots++;
+        uncoveredCells.push({ day: d, startTime: s.startTime, endTime: s.endTime });
+      }
       teachersAvailPerCellSum += availCount;
     }
   }
-  const avgTeachersPerSlot = totalSlotCells > 0
-    ? Math.round((teachersAvailPerCellSum / totalSlotCells) * 10) / 10
-    : 0;
+  const avgTeachersPerSlot =
+    totalSlotCells > 0 ? Math.round((teachersAvailPerCellSum / totalSlotCells) * 10) / 10 : 0;
 
-  const teachersWithEmptyAv = teachers.filter((t) => {
-    const av = (t.availability as AvailabilityMap | null) ?? {};
-    return !Object.values(av).some((r) => r.length > 0);
-  }).length;
+  const teachersWithEmptyAvList = teachers
+    .filter((t) => {
+      const av = (t.availability as AvailabilityMap | null) ?? {};
+      return !Object.values(av).some((r) => r.length > 0);
+    })
+    .map((t) => `${t.lastName} ${t.firstName}`)
+    .sort((a, b) => a.localeCompare(b));
+  const teachersWithEmptyAv = teachersWithEmptyAvList.length;
+
+  // Profs sans aucune spécialité saisie → inaffectables par l'auto-affectation.
+  const teachersWithoutSpecialtyList = teachers
+    .filter((t) => t.teacherSpecialties.length === 0)
+    .map((t) => `${t.lastName} ${t.firstName}`)
+    .sort((a, b) => a.localeCompare(b));
 
   // ─── KPI 4 : Salles spécialisées ──────────────────────────────
   const roomsByType = new Map<RoomType, number>();
@@ -293,27 +311,39 @@ export async function computeKpis(
     const needed = needsByType.get(t) ?? 0;
     // Capacité = available × daysActive × placeableSlots (1 cours par cellule)
     const capacity = available * daysActiveList.length * placeableSlots.length;
-    const surchargePct = capacity > 0
-      ? Math.max(0, Math.round(((needed - capacity) / capacity) * 100))
-      : (needed > 0 ? 100 : 0);
+    const surchargePct =
+      capacity > 0
+        ? Math.max(0, Math.round(((needed - capacity) / capacity) * 100))
+        : needed > 0
+          ? 100
+          : 0;
     specialized.push({ type: t, available, needed, surchargePct });
   }
 
   // ─── KPI 5 : Cohérence matière → prof → classe ────────────────
   const curriculum = await tx.curriculumSubject.findMany({
-    select: { levelId: true, subjectId: true },
+    select: { levelId: true, subjectId: true, weeklyHours: true },
   });
   const curriculumByLevel = new Map<string, Set<string>>();
+  const programHoursByLevel = new Map<string, number>();
   for (const c of curriculum) {
-    if (!curriculumByLevel.has(c.levelId))
-      curriculumByLevel.set(c.levelId, new Set());
+    if (!curriculumByLevel.has(c.levelId)) curriculumByLevel.set(c.levelId, new Set());
     curriculumByLevel.get(c.levelId)!.add(c.subjectId);
+    programHoursByLevel.set(c.levelId, (programHoursByLevel.get(c.levelId) ?? 0) + c.weeklyHours);
   }
 
+  // Couverture prévisionnelle : demande = volume du programme sur les classes
+  // de l'année (chaque classe « pèse » le total hebdo du programme de son niveau),
+  // indépendante des affectations.
+  let programHours = 0;
+  for (const cls of classes) {
+    programHours += programHoursByLevel.get(cls.levelId) ?? 0;
+  }
+  const forecastUtilizationPct =
+    contractualHours > 0 ? Math.round((programHours / contractualHours) * 100) : 0;
+
   // Subjects sans teacher pour une classe donnée
-  const assignedKeys = new Set<string>(
-    assignments.map((a) => `${a.classId}|${a.subjectId}`),
-  );
+  const assignedKeys = new Set<string>(assignments.map((a) => `${a.classId}|${a.subjectId}`));
   let subjectsWithoutTeacher = 0;
   for (const cls of classes) {
     const subjects = curriculumByLevel.get(cls.levelId) ?? new Set();
@@ -323,9 +353,7 @@ export async function computeKpis(
   }
 
   const teachersUsed = new Set(assignments.map((a) => a.teacherId));
-  const teachersWithoutAssignment = teachers.filter(
-    (t) => !teachersUsed.has(t.id),
-  ).length;
+  const teachersWithoutAssignment = teachers.filter((t) => !teachersUsed.has(t.id)).length;
 
   // Doublons : même (classId, subjectId) avec ≥ 2 assignments
   const assignmentDupCount = new Map<string, number>();
@@ -359,19 +387,16 @@ export async function computeKpis(
     if (total > capacity) classesOverloaded++;
     else classesOk++;
   }
-  const avgWeeklyHours = classes.length > 0
-    ? Math.round(
-        ([...hoursByClass.values()].reduce((s, h) => s + h, 0) / classes.length) * 10,
-      ) / 10
-    : 0;
+  const avgWeeklyHours =
+    classes.length > 0
+      ? Math.round(([...hoursByClass.values()].reduce((s, h) => s + h, 0) / classes.length) * 10) /
+        10
+      : 0;
 
   // ─── KPI 8 : Charge horaire profs ─────────────────────────────
   const hoursByTeacher = new Map<string, number>();
   for (const a of assignments) {
-    hoursByTeacher.set(
-      a.teacherId,
-      (hoursByTeacher.get(a.teacherId) ?? 0) + (a.hoursPerWeek ?? 0),
-    );
+    hoursByTeacher.set(a.teacherId, (hoursByTeacher.get(a.teacherId) ?? 0) + (a.hoursPerWeek ?? 0));
   }
   const distribution = teachers
     .map((t) => ({
@@ -392,7 +417,14 @@ export async function computeKpis(
   // ─── KPI 9 : Conflits structurels (sur EDT existant) ──────────
   const entries = await tx.timetableEntry.findMany({
     where: { academicYearId },
-    select: { id: true, classId: true, slotId: true, dayOfWeek: true, teacherId: true, roomId: true },
+    select: {
+      id: true,
+      classId: true,
+      slotId: true,
+      dayOfWeek: true,
+      teacherId: true,
+      roomId: true,
+    },
   });
   let teacherConflicts = 0;
   let roomConflicts = 0;
@@ -408,10 +440,7 @@ export async function computeKpis(
         (teacherKeys.get(`${e.teacherId}|${cellKey}`) ?? 0) + 1,
       );
     if (e.roomId)
-      roomKeys.set(
-        `${e.roomId}|${cellKey}`,
-        (roomKeys.get(`${e.roomId}|${cellKey}`) ?? 0) + 1,
-      );
+      roomKeys.set(`${e.roomId}|${cellKey}`, (roomKeys.get(`${e.roomId}|${cellKey}`) ?? 0) + 1);
   }
   for (const c of teacherKeys.values()) if (c > 1) teacherConflicts += c - 1;
   for (const c of roomKeys.values()) if (c > 1) roomConflicts += c - 1;
@@ -421,9 +450,10 @@ export async function computeKpis(
   // ─── Score global (pondération) ──────────────────────────────
   const coverageScore = coveragePct; // 0-100
   const classRoomsScore = classRoomsPct; // 0-100
-  const teacherAvScore = totalSlotCells > 0
-    ? Math.max(0, 100 - Math.round((uncoveredSlots / totalSlotCells) * 200))
-    : 100;
+  const teacherAvScore =
+    totalSlotCells > 0
+      ? Math.max(0, 100 - Math.round((uncoveredSlots / totalSlotCells) * 200))
+      : 100;
   const specializedScore = (() => {
     const surcharges = specialized.filter((s) => s.type !== 'STD' && s.needed > 0);
     if (surcharges.length === 0) return 100;
@@ -435,12 +465,12 @@ export async function computeKpis(
     return total === 0 ? 100 : Math.max(0, 100 - total * 5);
   })();
   const scheduleScore = scheduleOk ? 100 : 30;
-  const constraintsScore = classes.length > 0
-    ? Math.round((classesOk / classes.length) * 100)
-    : 100;
-  const teacherLoadScore = distribution.length > 0
-    ? Math.max(0, 100 - Math.round(((overloaded + underloaded) / distribution.length) * 100))
-    : 100;
+  const constraintsScore =
+    classes.length > 0 ? Math.round((classesOk / classes.length) * 100) : 100;
+  const teacherLoadScore =
+    distribution.length > 0
+      ? Math.max(0, 100 - Math.round(((overloaded + underloaded) / distribution.length) * 100))
+      : 100;
   const conflictsScore = teacherConflicts + roomConflicts + classConflicts === 0 ? 100 : 50;
 
   const globalScore = Math.round(
@@ -468,11 +498,19 @@ export async function computeKpis(
       contractual: contractualHours,
       pct: utilizationPct,
     },
+    forecastCoverage: {
+      contractual: contractualHours,
+      programHours,
+      utilizationPct: forecastUtilizationPct,
+    },
     classRooms: { classes: classesCount, rooms: roomsCount, okPct: classRoomsPct },
     teacherAvailability: {
       totalTeachers: teachers.length,
       teachersWithEmptyAvailability: teachersWithEmptyAv,
+      teachersWithEmptyList: teachersWithEmptyAvList,
+      teachersWithoutSpecialtyList,
       uncoveredSlots,
+      uncoveredCells,
       totalSlotCells,
       avgTeachersPerSlot,
     },

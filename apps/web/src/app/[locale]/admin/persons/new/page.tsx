@@ -23,22 +23,34 @@ export default async function NewPersonPage({
     : 'STUDENT';
 
   const session = (await auth())!;
-  const { roles, availableParents, allSubjects, allCycles } = await withTenant(session.user.tenantId, async (tx) => {
-    const [roles, availableParents, allSubjects, allCycles] = await Promise.all([
-      tx.personRole.findMany({
+  const { roles, availableParents, allSubjects, allCycles, allClasses } = await withTenant(
+    session.user.tenantId,
+    async (tx) => {
+      const activeYear = await tx.academicYear.findFirst({
         where: { active: true },
-        orderBy: [{ appliesTo: 'asc' }, { order: 'asc' }, { labelFr: 'asc' }],
-      }),
-      tx.person.findMany({
-        where: { type: 'PARENT', deletedAt: null },
-        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-        select: { id: true, firstName: true, lastName: true },
-      }),
-      tx.subject.findMany({ orderBy: [{ order: 'asc' }, { label: 'asc' }] }),
-      tx.cycle.findMany({ orderBy: { order: 'asc' } }),
-    ]);
-    return { roles, availableParents, allSubjects, allCycles };
-  });
+        select: { id: true },
+      });
+      const [roles, availableParents, allSubjects, allCycles, classes] = await Promise.all([
+        tx.personRole.findMany({
+          where: { active: true },
+          orderBy: [{ appliesTo: 'asc' }, { order: 'asc' }, { labelFr: 'asc' }],
+        }),
+        tx.person.findMany({
+          where: { type: 'PARENT', deletedAt: null },
+          orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+          select: { id: true, firstName: true, lastName: true },
+        }),
+        tx.subject.findMany({ orderBy: [{ order: 'asc' }, { label: 'asc' }] }),
+        tx.cycle.findMany({ orderBy: { order: 'asc' } }),
+        tx.class.findMany({
+          where: { deletedAt: null, ...(activeYear ? { academicYearId: activeYear.id } : {}) },
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true },
+        }),
+      ]);
+      return { roles, availableParents, allSubjects, allCycles, allClasses: classes };
+    },
+  );
 
   const backHref = `/${locale}/admin/persons?type=${defaultType}`;
   const backLabel = t(`title.${defaultType}` as never);
@@ -70,6 +82,7 @@ export default async function NewPersonPage({
           availableParents={availableParents}
           allSubjects={allSubjects.map((s) => ({ id: s.id, label: s.label }))}
           allCycles={allCycles.map((c) => ({ id: c.id, label: c.label }))}
+          allClasses={allClasses.map((c) => ({ id: c.id, label: c.name }))}
         />
       </div>
     </div>

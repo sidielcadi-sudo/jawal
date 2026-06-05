@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { generateMultiTimetableAction } from './actions';
+import { AllocationPanel } from './allocation-panel';
 
 type ClassRow = {
   id: string;
@@ -73,9 +74,7 @@ export function GenerateGlobalForm({
     new Set(classes.filter((c) => c.assignmentCount > 0).map((c) => c.id)),
   );
   const [result, setResult] = useState<
-    | null
-    | { ok: true; data: ResultData }
-    | { ok: false; error: string }
+    null | { ok: true; data: ResultData } | { ok: false; error: string }
   >(null);
 
   const toggle = (id: string) =>
@@ -117,7 +116,7 @@ export function GenerateGlobalForm({
           <button
             type="button"
             onClick={toggleAll}
-            className="text-xs text-brand-700 hover:underline"
+            className="text-brand-700 text-xs hover:underline"
           >
             {allSelected ? t('selectNone') : t('selectAll')}
           </button>
@@ -133,7 +132,6 @@ export function GenerateGlobalForm({
                     type="checkbox"
                     checked={isSelected}
                     onChange={() => toggle(c.id)}
-                    disabled={noAssignments}
                     className="h-4 w-4"
                   />
                   <div className="flex-1">
@@ -151,7 +149,7 @@ export function GenerateGlobalForm({
                   </div>
                   <Link
                     href={`/${locale}/admin/classes/${c.id}/timetable`}
-                    className="text-xs text-slate-400 hover:text-brand-700"
+                    className="hover:text-brand-700 text-xs text-slate-400"
                     onClick={(e) => e.stopPropagation()}
                   >
                     {t('viewClass')} →
@@ -162,6 +160,11 @@ export function GenerateGlobalForm({
           })}
         </ul>
       </section>
+
+      {/* Étape 2 — auto-affectation des profs avant génération */}
+      <div className="mt-4">
+        <AllocationPanel academicYearId={academicYearId} selectedIds={[...selected]} />
+      </div>
 
       {/* Sélecteur de moteur */}
       <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-5">
@@ -250,13 +253,7 @@ export function GenerateGlobalForm({
         </div>
       )}
 
-      {result && (
-        <ResultModal
-          result={result}
-          locale={locale}
-          onClose={() => setResult(null)}
-        />
-      )}
+      {result && <ResultModal result={result} locale={locale} onClose={() => setResult(null)} />}
     </>
   );
 }
@@ -314,7 +311,7 @@ function ResultModal({
                   <div className="flex items-center justify-between">
                     <Link
                       href={`/${locale}/admin/classes/${c.classId}/timetable`}
-                      className="font-medium text-slate-900 hover:text-brand-700 hover:underline"
+                      className="hover:text-brand-700 font-medium text-slate-900 hover:underline"
                     >
                       {c.className}
                     </Link>
@@ -331,8 +328,8 @@ function ResultModal({
                     <ul className="mt-2 list-disc ps-5 text-[11px] text-slate-700">
                       {c.unplaced.map((u, i) => (
                         <li key={i}>
-                          <strong>{u.subject}</strong> ({u.placedHours}/
-                          {u.requestedHours} h) — {u.reason}
+                          <strong>{u.subject}</strong> ({u.placedHours}/{u.requestedHours} h) —{' '}
+                          {u.reason}
                         </li>
                       ))}
                     </ul>
@@ -354,7 +351,7 @@ function ResultModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-brand-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+            className="bg-brand-600 hover:bg-brand-700 rounded-lg px-4 py-1.5 text-sm font-medium text-white"
           >
             {t('close')}
           </button>
@@ -421,18 +418,10 @@ function AnalysisPanel({ analysis }: { analysis: AnalysisData }) {
               <tbody className="divide-y divide-slate-100">
                 {interestingTeachers.map((td) => (
                   <tr key={td.teacher_id}>
-                    <td className="px-3 py-1.5 font-medium text-slate-900">
-                      {td.teacher_name}
-                    </td>
-                    <td className="px-3 py-1.5 text-end tabular-nums">
-                      {td.expected_hours} h
-                    </td>
-                    <td className="px-3 py-1.5 text-end tabular-nums">
-                      {td.placed_hours} h
-                    </td>
-                    <td className="px-3 py-1.5 text-end tabular-nums">
-                      {td.compatible_cells}
-                    </td>
+                    <td className="px-3 py-1.5 font-medium text-slate-900">{td.teacher_name}</td>
+                    <td className="px-3 py-1.5 text-end tabular-nums">{td.expected_hours} h</td>
+                    <td className="px-3 py-1.5 text-end tabular-nums">{td.placed_hours} h</td>
+                    <td className="px-3 py-1.5 text-end tabular-nums">{td.compatible_cells}</td>
                     <td className="px-3 py-1.5 text-end tabular-nums">
                       <span
                         className={
@@ -500,16 +489,14 @@ function EngineCard({
   badgeColor: 'emerald' | 'blue';
 }) {
   const badgeClass =
-    badgeColor === 'emerald'
-      ? 'bg-emerald-100 text-emerald-700'
-      : 'bg-blue-100 text-blue-700';
+    badgeColor === 'emerald' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700';
   return (
     <button
       type="button"
       onClick={onSelect}
       className={`relative cursor-pointer rounded-2xl border p-4 text-start transition-all ${
         selected
-          ? 'border-brand-500 bg-brand-50/50 ring-2 ring-brand-200'
+          ? 'border-brand-500 bg-brand-50/50 ring-brand-200 ring-2'
           : 'border-slate-200 bg-white hover:border-slate-300'
       }`}
     >
@@ -522,9 +509,7 @@ function EngineCard({
             {badge}
           </span>
         </div>
-        {selected && (
-          <span className="text-brand-700">●</span>
-        )}
+        {selected && <span className="text-brand-700">●</span>}
       </div>
       <p className="mt-2 text-xs text-slate-600">{description}</p>
       <p className="mt-1 text-[10px] uppercase text-slate-400">{kind}</p>

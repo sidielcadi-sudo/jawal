@@ -55,6 +55,22 @@ enum ContractType {
 
 /// Mode de paiement du SALAIRE (distinct de PaymentMethod qui sert aux
 /// encaissements élèves/parents).
+/// Nomenclature des services (départements) de rattachement du personnel.
+/// Axe distinct de la fonction (PersonRole). Surtout pour le type STAFF.
+enum StaffService {
+  DIRECTION
+  ADMINISTRATION
+  SCOLARITE
+  VIE_SCOLAIRE
+  COMPTABILITE
+  SERVICES_GENERAUX
+  RESTAURATION
+  INFIRMERIE
+  INFORMATIQUE
+  BIBLIOTHEQUE
+  AUTRE
+}
+
 enum PayrollPaymentMethod {
   BANK_TRANSFER
   CHECK
@@ -216,6 +232,44 @@ enum CouncilDecision {
   ORIENTATION           // Réorientation conseillée
 }
 
+enum HomeworkType {
+  EXERCICE
+  LECTURE
+  REVISION
+  PROJET
+  AUTRE
+}
+
+enum ResourceKind {
+  FILE
+  LINK
+}
+
+enum HomeworkDifficulty {
+  FACILE
+  MOYEN
+  DIFFICILE
+}
+
+enum SurveyAudience {
+  ALL
+  PARENTS
+  TEACHERS
+  STAFF
+  STUDENTS
+}
+
+enum SurveyStatus {
+  DRAFT   // en préparation, non diffusée
+  OPEN    // ouverte aux réponses
+  CLOSED  // clôturée (résultats figés)
+}
+
+enum SurveyQuestionType {
+  RATING_5 // note 1 à 5 (alimente le KPI satisfaction)
+  TEXT     // réponse libre
+}
+
 // ─── Tenants & modules ─────────────────────────────────────
 
 model Tenant {
@@ -260,11 +314,13 @@ model Tenant {
   payments       Payment[]
   files          FileObject[]
   personRoles    PersonRole[]
+  services       Service[]
   personRelations PersonRelation[]
   teacherAssignments TeacherAssignment[]
   curriculumSubjects CurriculumSubject[]
   teacherSpecialties TeacherSpecialty[]
   teacherCycles      TeacherCycle[]
+  teacherPriorityClasses TeacherPriorityClass[]
   diplomas           Diploma[]
   staffAttendance    StaffAttendance[]
   enrollments        Enrollment[]
@@ -272,6 +328,13 @@ model Tenant {
   timetableEntries   TimetableEntry[]
   timetableOverrides TimetableOverride[]
   timetableConstraints TimetableConstraint[]
+  surveys            Survey[]
+  surveyQuestions    SurveyQuestion[]
+  surveyResponses    SurveyResponse[]
+  surveyAnswers      SurveyAnswer[]
+  lessonEntries      LessonEntry[]
+  homeworks          Homework[]
+  lessonResources    LessonResource[]
 
   @@map("tenants")
 }
@@ -309,10 +372,11 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userRoles   UserRole[]
-  userPersons UserPerson[]
-  auditLogs   AuditLog[]
+  tenant              Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userRoles           UserRole[]
+  userPersons         UserPerson[]
+  auditLogs           AuditLog[]
+  passwordResetTokens PasswordResetToken[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -325,6 +389,11 @@ model Person {
   type        PersonType
   /// Catégorie paramétrable (TEACHER ou STAFF uniquement). Null sinon.
   roleId      String?    @map("role_id") @db.Uuid
+  /// @deprecated Ancien service figé (enum). Remplacé par serviceId → Service.
+  /// Conservé en transition ; ne plus écrire dessus.
+  service     StaffService?
+  /// Service / département paramétrable de rattachement. Déduit du type/rôle.
+  serviceId   String?       @map("service_id") @db.Uuid
   firstName   String     @map("first_name")
   lastName    String     @map("last_name")
   birthDate   DateTime?  @map("birth_date") @db.Date
@@ -366,6 +435,7 @@ model Person {
 
   tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   role               PersonRole?        @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  serviceRef         Service?           @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   contractFile       FileObject?        @relation("ContractFile", fields: [contractFileId], references: [id], onDelete: SetNull)
   userPersons        UserPerson[]
   studentClasses     StudentClass[]
@@ -378,6 +448,7 @@ model Person {
   teacherAssignments TeacherAssignment[] @relation("TeacherAssignments")
   teacherSpecialties TeacherSpecialty[]
   teacherCycles      TeacherCycle[]
+  teacherPriorityClasses TeacherPriorityClass[]
   diplomas           Diploma[]
   staffAttendance    StaffAttendance[]   @relation("StaffAttendance")
   enrollments        Enrollment[]        @relation("StudentEnrollments")
@@ -392,6 +463,8 @@ model Person {
   @@index([tenantId, lastName, firstName])
   @@index([tenantId, roleId])
   @@index([tenantId, contractEndDate])
+  @@index([tenantId, service])
+  @@index([tenantId, serviceId])
   @@map("persons")
 }
 
@@ -429,6 +502,26 @@ model TeacherCycle {
   @@unique([teacherId, cycleId])
   @@index([tenantId, teacherId])
   @@map("teacher_cycles")
+}
+
+/// Classes prioritaires d'un enseignant : classes sur lesquelles il doit être
+/// servi en priorité lors de l'auto-affectation / génération de l'EDT.
+/// Préférence d'allocation (≠ affectation ferme via TeacherAssignment).
+model TeacherPriorityClass {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  teacherId String   @map("teacher_id") @db.Uuid
+  classId   String   @map("class_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  teacher Person @relation(fields: [teacherId], references: [id], onDelete: Cascade)
+  class   Class  @relation(fields: [classId], references: [id], onDelete: Cascade)
+
+  @@unique([teacherId, classId])
+  @@index([tenantId, teacherId])
+  @@index([tenantId, classId])
+  @@map("teacher_priority_classes")
 }
 
 /// Diplômes / certifications d'une personne (TEACHER ou STAFF).
@@ -485,17 +578,45 @@ model PersonRole {
   code      String     // identifiant stable (MAIN_TEACHER, BURSAR, ...)
   labelFr   String     @map("label_fr")
   labelAr   String     @map("label_ar")
+  /// Service / département auquel ce type est rattaché. Pour les types
+  /// TEACHER, c'est toujours le service « Enseignants ».
+  serviceId String?    @map("service_id") @db.Uuid
   order     Int        @default(0)
   active    Boolean    @default(true)
   createdAt DateTime   @default(now()) @map("created_at")
   updatedAt DateTime   @updatedAt @map("updated_at")
 
   tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  service Service? @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   persons Person[]
 
   @@unique([tenantId, code])
   @@index([tenantId, appliesTo, order])
+  @@index([tenantId, serviceId])
   @@map("person_roles")
+}
+
+/// Service / département paramétrable de rattachement du personnel.
+/// Remplace l'enum figé StaffService par une nomenclature éditable par tenant
+/// (CRUD comme PersonRole). Bilingue FR/AR.
+model Service {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  code      String   // identifiant stable (DIRECTION, ENSEIGNANTS, ...)
+  labelFr   String   @map("label_fr")
+  labelAr   String   @map("label_ar")
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  personRoles PersonRole[]
+  persons     Person[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, order])
+  @@map("services")
 }
 
 /// Lien explicite parent ↔ enfant (Père, Mère, Tuteur légal, Tuteur).
@@ -536,6 +657,26 @@ model UserPerson {
   @@unique([userId, personId])
   @@index([tenantId])
   @@map("user_persons")
+}
+
+/// Jeton de réinitialisation de mot de passe (flux « mot de passe oublié »).
+/// Émis pour les comptes du portail parent. On ne stocke que le SHA-256 du
+/// jeton (`tokenHash`) — le jeton en clair n'existe que dans le lien e-mail.
+/// Usage unique (`usedAt`) + expiration courte (`expiresAt`).
+model PasswordResetToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  tenantId  String    @map("tenant_id") @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at")
+  usedAt    DateTime? @map("used_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([userId])
+  @@map("password_reset_tokens")
 }
 
 // ─── RBAC ──────────────────────────────────────────────────
@@ -702,6 +843,8 @@ model Class {
   teacherAssignments TeacherAssignment[]
   enrollments  Enrollment[]
   timetableEntries TimetableEntry[]
+  lessonEntries LessonEntry[]
+  teacherPriorityClasses TeacherPriorityClass[]
 
   @@unique([tenantId, academicYearId, name])
   @@index([tenantId, levelId])
@@ -1122,6 +1265,7 @@ model TimetableEntry {
   teacher      Person?       @relation("TeacherTimetable", fields: [teacherId], references: [id], onDelete: SetNull)
   room         Room?         @relation(fields: [roomId], references: [id], onDelete: SetNull)
   overrides    TimetableOverride[]
+  lessonEntries LessonEntry[]
 
   @@unique([classId, academicYearId, dayOfWeek, slotId])
   @@index([tenantId, academicYearId, dayOfWeek, slotId])
@@ -1158,6 +1302,89 @@ model TimetableOverride {
   @@unique([entryId, date])
   @@index([tenantId, date])
   @@map("timetable_overrides")
+}
+
+// ─── Cahier de texte ───────────────────────────────────────
+
+/// Cahier de texte d'une séance : le contenu pédagogique saisi par
+/// l'enseignant pour une occurrence datée d'une case d'EDT. Une séance =
+/// (TimetableEntry × date) → au plus une entrée de cahier (unique).
+/// `classId` est dénormalisé depuis l'entry pour filtrer la consultation
+/// côté parent. Les infos de séance (matière, salle, créneau, jour) sont
+/// lues via la relation `entry`.
+model LessonEntry {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  entryId   String   @map("entry_id") @db.Uuid
+  classId   String   @map("class_id") @db.Uuid
+  date      DateTime @db.Date
+  /// Bloc « Contenu du cours »
+  title       String
+  summary     String?
+  activities  String?
+  competencies String?
+  /// Bloc « Visibilité »
+  visibleToStudents Boolean @default(true) @map("visible_to_students")
+  visibleToParents  Boolean @default(true) @map("visible_to_parents")
+  /// Visibilité programmée : si renseigné, masqué élèves/parents tant que
+  /// `publishAt` n'est pas atteint (ex. cacher un contrôle jusqu'à la fin).
+  /// Null = visible immédiatement (sous réserve des drapeaux ci-dessus).
+  publishAt   DateTime? @map("publish_at")
+  createdById String?  @map("created_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entry     TimetableEntry   @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  class     Class            @relation(fields: [classId], references: [id], onDelete: Cascade)
+  homeworks Homework[]
+  resources LessonResource[]
+
+  @@unique([entryId, date])
+  @@index([tenantId, classId, date])
+  @@map("lesson_entries")
+}
+
+/// Ressource pédagogique attachée à une séance : fichier (MinIO via
+/// FileObject) ou lien externe. `fileId` référence un FileObject
+/// (ownerType="lesson.resource") ; null pour un lien (`url` renseigné).
+model LessonResource {
+  id            String       @id @default(uuid()) @db.Uuid
+  tenantId      String       @map("tenant_id") @db.Uuid
+  lessonEntryId String       @map("lesson_entry_id") @db.Uuid
+  kind          ResourceKind
+  fileId        String?      @map("file_id") @db.Uuid
+  url           String?
+  label         String
+  order         Int          @default(0)
+  createdAt     DateTime     @default(now()) @map("created_at")
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lessonEntry LessonEntry @relation(fields: [lessonEntryId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, lessonEntryId])
+  @@map("lesson_resources")
+}
+
+/// Devoir à faire, toujours rattaché à une séance (cahier de texte).
+/// Visible élèves + parents selon la visibilité de la séance parente.
+model Homework {
+  id            String              @id @default(uuid()) @db.Uuid
+  tenantId      String              @map("tenant_id") @db.Uuid
+  lessonEntryId String              @map("lesson_entry_id") @db.Uuid
+  description   String
+  dueDate       DateTime?           @map("due_date") @db.Date
+  type          HomeworkType        @default(EXERCICE)
+  difficulty    HomeworkDifficulty?
+  order         Int                 @default(0)
+  createdAt     DateTime            @default(now()) @map("created_at")
+
+  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lessonEntry LessonEntry @relation(fields: [lessonEntryId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, lessonEntryId])
+  @@index([tenantId, dueDate])
+  @@map("homeworks")
 }
 
 /// Contrainte paramétrable qui pilote le solveur d'EDT. Une ligne par
@@ -1198,6 +1425,94 @@ model Announcement {
 
   @@index([tenantId, publishedAt])
   @@map("announcements")
+}
+
+// ─── Enquêtes de satisfaction ──────────────────────────────
+
+/// Enquête de satisfaction adressée à une audience (parents, profs…).
+/// Les questions RATING_5 alimentent le KPI « satisfaction » du Pilotage.
+/// periodId/academicYearId : portée optionnelle pour filtrer le KPI.
+model Survey {
+  id             String         @id @default(uuid()) @db.Uuid
+  tenantId       String         @map("tenant_id") @db.Uuid
+  title          String
+  description    String?
+  audience       SurveyAudience @default(PARENTS)
+  status         SurveyStatus   @default(DRAFT)
+  /// Réponses anonymes : on ne lie pas la réponse à un répondant identifié.
+  anonymous      Boolean        @default(true)
+  academicYearId String?        @map("academic_year_id") @db.Uuid
+  periodId       String?        @map("period_id") @db.Uuid
+  opensAt        DateTime?      @map("opens_at")
+  closesAt       DateTime?      @map("closes_at")
+  createdById    String?        @map("created_by_id") @db.Uuid
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  questions SurveyQuestion[]
+  responses SurveyResponse[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, periodId])
+  @@map("surveys")
+}
+
+/// Question d'une enquête. RATING_5 = note 1–5 (KPI), TEXT = réponse libre.
+model SurveyQuestion {
+  id        String             @id @default(uuid()) @db.Uuid
+  tenantId  String             @map("tenant_id") @db.Uuid
+  surveyId  String             @map("survey_id") @db.Uuid
+  label     String
+  type      SurveyQuestionType @default(RATING_5)
+  order     Int                @default(0)
+  required  Boolean            @default(true)
+  createdAt DateTime           @default(now()) @map("created_at")
+
+  tenant  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  survey  Survey         @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  answers SurveyAnswer[]
+
+  @@index([tenantId, surveyId])
+  @@map("survey_questions")
+}
+
+/// Une soumission complète à une enquête. `submittedById` (User) est posé
+/// pour les répondants identifiés afin d'empêcher les doublons ; null si
+/// anonyme non tracé. L'unicité (survey, user) bloque la double réponse.
+model SurveyResponse {
+  id            String   @id @default(uuid()) @db.Uuid
+  tenantId      String   @map("tenant_id") @db.Uuid
+  surveyId      String   @map("survey_id") @db.Uuid
+  submittedById String?  @map("submitted_by_id") @db.Uuid
+  submittedAt   DateTime @default(now()) @map("submitted_at")
+
+  tenant  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  survey  Survey         @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  answers SurveyAnswer[]
+
+  @@unique([surveyId, submittedById])
+  @@index([tenantId, surveyId])
+  @@map("survey_responses")
+}
+
+/// Réponse à une question. `rating` (1–5) pour RATING_5, `text` pour TEXT.
+model SurveyAnswer {
+  id         String   @id @default(uuid()) @db.Uuid
+  tenantId   String   @map("tenant_id") @db.Uuid
+  responseId String   @map("response_id") @db.Uuid
+  questionId String   @map("question_id") @db.Uuid
+  rating     Int?
+  text       String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  response SurveyResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question SurveyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, responseId])
+  @@index([tenantId, questionId])
+  @@map("survey_answers")
 }
 
 /// Conversation 1↔1 ou de groupe entre utilisateurs (parents, enseignants).

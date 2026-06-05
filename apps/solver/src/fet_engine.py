@@ -121,7 +121,18 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
             ET.SubElement(node, "Name").text = slug
             ET.SubElement(node, "Comments").text = a.subject_label
 
-    ET.SubElement(root, "Activity_Tags_List")
+    # Activity tags : un tag par matière. Permet de plafonner le nombre
+    # d'heures/jour d'une matière par classe (MAX_SAME_SUBJECT_PER_DAY) via
+    # ConstraintStudentsSetMaxHoursDailyWithAnActivityTag.
+    activity_tags_list = ET.SubElement(root, "Activity_Tags_List")
+    subject_tag: Dict[str, str] = {}  # subject_id → tag slug
+    for sub_id, sub_slug in subjects_unique.items():
+        tag_slug = f"tag_{sub_slug}"
+        subject_tag[sub_id] = tag_slug
+        tag_node = ET.SubElement(activity_tags_list, "Activity_Tag")
+        ET.SubElement(tag_node, "Name").text = tag_slug
+        ET.SubElement(tag_node, "Printable").text = "true"
+        ET.SubElement(tag_node, "Comments").text = ""
 
     # ─ Teachers ─
     teachers_list = ET.SubElement(root, "Teachers_List")
@@ -169,7 +180,7 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
             node = ET.SubElement(activities_list, "Activity")
             ET.SubElement(node, "Teacher").text = teacher_slug
             ET.SubElement(node, "Subject").text = subj_slug
-            ET.SubElement(node, "Activity_Tag").text = ""
+            ET.SubElement(node, "Activity_Tag").text = subject_tag.get(a.subject_id, "")
             ET.SubElement(node, "Students").text = cls_slug
             ET.SubElement(node, "Duration").text = "1"
             ET.SubElement(node, "Total_Duration").text = "1"
@@ -298,28 +309,32 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
             ET.SubElement(cons, "Active").text = "true"
             ET.SubElement(cons, "Comments").text = ""
 
-    # MAX_SAME_SUBJECT_PER_DAY → ConstraintStudentsSetMaxHoursDailyOfASubject
-    # (FET a cette contrainte exacte par classe × matière)
+    # MAX_SAME_SUBJECT_PER_DAY → ConstraintStudentsSetMaxHoursDailyWithAnActivityTag
+    # FET n'a pas de "max matière/jour" direct : on plafonne le nombre d'heures/jour
+    # des activités portant le tag de la matière (1 tag par matière), par classe.
+    # Chaque séance dure 1h, donc Maximum_Hours_Daily = nb max de séances/jour.
     if cons_params.max_same_subject_per_day is not None:
+        max_same = cons_params.max_same_subject_per_day
         for cid in req.class_ids:
-            for sub_id, sub_slug in subjects_unique.items():
-                # Vérifie qu'il y a au moins une affectation pour cette classe × matière
+            if cid not in class_slugs:
+                continue
+            for sub_id, tag_slug in subject_tag.items():
+                # Uniquement si la classe a au moins une activité de cette matière.
                 has = any(
                     a.class_id == cid and a.subject_id == sub_id for a in req.assignments
                 )
                 if not has:
                     continue
                 cons = ET.SubElement(
-                    time_constraints, "ConstraintStudentsSetMaxHoursDailyWithAnActivityTag"
+                    time_constraints,
+                    "ConstraintStudentsSetMaxHoursDailyWithAnActivityTag",
                 )
-                # Note : FET n'a pas exactement "max same subject per day",
-                # mais on peut utiliser ConstraintActivitiesMaxSimultaneousInSelectedTimeSlots
-                # ou plus simplement ne pas l'imposer ici (le solveur tabu de FET
-                # tend naturellement à étaler les matières via le anti-gaps).
-                # Pour MVP on skippe cette contrainte côté FET et on log.
-                time_constraints.remove(cons)
-                break
-            break  # Une seule passe pour le log
+                ET.SubElement(cons, "Weight_Percentage").text = "100"
+                ET.SubElement(cons, "Maximum_Hours_Daily").text = str(max_same)
+                ET.SubElement(cons, "Students").text = class_slugs[cid]
+                ET.SubElement(cons, "Activity_Tag").text = tag_slug
+                ET.SubElement(cons, "Active").text = "true"
+                ET.SubElement(cons, "Comments").text = ""
 
     # ─ Space Constraints ─
     space_constraints = ET.SubElement(root, "Space_Constraints_List")

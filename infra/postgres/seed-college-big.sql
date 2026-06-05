@@ -502,6 +502,30 @@ BEGIN
     VALUES (gen_random_uuid(), v_tenant_id, v_t_info, v_sub_info, v_class_id, v_year_id, 1, NOW());
   END LOOP;
 
+  -- ─── Accès portail enseignant de démo → prof BIG avec EDT ────────
+  -- seed.ts crée le compte amina.prof@demo.jawal.ma mais le lie à « Amina
+  -- El Idrissi » (prof du petit jeu démo, sans affectation dans l'année BIG).
+  -- On le re-lie ici à « Amina Bennani » (prof Maths BIG, toujours affectée)
+  -- pour que le portail enseignant affiche un EDT réel. No-op si le compte
+  -- n'existe pas encore ou si Amina Bennani est absente.
+  UPDATE user_persons up
+  SET person_id = (
+    SELECT id FROM persons
+    WHERE tenant_id = v_tenant_id AND type = 'TEACHER'
+      AND first_name = 'Amina' AND last_name = 'Bennani'
+    LIMIT 1
+  )
+  FROM users u
+  WHERE up.user_id = u.id
+    AND u.tenant_id = v_tenant_id
+    AND u.email = 'amina.prof@demo.jawal.ma'
+    AND EXISTS (
+      SELECT 1 FROM persons
+      WHERE tenant_id = v_tenant_id AND type = 'TEACHER'
+        AND first_name = 'Amina' AND last_name = 'Bennani'
+    );
+  RAISE NOTICE 'Portail enseignant : amina.prof re-lié à Amina Bennani (BIG)';
+
   -- ─── Résumé ──────────────────────────────────────────────────────
   RAISE NOTICE '';
   RAISE NOTICE '════════════════════════════════════════════════════════';

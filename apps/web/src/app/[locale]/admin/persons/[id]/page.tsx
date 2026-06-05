@@ -50,6 +50,7 @@ export default async function PersonDetailPage({
         },
         teacherSpecialties: { include: { subject: true } },
         teacherCycles: { include: { cycle: true } },
+        teacherPriorityClasses: { include: { class: true } },
         diplomas: { orderBy: { order: 'asc' } },
       },
     }),
@@ -91,7 +92,16 @@ export default async function PersonDetailPage({
           acc.deduction += Number(r.deductionAmount);
           return acc;
         },
-        { present: 0, absent: 0, late: 0, excused: 0, leave: 0, deduction: 0, monthLabel, monthParam },
+        {
+          present: 0,
+          absent: 0,
+          late: 0,
+          excused: 0,
+          leave: 0,
+          deduction: 0,
+          monthLabel,
+          monthParam,
+        },
       );
     });
   }
@@ -370,6 +380,9 @@ export default async function PersonDetailPage({
       : person.role.labelFr
     : null;
 
+  const serviceLabel =
+    person.type === 'STAFF' && person.service ? tForm(`services.${person.service}` as never) : null;
+
   const isEmployee = person.type === 'TEACHER' || person.type === 'STAFF';
   const contract = isEmployee
     ? computeContractStatus({
@@ -407,6 +420,7 @@ export default async function PersonDetailPage({
             <p className="mt-1 text-sm text-slate-500">
               {tForm(`types.${person.type}` as never)}
               {roleLabel && ` · ${roleLabel}`}
+              {serviceLabel && ` · ${serviceLabel}`}
               {person.birthDate &&
                 ` · ${tDetail('bornOn', { date: new Date(person.birthDate).toLocaleDateString(locale) })}`}
             </p>
@@ -416,7 +430,9 @@ export default async function PersonDetailPage({
                   className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${contractStatusBadgeClass(contract.status)}`}
                 >
                   {tDetail(`contractStatus.${contract.status}` as never)}
-                  {contract.daysToEnd !== null && contract.status !== 'EXPIRED' && contract.status !== 'ACTIVE'
+                  {contract.daysToEnd !== null &&
+                  contract.status !== 'EXPIRED' &&
+                  contract.status !== 'ACTIVE'
                     ? ` (${tDetail('inDays', { days: contract.daysToEnd })})`
                     : ''}
                   {contract.status === 'EXPIRED' && contract.daysToEnd !== null
@@ -432,7 +448,7 @@ export default async function PersonDetailPage({
           {person.type === 'STUDENT' && (
             <Link
               href={`/${locale}/admin/persons/${person.id}/finance`}
-              className="rounded-lg border border-brand-300 bg-white px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
+              className="border-brand-300 text-brand-700 hover:bg-brand-50 rounded-lg border bg-white px-3 py-1.5 text-sm font-medium"
             >
               {tDetail('finance')}
             </Link>
@@ -441,7 +457,7 @@ export default async function PersonDetailPage({
             <>
               <Link
                 href={`/${locale}/admin/persons/${person.id}/dashboard`}
-                className="rounded-lg border border-brand-300 bg-brand-50 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-100"
+                className="border-brand-300 bg-brand-50 text-brand-700 hover:bg-brand-100 rounded-lg border px-3 py-1.5 text-sm font-medium"
               >
                 📊 {tDetail('dashboard')}
               </Link>
@@ -491,7 +507,9 @@ export default async function PersonDetailPage({
 
           {person.type === 'TEACHER' && (
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="mb-3 text-sm font-semibold text-slate-700">{tDetail('portalAccessTeacher')}</h2>
+              <h2 className="mb-3 text-sm font-semibold text-slate-700">
+                {tDetail('portalAccessTeacher')}
+              </h2>
               <TeacherAccess
                 personId={person.id}
                 defaultEmail={contacts.email ?? ''}
@@ -504,6 +522,14 @@ export default async function PersonDetailPage({
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="text-sm font-semibold text-slate-700">{tDetail('contract')}</h2>
               <dl className="mt-3 space-y-2 text-sm">
+                {person.type === 'STAFF' && (
+                  <Row
+                    label={tForm('service')}
+                    value={
+                      person.service ? tForm(`services.${person.service}` as never) : undefined
+                    }
+                  />
+                )}
                 <Row
                   label={tDetail('contractType')}
                   value={
@@ -544,7 +570,7 @@ export default async function PersonDetailPage({
                   href={`/api/admin/persons/${person.id}/contract/download`}
                   target="_blank"
                   rel="noopener"
-                  className="mt-3 inline-flex items-center gap-2 rounded-lg border border-brand-300 bg-white px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
+                  className="border-brand-300 text-brand-700 hover:bg-brand-50 mt-3 inline-flex items-center gap-2 rounded-lg border bg-white px-3 py-1.5 text-sm font-medium"
                 >
                   📄 {person.contractFile.filename}
                 </a>
@@ -572,7 +598,7 @@ export default async function PersonDetailPage({
               )}
               <Link
                 href={`/${locale}/admin/persons/${person.id}/assignments`}
-                className="mt-3 inline-block text-xs font-medium text-brand-700 hover:underline"
+                className="text-brand-700 mt-3 inline-block text-xs font-medium hover:underline"
               >
                 {tDetail('manageAssignments')} →
               </Link>
@@ -605,6 +631,22 @@ export default async function PersonDetailPage({
                     className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
                   >
                     {c.cycle.label}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {person.type === 'TEACHER' && person.teacherPriorityClasses.length > 0 && (
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-slate-700">{tDetail('priorityClasses')}</h2>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {person.teacherPriorityClasses.map((p) => (
+                  <span
+                    key={p.id}
+                    className="bg-brand-100 text-brand-700 rounded px-2 py-0.5 text-xs font-medium"
+                  >
+                    {p.class.name}
                   </span>
                 ))}
               </div>
@@ -693,19 +735,21 @@ export default async function PersonDetailPage({
               )}
               {Array.isArray(person.deductions) && person.deductions.length > 0 && (
                 <div className="mt-3 border-t border-slate-100 pt-3">
-                  <span className="text-xs font-medium text-slate-700">{tDetail('deductions')}</span>
+                  <span className="text-xs font-medium text-slate-700">
+                    {tDetail('deductions')}
+                  </span>
                   <ul className="mt-2 space-y-1 text-xs text-slate-600">
-                    {(person.deductions as Array<{ label: string; amount: number; date?: string }>).map(
-                      (d, i) => (
-                        <li key={i} className="flex justify-between">
-                          <span>
-                            {d.label}
-                            {d.date && <span className="text-slate-400"> · {d.date}</span>}
-                          </span>
-                          <span className="font-medium text-red-600">−{d.amount} MAD</span>
-                        </li>
-                      ),
-                    )}
+                    {(
+                      person.deductions as Array<{ label: string; amount: number; date?: string }>
+                    ).map((d, i) => (
+                      <li key={i} className="flex justify-between">
+                        <span>
+                          {d.label}
+                          {d.date && <span className="text-slate-400"> · {d.date}</span>}
+                        </span>
+                        <span className="font-medium text-red-600">−{d.amount} MAD</span>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               )}
@@ -723,17 +767,37 @@ export default async function PersonDetailPage({
                 </h2>
                 <Link
                   href={`/${locale}/admin/staff-attendance/${person.id}/monthly?month=${attendanceSummary.monthParam}`}
-                  className="text-xs font-medium text-brand-700 hover:underline"
+                  className="text-brand-700 text-xs font-medium hover:underline"
                 >
                   {tDetail('viewMonth')} →
                 </Link>
               </div>
               <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-5">
-                <MiniStat label={tDetail('attendance.present')} value={attendanceSummary.present} color="emerald" />
-                <MiniStat label={tDetail('attendance.absent')} value={attendanceSummary.absent} color="red" />
-                <MiniStat label={tDetail('attendance.late')} value={attendanceSummary.late} color="amber" />
-                <MiniStat label={tDetail('attendance.excused')} value={attendanceSummary.excused} color="blue" />
-                <MiniStat label={tDetail('attendance.leave')} value={attendanceSummary.leave} color="slate" />
+                <MiniStat
+                  label={tDetail('attendance.present')}
+                  value={attendanceSummary.present}
+                  color="emerald"
+                />
+                <MiniStat
+                  label={tDetail('attendance.absent')}
+                  value={attendanceSummary.absent}
+                  color="red"
+                />
+                <MiniStat
+                  label={tDetail('attendance.late')}
+                  value={attendanceSummary.late}
+                  color="amber"
+                />
+                <MiniStat
+                  label={tDetail('attendance.excused')}
+                  value={attendanceSummary.excused}
+                  color="blue"
+                />
+                <MiniStat
+                  label={tDetail('attendance.leave')}
+                  value={attendanceSummary.leave}
+                  color="slate"
+                />
               </div>
               {attendanceSummary.deduction > 0 && (
                 <div className="mt-3 flex items-center justify-between rounded-lg border border-red-100 bg-red-50 px-3 py-2 text-sm">
@@ -754,21 +818,18 @@ export default async function PersonDetailPage({
                 </h2>
                 <Link
                   href={`/${locale}/admin/enrollments/new?studentId=${person.id}`}
-                  className="text-xs font-medium text-brand-700 hover:underline"
+                  className="text-brand-700 text-xs font-medium hover:underline"
                 >
                   + {tDetail('enrollmentHistory.newAction')}
                 </Link>
               </div>
               <ul className="mt-3 space-y-2 text-sm">
                 {enrollmentHistory.map((e) => (
-                  <li
-                    key={e.id}
-                    className="rounded-lg border border-slate-100 px-3 py-2"
-                  >
+                  <li key={e.id} className="rounded-lg border border-slate-100 px-3 py-2">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <Link
                         href={`/${locale}/admin/enrollments/${e.id}`}
-                        className="font-medium text-slate-900 hover:text-brand-700 hover:underline"
+                        className="hover:text-brand-700 font-medium text-slate-900 hover:underline"
                       >
                         {e.yearLabel}
                       </Link>
@@ -890,8 +951,7 @@ export default async function PersonDetailPage({
                                 day: '2-digit',
                                 month: '2-digit',
                               })}{' '}
-                              ·{' '}
-                              <span className="text-slate-500">{a.className}</span>
+                              · <span className="text-slate-500">{a.className}</span>
                             </span>
                             <span className="flex items-center gap-1.5">
                               <StudentAttBadge status={a.status} t={tDetail} />
@@ -920,7 +980,7 @@ export default async function PersonDetailPage({
                     <li key={r.id} className="rounded-lg border border-slate-100 px-3 py-1.5">
                       <Link
                         href={`/${locale}/admin/persons/${r.parent.id}`}
-                        className="font-medium text-slate-900 hover:text-brand-700"
+                        className="hover:text-brand-700 font-medium text-slate-900"
                       >
                         {r.parent.lastName} {r.parent.firstName}
                       </Link>
@@ -942,7 +1002,7 @@ export default async function PersonDetailPage({
                   <li key={s.id} className="rounded-lg border border-slate-100 px-3 py-1.5">
                     <Link
                       href={`/${locale}/admin/persons/${s.id}`}
-                      className="font-medium text-slate-900 hover:text-brand-700"
+                      className="hover:text-brand-700 font-medium text-slate-900"
                     >
                       {s.lastName} {s.firstName}
                     </Link>
@@ -955,7 +1015,9 @@ export default async function PersonDetailPage({
 
           {person.type === 'PARENT' && (
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="mb-3 text-sm font-semibold text-slate-700">{tDetail('portalAccess')}</h2>
+              <h2 className="mb-3 text-sm font-semibold text-slate-700">
+                {tDetail('portalAccess')}
+              </h2>
               <ParentAccess
                 personId={person.id}
                 defaultEmail={contacts.email ?? ''}
@@ -972,15 +1034,12 @@ export default async function PersonDetailPage({
               ) : (
                 <ul className="mt-3 space-y-3">
                   {familyOverview.map((child) => (
-                    <li
-                      key={child.id}
-                      className="rounded-xl border border-slate-200 p-3"
-                    >
+                    <li key={child.id} className="rounded-xl border border-slate-200 p-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <div>
                           <Link
                             href={`/${locale}/admin/persons/${child.id}`}
-                            className="font-medium text-slate-900 hover:text-brand-700 hover:underline"
+                            className="hover:text-brand-700 font-medium text-slate-900 hover:underline"
                           >
                             {child.lastName} {child.firstName}
                           </Link>
@@ -1030,7 +1089,9 @@ export default async function PersonDetailPage({
                         <div className="rounded-lg border border-slate-100 px-2 py-1.5 text-center">
                           <div
                             className={`text-sm font-semibold tabular-nums ${
-                              child.installmentsRemaining > 0 ? 'text-amber-700' : 'text-emerald-700'
+                              child.installmentsRemaining > 0
+                                ? 'text-amber-700'
+                                : 'text-emerald-700'
                             }`}
                           >
                             {child.installmentsRemaining > 0
@@ -1064,8 +1125,14 @@ export default async function PersonDetailPage({
             <h2 className="text-sm font-semibold text-slate-700">{tDetail('meta')}</h2>
             <dl className="mt-3 space-y-2 text-xs text-slate-600">
               <Row label="ID" value={person.id} mono />
-              <Row label={tDetail('createdAt')} value={new Date(person.createdAt).toLocaleString(locale)} />
-              <Row label={tDetail('updatedAt')} value={new Date(person.updatedAt).toLocaleString(locale)} />
+              <Row
+                label={tDetail('createdAt')}
+                value={new Date(person.createdAt).toLocaleString(locale)}
+              />
+              <Row
+                label={tDetail('updatedAt')}
+                value={new Date(person.updatedAt).toLocaleString(locale)}
+              />
             </dl>
           </section>
         </aside>

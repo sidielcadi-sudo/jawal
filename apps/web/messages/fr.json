@@ -46,8 +46,47 @@
     },
     "toggleToSuperAdmin": "Connexion super-admin SaaS",
     "toggleToTenant": "Connexion établissement",
+    "forgotPassword": "Mot de passe oublié ?",
     "errors": {
       "invalidCredentials": "Identifiants incorrects ou compte désactivé."
+    }
+  },
+  "forgotPassword": {
+    "title": "Mot de passe oublié",
+    "subtitle": "Espace parent",
+    "intro": "Saisissez l'adresse e-mail de votre espace parent. Si un compte y est associé, vous recevrez un lien de réinitialisation.",
+    "fields": {
+      "tenantSlug": "Identifiant de l'établissement",
+      "email": "Adresse e-mail"
+    },
+    "actions": {
+      "send": "Envoyer le lien",
+      "sending": "Envoi en cours…"
+    },
+    "sent": "Si un compte parent correspond à cette adresse, un e-mail contenant un lien de réinitialisation vient d'être envoyé. Pensez à vérifier vos spams. Le lien est valable 1 heure.",
+    "backToLogin": "Retour à la connexion",
+    "errors": {
+      "invalidInput": "Veuillez renseigner l'établissement et une adresse e-mail valide."
+    }
+  },
+  "resetPassword": {
+    "title": "Nouveau mot de passe",
+    "subtitle": "Choisissez un nouveau mot de passe",
+    "fields": {
+      "newPassword": "Nouveau mot de passe",
+      "confirm": "Confirmer le mot de passe"
+    },
+    "actions": {
+      "save": "Réinitialiser le mot de passe",
+      "saving": "Enregistrement…"
+    },
+    "done": "Votre mot de passe a été réinitialisé. Vous pouvez maintenant vous connecter.",
+    "goToLogin": "Aller à la connexion",
+    "requestNew": "Demander un nouveau lien",
+    "errors": {
+      "invalidToken": "Ce lien est invalide ou a expiré. Demandez-en un nouveau.",
+      "weakPassword": "Le mot de passe doit contenir au moins 8 caractères.",
+      "mismatch": "La confirmation ne correspond pas au mot de passe."
     }
   },
   "admin": {
@@ -144,14 +183,73 @@
       "justifications": "Justifications",
       "staffAttendance": "Pointage personnel",
       "announcements": "Annonces",
+      "surveys": "Enquêtes",
       "messages": "Messages",
       "finance": "Finances",
       "import": "Importer CSV",
       "settings": "Paramètres"
     },
+    "surveys": {
+      "title": "Enquêtes de satisfaction",
+      "subtitle": "Créez des enquêtes, diffusez-les et suivez les résultats. Les notes alimentent le KPI satisfaction du Pilotage.",
+      "empty": "Aucune enquête pour le moment.",
+      "status": { "DRAFT": "Brouillon", "OPEN": "Ouverte", "CLOSED": "Clôturée" },
+      "confirmDelete": "Supprimer définitivement cette enquête et toutes ses réponses ?",
+      "actions": {
+        "new": "Nouvelle enquête",
+        "view": "Ouvrir",
+        "open": "Diffuser",
+        "close": "Clôturer",
+        "delete": "Supprimer"
+      },
+      "table": {
+        "title": "Enquête",
+        "audience": "Audience",
+        "status": "Statut",
+        "responses": "Réponses",
+        "actions": "Actions",
+        "questionsCount": "{count} question(s)"
+      },
+      "form": {
+        "title": "Titre",
+        "description": "Description (facultatif)",
+        "audience": "Audience",
+        "audiences": {
+          "ALL": "Tout le monde",
+          "PARENTS": "Parents",
+          "TEACHERS": "Enseignants",
+          "STAFF": "Personnel",
+          "STUDENTS": "Élèves"
+        },
+        "period": "Période (facultatif)",
+        "noPeriod": "Toute l'année",
+        "anonymous": "Réponses anonymes",
+        "questions": "Questions",
+        "questionsHint": "Au moins une question notée (1–5) est requise pour alimenter le KPI satisfaction.",
+        "addRating": "Question notée",
+        "addText": "Question libre",
+        "typeRating": "Note 1–5",
+        "typeText": "Texte libre",
+        "questionPlaceholder": "Intitulé de la question…",
+        "required": "Obligatoire",
+        "remove": "Retirer",
+        "defaultQuestion": "Quel est votre niveau de satisfaction global ?",
+        "cancel": "Annuler",
+        "save": "Créer l'enquête",
+        "saving": "Création…",
+        "errors": {
+          "needRating": "Ajoutez au moins une question notée (1–5)."
+        }
+      },
+      "results": {
+        "responseCount": "{count} réponse(s)",
+        "noAnswers": "Aucune réponse pour le moment."
+      }
+    },
     "pilotage": {
       "title": "Pilotage",
       "subtitle": "Indicateurs clés de direction",
+      "directionOnly": "Direction",
       "period": "Période",
       "apply": "Voir",
       "noData": "Donnée non disponible (à brancher)",
@@ -516,6 +614,17 @@
           "blue": "Sous-utilisé"
         }
       },
+      "forecast": {
+        "title": "Couverture prévisionnelle",
+        "badge": "avant affectation",
+        "hint": "{programHours}h au programme / {contractual}h contractuelles",
+        "surcharge": "⚠ Capacité insuffisante : le programme dépasse les heures contractuelles disponibles",
+        "label": {
+          "ok": "Capacité suffisante",
+          "tight": "Capacité juste",
+          "short": "Capacité insuffisante"
+        }
+      },
       "score": {
         "title": "Score de faisabilité EDT",
         "label": {
@@ -549,7 +658,9 @@
       "teacherAvailability": {
         "title": "Disponibilités profs vs grille",
         "emptyDispos": "Profs sans disponibilités saisies",
+        "noSpecialty": "Profs sans spécialité (matières maîtrisées)",
         "uncoveredSlots": "Créneaux sans aucun prof dispo",
+        "daysShort": { "MON": "Lun", "TUE": "Mar", "WED": "Mer", "THU": "Jeu", "FRI": "Ven", "SAT": "Sam", "SUN": "Dim" },
         "avg": "Profs dispos en moyenne par créneau"
       },
       "conflicts": {
@@ -602,6 +713,36 @@
       "print": "Imprimer / PDF",
       "printedOn": "Imprimé le {date}",
       "exportIcs": "Exporter (iCal)",
+      "allocation": {
+        "title": "Auto-affectation des enseignants",
+        "subtitle": "Répartit les profs sur les classes sélectionnées (programme × spécialités × heures contractuelles × classes prioritaires). N'écrase jamais une affectation existante.",
+        "propose": "Pré-affecter automatiquement",
+        "reset": "Réinitialiser",
+        "resetConfirm": "Effacer les affectations des classes sélectionnées ? Action irréversible. Si un EDT a déjà été généré, régénérez-le ensuite.",
+        "computing": "Calcul…",
+        "applying": "Application…",
+        "apply": "Appliquer ({count})",
+        "nothingToApply": "Rien à appliquer (aucun prof choisi).",
+        "applied": "{count} affectation(s) créée(s). Vous pouvez générer l'EDT.",
+        "toCreate": "à créer",
+        "pinnedCount": "épinglées",
+        "noSpecialistCount": "sans spécialiste",
+        "overCount": "en surcharge",
+        "class": "Classe",
+        "subject": "Matière",
+        "hours": "Heures",
+        "teacher": "Enseignant",
+        "reason": "Motif",
+        "noSpecialist": "Aucun spécialiste",
+        "loads": "Charge par enseignant (affecté / contractuel)",
+        "reasons": {
+          "PINNED": "Épinglé",
+          "PRIORITY": "Classe prioritaire",
+          "BALANCED": "Équilibrage",
+          "NO_SPECIALIST": "Aucun spécialiste",
+          "OVER_CAPACITY": "Surcharge"
+        }
+      },
       "generateMulti": {
         "title": "Génération automatique des emplois du temps",
         "subtitle": "Sélectionnez les classes à régénérer simultanément. Le solveur applique les contraintes (anti-conflit prof, dispos, salles) et propose une affectation optimisée.",
@@ -1091,6 +1232,9 @@
         "type": "Type",
         "contact": "Contact",
         "birthDate": "Date de naissance",
+        "specialties": "Spécialités",
+        "weeklyHours": "HR/Semaine",
+        "classes": "Classes d'affectation",
         "actions": "Actions"
       },
       "filters": {
@@ -1098,7 +1242,8 @@
         "searchPlaceholder": "Nom, prénom ou CIN…",
         "apply": "Filtrer",
         "showArchived": "Voir les archivés",
-        "showActive": "Voir les actifs"
+        "showActive": "Voir les actifs",
+        "allServices": "Tous les services"
       },
       "pagination": {
         "page": "Page {page} sur {total}",
@@ -1136,6 +1281,7 @@
         "contractEndDate": "Fin de contrat",
         "specialties": "Spécialités",
         "cyclesTaught": "Niveaux enseignés",
+        "priorityClasses": "Classes prioritaires",
         "hr": "Informations RH",
         "experienceYears": "Expérience",
         "seniority": "Ancienneté",
@@ -1314,6 +1460,8 @@
         "specialtiesHint": "Matières que cet enseignant est capable d'enseigner (distinct des affectations effectives de l'année).",
         "cyclesTaught": "Cycles enseignés",
         "cyclesTaughtHint": "Primaire, collège, lycée…",
+        "priorityClasses": "Classes prioritaires",
+        "priorityClassesHint": "Classes sur lesquelles ce prof est servi en priorité à la génération de l'EDT.",
         "experienceYears": "Expérience (années)",
         "seniority": "Ancienneté (calculée)",
         "yearsSuffix": "ans",
@@ -1368,6 +1516,22 @@
         "roleTeacher": "Type d'enseignant",
         "roleStaff": "Type de personnel",
         "noRole": "Aucun",
+        "service": "Service",
+        "noService": "Aucun",
+        "serviceDerivedHint": "Le service de rattachement est déduit automatiquement du type sélectionné.",
+        "services": {
+          "DIRECTION": "Direction",
+          "ADMINISTRATION": "Administration / Secrétariat",
+          "SCOLARITE": "Scolarité",
+          "VIE_SCOLAIRE": "Vie scolaire",
+          "COMPTABILITE": "Comptabilité / Finances",
+          "SERVICES_GENERAUX": "Services généraux",
+          "RESTAURATION": "Restauration",
+          "INFIRMERIE": "Infirmerie / Santé",
+          "INFORMATIQUE": "Informatique",
+          "BIBLIOTHEQUE": "Bibliothèque / CDI",
+          "AUTRE": "Autre"
+        },
         "gender": "Genre",
         "genders": { "M": "Masculin", "F": "Féminin", "X": "Autre" },
         "lastName": "Nom",
@@ -1893,12 +2057,14 @@
       "roles": {
         "tabs": {
           "TEACHER": "Types d'enseignants",
-          "STAFF": "Types de personnel"
+          "STAFF": "Types de personnel",
+          "SERVICE": "Services"
         },
         "table": {
           "code": "Code",
           "labelFr": "Libellé (FR)",
           "labelAr": "Libellé (AR)",
+          "service": "Service",
           "order": "Ordre",
           "active": "Actif",
           "actions": "Actions"
@@ -1908,7 +2074,9 @@
         "empty": "Aucun rôle défini pour cette catégorie.",
         "create": "Ajouter un rôle",
         "createHint": "Saisissez un code stable (MAJUSCULES) et le libellé dans les deux langues. Désactivez plutôt que supprimer si le rôle est déjà utilisé.",
-        "confirmDelete": "Supprimer ce rôle ? (impossible s'il est encore attribué à une personne)",
+        "createService": "Ajouter un service",
+        "createServiceHint": "Service / département de rattachement du personnel. Les types d'enseignants sont automatiquement rattachés au service « Enseignants ».",
+        "confirmDelete": "Supprimer cet élément ? (impossible s'il est encore utilisé)",
         "actions": {
           "edit": "Modifier",
           "delete": "Supprimer"
@@ -1917,6 +2085,9 @@
           "code": "Code",
           "labelFr": "Libellé en français",
           "labelAr": "Libellé en arabe",
+          "service": "Service de rattachement",
+          "serviceNone": "— Aucun —",
+          "serviceAutoTeacher": "Service : Enseignants (automatique pour les types d'enseignants).",
           "order": "Ordre",
           "active": "Actif",
           "create": "Créer",
@@ -2061,9 +2232,42 @@
     "nav": {
       "home": "Accueil",
       "children": "Mes enfants",
+      "cahier": "Cahier de texte",
       "announcements": "Annonces",
       "messages": "Messages",
+      "surveys": "Enquêtes",
       "account": "Mon compte"
+    },
+    "cahier": {
+      "title": "Cahier de texte",
+      "subtitle": "Leçons vues en classe et devoirs à faire.",
+      "noClass": "Aucune classe rattachée pour le moment.",
+      "upcomingHomework": "Devoirs à venir",
+      "noHomework": "Aucun devoir à venir.",
+      "due": "à rendre le",
+      "recentLessons": "Leçons récentes",
+      "noLesson": "Aucune leçon publiée pour le moment.",
+      "homework": "Devoirs",
+      "resources": "Ressources",
+      "homeworkTypes": {
+        "EXERCICE": "Exercice",
+        "LECTURE": "Lecture",
+        "REVISION": "Révision",
+        "PROJET": "Projet",
+        "AUTRE": "Autre"
+      }
+    },
+    "surveys": {
+      "title": "Enquêtes",
+      "subtitle": "Donnez votre avis : vos réponses aident l'établissement à s'améliorer.",
+      "empty": "Aucune enquête en cours pour le moment.",
+      "alreadyAnswered": "Merci, vous avez déjà répondu à cette enquête.",
+      "thanks": "Merci pour votre réponse !",
+      "submit": "Envoyer ma réponse",
+      "submitting": "Envoi…",
+      "errors": {
+        "missingRequired": "Merci de répondre aux questions obligatoires (marquées d'une *)."
+      }
     },
     "account": {
       "title": "Mon compte",
@@ -2167,6 +2371,7 @@
     "nav": {
       "home": "Tableau de bord",
       "timetable": "Emploi du temps",
+      "cahier": "Cahier de texte",
       "classes": "Mes classes",
       "messages": "Messages",
       "account": "Mon compte"
@@ -2174,6 +2379,72 @@
     "home": {
       "title": "Tableau de bord",
       "noTeacher": "Aucun enseignant rattaché à votre compte. Contactez l'établissement."
+    },
+    "cahier": {
+      "title": "Cahier de texte",
+      "subtitle": "Cliquez sur une séance pour saisir le contenu du cours et les devoirs.",
+      "prevWeek": "Semaine préc.",
+      "thisWeek": "Cette semaine",
+      "nextWeek": "Semaine suiv.",
+      "emptyWeek": "Aucune séance cette semaine.",
+      "filled": "Rempli",
+      "toFill": "À remplir",
+      "reminder": {
+        "title": "{count, plural, one {# séance passée non remplie} other {# séances passées non remplies}} — pensez à compléter le cahier.",
+        "more": "+{count} autres"
+      },
+      "section": {
+        "content": "Contenu du cours",
+        "homework": "Devoirs à faire",
+        "visibility": "Visibilité",
+        "resources": "Ressources pédagogiques"
+      },
+      "fields": {
+        "title": "Titre du cours",
+        "summary": "Résumé / notions abordées",
+        "activities": "Activités réalisées",
+        "competencies": "Compétences travaillées",
+        "competenciesHint": "Optionnel — utile pour Massar",
+        "homeworkDescription": "Description du devoir",
+        "dueDate": "À rendre le",
+        "type": "Type",
+        "difficulty": "Difficulté",
+        "visibleToStudents": "Visible par les élèves",
+        "visibleToParents": "Visible par les parents",
+        "publishAt": "Publier le (facultatif)",
+        "publishAtHint": "Laissez vide pour une publication immédiate. Ex. masquer un contrôle jusqu'à la fin de l'épreuve."
+      },
+      "resources": {
+        "saveFirst": "Enregistrez d'abord le cahier pour pouvoir joindre des fichiers ou des liens.",
+        "addFile": "Joindre un fichier",
+        "uploading": "Envoi…",
+        "fileHint": "PDF, images, Word… (max 10 Mo)",
+        "linkUrl": "Lien (URL)",
+        "linkLabel": "Intitulé (facultatif)",
+        "addLink": "Ajouter le lien",
+        "confirmDelete": "Supprimer cette ressource ?"
+      },
+      "homeworkTypes": {
+        "EXERCICE": "Exercice",
+        "LECTURE": "Lecture",
+        "REVISION": "Révision",
+        "PROJET": "Projet",
+        "AUTRE": "Autre"
+      },
+      "difficulties": { "FACILE": "Facile", "MOYEN": "Moyen", "DIFFICILE": "Difficile" },
+      "addHomework": "Ajouter un devoir",
+      "noHomework": "Aucun devoir pour cette séance.",
+      "remove": "Retirer",
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "info": {
+        "class": "Classe",
+        "date": "Date",
+        "time": "Horaire",
+        "room": "Salle",
+        "teacher": "Enseignant"
+      }
     },
     "timetable": {
       "title": "Mon emploi du temps",

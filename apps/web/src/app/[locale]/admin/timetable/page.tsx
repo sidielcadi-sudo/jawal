@@ -7,6 +7,7 @@ import {
   CircularGauge,
   CoherenceCard,
   ConflictsCard,
+  ForecastCoverageCard,
   HorizontalBars,
   ScheduleCard,
   ScoreCard,
@@ -30,23 +31,20 @@ export default async function TimetableDashboardPage({
   const session = (await auth())!;
   const t = await getTranslations('admin.timetableDashboard');
 
-  const { years, currentYearId, kpis } = await withTenant(
-    session.user.tenantId,
-    async (tx) => {
-      const years = await tx.academicYear.findMany({
-        orderBy: { startDate: 'desc' },
-        select: { id: true, label: true, active: true },
-      });
-      const activeYear = years.find((y) => y.active);
-      const currentYearId = sp.year ?? activeYear?.id ?? years[0]?.id ?? null;
+  const { years, currentYearId, kpis } = await withTenant(session.user.tenantId, async (tx) => {
+    const years = await tx.academicYear.findMany({
+      orderBy: { startDate: 'desc' },
+      select: { id: true, label: true, active: true },
+    });
+    const activeYear = years.find((y) => y.active);
+    const currentYearId = sp.year ?? activeYear?.id ?? years[0]?.id ?? null;
 
-      if (!currentYearId) {
-        return { years, currentYearId: null, kpis: null };
-      }
-      const kpis = await computeKpis(tx, session.user.tenantId, currentYearId);
-      return { years, currentYearId, kpis };
-    },
-  );
+    if (!currentYearId) {
+      return { years, currentYearId: null, kpis: null };
+    }
+    const kpis = await computeKpis(tx, session.user.tenantId, currentYearId);
+    return { years, currentYearId, kpis };
+  });
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-6">
@@ -79,13 +77,13 @@ export default async function TimetableDashboardPage({
           </form>
           <Link
             href={`/${locale}/admin/settings/timetable-slots`}
-            className="text-xs text-brand-700 hover:underline"
+            className="text-brand-700 text-xs hover:underline"
           >
             {t('manageSlots')}
           </Link>
           <Link
             href={`/${locale}/admin/settings/timetable-settings`}
-            className="text-xs text-brand-700 hover:underline"
+            className="text-brand-700 text-xs hover:underline"
           >
             {t('manageSettings')}
           </Link>
@@ -99,7 +97,7 @@ export default async function TimetableDashboardPage({
       ) : (
         <>
           {/* Score global + couverture en haut */}
-          <div className="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-4">
+          <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <CircularGauge
               label={t('coverage.title')}
               value={kpis.coverageHours.contractual}
@@ -118,6 +116,13 @@ export default async function TimetableDashboardPage({
                     })
                   : null
               }
+            />
+
+            <ForecastCoverageCard
+              contractual={kpis.forecastCoverage.contractual}
+              programHours={kpis.forecastCoverage.programHours}
+              utilizationPct={kpis.forecastCoverage.utilizationPct}
+              t={t}
             />
 
             <UtilizationCard
@@ -167,11 +172,14 @@ export default async function TimetableDashboardPage({
                       needed: s.needed,
                     }),
                     value: s.available,
-                    max: Math.max(1, Math.ceil(s.needed / (kpis.schedule.daysActive * kpis.schedule.slotsPlaceable / 100))),
-                    color: (s.surchargePct > 0 ? 'red' : 'emerald') as
-                      | 'red'
-                      | 'emerald'
-                      | 'amber',
+                    max: Math.max(
+                      1,
+                      Math.ceil(
+                        s.needed /
+                          ((kpis.schedule.daysActive * kpis.schedule.slotsPlaceable) / 100),
+                      ),
+                    ),
+                    color: (s.surchargePct > 0 ? 'red' : 'emerald') as 'red' | 'emerald' | 'amber',
                   })),
               ]}
             />
@@ -179,7 +187,10 @@ export default async function TimetableDashboardPage({
             <TeacherAvailabilityCard
               totalTeachers={kpis.teacherAvailability.totalTeachers}
               empty={kpis.teacherAvailability.teachersWithEmptyAvailability}
+              emptyList={kpis.teacherAvailability.teachersWithEmptyList}
+              noSpecialtyList={kpis.teacherAvailability.teachersWithoutSpecialtyList}
               uncovered={kpis.teacherAvailability.uncoveredSlots}
+              uncoveredCells={kpis.teacherAvailability.uncoveredCells}
               avg={kpis.teacherAvailability.avgTeachersPerSlot}
               t={t}
             />

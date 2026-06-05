@@ -16,10 +16,14 @@ export default async function EditPersonPage({
   const session = (await auth())!;
   const t = await getTranslations('admin.persons');
 
-  const { person, roles, availableParents, allSubjects, allCycles } = await withTenant(
+  const { person, roles, availableParents, allSubjects, allCycles, allClasses } = await withTenant(
     session.user.tenantId,
     async (tx) => {
-      const [person, roles, availableParents, allSubjects, allCycles] = await Promise.all([
+      const activeYear = await tx.academicYear.findFirst({
+        where: { active: true },
+        select: { id: true },
+      });
+      const [person, roles, availableParents, allSubjects, allCycles, classes] = await Promise.all([
         tx.person.findUnique({
           where: { id },
           include: {
@@ -27,6 +31,7 @@ export default async function EditPersonPage({
             contractFile: true,
             teacherSpecialties: true,
             teacherCycles: true,
+            teacherPriorityClasses: true,
             diplomas: { orderBy: { order: 'asc' } },
           },
         }),
@@ -41,8 +46,13 @@ export default async function EditPersonPage({
         }),
         tx.subject.findMany({ orderBy: [{ order: 'asc' }, { label: 'asc' }] }),
         tx.cycle.findMany({ orderBy: { order: 'asc' } }),
+        tx.class.findMany({
+          where: { deletedAt: null, ...(activeYear ? { academicYearId: activeYear.id } : {}) },
+          orderBy: { name: 'asc' },
+          select: { id: true, name: true },
+        }),
       ]);
-      return { person, roles, availableParents, allSubjects, allCycles };
+      return { person, roles, availableParents, allSubjects, allCycles, allClasses: classes };
     },
   );
   if (!person) notFound();
@@ -84,6 +94,7 @@ export default async function EditPersonPage({
             id: person.id,
             type: person.type,
             roleId: person.roleId ?? undefined,
+            service: person.service ?? undefined,
             firstName: person.firstName,
             lastName: person.lastName,
             birthDate: person.birthDate ? person.birthDate.toISOString().slice(0, 10) : undefined,
@@ -111,6 +122,7 @@ export default async function EditPersonPage({
               : null,
             specialtySubjectIds: person.teacherSpecialties.map((s) => s.subjectId),
             cycleIds: person.teacherCycles.map((c) => c.cycleId),
+            priorityClassIds: person.teacherPriorityClasses.map((p) => p.classId),
             experienceYears: person.experienceYears ?? undefined,
             diplomas: person.diplomas.map((d) => ({
               title: d.title,
@@ -118,8 +130,10 @@ export default async function EditPersonPage({
               year: d.year ?? undefined,
             })),
             availability:
-              (person.availability as Record<'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN', Array<{ from: string; to: string }>>) ??
-              ({ MON: [], TUE: [], WED: [], THU: [], FRI: [], SAT: [], SUN: [] } as never),
+              (person.availability as Record<
+                'MON' | 'TUE' | 'WED' | 'THU' | 'FRI' | 'SAT' | 'SUN',
+                Array<{ from: string; to: string }>
+              >) ?? ({ MON: [], TUE: [], WED: [], THU: [], FRI: [], SAT: [], SUN: [] } as never),
             rib: person.rib ?? undefined,
             bankName: person.bankName ?? undefined,
             payrollMethod: person.payrollMethod ?? undefined,
@@ -141,6 +155,7 @@ export default async function EditPersonPage({
           availableParents={availableParents}
           allSubjects={allSubjects.map((s) => ({ id: s.id, label: s.label }))}
           allCycles={allCycles.map((c) => ({ id: c.id, label: c.label }))}
+          allClasses={allClasses.map((c) => ({ id: c.id, label: c.name }))}
         />
       </div>
     </div>

@@ -3,11 +3,38 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { personCreateSchema, personUpdateSchema } from '@jawal/shared';
+import { personCreateSchema, personUpdateSchema, TEACHER_SERVICE_CODE } from '@jawal/shared';
 import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
+
+type Tx = Parameters<Parameters<typeof withTenant>[1]>[0];
+
+/**
+ * Déduit le service de rattachement d'une personne depuis son type/rôle :
+ * TEACHER → service « Enseignants » ; STAFF → service de son type (PersonRole) ;
+ * sinon null. Le service n'est jamais saisi à la main sur la fiche.
+ */
+async function deriveServiceId(
+  tx: Tx,
+  tenantId: string,
+  type: string,
+  roleId: string | null,
+): Promise<string | null> {
+  if (type === 'TEACHER') {
+    const s = await tx.service.findUnique({
+      where: { tenantId_code: { tenantId, code: TEACHER_SERVICE_CODE } },
+      select: { id: true },
+    });
+    return s?.id ?? null;
+  }
+  if (type === 'STAFF' && roleId) {
+    const r = await tx.personRole.findUnique({ where: { id: roleId }, select: { serviceId: true } });
+    return r?.serviceId ?? null;
+  }
+  return null;
+}
 
 type ActionResult<T = void> =
   | { ok: true; data?: T }
@@ -22,7 +49,10 @@ function flatten<T>(parsed: z.SafeParseError<T>): Record<string, string> {
   return out;
 }
 
-function safeJson<T>(v: FormDataEntryValue | null, validator: (x: unknown) => x is T): T | undefined {
+function safeJson<T>(
+  v: FormDataEntryValue | null,
+  validator: (x: unknown) => x is T,
+): T | undefined {
   if (typeof v !== 'string' || v.trim() === '') return undefined;
   try {
     const parsed = JSON.parse(v);
@@ -38,37 +68,61 @@ function formToInput(formData: FormData) {
     return typeof v === 'string' && v.trim() !== '' ? v.trim() : undefined;
   };
 
-  const parents = safeJson(formData.get('parents'), (x): x is Array<{ parentId: string; type: 'FATHER' | 'MOTHER' | 'LEGAL_GUARDIAN' | 'GUARDIAN' }> =>
-    Array.isArray(x) && x.every((p) => p && typeof p.parentId === 'string' && typeof p.type === 'string'),
+  const parents = safeJson(
+    formData.get('parents'),
+    (
+      x,
+    ): x is Array<{
+      parentId: string;
+      type: 'FATHER' | 'MOTHER' | 'LEGAL_GUARDIAN' | 'GUARDIAN';
+    }> =>
+      Array.isArray(x) &&
+      x.every((p) => p && typeof p.parentId === 'string' && typeof p.type === 'string'),
   );
 
-  const specialtySubjectIds = safeJson(formData.get('specialtySubjectIds'), (x): x is string[] =>
-    Array.isArray(x) && x.every((s) => typeof s === 'string'),
+  const specialtySubjectIds = safeJson(
+    formData.get('specialtySubjectIds'),
+    (x): x is string[] => Array.isArray(x) && x.every((s) => typeof s === 'string'),
   );
 
-  const cycleIds = safeJson(formData.get('cycleIds'), (x): x is string[] =>
-    Array.isArray(x) && x.every((s) => typeof s === 'string'),
+  const cycleIds = safeJson(
+    formData.get('cycleIds'),
+    (x): x is string[] => Array.isArray(x) && x.every((s) => typeof s === 'string'),
   );
 
-  const diplomas = safeJson(formData.get('diplomas'), (x): x is Array<{ title: string; institution?: string; year?: number }> =>
-    Array.isArray(x) && x.every((d) => d && typeof d.title === 'string'),
+  const priorityClassIds = safeJson(
+    formData.get('priorityClassIds'),
+    (x): x is string[] => Array.isArray(x) && x.every((s) => typeof s === 'string'),
   );
 
-  const availability = safeJson(formData.get('availability'), (x): x is Record<string, Array<{ from: string; to: string }>> =>
-    typeof x === 'object' && x !== null && !Array.isArray(x),
+  const diplomas = safeJson(
+    formData.get('diplomas'),
+    (x): x is Array<{ title: string; institution?: string; year?: number }> =>
+      Array.isArray(x) && x.every((d) => d && typeof d.title === 'string'),
   );
 
-  const benefits = safeJson(formData.get('benefits'), (x): x is Array<{ label: string; amount: number }> =>
-    Array.isArray(x) && x.every((b) => b && typeof b.label === 'string'),
+  const availability = safeJson(
+    formData.get('availability'),
+    (x): x is Record<string, Array<{ from: string; to: string }>> =>
+      typeof x === 'object' && x !== null && !Array.isArray(x),
   );
 
-  const deductions = safeJson(formData.get('deductions'), (x): x is Array<{ label: string; amount: number; date?: string }> =>
-    Array.isArray(x) && x.every((d) => d && typeof d.label === 'string'),
+  const benefits = safeJson(
+    formData.get('benefits'),
+    (x): x is Array<{ label: string; amount: number }> =>
+      Array.isArray(x) && x.every((b) => b && typeof b.label === 'string'),
+  );
+
+  const deductions = safeJson(
+    formData.get('deductions'),
+    (x): x is Array<{ label: string; amount: number; date?: string }> =>
+      Array.isArray(x) && x.every((d) => d && typeof d.label === 'string'),
   );
 
   return {
     type: get('type'),
     roleId: get('roleId'),
+    service: get('service'),
     firstName: get('firstName'),
     lastName: get('lastName'),
     birthDate: get('birthDate'),
@@ -93,6 +147,7 @@ function formToInput(formData: FormData) {
     contractualHoursPerWeek: get('contractualHoursPerWeek'),
     specialtySubjectIds,
     cycleIds,
+    priorityClassIds,
     experienceYears: get('experienceYears'),
     diplomas,
     availability,
@@ -106,7 +161,9 @@ function formToInput(formData: FormData) {
   };
 }
 
-export async function createPersonAction(formData: FormData): Promise<ActionResult<{ id: string }>> {
+export async function createPersonAction(
+  formData: FormData,
+): Promise<ActionResult<{ id: string }>> {
   const session = await auth();
   if (!session?.user) return { ok: false, error: 'Non authentifié' };
   await requirePermission('students.write');
@@ -121,20 +178,23 @@ export async function createPersonAction(formData: FormData): Promise<ActionResu
   // roleId, hireDate, contractEndDate, contractType n'ont de sens que pour TEACHER/STAFF.
   const isEmployee = parsed.data.type === 'TEACHER' || parsed.data.type === 'STAFF';
   const isTeacher = parsed.data.type === 'TEACHER';
-  const roleId = isEmployee ? parsed.data.roleId ?? null : null;
-  const hireDate = isEmployee ? parsed.data.hireDate ?? null : null;
-  const contractEndDate = isEmployee ? parsed.data.contractEndDate ?? null : null;
-  const contractType = isEmployee ? parsed.data.contractType ?? null : null;
-  const contractualHoursPerWeek = isTeacher
-    ? parsed.data.contractualHoursPerWeek ?? null
-    : null;
+  const roleId = isEmployee ? (parsed.data.roleId ?? null) : null;
+  // Service de rattachement : pertinent uniquement pour le personnel (STAFF).
+  const service = parsed.data.type === 'STAFF' ? (parsed.data.service ?? null) : null;
+  const hireDate = isEmployee ? (parsed.data.hireDate ?? null) : null;
+  const contractEndDate = isEmployee ? (parsed.data.contractEndDate ?? null) : null;
+  const contractType = isEmployee ? (parsed.data.contractType ?? null) : null;
+  const contractualHoursPerWeek = isTeacher ? (parsed.data.contractualHoursPerWeek ?? null) : null;
 
   const created = await withTenant(tenantId, async (tx) => {
+    const serviceId = await deriveServiceId(tx, tenantId, parsed.data.type, roleId);
     const person = await tx.person.create({
       data: {
         tenantId,
         type: parsed.data.type,
         roleId,
+        service,
+        serviceId,
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,
         birthDate: parsed.data.birthDate,
@@ -147,15 +207,15 @@ export async function createPersonAction(formData: FormData): Promise<ActionResu
         contractEndDate,
         contractType,
         contractualHoursPerWeek,
-        experienceYears: isEmployee ? parsed.data.experienceYears ?? null : null,
-        availability: isEmployee ? parsed.data.availability ?? {} : {},
-        rib: isEmployee ? parsed.data.rib ?? null : null,
-        bankName: isEmployee ? parsed.data.bankName ?? null : null,
-        payrollMethod: isEmployee ? parsed.data.payrollMethod ?? null : null,
-        grossSalary: isEmployee ? parsed.data.grossSalary ?? null : null,
-        netSalary: isEmployee ? parsed.data.netSalary ?? null : null,
-        benefits: isEmployee ? parsed.data.benefits ?? [] : [],
-        deductions: isEmployee ? parsed.data.deductions ?? [] : [],
+        experienceYears: isEmployee ? (parsed.data.experienceYears ?? null) : null,
+        availability: isEmployee ? (parsed.data.availability ?? {}) : {},
+        rib: isEmployee ? (parsed.data.rib ?? null) : null,
+        bankName: isEmployee ? (parsed.data.bankName ?? null) : null,
+        payrollMethod: isEmployee ? (parsed.data.payrollMethod ?? null) : null,
+        grossSalary: isEmployee ? (parsed.data.grossSalary ?? null) : null,
+        netSalary: isEmployee ? (parsed.data.netSalary ?? null) : null,
+        benefits: isEmployee ? (parsed.data.benefits ?? []) : [],
+        deductions: isEmployee ? (parsed.data.deductions ?? []) : [],
       },
     });
 
@@ -171,6 +231,13 @@ export async function createPersonAction(formData: FormData): Promise<ActionResu
       for (const cycleId of parsed.data.cycleIds) {
         await tx.teacherCycle.create({
           data: { tenantId, teacherId: person.id, cycleId },
+        });
+      }
+    }
+    if (isTeacher && parsed.data.priorityClassIds) {
+      for (const classId of parsed.data.priorityClassIds) {
+        await tx.teacherPriorityClass.create({
+          data: { tenantId, teacherId: person.id, classId },
         });
       }
     }
@@ -227,10 +294,7 @@ export async function createPersonAction(formData: FormData): Promise<ActionResu
   return { ok: true, data: { id: created.id } };
 }
 
-export async function updatePersonAction(
-  id: string,
-  formData: FormData,
-): Promise<ActionResult> {
+export async function updatePersonAction(id: string, formData: FormData): Promise<ActionResult> {
   const session = await auth();
   if (!session?.user) return { ok: false, error: 'Non authentifié' };
   await requirePermission('students.write');
@@ -248,18 +312,22 @@ export async function updatePersonAction(
 
     const isEmployee = before.type === 'TEACHER' || before.type === 'STAFF';
     const isTeacher = before.type === 'TEACHER';
-    const roleId = isEmployee ? parsed.data.roleId ?? null : null;
-    const hireDate = isEmployee ? parsed.data.hireDate ?? null : null;
-    const contractEndDate = isEmployee ? parsed.data.contractEndDate ?? null : null;
-    const contractType = isEmployee ? parsed.data.contractType ?? null : null;
+    const roleId = isEmployee ? (parsed.data.roleId ?? null) : null;
+    const service = before.type === 'STAFF' ? (parsed.data.service ?? null) : null;
+    const hireDate = isEmployee ? (parsed.data.hireDate ?? null) : null;
+    const contractEndDate = isEmployee ? (parsed.data.contractEndDate ?? null) : null;
+    const contractType = isEmployee ? (parsed.data.contractType ?? null) : null;
     const contractualHoursPerWeek = isTeacher
-      ? parsed.data.contractualHoursPerWeek ?? null
+      ? (parsed.data.contractualHoursPerWeek ?? null)
       : null;
+    const serviceId = await deriveServiceId(tx, tenantId, before.type, roleId);
 
     const updated = await tx.person.update({
       where: { id },
       data: {
         roleId,
+        service,
+        serviceId,
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,
         birthDate: parsed.data.birthDate,
@@ -272,17 +340,24 @@ export async function updatePersonAction(
         contractEndDate,
         contractType,
         contractualHoursPerWeek,
-        experienceYears: isEmployee ? parsed.data.experienceYears ?? null : null,
-        availability: isEmployee && parsed.data.availability !== undefined
-          ? parsed.data.availability
-          : (before.availability ?? {}),
-        rib: isEmployee ? parsed.data.rib ?? null : null,
-        bankName: isEmployee ? parsed.data.bankName ?? null : null,
-        payrollMethod: isEmployee ? parsed.data.payrollMethod ?? null : null,
-        grossSalary: isEmployee ? parsed.data.grossSalary ?? null : null,
-        netSalary: isEmployee ? parsed.data.netSalary ?? null : null,
-        benefits: isEmployee && parsed.data.benefits !== undefined ? parsed.data.benefits : (before.benefits ?? []),
-        deductions: isEmployee && parsed.data.deductions !== undefined ? parsed.data.deductions : (before.deductions ?? []),
+        experienceYears: isEmployee ? (parsed.data.experienceYears ?? null) : null,
+        availability:
+          isEmployee && parsed.data.availability !== undefined
+            ? parsed.data.availability
+            : (before.availability ?? {}),
+        rib: isEmployee ? (parsed.data.rib ?? null) : null,
+        bankName: isEmployee ? (parsed.data.bankName ?? null) : null,
+        payrollMethod: isEmployee ? (parsed.data.payrollMethod ?? null) : null,
+        grossSalary: isEmployee ? (parsed.data.grossSalary ?? null) : null,
+        netSalary: isEmployee ? (parsed.data.netSalary ?? null) : null,
+        benefits:
+          isEmployee && parsed.data.benefits !== undefined
+            ? parsed.data.benefits
+            : (before.benefits ?? []),
+        deductions:
+          isEmployee && parsed.data.deductions !== undefined
+            ? parsed.data.deductions
+            : (before.deductions ?? []),
       },
     });
 
@@ -300,6 +375,14 @@ export async function updatePersonAction(
       for (const cycleId of parsed.data.cycleIds) {
         await tx.teacherCycle.create({
           data: { tenantId, teacherId: id, cycleId },
+        });
+      }
+    }
+    if (isTeacher && parsed.data.priorityClassIds !== undefined) {
+      await tx.teacherPriorityClass.deleteMany({ where: { teacherId: id } });
+      for (const classId of parsed.data.priorityClassIds) {
+        await tx.teacherPriorityClass.create({
+          data: { tenantId, teacherId: id, classId },
         });
       }
     }
@@ -368,7 +451,7 @@ export async function softDeletePersonAction(id: string): Promise<ActionResult> 
 
   const tenantId = session.user.tenantId;
 
-  await withTenant(tenantId, async (tx) => {
+  const personType = await withTenant(tenantId, async (tx) => {
     const before = await tx.person.findUnique({ where: { id } });
     if (!before) throw new Error('Personne introuvable');
 
@@ -385,10 +468,12 @@ export async function softDeletePersonAction(id: string): Promise<ActionResult> 
       entityId: id,
       before: { firstName: before.firstName, lastName: before.lastName, type: before.type },
     });
+    return before.type;
   });
 
   revalidatePath(`/admin/persons`);
-  redirect(`/admin/persons`);
+  // Reste sur la liste du même type (ex. Enseignants) plutôt que la liste globale.
+  redirect(`/admin/persons?type=${personType}`);
 }
 
 export async function restorePersonAction(id: string): Promise<ActionResult> {

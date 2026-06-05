@@ -28,8 +28,7 @@ export function CircularGauge({
   const stroke = 10;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (Math.min(pct, 100) / 100) * circumference;
-  const color =
-    pct >= 100 ? '#10b981' : pct >= 95 ? '#f59e0b' : pct >= 80 ? '#fb923c' : '#ef4444';
+  const color = pct >= 100 ? '#10b981' : pct >= 95 ? '#f59e0b' : pct >= 80 ? '#fb923c' : '#ef4444';
   const bgColor = '#e2e8f0';
 
   return (
@@ -108,8 +107,7 @@ export function UtilizationCard({
   pct: number;
   t: T;
 }) {
-  const color =
-    pct > 100 ? 'red' : pct >= 85 ? 'amber' : pct >= 50 ? 'emerald' : 'blue';
+  const color = pct > 100 ? 'red' : pct >= 85 ? 'amber' : pct >= 50 ? 'emerald' : 'blue';
   const colorClasses: Record<string, { bg: string; text: string; bar: string }> = {
     emerald: { bg: 'bg-emerald-100', text: 'text-emerald-700', bar: 'bg-emerald-500' },
     amber: { bg: 'bg-amber-100', text: 'text-amber-700', bar: 'bg-amber-500' },
@@ -132,8 +130,56 @@ export function UtilizationCard({
       <p className="mt-3 text-xs text-slate-600">
         {t('utilization.hint', { expected, contractual })}
       </p>
-      {pct > 100 && (
-        <p className="mt-2 text-[10px] text-red-700">{t('utilization.surcharge')}</p>
+      {pct > 100 && <p className="mt-2 text-[10px] text-red-700">{t('utilization.surcharge')}</p>}
+    </div>
+  );
+}
+
+// ─── Couverture prévisionnelle (avant affectations) ────────────
+
+export function ForecastCoverageCard({
+  contractual,
+  programHours,
+  utilizationPct,
+  t,
+}: {
+  contractual: number;
+  programHours: number;
+  utilizationPct: number;
+  t: T;
+}) {
+  // Taux prévisionnel = besoin du programme / capacité contractuelle.
+  // > 100% = capacité insuffisante ; sinon il reste de la marge.
+  const status = utilizationPct > 100 ? 'short' : utilizationPct >= 85 ? 'tight' : 'ok';
+  const color = status === 'short' ? 'red' : status === 'tight' ? 'amber' : 'emerald';
+  const colorClasses: Record<string, { bg: string; text: string; bar: string }> = {
+    emerald: { bg: 'bg-emerald-100', text: 'text-emerald-700', bar: 'bg-emerald-500' },
+    amber: { bg: 'bg-amber-100', text: 'text-amber-700', bar: 'bg-amber-500' },
+    red: { bg: 'bg-red-100', text: 'text-red-700', bar: 'bg-red-500' },
+  };
+  const c = colorClasses[color]!;
+  return (
+    <div className="rounded-2xl border border-indigo-200 bg-indigo-50/30 p-5">
+      <h3 className="flex items-center gap-1.5 text-sm font-semibold text-slate-700">
+        {t('forecast.title')}
+        <span className="rounded bg-indigo-100 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700">
+          {t('forecast.badge')}
+        </span>
+      </h3>
+      <div className="mt-3 flex items-baseline gap-3">
+        <span className={`text-4xl font-bold ${c.text}`}>{utilizationPct}%</span>
+        <span className={`rounded px-2 py-0.5 text-xs font-medium ${c.bg} ${c.text}`}>
+          {t(`forecast.label.${status}`)}
+        </span>
+      </div>
+      <div className="mt-3 h-3 overflow-hidden rounded-full bg-slate-100">
+        <div className={`h-full ${c.bar}`} style={{ width: `${Math.min(utilizationPct, 100)}%` }} />
+      </div>
+      <p className="mt-3 text-xs text-slate-600">
+        {t('forecast.hint', { contractual, programHours })}
+      </p>
+      {utilizationPct > 100 && (
+        <p className="mt-2 text-[10px] text-red-700">{t('forecast.surcharge')}</p>
       )}
     </div>
   );
@@ -142,8 +188,7 @@ export function UtilizationCard({
 // ─── Score global ──────────────────────────────────────────────
 
 export function ScoreCard({ score, t }: { score: number; t: T }) {
-  const color =
-    score >= 90 ? 'emerald' : score >= 75 ? 'amber' : score >= 50 ? 'orange' : 'red';
+  const color = score >= 90 ? 'emerald' : score >= 75 ? 'amber' : score >= 50 ? 'orange' : 'red';
   const colorClasses: Record<string, { bg: string; text: string; bar: string }> = {
     emerald: { bg: 'bg-emerald-100', text: 'text-emerald-700', bar: 'bg-emerald-500' },
     amber: { bg: 'bg-amber-100', text: 'text-amber-700', bar: 'bg-amber-500' },
@@ -165,11 +210,7 @@ export function ScoreCard({ score, t }: { score: number; t: T }) {
         <div className={`h-full ${c.bar}`} style={{ width: `${score}%` }} />
       </div>
       <p className="mt-3 text-xs text-slate-600">
-        {score >= 75
-          ? t('score.hintOk')
-          : score >= 50
-            ? t('score.hintWarn')
-            : t('score.hintErr')}
+        {score >= 75 ? t('score.hintOk') : score >= 50 ? t('score.hintWarn') : t('score.hintErr')}
       </p>
     </div>
   );
@@ -238,7 +279,11 @@ function Row({
       </span>
       <span
         className={`rounded px-1.5 py-0.5 text-xs font-semibold tabular-nums ${
-          alert ? 'bg-red-100 text-red-700' : neutral ? 'bg-slate-100 text-slate-700' : 'bg-emerald-100 text-emerald-700'
+          alert
+            ? 'bg-red-100 text-red-700'
+            : neutral
+              ? 'bg-slate-100 text-slate-700'
+              : 'bg-emerald-100 text-emerald-700'
         }`}
       >
         {value}
@@ -291,21 +336,25 @@ export function HorizontalBars({ title, bars }: { title: string; bars: Bar[] }) 
 export function TeacherAvailabilityCard({
   totalTeachers,
   empty,
+  emptyList,
+  noSpecialtyList,
   uncovered,
+  uncoveredCells,
   avg,
   t,
 }: {
   totalTeachers: number;
   empty: number;
+  emptyList: string[];
+  noSpecialtyList: string[];
   uncovered: number;
+  uncoveredCells: Array<{ day: string; startTime: string; endTime: string }>;
   avg: number;
   t: T;
 }) {
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-5">
-      <h3 className="text-sm font-semibold text-slate-700">
-        {t('teacherAvailability.title')}
-      </h3>
+      <h3 className="text-sm font-semibold text-slate-700">{t('teacherAvailability.title')}</h3>
       <ul className="mt-3 space-y-2 text-sm">
         <Row
           icon={empty > 0 ? '⚠' : '✓'}
@@ -313,16 +362,62 @@ export function TeacherAvailabilityCard({
           value={empty}
           alert={empty > 0}
         />
+        {emptyList.length > 0 && (
+          <li className="rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2">
+            <div className="flex flex-wrap gap-1.5">
+              {emptyList.map((name, i) => (
+                <span
+                  key={i}
+                  className="rounded border border-amber-200 bg-white px-1.5 py-0.5 text-[11px] text-amber-800"
+                >
+                  {name}
+                </span>
+              ))}
+            </div>
+          </li>
+        )}
+        <Row
+          icon={noSpecialtyList.length > 0 ? '⚠' : '✓'}
+          label={t('teacherAvailability.noSpecialty')}
+          value={noSpecialtyList.length}
+          alert={noSpecialtyList.length > 0}
+        />
+        {noSpecialtyList.length > 0 && (
+          <li className="rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2">
+            <div className="flex flex-wrap gap-1.5">
+              {noSpecialtyList.map((name, i) => (
+                <span
+                  key={i}
+                  className="rounded border border-amber-200 bg-white px-1.5 py-0.5 text-[11px] text-amber-800"
+                >
+                  {name}
+                </span>
+              ))}
+            </div>
+          </li>
+        )}
         <Row
           icon={uncovered > 0 ? '⚠' : '✓'}
           label={t('teacherAvailability.uncoveredSlots')}
           value={uncovered}
           alert={uncovered > 0}
         />
+        {uncoveredCells.length > 0 && (
+          <li className="rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2">
+            <div className="flex flex-wrap gap-1.5">
+              {uncoveredCells.map((c, i) => (
+                <span
+                  key={i}
+                  className="rounded border border-amber-200 bg-white px-1.5 py-0.5 text-[11px] tabular-nums text-amber-800"
+                >
+                  {t(`teacherAvailability.daysShort.${c.day}` as never)} {c.startTime}–{c.endTime}
+                </span>
+              ))}
+            </div>
+          </li>
+        )}
         <li className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 px-3 py-1.5">
-          <span className="text-xs text-slate-600">
-            {t('teacherAvailability.avg')}
-          </span>
+          <span className="text-xs text-slate-600">{t('teacherAvailability.avg')}</span>
           <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-semibold tabular-nums text-blue-700">
             {avg} / {totalTeachers}
           </span>
@@ -369,12 +464,7 @@ export function ConflictsCard({
           value={room}
           alert={room > 0}
         />
-        <Row
-          icon={cls > 0 ? '⚠' : '✓'}
-          label={t('conflicts.class')}
-          value={cls}
-          alert={cls > 0}
-        />
+        <Row icon={cls > 0 ? '⚠' : '✓'} label={t('conflicts.class')} value={cls} alert={cls > 0} />
       </ul>
     </div>
   );
@@ -401,15 +491,9 @@ export function TeacherLoadCard({
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-700">{t('teacherLoad.title')}</h3>
         <div className="flex gap-1.5 text-[10px]">
-          <span className="rounded bg-red-100 px-1.5 py-0.5 text-red-700">
-            ⬆ {overloaded}
-          </span>
-          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-700">
-            ⬇ {underloaded}
-          </span>
-          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-700">
-            ✓ {ok}
-          </span>
+          <span className="rounded bg-red-100 px-1.5 py-0.5 text-red-700">⬆ {overloaded}</span>
+          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-700">⬇ {underloaded}</span>
+          <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-emerald-700">✓ {ok}</span>
         </div>
       </div>
       {distribution.length === 0 ? (
@@ -423,7 +507,7 @@ export function TeacherLoadCard({
             return (
               <div key={d.teacherId} className="flex items-center gap-2 text-xs">
                 <span className="w-28 truncate text-slate-700">{d.name}</span>
-                <div className="flex-1 h-2 overflow-hidden rounded-full bg-slate-100">
+                <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
                   <div
                     className={`h-full ${color}`}
                     style={{ width: `${Math.min(100, (d.weeklyHours / maxH) * 100)}%` }}

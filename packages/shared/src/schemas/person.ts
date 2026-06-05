@@ -12,6 +12,65 @@ export type ContractTypeValue = z.infer<typeof contractTypeSchema>;
 export const payrollMethodSchema = z.enum(['BANK_TRANSFER', 'CHECK', 'CASH', 'OTHER']);
 export type PayrollMethodValue = z.infer<typeof payrollMethodSchema>;
 
+/**
+ * Nomenclature des services (départements) auxquels rattacher le personnel.
+ * Axe distinct de la fonction (`PersonRole`) : un agent a une fonction
+ * (ex. Comptable) ET appartient à un service (ex. Comptabilité). Pertinent
+ * surtout pour le type STAFF. Libellés FR/AR fournis côté i18n.
+ */
+export const STAFF_SERVICES = [
+  'DIRECTION',
+  'ADMINISTRATION',
+  'SCOLARITE',
+  'VIE_SCOLAIRE',
+  'COMPTABILITE',
+  'SERVICES_GENERAUX',
+  'RESTAURATION',
+  'INFIRMERIE',
+  'INFORMATIQUE',
+  'BIBLIOTHEQUE',
+  'AUTRE',
+] as const;
+export const staffServiceSchema = z.enum(STAFF_SERVICES);
+export type StaffServiceValue = z.infer<typeof staffServiceSchema>;
+
+/**
+ * Catalogue par défaut des services (modèle `Service`, paramétrable par tenant).
+ * Remplace l'enum figé `STAFF_SERVICES`. Sert au seed initial ; ensuite éditable
+ * via Paramétrage → Rôles → Services.
+ */
+export const DEFAULT_SERVICES = [
+  { code: 'DIRECTION', labelFr: 'Direction', labelAr: 'المديرية' },
+  { code: 'VIE_SCOLAIRE', labelFr: 'Vie scolaire', labelAr: 'الحياة المدرسية' },
+  { code: 'ENSEIGNANTS', labelFr: 'Enseignants', labelAr: 'هيئة التدريس' },
+  { code: 'ADMINISTRATION', labelFr: 'Administration', labelAr: 'الإدارة' },
+  { code: 'INTENDANCE', labelFr: 'Intendance', labelAr: 'الاقتصاد والمالية' },
+  { code: 'TECHNIQUES', labelFr: 'Techniques', labelAr: 'المصالح التقنية' },
+  { code: 'SANTE', labelFr: 'Santé', labelAr: 'الصحة' },
+  { code: 'ORIENTATION', labelFr: 'Orientation', labelAr: 'التوجيه' },
+  { code: 'CDI', labelFr: 'CDI', labelAr: 'مركز التوثيق والإعلام' },
+  { code: 'SOCIAL', labelFr: 'Social', labelAr: 'الشؤون الاجتماعية' },
+] as const;
+
+/** Code du service « Enseignants » : service forcé pour tout type TEACHER. */
+export const TEACHER_SERVICE_CODE = 'ENSEIGNANTS';
+
+export const serviceCreateSchema = z.object({
+  code: z
+    .string()
+    .trim()
+    .min(1)
+    .max(64)
+    .regex(/^[A-Z][A-Z0-9_]*$/, {
+      message: 'Code : MAJUSCULES, chiffres et _ uniquement (commence par une lettre).',
+    }),
+  labelFr: z.string().trim().min(1).max(100),
+  labelAr: z.string().trim().min(1).max(100),
+  order: z.coerce.number().int().min(0).max(9999).default(0),
+  active: z.coerce.boolean().default(true),
+});
+export type ServiceCreate = z.infer<typeof serviceCreateSchema>;
+
 export const dayKeySchema = z.enum(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']);
 export const timeSlotSchema = z.object({
   from: z.string().regex(/^\d{2}:\d{2}$/),
@@ -40,6 +99,8 @@ export const personCreateSchema = z.object({
   type: personTypeSchema,
   /// Rôle paramétrable (uniquement pour TEACHER ou STAFF). UUID ou undefined.
   roleId: z.string().uuid().optional(),
+  /// Service / département de rattachement (surtout STAFF). Voir STAFF_SERVICES.
+  service: staffServiceSchema.optional(),
   firstName: z.string().min(1).max(100),
   lastName: z.string().min(1).max(100),
   birthDate: z.coerce.date().optional(),
@@ -64,9 +125,7 @@ export const personCreateSchema = z.object({
     .partial()
     .optional(),
   /// Pour un STUDENT : liens vers les parents existants à attacher.
-  parents: z
-    .array(z.object({ parentId: z.string().uuid(), type: relationTypeSchema }))
-    .optional(),
+  parents: z.array(z.object({ parentId: z.string().uuid(), type: relationTypeSchema })).optional(),
   /// Dates d'entrée / sortie de fonction (TEACHER ou STAFF uniquement).
   hireDate: z.coerce.date().optional(),
   contractEndDate: z.coerce.date().optional(),
@@ -78,6 +137,9 @@ export const personCreateSchema = z.object({
   /// Compétences pédagogiques (TEACHER uniquement)
   specialtySubjectIds: z.array(z.string().uuid()).optional(),
   cycleIds: z.array(z.string().uuid()).optional(),
+  /// Classes prioritaires (TEACHER) : servi en priorité sur ces classes à la
+  /// génération de l'EDT. Préférence d'allocation, pas affectation ferme.
+  priorityClassIds: z.array(z.string().uuid()).optional(),
   /// Données RH (TEACHER + STAFF)
   experienceYears: z.coerce.number().int().min(0).max(80).optional(),
   diplomas: z.array(diplomaSchema).optional(),

@@ -10,7 +10,9 @@ import {
 } from '@/lib/bi';
 import { listContractAlerts } from '@/lib/contract-alerts';
 import { contractStatusBadgeClass } from '@/lib/contract-status';
+import { isDirection, currentUserRoleCodes } from '@/lib/auth/rbac';
 import { ContractAlertsActions } from './contract-alerts-actions';
+import { PilotageSection } from './pilotage-section';
 
 export default async function AdminDashboard({
   params,
@@ -85,6 +87,8 @@ export default async function AdminDashboard({
   const contractAlerts = await listContractAlerts(tenantId);
   const tContract = await getTranslations('admin.persons.detail');
   const tAlerts = await getTranslations('admin.dashboard.contractAlerts');
+  const [showPilotage, roleCodes] = await Promise.all([isDirection(), currentUserRoleCodes()]);
+  const isCpe = roleCodes.includes('cpe');
 
   return (
     <div className="mx-auto max-w-7xl px-6 py-8">
@@ -137,6 +141,9 @@ export default async function AdminDashboard({
           color={getCollectionColor(data.finance.totalPaid, data.finance.totalDue)}
         />
       </div>
+
+      {/* Pilotage (direction uniquement) — fusionné depuis l'ancien menu Pilotage */}
+      {showPilotage && <PilotageSection />}
 
       {/* 2 colonnes */}
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -399,18 +406,14 @@ export default async function AdminDashboard({
       )}
 
       <section className="mt-6 flex flex-wrap gap-3">
-        <Link
-          href={`/${locale}/admin/pilotage`}
-          className="rounded-lg border border-brand-300 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100"
-        >
-          📊 {t('actions.pilotage')}
-        </Link>
-        <Link
-          href={`/${locale}/admin/vie-scolaire`}
-          className="rounded-lg border border-brand-300 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100"
-        >
-          🧭 {t('actions.vieScolaire')}
-        </Link>
+        {isCpe && (
+          <Link
+            href={`/${locale}/admin/vie-scolaire`}
+            className="rounded-lg border border-brand-300 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100"
+          >
+            🧭 {t('actions.vieScolaire')}
+          </Link>
+        )}
         <Link
           href={`/${locale}/admin/exports`}
           className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"

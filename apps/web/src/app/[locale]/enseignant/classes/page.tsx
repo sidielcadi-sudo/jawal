@@ -18,18 +18,39 @@ export default async function TeacherClassesPage({
     const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
     if (!teacherId || !year) return [];
 
-    const assignments = await tx.teacherAssignment.findMany({
-      where: { teacherId, academicYearId: year.id },
-      select: {
-        classId: true,
-        subject: { select: { label: true } },
-        class: { select: { name: true, level: { select: { label: true } } } },
-      },
-      orderBy: [{ class: { name: 'asc' } }],
-    });
-    if (assignments.length === 0) return [];
+    // Deux sources : les affectations (planification) ET l'EDT généré.
+    // L'EDT survit à une réinitialisation des affectations, donc on les unit
+    // pour rester cohérent avec la page emploi du temps (qui lit l'EDT).
+    const select = {
+      classId: true,
+      subjectId: true,
+      subject: { select: { label: true } },
+      class: { select: { name: true, level: { select: { label: true } } } },
+    } as const;
+    const [assignments, entries] = await Promise.all([
+      tx.teacherAssignment.findMany({ where: { teacherId, academicYearId: year.id }, select }),
+      tx.timetableEntry.findMany({ where: { teacherId, academicYearId: year.id }, select }),
+    ]);
 
-    const classIds = [...new Set(assignments.map((a) => a.classId))];
+    // Dédup par (classe × matière).
+    const map = new Map<
+      string,
+      { classId: string; className: string; levelLabel: string; subject: string }
+    >();
+    for (const a of [...assignments, ...entries]) {
+      const key = `${a.classId}|${a.subjectId ?? 'none'}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          classId: a.classId,
+          className: a.class.name,
+          levelLabel: a.class.level.label,
+          subject: a.subject?.label ?? '—',
+        });
+      }
+    }
+    if (map.size === 0) return [];
+
+    const classIds = [...new Set([...map.values()].map((r) => r.classId))];
     const counts = await tx.studentClass.groupBy({
       by: ['classId'],
       where: { classId: { in: classIds }, unenrolledAt: null },
@@ -37,13 +58,11 @@ export default async function TeacherClassesPage({
     });
     const countByClass = new Map(counts.map((c) => [c.classId, c._count._all]));
 
-    return assignments.map((a) => ({
-      classId: a.classId,
-      className: a.class.name,
-      levelLabel: a.class.level.label,
-      subject: a.subject.label,
-      students: countByClass.get(a.classId) ?? 0,
-    }));
+    return [...map.values()]
+      .sort(
+        (a, b) => a.className.localeCompare(b.className) || a.subject.localeCompare(b.subject),
+      )
+      .map((r) => ({ ...r, students: countByClass.get(r.classId) ?? 0 }));
   });
 
   return (

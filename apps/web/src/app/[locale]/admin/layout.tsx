@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { currentUserRoleCodes } from '@/lib/auth/rbac';
 import { prismaAdmin } from '@/lib/db';
 import { AdminSidebar } from './nav';
 import { SignOutButton } from './sign-out-button';
@@ -22,17 +23,20 @@ export default async function AdminLayout({
   if (session.user.isParent) redirect(`/${locale}/parent`);
   if (session.user.isTeacher) redirect(`/${locale}/enseignant`);
 
-  const tenant = await prismaAdmin.tenant.findUnique({
-    where: { id: session.user.tenantId },
-    select: { id: true, name: true, profile: true },
-  });
+  const [tenant, roleCodes] = await Promise.all([
+    prismaAdmin.tenant.findUnique({
+      where: { id: session.user.tenantId },
+      select: { id: true, name: true, profile: true },
+    }),
+    currentUserRoleCodes(),
+  ]);
 
   const tAdmin = await getTranslations('admin');
 
   return (
     <div className="flex min-h-screen bg-slate-50 print:block print:min-h-0 print:bg-white">
       <div className="print:hidden">
-        <AdminSidebar locale={locale} tenantName={tenant?.name ?? ''} />
+        <AdminSidebar locale={locale} tenantName={tenant?.name ?? ''} roleCodes={roleCodes} />
       </div>
 
       <div className="flex flex-1 flex-col">

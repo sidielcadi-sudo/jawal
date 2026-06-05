@@ -43,6 +43,7 @@ DECLARE
     'user_persons',
     'roles',
     'user_roles',
+    'password_reset_tokens',
     'academic_years',
     'periods',
     'cycles',
@@ -61,6 +62,10 @@ DECLARE
     'subject_appreciations',
     'council_entries',
     'announcements',
+    'surveys',
+    'survey_questions',
+    'survey_responses',
+    'survey_answers',
     'conversations',
     'conversation_participants',
     'messages',
@@ -68,18 +73,23 @@ DECLARE
     'installments',
     'payments',
     'person_roles',
+    'services',
     'person_relations',
     'teacher_assignments',
     'curriculum_subjects',
     'teacher_specialties',
     'teacher_cycles',
+    'teacher_priority_classes',
     'diplomas',
     'staff_attendance',
     'enrollments',
     'timetable_slots',
     'timetable_entries',
     'timetable_overrides',
-    'timetable_constraints'
+    'timetable_constraints',
+    'lesson_entries',
+    'homeworks',
+    'lesson_resources'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped

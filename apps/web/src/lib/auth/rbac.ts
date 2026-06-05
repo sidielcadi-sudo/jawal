@@ -31,6 +31,29 @@ export const currentUserPermissions = cache(async (): Promise<string[]> => {
 });
 
 /**
+ * Codes des rôles de l'utilisateur courant (ex. 'tenant_admin', 'direction',
+ * 'cpe'). Sert au filtrage de la navigation et des tableaux de bord par rôle.
+ * Mémoïsée par requête.
+ */
+export const currentUserRoleCodes = cache(async (): Promise<string[]> => {
+  const session = await auth();
+  if (!session?.user) return [];
+  if (session.user.isSuperAdmin) return ['tenant_admin'];
+
+  const userRoles = await prismaAdmin.userRole.findMany({
+    where: { userId: session.user.id },
+    include: { role: { select: { code: true } } },
+  });
+  return userRoles.map((ur) => ur.role.code);
+});
+
+/** True si l'utilisateur appartient à la direction (vue pilotage). */
+export async function isDirection(): Promise<boolean> {
+  const codes = await currentUserRoleCodes();
+  return codes.includes('tenant_admin') || codes.includes('direction');
+}
+
+/**
  * Vérifie si l'utilisateur courant possède une permission.
  * Le `*` global et les wildcards `<module>.*` sont gérés.
  */

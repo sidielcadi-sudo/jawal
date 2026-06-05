@@ -49,6 +49,40 @@ const STAFF_ROLES = [
   { code: 'DRIVER',            labelFr: 'Chauffeur',                       labelAr: 'السائق',                 order: 140 },
 ] as const;
 
+// Services / départements paramétrables (modèle Service). Remplace l'enum figé.
+const SERVICES = [
+  { code: 'DIRECTION', labelFr: 'Direction', labelAr: 'المديرية', order: 10 },
+  { code: 'VIE_SCOLAIRE', labelFr: 'Vie scolaire', labelAr: 'الحياة المدرسية', order: 20 },
+  { code: 'ENSEIGNANTS', labelFr: 'Enseignants', labelAr: 'هيئة التدريس', order: 30 },
+  { code: 'ADMINISTRATION', labelFr: 'Administration', labelAr: 'الإدارة', order: 40 },
+  { code: 'INTENDANCE', labelFr: 'Intendance', labelAr: 'الاقتصاد والمالية', order: 50 },
+  { code: 'TECHNIQUES', labelFr: 'Techniques', labelAr: 'المصالح التقنية', order: 60 },
+  { code: 'SANTE', labelFr: 'Santé', labelAr: 'الصحة', order: 70 },
+  { code: 'ORIENTATION', labelFr: 'Orientation', labelAr: 'التوجيه', order: 80 },
+  { code: 'CDI', labelFr: 'CDI', labelAr: 'مركز التوثيق والإعلام', order: 90 },
+  { code: 'SOCIAL', labelFr: 'Social', labelAr: 'الشؤون الاجتماعية', order: 100 },
+] as const;
+
+const TEACHER_SERVICE_CODE = 'ENSEIGNANTS';
+
+// Service par défaut de chaque type de personnel STAFF (sinon Administration).
+const STAFF_ROLE_SERVICE: Record<string, string> = {
+  DIRECTOR: 'DIRECTION',
+  DEPUTY_DIRECTOR: 'DIRECTION',
+  EDUCATION_ADVISOR: 'VIE_SCOLAIRE',
+  SUPERVISOR: 'VIE_SCOLAIRE',
+  MONITOR: 'VIE_SCOLAIRE',
+  BURSAR: 'INTENDANCE',
+  ACCOUNTANT: 'INTENDANCE',
+  SECRETARY: 'ADMINISTRATION',
+  LIBRARIAN: 'CDI',
+  NURSE: 'SANTE',
+  IT_OFFICER: 'TECHNIQUES',
+  MAINTENANCE: 'TECHNIQUES',
+  SECURITY: 'TECHNIQUES',
+  DRIVER: 'TECHNIQUES',
+};
+
 const CORE_MODULES = [
   'core',
   'admissions',
@@ -70,6 +104,10 @@ const DEMO_PARENT_EMAIL = 'hassan.benani@demo.jawal.ma';
 const DEMO_PARENT_PASSWORD = 'parent1234';
 const DEMO_TEACHER_EMAIL = 'amina.prof@demo.jawal.ma';
 const DEMO_TEACHER_PASSWORD = 'prof1234';
+const DEMO_DIRECTION_EMAIL = 'directeur@demo.jawal.ma';
+const DEMO_DIRECTION_PASSWORD = 'direction1234';
+const DEMO_VIESCO_EMAIL = 'vie.scolaire@demo.jawal.ma';
+const DEMO_VIESCO_PASSWORD = 'cpe1234';
 
 async function main() {
   console.log('🌱 Seed Jawal…');
@@ -141,6 +179,35 @@ async function main() {
     },
   });
   console.log(`  ✓ Admin tenant: ${DEMO_ADMIN_EMAIL} / ${DEMO_ADMIN_PASSWORD}`);
+
+  // 4.bis Accès de démo par rôle (point 3) : direction + vie scolaire (CPE).
+  // Comptes admin (sans Person rattachée) : connexion à /admin avec une
+  // navigation et un tableau de bord adaptés à leur rôle.
+  for (const acc of [
+    { email: DEMO_DIRECTION_EMAIL, password: DEMO_DIRECTION_PASSWORD, role: 'direction' },
+    { email: DEMO_VIESCO_EMAIL, password: DEMO_VIESCO_PASSWORD, role: 'cpe' },
+  ] as const) {
+    const roleId = rolesByCode.get(acc.role);
+    if (!roleId) continue;
+    const passwordHash = await bcrypt.hash(acc.password, 10);
+    const u = await prisma.user.upsert({
+      where: { tenantId_email: { tenantId: tenant.id, email: acc.email } },
+      update: { passwordHash },
+      create: {
+        tenantId: tenant.id,
+        email: acc.email,
+        passwordHash,
+        emailVerified: new Date(),
+        locale: 'fr',
+      },
+    });
+    await prisma.userRole.upsert({
+      where: { userId_roleId: { userId: u.id, roleId } },
+      update: {},
+      create: { tenantId: tenant.id, userId: u.id, roleId },
+    });
+    console.log(`  ✓ Accès ${acc.role}: ${acc.email} / ${acc.password}`);
+  }
 
   // 5. Super-admin SaaS (rattaché au tenant demo mais isSuperAdmin=true)
   const superPasswordHash = await bcrypt.hash(SUPER_ADMIN_PASSWORD, 10);
@@ -223,11 +290,31 @@ async function main() {
   }
   console.log(`  ✓ 2 cycles + ${levels.length} niveaux`);
 
+  // 7.bis.0 Services / départements paramétrables (idempotent)
+  const servicesByCode = new Map<string, string>(); // code → id
+  for (const s of SERVICES) {
+    const svc = await prisma.service.upsert({
+      where: { tenantId_code: { tenantId: tenant.id, code: s.code } },
+      update: { labelFr: s.labelFr, labelAr: s.labelAr, order: s.order },
+      create: {
+        tenantId: tenant.id,
+        code: s.code,
+        labelFr: s.labelFr,
+        labelAr: s.labelAr,
+        order: s.order,
+      },
+    });
+    servicesByCode.set(s.code, svc.id);
+  }
+  const teacherServiceId = servicesByCode.get(TEACHER_SERVICE_CODE) ?? null;
+  console.log(`  ✓ ${SERVICES.length} services paramétrables (FR/AR)`);
+
   // 7.bis Rôles paramétrables (enseignants + personnel) — bilingues FR/AR
+  // Chaque type est rattaché à un service (TEACHER → Enseignants).
   for (const r of TEACHER_ROLES) {
     await prisma.personRole.upsert({
       where: { tenantId_code: { tenantId: tenant.id, code: r.code } },
-      update: { labelFr: r.labelFr, labelAr: r.labelAr, order: r.order },
+      update: { labelFr: r.labelFr, labelAr: r.labelAr, order: r.order, serviceId: teacherServiceId },
       create: {
         tenantId: tenant.id,
         appliesTo: PersonType.TEACHER,
@@ -235,13 +322,15 @@ async function main() {
         labelFr: r.labelFr,
         labelAr: r.labelAr,
         order: r.order,
+        serviceId: teacherServiceId,
       },
     });
   }
   for (const r of STAFF_ROLES) {
+    const svcId = servicesByCode.get(STAFF_ROLE_SERVICE[r.code] ?? 'ADMINISTRATION') ?? null;
     await prisma.personRole.upsert({
       where: { tenantId_code: { tenantId: tenant.id, code: r.code } },
-      update: { labelFr: r.labelFr, labelAr: r.labelAr, order: r.order },
+      update: { labelFr: r.labelFr, labelAr: r.labelAr, order: r.order, serviceId: svcId },
       create: {
         tenantId: tenant.id,
         appliesTo: PersonType.STAFF,
@@ -249,10 +338,30 @@ async function main() {
         labelFr: r.labelFr,
         labelAr: r.labelAr,
         order: r.order,
+        serviceId: svcId,
       },
     });
   }
   console.log(`  ✓ ${TEACHER_ROLES.length + STAFF_ROLES.length} rôles paramétrables (FR/AR)`);
+
+  // 7.bis.1 Déduit le service de chaque personne : TEACHER → Enseignants,
+  // STAFF → service de son type (PersonRole.serviceId).
+  if (teacherServiceId) {
+    await prisma.person.updateMany({
+      where: { tenantId: tenant.id, type: PersonType.TEACHER },
+      data: { serviceId: teacherServiceId },
+    });
+  }
+  const staffRoles = await prisma.personRole.findMany({
+    where: { tenantId: tenant.id, appliesTo: PersonType.STAFF, serviceId: { not: null } },
+    select: { id: true, serviceId: true },
+  });
+  for (const role of staffRoles) {
+    await prisma.person.updateMany({
+      where: { tenantId: tenant.id, type: PersonType.STAFF, roleId: role.id },
+      data: { serviceId: role.serviceId },
+    });
+  }
 
   // 7.ter Attribuer le rôle MAIN_TEACHER à l'enseignant Amina existant (rétro-compat)
   const mainTeacherRoleUpgrade = await prisma.personRole.findUnique({
@@ -472,11 +581,14 @@ async function main() {
     });
   }
 
-  // 8. Classe + enseignant principal + élèves (idempotent : on saute si déjà présent)
-  const existingTeacher = await prisma.person.findFirst({
-    where: { tenantId: tenant.id, type: PersonType.TEACHER },
+  // 8. Classe + enseignant principal + élèves (idempotent : on saute si déjà présent).
+  // Garde sur l'existence de la classe 1AC-A (et non « un prof quelconque » : un
+  // CDD démo est créé juste avant, ce qui faisait sauter ce bloc à tort sur une
+  // base neuve et cassait les inscriptions plus bas).
+  const existing1acA = await prisma.class.findFirst({
+    where: { tenantId: tenant.id, name: '1AC-A' },
   });
-  if (!existingTeacher) {
+  if (!existing1acA) {
     const mainTeacherRole = await prisma.personRole.findUnique({
       where: { tenantId_code: { tenantId: tenant.id, code: 'MAIN_TEACHER' } },
     });

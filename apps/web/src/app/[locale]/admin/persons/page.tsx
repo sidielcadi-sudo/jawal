@@ -17,7 +17,13 @@ export default async function PersonsListPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ type?: string; search?: string; page?: string; archived?: string }>;
+  searchParams: Promise<{
+    type?: string;
+    search?: string;
+    page?: string;
+    archived?: string;
+    service?: string;
+  }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -26,38 +32,104 @@ export default async function PersonsListPage({
   const session = (await auth())!;
   const tenantId = session.user.tenantId;
   const t = await getTranslations('admin.persons');
+  const tForm = await getTranslations('admin.persons.form');
 
   const typeFilter = isPersonType(sp.type) ? sp.type : undefined;
   const search = sp.search?.trim() ?? '';
   const showArchived = sp.archived === '1';
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
+  const isTeacherView = typeFilter === 'TEACHER';
+  // Le filtre service ne s'applique qu'au personnel (STAFF) ; valeur = serviceId.
+  const requestedService = typeFilter === 'STAFF' ? (sp.service ?? '') : '';
 
-  const where: Prisma.PersonWhereInput = {
-    deletedAt: showArchived ? { not: null } : null,
-    ...(typeFilter ? { type: typeFilter } : {}),
-    ...(search
-      ? {
-          OR: [
-            { firstName: { contains: search, mode: 'insensitive' } },
-            { lastName: { contains: search, mode: 'insensitive' } },
-            { cin: { contains: search, mode: 'insensitive' } },
-          ],
-        }
-      : {}),
-  };
+  const { persons, total, teacherExtras, services, serviceFilter } = await withTenant(
+    tenantId,
+    async (tx) => {
+      const services = await tx.service.findMany({
+        where: { active: true },
+        orderBy: [{ order: 'asc' }, { labelFr: 'asc' }],
+        select: { id: true, labelFr: true, labelAr: true },
+      });
+      const serviceFilter = services.some((s) => s.id === requestedService)
+        ? requestedService
+        : undefined;
 
-  const { persons, total } = await withTenant(tenantId, async (tx) => {
-    const [persons, total] = await Promise.all([
-      tx.person.findMany({
-        where,
-        orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-        skip: (page - 1) * PAGE_SIZE,
-        take: PAGE_SIZE,
-      }),
-      tx.person.count({ where }),
-    ]);
-    return { persons, total };
-  });
+      const where: Prisma.PersonWhereInput = {
+        deletedAt: showArchived ? { not: null } : null,
+        ...(typeFilter ? { type: typeFilter } : {}),
+        ...(serviceFilter ? { serviceId: serviceFilter } : {}),
+        ...(search
+          ? {
+              OR: [
+                { firstName: { contains: search, mode: 'insensitive' } },
+                { lastName: { contains: search, mode: 'insensitive' } },
+                { cin: { contains: search, mode: 'insensitive' } },
+              ],
+            }
+          : {}),
+      };
+
+      const [persons, total] = await Promise.all([
+        tx.person.findMany({
+          where,
+          orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+          skip: (page - 1) * PAGE_SIZE,
+          take: PAGE_SIZE,
+          include: { serviceRef: { select: { labelFr: true, labelAr: true } } },
+        }),
+        tx.person.count({ where }),
+      ]);
+
+    // Vue Enseignants : spécialités, classes d'affectation (année active).
+    const teacherExtras = new Map<string, { specialties: string[]; classes: string[] }>();
+    if (isTeacherView && persons.length > 0) {
+      const ids = persons.map((p) => p.id);
+      const activeYear = await tx.academicYear.findFirst({
+        where: { active: true },
+        select: { id: true },
+      });
+      // Classes = union des affectations ET de l'EDT généré (ce dernier survit
+      // à une réinitialisation des affectations) → cohérent avec le portail prof.
+      const [specs, asgs, entries] = await Promise.all([
+        tx.teacherSpecialty.findMany({
+          where: { teacherId: { in: ids } },
+          select: { teacherId: true, subject: { select: { label: true } } },
+        }),
+        activeYear
+          ? tx.teacherAssignment.findMany({
+              where: { teacherId: { in: ids }, academicYearId: activeYear.id },
+              select: { teacherId: true, class: { select: { name: true } } },
+            })
+          : Promise.resolve([]),
+        activeYear
+          ? tx.timetableEntry.findMany({
+              where: { teacherId: { in: ids }, academicYearId: activeYear.id },
+              select: { teacherId: true, class: { select: { name: true } } },
+            })
+          : Promise.resolve([]),
+      ]);
+      const specByT = new Map<string, Set<string>>();
+      for (const s of specs) {
+        if (!specByT.has(s.teacherId)) specByT.set(s.teacherId, new Set());
+        specByT.get(s.teacherId)!.add(s.subject.label);
+      }
+      const clsByT = new Map<string, Set<string>>();
+      for (const a of [...asgs, ...entries]) {
+        if (a.teacherId === null) continue;
+        if (!clsByT.has(a.teacherId)) clsByT.set(a.teacherId, new Set());
+        clsByT.get(a.teacherId)!.add(a.class.name);
+      }
+      for (const p of persons) {
+        teacherExtras.set(p.id, {
+          specialties: [...(specByT.get(p.id) ?? [])].sort((a, b) => a.localeCompare(b)),
+          classes: [...(clsByT.get(p.id) ?? [])].sort((a, b) => a.localeCompare(b)),
+        });
+      }
+    }
+
+      return { persons, total, teacherExtras, services, serviceFilter };
+    },
+  );
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const baseHref = `/${locale}/admin/persons`;
@@ -65,6 +137,8 @@ export default async function PersonsListPage({
     const usp = new URLSearchParams();
     if (typeFilter && overrides.type === undefined) usp.set('type', typeFilter);
     if (overrides.type) usp.set('type', overrides.type);
+    if (serviceFilter && overrides.service === undefined) usp.set('service', serviceFilter);
+    if (overrides.service) usp.set('service', overrides.service);
     if (search && overrides.search === undefined) usp.set('search', search);
     if (overrides.search) usp.set('search', overrides.search);
     if (showArchived && overrides.archived === undefined) usp.set('archived', '1');
@@ -92,7 +166,7 @@ export default async function PersonsListPage({
           </Link>
           <Link
             href={`${baseHref}/new${typeFilter ? `?type=${typeFilter}` : ''}`}
-            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-brand-700"
+            className="bg-brand-600 hover:bg-brand-700 rounded-lg px-4 py-2 text-sm font-medium text-white shadow"
           >
             {t('actions.new')}
           </Link>
@@ -102,7 +176,7 @@ export default async function PersonsListPage({
       <form method="get" className="mb-4 flex flex-wrap items-end gap-3">
         {typeFilter && <input type="hidden" name="type" value={typeFilter} />}
         {showArchived && <input type="hidden" name="archived" value="1" />}
-        <div className="flex-1 min-w-[200px]">
+        <div className="min-w-[200px] flex-1">
           <label htmlFor="search" className="block text-xs font-medium text-slate-600">
             {t('filters.search')}
           </label>
@@ -112,9 +186,29 @@ export default async function PersonsListPage({
             name="search"
             defaultValue={search}
             placeholder={t('filters.searchPlaceholder')}
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
           />
         </div>
+        {typeFilter === 'STAFF' && (
+          <div className="min-w-[180px]">
+            <label htmlFor="service" className="block text-xs font-medium text-slate-600">
+              {tForm('service')}
+            </label>
+            <select
+              id="service"
+              name="service"
+              defaultValue={serviceFilter ?? ''}
+              className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
+            >
+              <option value="">{t('filters.allServices')}</option>
+              {services.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {locale === 'ar' ? s.labelAr : s.labelFr}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         <button
           type="submit"
           className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
@@ -134,9 +228,19 @@ export default async function PersonsListPage({
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-4 py-3 text-start">{t('table.name')}</th>
-              <th className="px-4 py-3 text-start">{t('table.type')}</th>
-              <th className="px-4 py-3 text-start">{t('table.contact')}</th>
-              <th className="px-4 py-3 text-start">{t('table.birthDate')}</th>
+              {isTeacherView ? (
+                <>
+                  <th className="px-4 py-3 text-start">{t('table.specialties')}</th>
+                  <th className="px-4 py-3 text-end">{t('table.weeklyHours')}</th>
+                  <th className="px-4 py-3 text-start">{t('table.classes')}</th>
+                </>
+              ) : (
+                <>
+                  <th className="px-4 py-3 text-start">{t('table.type')}</th>
+                  <th className="px-4 py-3 text-start">{t('table.contact')}</th>
+                  <th className="px-4 py-3 text-start">{t('table.birthDate')}</th>
+                </>
+              )}
               <th className="px-4 py-3 text-end">{t('table.actions')}</th>
             </tr>
           </thead>
@@ -148,7 +252,7 @@ export default async function PersonsListPage({
                   <td className="px-4 py-3">
                     <Link
                       href={`${baseHref}/${p.id}`}
-                      className="font-medium text-slate-900 hover:text-brand-700 hover:underline"
+                      className="hover:text-brand-700 font-medium text-slate-900 hover:underline"
                     >
                       {p.lastName} {p.firstName}
                     </Link>
@@ -158,19 +262,47 @@ export default async function PersonsListPage({
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3">
-                    <TypeBadge type={p.type} />
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-600">
-                    {contacts.email ?? contacts.phone ?? '—'}
-                  </td>
-                  <td className="px-4 py-3 text-xs text-slate-600">
-                    {p.birthDate ? new Date(p.birthDate).toLocaleDateString(locale) : '—'}
-                  </td>
+                  {isTeacherView ? (
+                    (() => {
+                      const extra = teacherExtras.get(p.id);
+                      return (
+                        <>
+                          <td className="px-4 py-3 text-xs text-slate-600">
+                            {extra && extra.specialties.length > 0
+                              ? extra.specialties.join(', ')
+                              : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-end text-xs tabular-nums text-slate-600">
+                            {p.contractualHoursPerWeek ?? '—'}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-600">
+                            {extra && extra.classes.length > 0 ? extra.classes.join(' - ') : ''}
+                          </td>
+                        </>
+                      );
+                    })()
+                  ) : (
+                    <>
+                      <td className="px-4 py-3">
+                        <TypeBadge type={p.type} />
+                        {p.type === 'STAFF' && p.serviceRef && (
+                          <span className="ms-1.5 rounded bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700">
+                            {locale === 'ar' ? p.serviceRef.labelAr : p.serviceRef.labelFr}
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-600">
+                        {contacts.email ?? contacts.phone ?? '—'}
+                      </td>
+                      <td className="px-4 py-3 text-xs text-slate-600">
+                        {p.birthDate ? new Date(p.birthDate).toLocaleDateString(locale) : '—'}
+                      </td>
+                    </>
+                  )}
                   <td className="px-4 py-3 text-end">
                     <Link
                       href={`${baseHref}/${p.id}`}
-                      className="text-xs text-slate-500 hover:text-brand-700"
+                      className="hover:text-brand-700 text-xs text-slate-500"
                     >
                       {t('actions.view')}
                     </Link>

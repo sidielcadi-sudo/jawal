@@ -1,6 +1,7 @@
 import 'server-only';
 import type { Prisma } from '@/lib/db';
 import { computeAcademicOverview, computeAttendanceRate } from './bi';
+import { computeSatisfaction } from './survey';
 
 type Tx = Prisma.TransactionClient;
 
@@ -51,6 +52,7 @@ const statusAbsenteeism = (v: number | null) => statusLowerBetter(v, 5, 10); // 
 const statusCollection = (v: number | null) => statusHigherBetter(v, 90, 80); // >90 / 80-90 / <80
 const statusTeacherLoad = (v: number | null) => statusLowerBetter(v, 15, 20); // <15 / 15-20 / >20
 const statusLevelAverage = (v: number | null) => statusHigherBetter(v, 12, 10); // >12 / 10-12 / <10
+const statusSatisfaction = (v: number | null) => statusHigherBetter(v, 4, 3); // >4 / 3-4 / <3 (sur /5)
 
 /** Charge horaire hebdomadaire moyenne par enseignant (année active). */
 async function computeTeacherLoad(tx: Tx): Promise<number | null> {
@@ -177,7 +179,13 @@ async function computeLevelAverages(tx: Tx, periodId: string): Promise<LevelAver
   return [...byLevel.entries()]
     .map(([levelId, v]) => {
       const average = v.count > 0 ? v.sum / v.count : null;
-      return { levelId, label: v.label, average, status: statusLevelAverage(average), order: v.order };
+      return {
+        levelId,
+        label: v.label,
+        average,
+        status: statusLevelAverage(average),
+        order: v.order,
+      };
     })
     .sort((a, b) => a.order - b.order)
     .map(({ order: _order, ...rest }) => rest);
@@ -189,14 +197,19 @@ async function computeLevelAverages(tx: Tx, periodId: string): Promise<LevelAver
  * À appeler dans un `withTenant`.
  */
 export async function computePilotage(tx: Tx, periodId: string | null): Promise<PilotageData> {
-  const [academic, attendance, teacherLoad, levelAverages, installments, payments] = await Promise.all([
-    periodId ? computeAcademicOverview(tx, periodId) : Promise.resolve(null),
-    periodId ? computeAttendanceRate(tx, periodId) : Promise.resolve(null),
-    computeTeacherLoad(tx),
-    periodId ? computeLevelAverages(tx, periodId) : Promise.resolve([] as LevelAverage[]),
-    tx.installment.findMany({ where: { status: { not: 'CANCELLED' } }, select: { amount: true } }),
-    tx.payment.findMany({ select: { amount: true } }),
-  ]);
+  const [academic, attendance, teacherLoad, levelAverages, installments, payments, satisfaction] =
+    await Promise.all([
+      periodId ? computeAcademicOverview(tx, periodId) : Promise.resolve(null),
+      periodId ? computeAttendanceRate(tx, periodId) : Promise.resolve(null),
+      computeTeacherLoad(tx),
+      periodId ? computeLevelAverages(tx, periodId) : Promise.resolve([] as LevelAverage[]),
+      tx.installment.findMany({
+        where: { status: { not: 'CANCELLED' } },
+        select: { amount: true },
+      }),
+      tx.payment.findMany({ select: { amount: true } }),
+      computeSatisfaction(tx, periodId),
+    ]);
 
   const successRate = academic?.successRate ?? null;
 
@@ -210,11 +223,36 @@ export async function computePilotage(tx: Tx, periodId: string | null): Promise<
   const collection = totalDue > 0 ? (totalPaid / totalDue) * 100 : null;
 
   return {
-    successRate: { key: 'successRate', value: successRate, unit: '%', status: statusSuccess(successRate) },
-    absenteeism: { key: 'absenteeism', value: absenteeism, unit: '%', status: statusAbsenteeism(absenteeism) },
-    collection: { key: 'collection', value: collection, unit: '%', status: statusCollection(collection) },
-    teacherLoad: { key: 'teacherLoad', value: teacherLoad, unit: 'h', status: statusTeacherLoad(teacherLoad) },
-    satisfaction: { key: 'satisfaction', value: null, unit: '/5', status: 'na' },
+    successRate: {
+      key: 'successRate',
+      value: successRate,
+      unit: '%',
+      status: statusSuccess(successRate),
+    },
+    absenteeism: {
+      key: 'absenteeism',
+      value: absenteeism,
+      unit: '%',
+      status: statusAbsenteeism(absenteeism),
+    },
+    collection: {
+      key: 'collection',
+      value: collection,
+      unit: '%',
+      status: statusCollection(collection),
+    },
+    teacherLoad: {
+      key: 'teacherLoad',
+      value: teacherLoad,
+      unit: 'h',
+      status: statusTeacherLoad(teacherLoad),
+    },
+    satisfaction: {
+      key: 'satisfaction',
+      value: satisfaction,
+      unit: '/5',
+      status: statusSatisfaction(satisfaction),
+    },
     levelAverages,
     conformiteMassar: { key: 'conformiteMassar', value: null, unit: '%', status: 'na' },
   };

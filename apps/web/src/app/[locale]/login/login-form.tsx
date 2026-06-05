@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { Link } from '@/lib/i18n/routing';
 
 type Props = {
   error?: string;
@@ -58,7 +59,7 @@ export function LoginForm({ error: initialError, callbackUrl, locale }: Props) {
             required={!isSuperAdminMode}
             defaultValue="demo"
             placeholder="demo"
-            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+            className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
           />
         </div>
       )}
@@ -73,7 +74,7 @@ export function LoginForm({ error: initialError, callbackUrl, locale }: Props) {
           type="email"
           required
           autoComplete="email"
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
         />
       </div>
 
@@ -87,7 +88,7 @@ export function LoginForm({ error: initialError, callbackUrl, locale }: Props) {
           type="password"
           required
           autoComplete="current-password"
-          className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
+          className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
         />
       </div>
 
@@ -100,10 +101,19 @@ export function LoginForm({ error: initialError, callbackUrl, locale }: Props) {
       <button
         type="submit"
         disabled={isPending}
-        className="w-full rounded-lg bg-brand-600 px-4 py-2.5 text-sm font-medium text-white shadow hover:bg-brand-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 disabled:opacity-50"
+        className="bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-500 w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50"
       >
         {isPending ? t('actions.signingIn') : t('actions.signIn')}
       </button>
+
+      {!isSuperAdminMode && (
+        <Link
+          href="/forgot-password"
+          className="text-brand-600 hover:text-brand-700 block text-center text-xs"
+        >
+          {t('forgotPassword')}
+        </Link>
+      )}
 
       <button
         type="button"

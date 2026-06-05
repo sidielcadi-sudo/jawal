@@ -8,11 +8,35 @@ type NavItem = {
   href: string;
   labelKey: keyof IntlMessages['admin']['nav'];
   match: (pathname: string, search: URLSearchParams) => boolean;
+  /** Rôles autorisés à voir l'entrée. Absent = visible par tous les rôles admin. */
+  roles?: string[];
 };
 
 // type helper local — pas un vrai schéma de messages, juste pour l'autocomplete
 type IntlMessages = {
-  admin: { nav: { dashboard: string; pilotage: string; vieScolaire: string; students: string; teachers: string; staff: string; parents: string; classes: string; enrollments: string; timetable: string; attendance: string; justifications: string; staffAttendance: string; announcements: string; messages: string; finance: string; import: string; settings: string } };
+  admin: {
+    nav: {
+      dashboard: string;
+      pilotage: string;
+      vieScolaire: string;
+      students: string;
+      teachers: string;
+      staff: string;
+      parents: string;
+      classes: string;
+      enrollments: string;
+      timetable: string;
+      attendance: string;
+      justifications: string;
+      staffAttendance: string;
+      announcements: string;
+      surveys: string;
+      messages: string;
+      finance: string;
+      import: string;
+      settings: string;
+    };
+  };
 };
 
 function buildItems(locale: string): NavItem[] {
@@ -24,34 +48,36 @@ function buildItems(locale: string): NavItem[] {
       match: (p, _s) => p === prefix || p === `${prefix}/`,
     },
     {
-      href: `${prefix}/pilotage`,
-      labelKey: 'pilotage',
-      match: (p, _s) => p.startsWith(`${prefix}/pilotage`),
-    },
-    {
       href: `${prefix}/vie-scolaire`,
       labelKey: 'vieScolaire',
       match: (p, _s) => p.startsWith(`${prefix}/vie-scolaire`),
+      // Point 6 : visible uniquement pour la Vie scolaire (CPE), pas pour
+      // la direction / l'admin établissement.
+      roles: ['cpe'],
     },
     {
       href: `${prefix}/persons?type=STUDENT`,
       labelKey: 'students',
-      match: (p, s) => p.startsWith(`${prefix}/persons`) && !p.includes('/import') && s.get('type') === 'STUDENT',
+      match: (p, s) =>
+        p.startsWith(`${prefix}/persons`) && !p.includes('/import') && s.get('type') === 'STUDENT',
     },
     {
       href: `${prefix}/persons?type=TEACHER`,
       labelKey: 'teachers',
-      match: (p, s) => p.startsWith(`${prefix}/persons`) && !p.includes('/import') && s.get('type') === 'TEACHER',
+      match: (p, s) =>
+        p.startsWith(`${prefix}/persons`) && !p.includes('/import') && s.get('type') === 'TEACHER',
     },
     {
       href: `${prefix}/persons?type=STAFF`,
       labelKey: 'staff',
-      match: (p, s) => p.startsWith(`${prefix}/persons`) && !p.includes('/import') && s.get('type') === 'STAFF',
+      match: (p, s) =>
+        p.startsWith(`${prefix}/persons`) && !p.includes('/import') && s.get('type') === 'STAFF',
     },
     {
       href: `${prefix}/persons?type=PARENT`,
       labelKey: 'parents',
-      match: (p, s) => p.startsWith(`${prefix}/persons`) && !p.includes('/import') && s.get('type') === 'PARENT',
+      match: (p, s) =>
+        p.startsWith(`${prefix}/persons`) && !p.includes('/import') && s.get('type') === 'PARENT',
     },
     {
       href: `${prefix}/classes`,
@@ -66,8 +92,7 @@ function buildItems(locale: string): NavItem[] {
     {
       href: `${prefix}/timetable`,
       labelKey: 'timetable',
-      match: (p, _s) =>
-        p === `${prefix}/timetable` || p.startsWith(`${prefix}/timetable`),
+      match: (p, _s) => p === `${prefix}/timetable` || p.startsWith(`${prefix}/timetable`),
     },
     {
       href: `${prefix}/attendance`,
@@ -85,11 +110,18 @@ function buildItems(locale: string): NavItem[] {
       href: `${prefix}/staff-attendance`,
       labelKey: 'staffAttendance',
       match: (p, _s) => p.startsWith(`${prefix}/staff-attendance`),
+      roles: ['tenant_admin', 'direction'],
     },
     {
       href: `${prefix}/announcements`,
       labelKey: 'announcements',
       match: (p, _s) => p.startsWith(`${prefix}/announcements`),
+    },
+    {
+      href: `${prefix}/surveys`,
+      labelKey: 'surveys',
+      match: (p, _s) => p.startsWith(`${prefix}/surveys`),
+      roles: ['tenant_admin', 'direction'],
     },
     {
       href: `${prefix}/messages`,
@@ -100,6 +132,7 @@ function buildItems(locale: string): NavItem[] {
       href: `${prefix}/finance`,
       labelKey: 'finance',
       match: (p, _s) => p === `${prefix}/finance` || p.startsWith(`${prefix}/finance/`),
+      roles: ['tenant_admin', 'direction', 'comptable'],
     },
     {
       href: `${prefix}/persons/import`,
@@ -110,28 +143,33 @@ function buildItems(locale: string): NavItem[] {
       href: `${prefix}/settings`,
       labelKey: 'settings',
       match: (p, _s) => p.startsWith(`${prefix}/settings`),
+      roles: ['tenant_admin', 'direction'],
     },
   ];
 }
 
-export function AdminSidebar({ locale, tenantName }: { locale: string; tenantName: string }) {
+export function AdminSidebar({
+  locale,
+  tenantName,
+  roleCodes,
+}: {
+  locale: string;
+  tenantName: string;
+  roleCodes: string[];
+}) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const t = useTranslations('admin.nav');
-  const items = buildItems(locale);
+  const items = buildItems(locale).filter(
+    (item) => !item.roles || item.roles.some((r) => roleCodes.includes(r)),
+  );
 
   return (
     <aside className="w-60 shrink-0 border-e border-slate-200 bg-white">
       <div className="border-b border-slate-200 px-5 py-4">
-        <div className="flex items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-sm font-bold text-white">
-            J
-          </span>
-          <div>
-            <div className="text-sm font-semibold text-slate-900">Jawal</div>
-            <div className="truncate text-xs text-slate-500">{tenantName}</div>
-          </div>
-        </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/sesame-logo.png" alt="Sesame" className="h-7 w-auto" />
+        <div className="mt-1.5 truncate text-xs text-slate-500">{tenantName}</div>
       </div>
       <nav className="px-2 py-3">
         <ul className="space-y-0.5">
@@ -144,7 +182,7 @@ export function AdminSidebar({ locale, tenantName }: { locale: string; tenantNam
                   className={[
                     'block rounded-lg px-3 py-2 text-sm transition-colors',
                     active
-                      ? 'bg-brand-50 font-medium text-brand-700'
+                      ? 'bg-brand-50 text-brand-700 font-medium'
                       : 'text-slate-700 hover:bg-slate-100',
                   ].join(' ')}
                 >

@@ -1,10 +1,17 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
+import {
+  proposeAllocation,
+  applyAllocation,
+  type AllocationPlan,
+  type AllocationDecision,
+} from '@/lib/teacher-allocation';
 import {
   isSlotAllowedOnDay,
   readClassTimetableConstraints,
@@ -147,8 +154,7 @@ export async function generateMultiTimetableAction(
         teacherMap.set(a.teacherId, {
           id: a.teacherId,
           name: `${a.teacher.lastName} ${a.teacher.firstName}`,
-          availability:
-            (a.teacher.availability as SolverTeacher['availability']) ?? {},
+          availability: (a.teacher.availability as SolverTeacher['availability']) ?? {},
         });
       }
 
@@ -184,9 +190,7 @@ export async function generateMultiTimetableAction(
         );
 
         for (const d of DAYS) {
-          const dayIsForbiddenForClass = classForbiddenDaySet.has(
-            d as SettingsDayKey,
-          );
+          const dayIsForbiddenForClass = classForbiddenDaySet.has(d as SettingsDayKey);
           for (const s of slots) {
             if (s.isBreak) continue;
             const settingsAllow = isSlotAllowedOnDay(
@@ -195,19 +199,14 @@ export async function generateMultiTimetableAction(
               s.endTime,
               effective,
             );
-            const classBlocks =
-              dayIsForbiddenForClass ||
-              classForbiddenSlotSet.has(`${d}|${s.id}`);
+            const classBlocks = dayIsForbiddenForClass || classForbiddenSlotSet.has(`${d}|${s.id}`);
             if (!settingsAllow || classBlocks) {
               forbidden.push({ class_id: cls.id, day: d, slot_id: s.id });
             }
           }
         }
 
-        if (
-          classCons.maxHoursPerDay !== null ||
-          classCons.minHoursPerDay !== null
-        ) {
+        if (classCons.maxHoursPerDay !== null || classCons.minHoursPerDay !== null) {
           classConstraints.push({
             class_id: cls.id,
             max_hours_per_day: classCons.maxHoursPerDay,
@@ -254,7 +253,8 @@ export async function generateMultiTimetableAction(
             constraints.enforce_room_type = true;
             break;
           case 'MINIMIZE_ROOM_CHANGES':
-            if (typeof cfg.weight === 'number') constraints.minimize_room_changes_weight = cfg.weight;
+            if (typeof cfg.weight === 'number')
+              constraints.minimize_room_changes_weight = cfg.weight;
             break;
           case 'BALANCE_DAILY_LOAD':
             if (typeof cfg.weight === 'number') constraints.balance_daily_load_weight = cfg.weight;
@@ -399,4 +399,109 @@ export async function generateMultiTimetableAction(
       analysis: solverResp.analysis ?? null,
     },
   };
+}
+
+// ─── Auto-affectation (Étape 2) ────────────────────────────
+
+type ProposeResult = { ok: true; plan: AllocationPlan } | { ok: false; error: string };
+
+/** Aperçu d'auto-affectation (lecture seule) pour les classes sélectionnées. */
+export async function proposeAllocationAction(
+  academicYearId: string,
+  classIds: string[],
+): Promise<ProposeResult> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requirePermission('tenants.manage');
+  if (classIds.length === 0) return { ok: false, error: 'Sélectionnez au moins une classe.' };
+
+  try {
+    const plan = await withTenant(session.user.tenantId, (tx) =>
+      proposeAllocation(tx, academicYearId, classIds),
+    );
+    return { ok: true, plan };
+  } catch (e: unknown) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur préparation' };
+  }
+}
+
+type ResetResult = { ok: true; deleted: number } | { ok: false; error: string };
+
+/**
+ * Efface les affectations (`TeacherAssignment`) des classes sélectionnées pour
+ * l'année — permet de reproposer une auto-affectation à neuf (sinon tout est
+ * épinglé). Ne touche pas à l'EDT généré : régénérez-le après.
+ */
+export async function resetAllocationAction(
+  academicYearId: string,
+  classIds: string[],
+): Promise<ResetResult> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requirePermission('tenants.manage');
+  if (classIds.length === 0) return { ok: false, error: 'Sélectionnez au moins une classe.' };
+
+  const tenantId = session.user.tenantId;
+  try {
+    const deleted = await withTenant(tenantId, async (tx) => {
+      const res = await tx.teacherAssignment.deleteMany({
+        where: { classId: { in: classIds }, academicYearId },
+      });
+      await logAudit(tx, {
+        tenantId,
+        userId: session.user.id,
+        action: 'resetAllocation',
+        entityType: 'AcademicYear',
+        entityId: academicYearId,
+        after: { deleted: res.count, classIds },
+      });
+      return res.count;
+    });
+    revalidatePath('/admin/timetable/generate');
+    return { ok: true, deleted };
+  } catch (e: unknown) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Échec' };
+  }
+}
+
+const decisionSchema = z.object({
+  classId: z.string().uuid(),
+  subjectId: z.string().uuid(),
+  teacherId: z.string().uuid(),
+  hours: z.coerce.number().min(0).max(40),
+});
+
+type ApplyResult = { ok: true; created: number } | { ok: false; error: string };
+
+/** Applique les décisions d'auto-affectation : crée les affectations. */
+export async function applyAllocationAction(
+  academicYearId: string,
+  decisions: AllocationDecision[],
+): Promise<ApplyResult> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requirePermission('tenants.manage');
+
+  const parsed = z.array(decisionSchema).safeParse(decisions);
+  if (!parsed.success) return { ok: false, error: 'Décisions invalides.' };
+
+  const tenantId = session.user.tenantId;
+  try {
+    const created = await withTenant(tenantId, async (tx) => {
+      const n = await applyAllocation(tx, tenantId, academicYearId, parsed.data);
+      await logAudit(tx, {
+        tenantId,
+        userId: session.user.id,
+        action: 'autoAllocate',
+        entityType: 'AcademicYear',
+        entityId: academicYearId,
+        after: { created: n, decisions: parsed.data.length },
+      });
+      return n;
+    });
+    revalidatePath('/admin/timetable/generate');
+    return { ok: true, created };
+  } catch (e: unknown) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Échec' };
+  }
 }

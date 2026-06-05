@@ -20,6 +20,7 @@ export function TeacherSidebar({
   const items = [
     { href: prefix, key: 'home', exact: true },
     { href: `${prefix}/timetable`, key: 'timetable', exact: false },
+    { href: `${prefix}/cahier`, key: 'cahier', exact: false },
     { href: `${prefix}/classes`, key: 'classes', exact: false },
     { href: `${prefix}/messages`, key: 'messages', exact: false },
     { href: `${prefix}/account`, key: 'account', exact: false },
@@ -34,21 +35,17 @@ export function TeacherSidebar({
   return (
     <aside className="w-60 shrink-0 border-e border-slate-200 bg-white">
       <div className="border-b border-slate-200 px-5 py-4">
-        <div className="flex items-center gap-2">
-          <span className="grid h-8 w-8 place-items-center rounded-lg bg-brand-600 text-sm font-bold text-white">
-            J
-          </span>
-          <div>
-            <div className="text-sm font-semibold text-slate-900">Jawal</div>
-            <div className="truncate text-xs text-slate-500">{tenantName}</div>
-          </div>
-        </div>
-        <div className="mt-2 truncate text-xs text-slate-400">{teacherName}</div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/sesame-logo.png" alt="Sesame" className="h-7 w-auto" />
+        <div className="mt-1.5 truncate text-xs text-slate-500">{tenantName}</div>
+        <div className="truncate text-xs text-slate-400">{teacherName}</div>
       </div>
       <nav className="px-2 py-3">
         <ul className="space-y-0.5">
           {items.map((it) => {
-            const active = it.exact ? pathname === it.href || pathname === `${it.href}/` : pathname.startsWith(it.href);
+            const active = it.exact
+              ? pathname === it.href || pathname === `${it.href}/`
+              : pathname.startsWith(it.href);
             return (
               <li key={it.key}>
                 <Link href={it.href} className={cls(active)}>
