@@ -8,6 +8,7 @@ import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
+import type { Prisma } from '@/lib/db';
 
 type Tx = Parameters<Parameters<typeof withTenant>[1]>[0];
 
@@ -185,6 +186,9 @@ export async function createPersonAction(
   const contractEndDate = isEmployee ? (parsed.data.contractEndDate ?? null) : null;
   const contractType = isEmployee ? (parsed.data.contractType ?? null) : null;
   const contractualHoursPerWeek = isTeacher ? (parsed.data.contractualHoursPerWeek ?? null) : null;
+  const homeRoomRaw = formData.get('homeRoomId');
+  const homeRoomId =
+    isTeacher && typeof homeRoomRaw === 'string' && homeRoomRaw ? homeRoomRaw : null;
 
   const created = await withTenant(tenantId, async (tx) => {
     const serviceId = await deriveServiceId(tx, tenantId, parsed.data.type, roleId);
@@ -195,6 +199,7 @@ export async function createPersonAction(
         roleId,
         service,
         serviceId,
+        metadata: homeRoomId ? { homeRoomId } : {},
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,
         birthDate: parsed.data.birthDate,
@@ -322,12 +327,18 @@ export async function updatePersonAction(id: string, formData: FormData): Promis
       : null;
     const serviceId = await deriveServiceId(tx, tenantId, before.type, roleId);
 
+    const homeRoomRaw = formData.get('homeRoomId');
+    const metadata = { ...(before.metadata as Record<string, unknown>) };
+    if (isTeacher && typeof homeRoomRaw === 'string' && homeRoomRaw) metadata.homeRoomId = homeRoomRaw;
+    else delete metadata.homeRoomId;
+
     const updated = await tx.person.update({
       where: { id },
       data: {
         roleId,
         service,
         serviceId,
+        metadata: metadata as Prisma.InputJsonValue,
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,
         birthDate: parsed.data.birthDate,

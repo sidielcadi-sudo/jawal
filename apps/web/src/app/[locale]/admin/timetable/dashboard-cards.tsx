@@ -338,6 +338,7 @@ export function TeacherAvailabilityCard({
   empty,
   emptyList,
   noSpecialtyList,
+  sharedRoomList,
   uncovered,
   uncoveredCells,
   avg,
@@ -347,6 +348,7 @@ export function TeacherAvailabilityCard({
   empty: number;
   emptyList: string[];
   noSpecialtyList: string[];
+  sharedRoomList: Array<{ room: string; teachers: string[] }>;
   uncovered: number;
   uncoveredCells: Array<{ day: string; startTime: string; endTime: string }>;
   avg: number;
@@ -397,6 +399,26 @@ export function TeacherAvailabilityCard({
           </li>
         )}
         <Row
+          icon={sharedRoomList.length > 0 ? '⚠' : '✓'}
+          label={t('teacherAvailability.sharedRoom')}
+          value={sharedRoomList.length}
+          alert={sharedRoomList.length > 0}
+        />
+        {sharedRoomList.length > 0 && (
+          <li className="rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2">
+            <div className="flex flex-wrap gap-1.5">
+              {sharedRoomList.map((s, i) => (
+                <span
+                  key={i}
+                  className="rounded border border-amber-200 bg-white px-1.5 py-0.5 text-[11px] text-amber-800"
+                >
+                  {s.room} : {s.teachers.join(' / ')}
+                </span>
+              ))}
+            </div>
+          </li>
+        )}
+        <Row
           icon={uncovered > 0 ? '⚠' : '✓'}
           label={t('teacherAvailability.uncoveredSlots')}
           value={uncovered}
@@ -429,15 +451,49 @@ export function TeacherAvailabilityCard({
 
 // ─── Conflits structurels ──────────────────────────────────────
 
+type ConflictItem = {
+  day: string;
+  startTime: string;
+  endTime: string;
+  name: string;
+  items: string[];
+};
+
+function ConflictChips({ list, t }: { list: ConflictItem[]; t: T }) {
+  if (list.length === 0) return null;
+  return (
+    <li className="rounded-lg border border-amber-100 bg-amber-50/50 px-3 py-2">
+      <div className="flex flex-wrap gap-1.5">
+        {list.map((c, i) => (
+          <span
+            key={i}
+            className="rounded border border-amber-200 bg-white px-1.5 py-0.5 text-[11px] tabular-nums text-amber-800"
+          >
+            {c.name} · {t(`teacherAvailability.daysShort.${c.day}` as never)} {c.startTime}–
+            {c.endTime}
+            {c.items.length > 0 ? ` · ${c.items.join(' / ')}` : ''}
+          </span>
+        ))}
+      </div>
+    </li>
+  );
+}
+
 export function ConflictsCard({
   teacher,
   room,
   cls,
+  teacherList,
+  roomList,
+  classList,
   t,
 }: {
   teacher: number;
   room: number;
   cls: number;
+  teacherList: ConflictItem[];
+  roomList: ConflictItem[];
+  classList: ConflictItem[];
   t: T;
 }) {
   const total = teacher + room + cls;
@@ -458,13 +514,11 @@ export function ConflictsCard({
           value={teacher}
           alert={teacher > 0}
         />
-        <Row
-          icon={room > 0 ? '⚠' : '✓'}
-          label={t('conflicts.room')}
-          value={room}
-          alert={room > 0}
-        />
+        <ConflictChips list={teacherList} t={t} />
+        <Row icon={room > 0 ? '⚠' : '✓'} label={t('conflicts.room')} value={room} alert={room > 0} />
+        <ConflictChips list={roomList} t={t} />
         <Row icon={cls > 0 ? '⚠' : '✓'} label={t('conflicts.class')} value={cls} alert={cls > 0} />
+        <ConflictChips list={classList} t={t} />
       </ul>
     </div>
   );

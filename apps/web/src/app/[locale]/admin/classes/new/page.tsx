@@ -11,16 +11,17 @@ export default async function NewClassPage({ params }: { params: Promise<{ local
   const session = (await auth())!;
   const t = await getTranslations('admin.classes');
 
-  const { years, levels, teachers, activeYearId } = await withTenant(
+  const { years, levels, teachers, rooms, activeYearId } = await withTenant(
     session.user.tenantId,
     async (tx) => {
-      const [years, levels, teachers, activeYear] = await Promise.all([
+      const [years, levels, teachers, rooms, activeYear] = await Promise.all([
         tx.academicYear.findMany({ orderBy: { startDate: 'desc' } }),
         tx.level.findMany({ include: { cycle: true }, orderBy: { order: 'asc' } }),
         tx.person.findMany({
           where: { type: 'TEACHER', deletedAt: null },
           orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
         }),
+        tx.room.findMany({ orderBy: { code: 'asc' } }),
         tx.academicYear.findFirst({ where: { active: true } }),
       ]);
       return {
@@ -31,6 +32,7 @@ export default async function NewClassPage({ params }: { params: Promise<{ local
         })),
         levels: levels.map((l) => ({ id: l.id, label: `${l.cycle.label} — ${l.label}` })),
         teachers: teachers.map((p) => ({ id: p.id, label: `${p.lastName} ${p.firstName}` })),
+        rooms: rooms.map((r) => ({ id: r.id, label: `${r.code} — ${r.label}` })),
         activeYearId: activeYear?.id,
       };
     },
@@ -56,6 +58,7 @@ export default async function NewClassPage({ params }: { params: Promise<{ local
           years={years}
           levels={levels}
           teachers={teachers}
+          rooms={rooms}
           initial={{ academicYearId: activeYearId }}
         />
       </div>

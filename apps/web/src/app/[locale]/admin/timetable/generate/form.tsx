@@ -274,7 +274,7 @@ function ResultModal({
       onClick={onClose}
     >
       <div
-        className="my-8 w-full max-w-3xl rounded-2xl border border-slate-200 bg-white p-5"
+        className="my-8 max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5"
         onClick={(e) => e.stopPropagation()}
       >
         {result.ok ? (

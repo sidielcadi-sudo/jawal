@@ -57,6 +57,8 @@ type PersonInitial = {
   contractEndDate?: string;
   contractType?: ContractType;
   contractualHoursPerWeek?: number;
+  homeRoomId?: string | null;
+  photoFileId?: string | null;
   contractFile?: ContractFile;
   specialtySubjectIds?: string[];
   cycleIds?: string[];
@@ -82,6 +84,8 @@ export function PersonForm({
   allSubjects,
   allCycles,
   allClasses,
+  rooms,
+  lockType = false,
 }: {
   mode: 'create' | 'edit';
   initial?: PersonInitial;
@@ -91,6 +95,9 @@ export function PersonForm({
   allSubjects: { id: string; label: string }[];
   allCycles: { id: string; label: string }[];
   allClasses: { id: string; label: string }[];
+  rooms: { id: string; label: string }[];
+  /** Verrouille (et masque) le type — ex. création d'un élève. */
+  lockType?: boolean;
 }) {
   const t = useTranslations('admin.persons.form');
   const tRel = useTranslations('admin.persons.detail.relations');
@@ -100,6 +107,13 @@ export function PersonForm({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [type, setType] = useState<PersonType>(initial?.type ?? 'STUDENT');
   const [parents, setParents] = useState<ParentLink[]>(initial?.parents ?? []);
+  const [stagedPhoto, setStagedPhoto] = useState<File | null>(null);
+  const [stagedPhotoUrl, setStagedPhotoUrl] = useState<string | null>(null);
+
+  function onStagePhoto(file: File | null) {
+    setStagedPhoto(file);
+    setStagedPhotoUrl(file ? URL.createObjectURL(file) : null);
+  }
 
   function onSubmit(formData: FormData) {
     setError('');
@@ -118,6 +132,14 @@ export function PersonForm({
       }
 
       const id = mode === 'create' ? (result.data as { id: string }).id : initial!.id!;
+      // Création : on envoie la photo mise en attente une fois l'id obtenu.
+      if (stagedPhoto) {
+        const fd = new FormData();
+        fd.append('file', stagedPhoto);
+        await fetch(`/api/admin/persons/${id}/photo/upload`, { method: 'POST', body: fd }).catch(
+          () => {},
+        );
+      }
       router.push(`/${locale}/admin/persons/${id}`);
       router.refresh();
     });
@@ -143,24 +165,28 @@ export function PersonForm({
 
   return (
     <form action={onSubmit} className="space-y-6">
-      <section>
-        <h2 className="text-sm font-semibold text-slate-700">{t('section.identity')}</h2>
-        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field label={t('type')} error={fieldErrors.type}>
-            <select
-              name="type"
-              required
-              value={type}
-              onChange={(e) => setType(e.target.value as PersonType)}
-              className={inputCls}
-              disabled={mode === 'edit'}
-            >
-              <option value="STUDENT">{t('types.STUDENT')}</option>
-              <option value="TEACHER">{t('types.TEACHER')}</option>
-              <option value="STAFF">{t('types.STAFF')}</option>
-              <option value="PARENT">{t('types.PARENT')}</option>
-            </select>
-          </Field>
+      <SectionCard title={t('section.identity')}>
+        <div className="flex flex-col gap-5 sm:flex-row">
+          <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
+          {lockType ? (
+            <input type="hidden" name="type" value={type} />
+          ) : (
+            <Field label={t('type')} error={fieldErrors.type}>
+              <select
+                name="type"
+                required
+                value={type}
+                onChange={(e) => setType(e.target.value as PersonType)}
+                className={inputCls}
+                disabled={mode === 'edit'}
+              >
+                <option value="STUDENT">{t('types.STUDENT')}</option>
+                <option value="TEACHER">{t('types.TEACHER')}</option>
+                <option value="STAFF">{t('types.STAFF')}</option>
+                <option value="PARENT">{t('types.PARENT')}</option>
+              </select>
+            </Field>
+          )}
 
           {showRoleField && (
             <Field
@@ -187,7 +213,6 @@ export function PersonForm({
               <option value="">—</option>
               <option value="M">{t('genders.M')}</option>
               <option value="F">{t('genders.F')}</option>
-              <option value="X">{t('genders.X')}</option>
             </select>
           </Field>
           <Field label={t('lastName')} error={fieldErrors.lastName}>
@@ -234,12 +259,17 @@ export function PersonForm({
               className={inputCls}
             />
           </Field>
+          </div>
+          <PhotoBox
+            personId={initial?.id}
+            hasPhoto={!!initial?.photoFileId}
+            onStage={onStagePhoto}
+            stagedUrl={stagedPhotoUrl}
+          />
         </div>
-      </section>
+      </SectionCard>
 
-      <section>
-        <h2 className="text-sm font-semibold text-slate-700">{t('section.contact')}</h2>
-        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <SectionCard title={t('section.contact')} bodyClass="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label={t('contactEmail')}>
             <input
               type="email"
@@ -265,12 +295,9 @@ export function PersonForm({
               className={inputCls}
             />
           </Field>
-        </div>
-      </section>
+      </SectionCard>
 
-      <section>
-        <h2 className="text-sm font-semibold text-slate-700">{t('section.address')}</h2>
-        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+      <SectionCard title={t('section.address')} bodyClass="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label={t('addressLine1')}>
             <input
               type="text"
@@ -303,13 +330,11 @@ export function PersonForm({
               className={inputCls}
             />
           </Field>
-        </div>
-      </section>
+      </SectionCard>
 
       {showContractField && (
-        <section>
-          <h2 className="text-sm font-semibold text-slate-700">{t('section.contract')}</h2>
-          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+        <SectionCard title={t('section.contract')}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <Field label={t('contractType')}>
               <select
                 name="contractType"
@@ -354,6 +379,23 @@ export function PersonForm({
                 <p className="mt-1 text-xs text-slate-500">{t('contractualHoursPerWeekHint')}</p>
               </Field>
             )}
+            {type === 'TEACHER' && (
+              <Field label={t('homeRoom')}>
+                <select
+                  name="homeRoomId"
+                  defaultValue={initial?.homeRoomId ?? ''}
+                  className={inputCls}
+                >
+                  <option value="">{t('noRoom')}</option>
+                  {rooms.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-xs text-slate-500">{t('homeRoomHint')}</p>
+              </Field>
+            )}
           </div>
           {mode === 'edit' && initial?.id && (
             <ContractUpload personId={initial.id} current={initial.contractFile ?? null} />
@@ -361,12 +403,11 @@ export function PersonForm({
           {mode === 'create' && (
             <p className="mt-2 text-xs text-slate-500">{t('contractUploadAfterCreate')}</p>
           )}
-        </section>
+        </SectionCard>
       )}
 
       {type === 'TEACHER' && (
-        <section className="space-y-4">
-          <h2 className="text-sm font-semibold text-slate-700">{t('section.skills')}</h2>
+        <SectionCard title={t('section.skills')} bodyClass="space-y-4">
           <MultiPicker
             name="specialtySubjectIds"
             label={t('specialties')}
@@ -388,12 +429,11 @@ export function PersonForm({
             options={allClasses}
             initial={initial?.priorityClassIds ?? []}
           />
-        </section>
+        </SectionCard>
       )}
 
       {showContractField && (
-        <section className="space-y-4">
-          <h2 className="text-sm font-semibold text-slate-700">{t('section.hr')}</h2>
+        <SectionCard title={t('section.hr')} bodyClass="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label={t('experienceYears')}>
               <input
@@ -422,12 +462,11 @@ export function PersonForm({
           {type === 'TEACHER' && (
             <AvailabilityField initial={initial?.availability ?? ({} as Availability)} />
           )}
-        </section>
+        </SectionCard>
       )}
 
       {showContractField && (
-        <section className="space-y-4">
-          <h2 className="text-sm font-semibold text-slate-700">{t('section.financial')}</h2>
+        <SectionCard title={t('section.financial')} bodyClass="space-y-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label={t('bankName')}>
               <input
@@ -485,13 +524,12 @@ export function PersonForm({
           </div>
           <BenefitsField initial={initial?.benefits ?? []} />
           <DeductionsField initial={initial?.deductions ?? []} />
-        </section>
+        </SectionCard>
       )}
 
       {showParentsField && (
-        <section>
-          <h2 className="text-sm font-semibold text-slate-700">{t('section.parents')}</h2>
-          <p className="mt-1 text-xs text-slate-500">{t('parentsHint')}</p>
+        <SectionCard title={t('section.parents')}>
+          <p className="text-xs text-slate-500">{t('parentsHint')}</p>
           <div className="mt-3 space-y-2">
             {parents.map((p, idx) => (
               <div
@@ -551,7 +589,7 @@ export function PersonForm({
               <p className="text-xs text-amber-700">{t('noParentAvailable')}</p>
             )}
           </div>
-        </section>
+        </SectionCard>
       )}
 
       {error && (
@@ -595,6 +633,104 @@ function Field({
       {children}
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </label>
+  );
+}
+
+function SectionCard({
+  title,
+  bodyClass,
+  children,
+}: {
+  title: string;
+  bodyClass?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 bg-[#E6E6FA] px-5 py-3">
+        <h2 className="text-base font-semibold text-slate-800">{title}</h2>
+      </div>
+      <div className={`p-5 ${bodyClass ?? ''}`}>{children}</div>
+    </section>
+  );
+}
+
+function PhotoBox({
+  personId,
+  hasPhoto,
+  onStage,
+  stagedUrl,
+}: {
+  personId?: string;
+  hasPhoto: boolean;
+  /** Création : la photo est mise en attente et envoyée après l'enregistrement. */
+  onStage?: (file: File | null) => void;
+  stagedUrl?: string | null;
+}) {
+  const t = useTranslations('admin.persons.form');
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [ver, setVer] = useState(0);
+
+  async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setErr('');
+    if (!personId) {
+      // Mode création : on stocke le fichier, envoi après création.
+      onStage?.(file);
+      return;
+    }
+    if (!file) return;
+    setBusy(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await fetch(`/api/admin/persons/${personId}/photo/upload`, {
+      method: 'POST',
+      body: fd,
+    });
+    setBusy(false);
+    if (!r.ok) {
+      setErr(await r.text());
+      return;
+    }
+    setVer((v) => v + 1);
+    router.refresh();
+  }
+
+  const src =
+    stagedUrl ??
+    (personId && (hasPhoto || ver > 0) ? `/api/admin/persons/${personId}/photo?v=${ver}` : null);
+
+  return (
+    <div className="flex w-40 shrink-0 flex-col items-center gap-2">
+      <div className="grid h-36 w-36 place-items-center overflow-hidden rounded-2xl border border-blue-100 bg-blue-50">
+        {src ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={src} alt="" className="h-full w-full object-cover" />
+        ) : (
+          <svg
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="h-16 w-16 text-slate-300"
+            aria-hidden="true"
+          >
+            <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5 0-9 2.5-9 6v2h18v-2c0-3.5-4-6-9-6Z" />
+          </svg>
+        )}
+      </div>
+      <label className="cursor-pointer rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700">
+        📷 {t('addPhoto')}
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/webp"
+          onChange={onChange}
+          disabled={busy}
+          className="hidden"
+        />
+      </label>
+      {err && <p className="text-center text-[11px] text-red-600">{err}</p>}
+    </div>
   );
 }
 

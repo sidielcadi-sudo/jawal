@@ -23,14 +23,14 @@ export default async function NewPersonPage({
     : 'STUDENT';
 
   const session = (await auth())!;
-  const { roles, availableParents, allSubjects, allCycles, allClasses } = await withTenant(
+  const { roles, availableParents, allSubjects, allCycles, allClasses, rooms } = await withTenant(
     session.user.tenantId,
     async (tx) => {
       const activeYear = await tx.academicYear.findFirst({
         where: { active: true },
         select: { id: true },
       });
-      const [roles, availableParents, allSubjects, allCycles, classes] = await Promise.all([
+      const [roles, availableParents, allSubjects, allCycles, classes, roomList] = await Promise.all([
         tx.personRole.findMany({
           where: { active: true },
           orderBy: [{ appliesTo: 'asc' }, { order: 'asc' }, { labelFr: 'asc' }],
@@ -47,13 +47,28 @@ export default async function NewPersonPage({
           orderBy: { name: 'asc' },
           select: { id: true, name: true },
         }),
+        tx.room.findMany({ orderBy: { code: 'asc' } }),
       ]);
-      return { roles, availableParents, allSubjects, allCycles, allClasses: classes };
+      return {
+        roles,
+        availableParents,
+        allSubjects,
+        allCycles,
+        allClasses: classes,
+        rooms: roomList.map((r) => ({ id: r.id, label: `${r.code} — ${r.label}` })),
+      };
     },
   );
 
   const backHref = `/${locale}/admin/persons?type=${defaultType}`;
   const backLabel = t(`title.${defaultType}` as never);
+  const newKey = {
+    STUDENT: 'newStudent',
+    TEACHER: 'newTeacher',
+    STAFF: 'newStaff',
+    PARENT: 'newParent',
+  }[defaultType];
+  const newLabel = t(`actions.${newKey}` as never);
 
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
@@ -62,16 +77,17 @@ export default async function NewPersonPage({
           {backLabel}
         </Link>
         <span className="mx-1.5">›</span>
-        <span>{t('actions.new')}</span>
+        <span>{newLabel}</span>
       </nav>
 
-      <h1 className="text-2xl font-semibold text-slate-900">{t('actions.new')}</h1>
+      <h1 className="text-2xl font-semibold text-slate-900">{newLabel}</h1>
       <p className="mt-1 text-sm text-slate-500">{t('newSubtitle')}</p>
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
         <PersonForm
           mode="create"
           locale={locale}
+          lockType={defaultType === 'STUDENT'}
           initial={{ type: defaultType }}
           roles={roles.map((r) => ({
             id: r.id,
@@ -83,6 +99,7 @@ export default async function NewPersonPage({
           allSubjects={allSubjects.map((s) => ({ id: s.id, label: s.label }))}
           allCycles={allCycles.map((c) => ({ id: c.id, label: c.label }))}
           allClasses={allClasses.map((c) => ({ id: c.id, label: c.name }))}
+          rooms={rooms}
         />
       </div>
     </div>

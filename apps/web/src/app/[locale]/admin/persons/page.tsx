@@ -39,10 +39,17 @@ export default async function PersonsListPage({
   const showArchived = sp.archived === '1';
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
   const isTeacherView = typeFilter === 'TEACHER';
+  const isStudentView = typeFilter === 'STUDENT';
   // Le filtre service ne s'applique qu'au personnel (STAFF) ; valeur = serviceId.
   const requestedService = typeFilter === 'STAFF' ? (sp.service ?? '') : '';
 
-  const { persons, total, teacherExtras, services, serviceFilter } = await withTenant(
+  type StudentRow = {
+    className: string | null;
+    mainTeacher: string | null;
+    father: string | null;
+    mother: string | null;
+  };
+  const { persons, total, teacherExtras, studentExtras, services, serviceFilter } = await withTenant(
     tenantId,
     async (tx) => {
       const services = await tx.service.findMany({
@@ -127,7 +134,59 @@ export default async function PersonsListPage({
       }
     }
 
-      return { persons, total, teacherExtras, services, serviceFilter };
+      // Vue Élèves : classe + prof principal (année active) + contacts parents.
+      const studentExtras = new Map<string, StudentRow>();
+      if (isStudentView && persons.length > 0) {
+        const ids = persons.map((p) => p.id);
+        const activeYear = await tx.academicYear.findFirst({
+          where: { active: true },
+          select: { id: true },
+        });
+        const [enr, rel] = await Promise.all([
+          tx.studentClass.findMany({
+            where: {
+              studentId: { in: ids },
+              unenrolledAt: null,
+              ...(activeYear ? { class: { academicYearId: activeYear.id } } : {}),
+            },
+            select: {
+              studentId: true,
+              class: {
+                select: { name: true, mainTeacher: { select: { firstName: true, lastName: true } } },
+              },
+            },
+          }),
+          tx.personRelation.findMany({
+            where: { childId: { in: ids } },
+            select: {
+              childId: true,
+              type: true,
+              parent: { select: { firstName: true, lastName: true, contacts: true } },
+            },
+          }),
+        ]);
+        for (const id of ids)
+          studentExtras.set(id, { className: null, mainTeacher: null, father: null, mother: null });
+        for (const e of enr) {
+          const s = studentExtras.get(e.studentId);
+          if (!s) continue;
+          s.className = e.class.name;
+          s.mainTeacher = e.class.mainTeacher
+            ? `${e.class.mainTeacher.lastName} ${e.class.mainTeacher.firstName}`
+            : null;
+        }
+        for (const r of rel) {
+          const s = studentExtras.get(r.childId);
+          if (!s) continue;
+          const c = r.parent.contacts as { phone?: string; email?: string } | null;
+          const contact = c?.phone ?? c?.email ?? null;
+          const label = `${r.parent.lastName} ${r.parent.firstName}${contact ? ` · ${contact}` : ''}`;
+          if (r.type === 'FATHER' && !s.father) s.father = label;
+          else if (r.type === 'MOTHER' && !s.mother) s.mother = label;
+        }
+      }
+
+      return { persons, total, teacherExtras, studentExtras, services, serviceFilter };
     },
   );
 
@@ -149,6 +208,12 @@ export default async function PersonsListPage({
   };
 
   const title = typeFilter ? t(`title.${typeFilter}`) : t('title.ALL');
+  const newKey = typeFilter
+    ? { STUDENT: 'newStudent', TEACHER: 'newTeacher', STAFF: 'newStaff', PARENT: 'newParent' }[
+        typeFilter
+      ]
+    : 'new';
+  const newLabel = t(`actions.${newKey}` as never);
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
@@ -168,7 +233,7 @@ export default async function PersonsListPage({
             href={`${baseHref}/new${typeFilter ? `?type=${typeFilter}` : ''}`}
             className="bg-brand-600 hover:bg-brand-700 rounded-lg px-4 py-2 text-sm font-medium text-white shadow"
           >
-            {t('actions.new')}
+            {newLabel}
           </Link>
         </div>
       </div>
@@ -227,8 +292,15 @@ export default async function PersonsListPage({
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
+              {isStudentView && <th className="px-4 py-3 text-start">{t('table.photo')}</th>}
               <th className="px-4 py-3 text-start">{t('table.name')}</th>
-              {isTeacherView ? (
+              {isStudentView ? (
+                <>
+                  <th className="px-4 py-3 text-start">{t('table.contact')}</th>
+                  <th className="px-4 py-3 text-start">{t('table.studentClass')}</th>
+                  <th className="px-4 py-3 text-start">{t('table.mainTeacher')}</th>
+                </>
+              ) : isTeacherView ? (
                 <>
                   <th className="px-4 py-3 text-start">{t('table.specialties')}</th>
                   <th className="px-4 py-3 text-end">{t('table.weeklyHours')}</th>
@@ -249,6 +321,23 @@ export default async function PersonsListPage({
               const contacts = (p.contacts ?? {}) as { email?: string; phone?: string };
               return (
                 <tr key={p.id} className={p.deletedAt ? 'bg-slate-50/60 text-slate-500' : ''}>
+                  {isStudentView && (
+                    <td className="px-4 py-3">
+                      {p.photoFileId ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={`/api/admin/persons/${p.id}/photo`}
+                          alt=""
+                          className="h-9 w-9 rounded-full object-cover"
+                        />
+                      ) : (
+                        <span className="grid h-9 w-9 place-items-center rounded-full bg-slate-100 text-xs font-semibold text-slate-500">
+                          {(p.lastName?.[0] ?? '').toUpperCase()}
+                          {(p.firstName?.[0] ?? '').toUpperCase()}
+                        </span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-4 py-3">
                     <Link
                       href={`${baseHref}/${p.id}`}
@@ -262,7 +351,27 @@ export default async function PersonsListPage({
                       </span>
                     )}
                   </td>
-                  {isTeacherView ? (
+                  {isStudentView ? (
+                    (() => {
+                      const s = studentExtras.get(p.id);
+                      return (
+                        <>
+                          <td className="px-4 py-3 text-xs text-slate-600">
+                            <div>
+                              {t('table.father')} : {s?.father ?? '—'}
+                            </div>
+                            <div>
+                              {t('table.mother')} : {s?.mother ?? '—'}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-600">{s?.className ?? '—'}</td>
+                          <td className="px-4 py-3 text-xs text-slate-600">
+                            {s?.mainTeacher ?? '—'}
+                          </td>
+                        </>
+                      );
+                    })()
+                  ) : isTeacherView ? (
                     (() => {
                       const extra = teacherExtras.get(p.id);
                       return (
@@ -312,7 +421,7 @@ export default async function PersonsListPage({
             })}
             {persons.length === 0 && (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={isStudentView ? 6 : 5} className="px-4 py-10 text-center text-slate-500">
                   {t('empty')}
                 </td>
               </tr>

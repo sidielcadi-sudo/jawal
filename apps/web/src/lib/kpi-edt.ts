@@ -129,6 +129,8 @@ export type KpiResult = {
     teachersWithEmptyList: string[];
     /** Noms des profs sans aucune spécialité (matière maîtrisée). */
     teachersWithoutSpecialtyList: string[];
+    /** Profs partageant la même salle principale (conflits garantis). */
+    teachersSharingRoomList: Array<{ room: string; teachers: string[] }>;
     uncoveredSlots: number;
     /** Détail des cellules (jour × créneau) sans aucun prof disponible. */
     uncoveredCells: Array<{ day: string; startTime: string; endTime: string }>;
@@ -168,6 +170,10 @@ export type KpiResult = {
     teacher: number;
     room: number;
     class: number;
+    /** Détail des conflits (qui/où, jour × créneau, classes ou matières en cause). */
+    teacherList: Array<{ day: string; startTime: string; endTime: string; name: string; items: string[] }>;
+    roomList: Array<{ day: string; startTime: string; endTime: string; name: string; items: string[] }>;
+    classList: Array<{ day: string; startTime: string; endTime: string; name: string; items: string[] }>;
   };
   globalScore: number;
 };
@@ -208,6 +214,7 @@ export async function computeKpis(
       lastName: true,
       availability: true,
       contractualHoursPerWeek: true,
+      metadata: true,
       teacherSpecialties: { select: { subjectId: true } },
     },
   });
@@ -424,28 +431,91 @@ export async function computeKpis(
       dayOfWeek: true,
       teacherId: true,
       roomId: true,
+      subject: { select: { label: true } },
     },
   });
-  let teacherConflicts = 0;
-  let roomConflicts = 0;
-  const classKeys = new Map<string, number>();
-  const teacherKeys = new Map<string, number>();
-  const roomKeys = new Map<string, number>();
+  const slotById = new Map(slots.map((s) => [s.id, s]));
+  const teacherNameById = new Map(teachers.map((t) => [t.id, `${t.lastName} ${t.firstName}`]));
+  const roomCodeById = new Map(rooms.map((r) => [r.id, r.code]));
+  const classNameById = new Map(classes.map((c) => [c.id, c.name]));
+
+  const addToGroup = (m: Map<string, typeof entries>, k: string, e: (typeof entries)[number]) => {
+    const arr = m.get(k);
+    if (arr) arr.push(e);
+    else m.set(k, [e]);
+  };
+  const classGroups = new Map<string, typeof entries>();
+  const teacherGroups = new Map<string, typeof entries>();
+  const roomGroups = new Map<string, typeof entries>();
   for (const e of entries) {
     const cellKey = `${e.dayOfWeek}|${e.slotId}`;
-    classKeys.set(`${e.classId}|${cellKey}`, (classKeys.get(`${e.classId}|${cellKey}`) ?? 0) + 1);
-    if (e.teacherId)
-      teacherKeys.set(
-        `${e.teacherId}|${cellKey}`,
-        (teacherKeys.get(`${e.teacherId}|${cellKey}`) ?? 0) + 1,
-      );
-    if (e.roomId)
-      roomKeys.set(`${e.roomId}|${cellKey}`, (roomKeys.get(`${e.roomId}|${cellKey}`) ?? 0) + 1);
+    addToGroup(classGroups, `${e.classId}|${cellKey}`, e);
+    if (e.teacherId) addToGroup(teacherGroups, `${e.teacherId}|${cellKey}`, e);
+    if (e.roomId) addToGroup(roomGroups, `${e.roomId}|${cellKey}`, e);
   }
-  for (const c of teacherKeys.values()) if (c > 1) teacherConflicts += c - 1;
-  for (const c of roomKeys.values()) if (c > 1) roomConflicts += c - 1;
+
+  type ConflictDetail = {
+    day: string;
+    startTime: string;
+    endTime: string;
+    name: string;
+    items: string[];
+  };
+  const cellOf = (e: (typeof entries)[number]) => {
+    const s = slotById.get(e.slotId);
+    return { day: e.dayOfWeek as string, startTime: s?.startTime ?? '', endTime: s?.endTime ?? '' };
+  };
+  let teacherConflicts = 0;
+  let roomConflicts = 0;
   let classConflicts = 0;
-  for (const c of classKeys.values()) if (c > 1) classConflicts += c - 1;
+  const teacherConflictList: ConflictDetail[] = [];
+  const roomConflictList: ConflictDetail[] = [];
+  const classConflictList: ConflictDetail[] = [];
+
+  for (const [key, arr] of teacherGroups) {
+    if (arr.length <= 1) continue;
+    teacherConflicts += arr.length - 1;
+    teacherConflictList.push({
+      ...cellOf(arr[0]!),
+      name: teacherNameById.get(key.split('|')[0]!) ?? '?',
+      items: arr.map((e) => classNameById.get(e.classId) ?? '?'),
+    });
+  }
+  for (const [key, arr] of roomGroups) {
+    if (arr.length <= 1) continue;
+    roomConflicts += arr.length - 1;
+    roomConflictList.push({
+      ...cellOf(arr[0]!),
+      name: roomCodeById.get(key.split('|')[0]!) ?? '?',
+      items: arr.map((e) => classNameById.get(e.classId) ?? '?'),
+    });
+  }
+  for (const [key, arr] of classGroups) {
+    if (arr.length <= 1) continue;
+    classConflicts += arr.length - 1;
+    classConflictList.push({
+      ...cellOf(arr[0]!),
+      name: classNameById.get(key.split('|')[0]!) ?? '?',
+      items: arr.map((e) => e.subject?.label ?? '?'),
+    });
+  }
+
+  // Garde-fou : profs partageant la même salle principale (homeroom).
+  // Dans le modèle « salle du prof », deux profs sur la même salle → conflits
+  // garantis à la génération. À détecter AVANT de générer.
+  const teachersByRoom = new Map<string, string[]>();
+  for (const tt of teachers) {
+    const hid = (tt.metadata as { homeRoomId?: string } | null)?.homeRoomId;
+    if (!hid) continue;
+    const arr = teachersByRoom.get(hid) ?? [];
+    arr.push(`${tt.lastName} ${tt.firstName}`);
+    teachersByRoom.set(hid, arr);
+  }
+  const teachersSharingRoomList: Array<{ room: string; teachers: string[] }> = [];
+  for (const [rid, names] of teachersByRoom) {
+    if (names.length > 1)
+      teachersSharingRoomList.push({ room: roomCodeById.get(rid) ?? '?', teachers: names });
+  }
 
   // ─── Score global (pondération) ──────────────────────────────
   const coverageScore = coveragePct; // 0-100
@@ -509,6 +579,7 @@ export async function computeKpis(
       teachersWithEmptyAvailability: teachersWithEmptyAv,
       teachersWithEmptyList: teachersWithEmptyAvList,
       teachersWithoutSpecialtyList,
+      teachersSharingRoomList,
       uncoveredSlots,
       uncoveredCells,
       totalSlotCells,
@@ -542,6 +613,9 @@ export async function computeKpis(
       teacher: teacherConflicts,
       room: roomConflicts,
       class: classConflicts,
+      teacherList: teacherConflictList.slice(0, 30),
+      roomList: roomConflictList.slice(0, 30),
+      classList: classConflictList.slice(0, 30),
     },
     globalScore,
   };

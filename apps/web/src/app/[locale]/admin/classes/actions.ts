@@ -8,6 +8,7 @@ import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
+import type { Prisma } from '@/lib/db';
 
 type ActionResult<T = void> =
   | { ok: true; data?: T }
@@ -50,6 +51,7 @@ export async function createClassAction(formData: FormData): Promise<ActionResul
 
   try {
     const created = await withTenant(tenantId, async (tx) => {
+      const homeRoomId = formData.get('homeRoomId');
       const cls = await tx.class.create({
         data: {
           tenantId,
@@ -58,6 +60,8 @@ export async function createClassAction(formData: FormData): Promise<ActionResul
           levelId: parsed.data.levelId,
           capacity: parsed.data.capacity,
           mainTeacherId: parsed.data.mainTeacherId ?? null,
+          metadata:
+            typeof homeRoomId === 'string' && homeRoomId ? { homeRoomId } : {},
         },
       });
 
@@ -102,12 +106,18 @@ export async function updateClassAction(
     const before = await tx.class.findUnique({ where: { id } });
     if (!before) throw new Error('Classe introuvable');
 
+    const homeRoomId = formData.get('homeRoomId');
+    const metadata = { ...(before.metadata as Record<string, unknown>) };
+    if (typeof homeRoomId === 'string' && homeRoomId) metadata.homeRoomId = homeRoomId;
+    else delete metadata.homeRoomId;
+
     const updated = await tx.class.update({
       where: { id },
       data: {
         name: parsed.data.name,
         capacity: parsed.data.capacity,
         mainTeacherId: parsed.data.mainTeacherId ?? null,
+        metadata: metadata as Prisma.InputJsonValue,
       },
     });
 

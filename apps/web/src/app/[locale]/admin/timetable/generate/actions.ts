@@ -75,6 +75,8 @@ export async function generateMultiTimetableAction(
 
   let payload: SolverMultiRequest;
   let classNameById: Map<string, string>;
+  let classRoomInfo: Record<string, { roomMode: string; homeRoomId: string | null }> = {};
+  let teacherHomeRoom: Record<string, string | null> = {};
 
   try {
     const collected = await withTenant(tenantId, async (tx) => {
@@ -112,6 +114,7 @@ export async function generateMultiTimetableAction(
               firstName: true,
               lastName: true,
               availability: true,
+              metadata: true,
             },
           },
           class: { select: { id: true, name: true, levelId: true } },
@@ -262,6 +265,25 @@ export async function generateMultiTimetableAction(
         }
       }
 
+      // Gestion des salles par classe : mode (homeroom/pool) hérité du cycle,
+      // + salle attitrée éventuelle (fallback primaire). Sert à la persistance.
+      const classRoomInfo: Record<string, { roomMode: string; homeRoomId: string | null }> = {};
+      for (const cls of classes) {
+        const cs = cls.level.cycle.settings as { roomMode?: string } | null;
+        const md = cls.metadata as { homeRoomId?: string } | null;
+        classRoomInfo[cls.id] = {
+          roomMode: cs?.roomMode === 'POOL' ? 'POOL' : 'HOMEROOM',
+          homeRoomId: md?.homeRoomId ?? null,
+        };
+      }
+      // Salle principale du prof : règle dominante (le prof garde sa salle).
+      const teacherHomeRoom: Record<string, string | null> = {};
+      for (const a of assignments) {
+        if (teacherHomeRoom[a.teacherId] !== undefined) continue;
+        const md = a.teacher.metadata as { homeRoomId?: string } | null;
+        teacherHomeRoom[a.teacherId] = md?.homeRoomId ?? null;
+      }
+
       return {
         payload: {
           class_ids: classIds,
@@ -279,11 +301,15 @@ export async function generateMultiTimetableAction(
           class_constraints: classConstraints,
         } as SolverMultiRequest,
         classNames: new Map(classes.map((c) => [c.id, c.name])),
+        classRoomInfo,
+        teacherHomeRoom,
       };
     });
 
     payload = collected.payload;
     classNameById = collected.classNames;
+    classRoomInfo = collected.classRoomInfo;
+    teacherHomeRoom = collected.teacherHomeRoom;
   } catch (e: unknown) {
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur préparation' };
   }
@@ -307,9 +333,31 @@ export async function generateMultiTimetableAction(
     const assignmentToData = new Map(
       payload.assignments.map((a) => [
         a.id,
-        { subjectId: a.subject_id, teacherId: a.teacher_id, classId: a.class_id },
+        {
+          subjectId: a.subject_id,
+          teacherId: a.teacher_id,
+          classId: a.class_id,
+          requiredRoomType: a.required_room_type ?? null,
+        },
       ]),
     );
+
+    // Salle d'une séance (modèle « le prof garde sa salle ») :
+    //  1. matière spécialisée → salle du solveur (labo/info/gymnase typé) ;
+    //  2. cycle HOMEROOM → salle principale du PROF, sinon salle attitrée de
+    //     la classe (fallback primaire), sinon salle du solveur ;
+    //  3. cycle POOL → salle du solveur (mutualisée).
+    const roomForEntry = (
+      data: { classId: string; teacherId: string; requiredRoomType: string | null },
+      solverRoomId: string | null,
+    ): string | null => {
+      if (data.requiredRoomType) return solverRoomId;
+      const info = classRoomInfo[data.classId];
+      if (info && info.roomMode === 'HOMEROOM') {
+        return teacherHomeRoom[data.teacherId] ?? info.homeRoomId ?? solverRoomId;
+      }
+      return solverRoomId;
+    };
 
     await withTenant(tenantId, async (tx) => {
       // Wipe sur toutes les classes ciblées
@@ -329,7 +377,7 @@ export async function generateMultiTimetableAction(
             dayOfWeek: p.day,
             subjectId: data.subjectId,
             teacherId: data.teacherId,
-            roomId: p.room_id ?? null,
+            roomId: roomForEntry(data, p.room_id ?? null),
           },
         });
       }
@@ -428,9 +476,9 @@ export async function proposeAllocationAction(
 type ResetResult = { ok: true; deleted: number } | { ok: false; error: string };
 
 /**
- * Efface les affectations (`TeacherAssignment`) des classes sélectionnées pour
- * l'année — permet de reproposer une auto-affectation à neuf (sinon tout est
- * épinglé). Ne touche pas à l'EDT généré : régénérez-le après.
+ * Réinitialise les classes sélectionnées : efface les affectations
+ * (`TeacherAssignment`) **et** l'emploi du temps généré (`TimetableEntry`)
+ * pour ces classes → vrai retour à zéro avant une nouvelle pré-affectation.
  */
 export async function resetAllocationAction(
   academicYearId: string,
@@ -444,6 +492,10 @@ export async function resetAllocationAction(
   const tenantId = session.user.tenantId;
   try {
     const deleted = await withTenant(tenantId, async (tx) => {
+      // 1) EDT généré, 2) affectations — pour repartir d'une base vierge.
+      await tx.timetableEntry.deleteMany({
+        where: { classId: { in: classIds }, academicYearId },
+      });
       const res = await tx.teacherAssignment.deleteMany({
         where: { classId: { in: classIds }, academicYearId },
       });
@@ -458,6 +510,7 @@ export async function resetAllocationAction(
       return res.count;
     });
     revalidatePath('/admin/timetable/generate');
+    for (const cid of classIds) revalidatePath(`/admin/classes/${cid}/timetable`);
     return { ok: true, deleted };
   } catch (e: unknown) {
     return { ok: false, error: e instanceof Error ? e.message : 'Échec' };

@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
@@ -10,7 +11,7 @@ import {
 } from '@/lib/bi';
 import { listContractAlerts } from '@/lib/contract-alerts';
 import { contractStatusBadgeClass } from '@/lib/contract-status';
-import { isDirection, currentUserRoleCodes } from '@/lib/auth/rbac';
+import { isDirection } from '@/lib/auth/rbac';
 import { ContractAlertsActions } from './contract-alerts-actions';
 import { PilotageSection } from './pilotage-section';
 
@@ -87,11 +88,10 @@ export default async function AdminDashboard({
   const contractAlerts = await listContractAlerts(tenantId);
   const tContract = await getTranslations('admin.persons.detail');
   const tAlerts = await getTranslations('admin.dashboard.contractAlerts');
-  const [showPilotage, roleCodes] = await Promise.all([isDirection(), currentUserRoleCodes()]);
-  const isCpe = roleCodes.includes('cpe');
+  const showPilotage = await isDirection();
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
+    <div className="mx-auto max-w-7xl px-6 pb-8 pt-4">
       <header className="mb-6">
         <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -100,8 +100,10 @@ export default async function AdminDashboard({
       </header>
 
       {/* 4 KPI principaux */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Kpi
+          tone="violet"
+          icon={<Icon path={ICON_USERS} />}
           label={t('kpi.students')}
           value={String(data.headcount.students)}
           sub={t('kpi.teachersClasses', {
@@ -110,6 +112,8 @@ export default async function AdminDashboard({
           })}
         />
         <Kpi
+          tone="emerald"
+          icon={<Icon path={ICON_CAP} />}
           label={t('kpi.averageGeneral')}
           value={
             data.academic.averageGeneral !== null ? data.academic.averageGeneral.toFixed(2) : '—'
@@ -122,12 +126,16 @@ export default async function AdminDashboard({
           color={getAcademicColor(data.academic.averageGeneral)}
         />
         <Kpi
+          tone="sky"
+          icon={<Icon path={ICON_CALENDAR} />}
           label={t('kpi.attendanceRate')}
           value={data.attendance.rate !== null ? `${data.attendance.rate.toFixed(1)}%` : '—'}
           sub={t('kpi.attendanceRecords', { count: data.attendance.totalRecords })}
           color={getAttendanceColor(data.attendance.rate)}
         />
         <Kpi
+          tone="indigo"
+          icon={<Icon path={ICON_MONEY} />}
           label={t('kpi.collectionRate')}
           value={
             data.finance.totalDue > 0
@@ -150,7 +158,7 @@ export default async function AdminDashboard({
         {/* Top/bottom classes */}
         <section>
           <h2 className="mb-3 text-base font-semibold text-slate-900">{t('academic.title')}</h2>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5">
             {data.academic.topClasses.length === 0 ? (
               <p className="text-sm text-slate-500">{t('academic.empty')}</p>
             ) : (
@@ -208,7 +216,7 @@ export default async function AdminDashboard({
         {/* Attendance breakdown + headcount */}
         <section>
           <h2 className="mb-3 text-base font-semibold text-slate-900">{t('attendance.title')}</h2>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5">
             {data.attendance.totalRecords === 0 ? (
               <p className="text-sm text-slate-500">{t('attendance.empty')}</p>
             ) : (
@@ -244,7 +252,7 @@ export default async function AdminDashboard({
           <h2 className="mb-3 mt-6 text-base font-semibold text-slate-900">
             {t('headcount.title')}
           </h2>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5 text-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5 text-sm">
             <Row label={t('headcount.totalEnrolled')} value={String(data.headcount.totalEnrolled)} />
             <Row label={t('headcount.totalCapacity')} value={String(data.headcount.totalCapacity)} />
             <Row
@@ -265,7 +273,7 @@ export default async function AdminDashboard({
             {data.atRisk.length}
           </span>
         </h2>
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
               <tr>
@@ -353,7 +361,7 @@ export default async function AdminDashboard({
               {contractAlerts.length}
             </span>
           </h2>
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
             <table className="w-full text-sm">
               <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr>
@@ -406,37 +414,11 @@ export default async function AdminDashboard({
       )}
 
       <section className="mt-6 flex flex-wrap gap-3">
-        {isCpe && (
-          <Link
-            href={`/${locale}/admin/vie-scolaire`}
-            className="rounded-lg border border-brand-300 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-100"
-          >
-            🧭 {t('actions.vieScolaire')}
-          </Link>
-        )}
         <Link
           href={`/${locale}/admin/exports`}
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          className="rounded-xl bg-gradient-to-r from-blue-600 to-blue-800 px-4 py-2 text-sm font-medium text-white shadow-sm transition-shadow hover:shadow-md"
         >
           📥 {t('actions.exports')}
-        </Link>
-        <Link
-          href={`/${locale}/admin/finance`}
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          💰 {t('actions.finance')}
-        </Link>
-        <Link
-          href={`/${locale}/admin/announcements`}
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          📢 {t('actions.announcements')}
-        </Link>
-        <Link
-          href={`/${locale}/admin/timetable/generate`}
-          className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          ✨ {t('actions.generateTimetable')}
         </Link>
       </section>
     </div>
@@ -448,29 +430,70 @@ function Kpi({
   value,
   sub,
   color,
+  icon,
+  tone = 'violet',
 }: {
   label: string;
   value: string;
   sub?: string;
   color?: 'emerald' | 'amber' | 'red';
+  icon?: ReactNode;
+  tone?: 'violet' | 'indigo' | 'emerald' | 'amber' | 'sky';
 }) {
   const colors: Record<string, string> = {
     emerald: 'text-emerald-700',
     amber: 'text-amber-700',
     red: 'text-red-700',
   };
+  const tones: Record<string, string> = {
+    violet: 'bg-violet-100 text-violet-600',
+    indigo: 'bg-indigo-100 text-indigo-600',
+    emerald: 'bg-emerald-100 text-emerald-600',
+    amber: 'bg-amber-100 text-amber-600',
+    sky: 'bg-sky-100 text-sky-600',
+  };
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
-      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
-      <div
-        className={`mt-2 text-3xl font-semibold tabular-nums ${color ? colors[color] : 'text-slate-900'}`}
-      >
-        {value}
+    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
+      <div className="flex items-center gap-4">
+        <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${tones[tone]}`}>
+          {icon}
+        </span>
+        <div className="min-w-0">
+          <div
+            className={`text-2xl font-bold tabular-nums ${color ? colors[color] : 'text-slate-900'}`}
+          >
+            {value}
+          </div>
+          <div className="truncate text-xs text-slate-500">{label}</div>
+        </div>
       </div>
-      {sub && <div className="mt-1 text-xs text-slate-500">{sub}</div>}
+      {sub && <div className="mt-3 text-xs text-slate-400">{sub}</div>}
     </div>
   );
 }
+
+function Icon({ path }: { path: string }) {
+  return (
+    <svg
+      width="22"
+      height="22"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d={path} />
+    </svg>
+  );
+}
+
+const ICON_USERS = 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8m14 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75';
+const ICON_CAP = 'M22 10 12 5 2 10l10 5 10-5ZM6 12v5c0 1 2.5 2.5 6 2.5s6-1.5 6-2.5v-5';
+const ICON_CALENDAR = 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM9 16l2 2 4-4';
+const ICON_MONEY = 'M2 7h20v10H2zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6M6 10v0M18 14v0';
 
 function Counter({
   label,

@@ -415,6 +415,8 @@ model Person {
   contractualHoursPerWeek Int?   @map("contractual_hours_per_week")
   /// PDF du contrat — stocké dans MinIO via FileObject.
   contractFileId String?       @unique @map("contract_file_id") @db.Uuid
+  /// Photo de la personne — stockée dans MinIO via FileObject.
+  photoFileId    String?       @unique @map("photo_file_id") @db.Uuid
   /// RH — uniquement TEACHER/STAFF
   experienceYears Int?         @map("experience_years")
   /// JSON : grille hebdomadaire de disponibilités { MON: [{from,to}], ... }
@@ -437,6 +439,7 @@ model Person {
   role               PersonRole?        @relation(fields: [roleId], references: [id], onDelete: SetNull)
   serviceRef         Service?           @relation(fields: [serviceId], references: [id], onDelete: SetNull)
   contractFile       FileObject?        @relation("ContractFile", fields: [contractFileId], references: [id], onDelete: SetNull)
+  photoFile          FileObject?        @relation("PhotoFile", fields: [photoFileId], references: [id], onDelete: SetNull)
   userPersons        UserPerson[]
   studentClasses     StudentClass[]
   mainOfClass        Class[]            @relation("MainTeacher")
@@ -922,6 +925,7 @@ model FileObject {
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contractOf Person? @relation("ContractFile")
+  photoOf    Person? @relation("PhotoFile")
 
   @@index([tenantId, ownerType, ownerId])
   @@map("files")

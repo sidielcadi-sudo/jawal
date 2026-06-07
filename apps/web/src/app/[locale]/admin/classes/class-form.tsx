@@ -12,6 +12,7 @@ type ClassFormInitial = {
   academicYearId?: string;
   levelId?: string;
   mainTeacherId?: string | null;
+  homeRoomId?: string | null;
 };
 
 type Option = { id: string; label: string; isDefault?: boolean };
@@ -22,6 +23,7 @@ export function ClassForm({
   years,
   levels,
   teachers,
+  rooms,
   locale,
 }: {
   mode: 'create' | 'edit';
@@ -29,6 +31,7 @@ export function ClassForm({
   years: Option[];
   levels: Option[];
   teachers: Option[];
+  rooms: Option[];
   locale: string;
 }) {
   const t = useTranslations('admin.classes.form');
@@ -133,6 +136,16 @@ export function ClassForm({
             {teachers.map((teacher) => (
               <option key={teacher.id} value={teacher.id}>
                 {teacher.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label={t('homeRoom')}>
+          <select name="homeRoomId" defaultValue={initial?.homeRoomId ?? ''} className={inputCls}>
+            <option value="">{t('noRoom')}</option>
+            {rooms.map((room) => (
+              <option key={room.id} value={room.id}>
+                {room.label}
               </option>
             ))}
           </select>

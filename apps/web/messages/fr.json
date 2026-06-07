@@ -659,6 +659,7 @@
         "title": "Disponibilités profs vs grille",
         "emptyDispos": "Profs sans disponibilités saisies",
         "noSpecialty": "Profs sans spécialité (matières maîtrisées)",
+        "sharedRoom": "Profs partageant une salle principale",
         "uncoveredSlots": "Créneaux sans aucun prof dispo",
         "daysShort": { "MON": "Lun", "TUE": "Mar", "WED": "Mer", "THU": "Jeu", "FRI": "Ven", "SAT": "Sam", "SUN": "Dim" },
         "avg": "Profs dispos en moyenne par créneau"
@@ -718,7 +719,7 @@
         "subtitle": "Répartit les profs sur les classes sélectionnées (programme × spécialités × heures contractuelles × classes prioritaires). N'écrase jamais une affectation existante.",
         "propose": "Pré-affecter automatiquement",
         "reset": "Réinitialiser",
-        "resetConfirm": "Effacer les affectations des classes sélectionnées ? Action irréversible. Si un EDT a déjà été généré, régénérez-le ensuite.",
+        "resetConfirm": "Réinitialiser les classes sélectionnées ? Cela efface les affectations ET l'emploi du temps généré. Action irréversible.",
         "computing": "Calcul…",
         "applying": "Application…",
         "apply": "Appliquer ({count})",
@@ -1235,6 +1236,11 @@
         "specialties": "Spécialités",
         "weeklyHours": "HR/Semaine",
         "classes": "Classes d'affectation",
+        "photo": "Photo",
+        "studentClass": "Classe",
+        "mainTeacher": "Prof principal",
+        "father": "Père",
+        "mother": "Mère",
         "actions": "Actions"
       },
       "filters": {
@@ -1252,6 +1258,10 @@
       },
       "actions": {
         "new": "Nouvelle personne",
+        "newStudent": "Nouvel élève",
+        "newTeacher": "Nouvel enseignant",
+        "newStaff": "Nouveau personnel",
+        "newParent": "Nouveau parent",
         "import": "Importer CSV",
         "view": "Voir",
         "edit": "Modifier",
@@ -1532,7 +1542,7 @@
           "BIBLIOTHEQUE": "Bibliothèque / CDI",
           "AUTRE": "Autre"
         },
-        "gender": "Genre",
+        "gender": "Sexe",
         "genders": { "M": "Masculin", "F": "Féminin", "X": "Autre" },
         "lastName": "Nom",
         "firstName": "Prénom",
@@ -1557,6 +1567,11 @@
         "contractualHoursPerWeek": "Heures contractuelles / semaine",
         "contractualHoursPerWeekPlaceholder": "ex. 24",
         "contractualHoursPerWeekHint": "Volume horaire hebdomadaire défini par le contrat (indépendant des dispos horaires et des heures effectivement enseignées).",
+        "homeRoom": "Salle principale",
+        "noRoom": "Aucune",
+        "homeRoomHint": "Salle habituelle du prof. Les cours non spécialisés s'y tiennent (les élèves se déplacent) ; les matières de labo gardent leur salle spécialisée.",
+        "addPhoto": "Ajouter une photo",
+        "photoAfterCreate": "Photo ajoutable après création",
         "contractTypes": {
           "CDI": "CDI",
           "CDD": "CDD",
@@ -1618,6 +1633,8 @@
         "capacity": "Capacité",
         "mainTeacher": "Enseignant principal",
         "noTeacher": "Aucun",
+        "homeRoom": "Salle attitrée",
+        "noRoom": "Aucune",
         "actions": {
           "save": "Enregistrer",
           "saving": "Enregistrement…",
@@ -1956,25 +1973,37 @@
         }
       },
       "curriculum": {
+        "actions": { "edit": "Modifier", "delete": "Supprimer" },
+        "confirmDelete": "Supprimer cet élément ? Cette action est irréversible.",
         "cycles": {
           "title": "Cycles",
           "subtitle": "Primaire, collège, lycée, licence, master… Ordonnés via le champ « ordre ».",
-          "table": { "code": "Code", "label": "Libellé", "order": "Ordre" },
+          "table": { "code": "Code", "label": "Libellé", "periods": "Périodes", "order": "Ordre", "actions": "Actions" },
           "empty": "Aucun cycle.",
           "create": "Créer un cycle",
           "form": {
             "code": "Code (slug)",
             "label": "Libellé",
             "order": "Ordre",
+            "periodKind": "Découpage périodique",
+            "periodKindTrimester": "Trimestres",
+            "periodKindSemester": "Semestres",
+            "roomMode": "Gestion des salles (EDT)",
+            "roomModeHomeroom": "Salle attitrée par classe",
+            "roomModePool": "Salles mutualisées",
+            "roomModeHint": "Salle attitrée : la classe garde sa salle (collège/lycée). Mutualisées : une salle libre par séance (supérieur).",
             "create": "Créer",
-            "creating": "Création…"
+            "creating": "Création…",
+            "save": "Enregistrer",
+            "saving": "Enregistrement…",
+            "cancel": "Annuler"
           }
         },
         "levels": {
           "title": "Niveaux",
           "subtitle": "Niveaux à l'intérieur de chaque cycle (1AP, 6AP, 1AC, etc.).",
           "openProgramme": "Programme par niveau",
-          "table": { "cycle": "Cycle", "code": "Code", "label": "Libellé", "order": "Ordre" },
+          "table": { "cycle": "Cycle", "code": "Code", "label": "Libellé", "order": "Ordre", "actions": "Actions" },
           "empty": "Aucun niveau.",
           "create": "Créer un niveau",
           "form": {
@@ -1983,7 +2012,10 @@
             "label": "Libellé",
             "order": "Ordre",
             "create": "Créer",
-            "creating": "Création…"
+            "creating": "Création…",
+            "save": "Enregistrer",
+            "saving": "Enregistrement…",
+            "cancel": "Annuler"
           }
         }
       },

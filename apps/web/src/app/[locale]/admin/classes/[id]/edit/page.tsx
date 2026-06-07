@@ -16,8 +16,8 @@ export default async function EditClassPage({
   const session = (await auth())!;
   const t = await getTranslations('admin.classes');
 
-  const { cls, years, levels, teachers } = await withTenant(session.user.tenantId, async (tx) => {
-    const [cls, years, levels, teachers] = await Promise.all([
+  const { cls, years, levels, teachers, rooms } = await withTenant(session.user.tenantId, async (tx) => {
+    const [cls, years, levels, teachers, rooms] = await Promise.all([
       tx.class.findUnique({ where: { id } }),
       tx.academicYear.findMany({ orderBy: { startDate: 'desc' } }),
       tx.level.findMany({ include: { cycle: true }, orderBy: { order: 'asc' } }),
@@ -25,12 +25,14 @@ export default async function EditClassPage({
         where: { type: 'TEACHER', deletedAt: null },
         orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
       }),
+      tx.room.findMany({ orderBy: { code: 'asc' } }),
     ]);
     return {
       cls,
       years: years.map((y) => ({ id: y.id, label: y.label })),
       levels: levels.map((l) => ({ id: l.id, label: `${l.cycle.label} — ${l.label}` })),
       teachers: teachers.map((p) => ({ id: p.id, label: `${p.lastName} ${p.firstName}` })),
+      rooms: rooms.map((r) => ({ id: r.id, label: `${r.code} — ${r.label}` })),
     };
   });
 
@@ -61,6 +63,7 @@ export default async function EditClassPage({
           years={years}
           levels={levels}
           teachers={teachers}
+          rooms={rooms}
           initial={{
             id: cls.id,
             name: cls.name,
@@ -68,6 +71,7 @@ export default async function EditClassPage({
             academicYearId: cls.academicYearId,
             levelId: cls.levelId,
             mainTeacherId: cls.mainTeacherId,
+            homeRoomId: (cls.metadata as { homeRoomId?: string } | null)?.homeRoomId ?? null,
           }}
         />
       </div>

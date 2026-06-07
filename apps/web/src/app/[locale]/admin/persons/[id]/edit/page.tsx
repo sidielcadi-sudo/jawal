@@ -16,14 +16,14 @@ export default async function EditPersonPage({
   const session = (await auth())!;
   const t = await getTranslations('admin.persons');
 
-  const { person, roles, availableParents, allSubjects, allCycles, allClasses } = await withTenant(
+  const { person, roles, availableParents, allSubjects, allCycles, allClasses, rooms } = await withTenant(
     session.user.tenantId,
     async (tx) => {
       const activeYear = await tx.academicYear.findFirst({
         where: { active: true },
         select: { id: true },
       });
-      const [person, roles, availableParents, allSubjects, allCycles, classes] = await Promise.all([
+      const [person, roles, availableParents, allSubjects, allCycles, classes, roomList] = await Promise.all([
         tx.person.findUnique({
           where: { id },
           include: {
@@ -51,8 +51,17 @@ export default async function EditPersonPage({
           orderBy: { name: 'asc' },
           select: { id: true, name: true },
         }),
+        tx.room.findMany({ orderBy: { code: 'asc' } }),
       ]);
-      return { person, roles, availableParents, allSubjects, allCycles, allClasses: classes };
+      return {
+        person,
+        roles,
+        availableParents,
+        allSubjects,
+        allCycles,
+        allClasses: classes,
+        rooms: roomList.map((r) => ({ id: r.id, label: `${r.code} — ${r.label}` })),
+      };
     },
   );
   if (!person) notFound();
@@ -113,6 +122,7 @@ export default async function EditPersonPage({
               : undefined,
             contractType: person.contractType ?? undefined,
             contractualHoursPerWeek: person.contractualHoursPerWeek ?? undefined,
+            homeRoomId: (person.metadata as { homeRoomId?: string } | null)?.homeRoomId ?? null,
             contractFile: person.contractFile
               ? {
                   id: person.contractFile.id,
@@ -156,6 +166,7 @@ export default async function EditPersonPage({
           allSubjects={allSubjects.map((s) => ({ id: s.id, label: s.label }))}
           allCycles={allCycles.map((c) => ({ id: c.id, label: c.label }))}
           allClasses={allClasses.map((c) => ({ id: c.id, label: c.name }))}
+          rooms={rooms}
         />
       </div>
     </div>

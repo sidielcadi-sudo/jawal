@@ -2,7 +2,17 @@ import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
-import { CycleCreateForm, LevelCreateForm } from './client';
+import { CycleCreateForm, LevelCreateForm, CycleRowActions, LevelRowActions } from './client';
+
+function periodKindOf(settings: unknown): 'TRIMESTER' | 'SEMESTER' {
+  const v = (settings as { periodKind?: string } | null)?.periodKind;
+  return v === 'SEMESTER' ? 'SEMESTER' : 'TRIMESTER';
+}
+
+function roomModeOf(settings: unknown): 'HOMEROOM' | 'POOL' {
+  const v = (settings as { roomMode?: string } | null)?.roomMode;
+  return v === 'POOL' ? 'POOL' : 'HOMEROOM';
+}
 
 export default async function CurriculumPage({
   params,
@@ -39,20 +49,37 @@ export default async function CurriculumPage({
                   <tr>
                     <th className="px-4 py-2 text-start">{t('cycles.table.code')}</th>
                     <th className="px-4 py-2 text-start">{t('cycles.table.label')}</th>
+                    <th className="px-4 py-2 text-start">{t('cycles.table.periods')}</th>
                     <th className="px-4 py-2 text-end">{t('cycles.table.order')}</th>
+                    <th className="px-4 py-2 text-end">{t('cycles.table.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {cycles.map((c) => (
-                    <tr key={c.id}>
-                      <td className="px-4 py-2 font-mono text-xs">{c.code}</td>
-                      <td className="px-4 py-2 font-medium text-slate-900">{c.label}</td>
-                      <td className="px-4 py-2 text-end text-xs text-slate-500">{c.order}</td>
-                    </tr>
-                  ))}
+                  {cycles.map((c) => {
+                    const pk = periodKindOf(c.settings);
+                    const rm = roomModeOf(c.settings);
+                    return (
+                      <tr key={c.id}>
+                        <td className="px-4 py-2 font-mono text-xs">{c.code}</td>
+                        <td className="px-4 py-2 font-medium text-slate-900">{c.label}</td>
+                        <td className="px-4 py-2">
+                          <span className="rounded bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700">
+                            {t(`cycles.form.periodKind${pk === 'SEMESTER' ? 'Semester' : 'Trimester'}`)}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 text-end text-xs text-slate-500">{c.order}</td>
+                        <td className="px-4 py-2 text-end">
+                          <CycleRowActions
+                            id={c.id}
+                            initial={{ code: c.code, label: c.label, order: c.order, periodKind: pk, roomMode: rm }}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {cycles.length === 0 && (
                     <tr>
-                      <td colSpan={3} className="px-4 py-8 text-center text-slate-500">
+                      <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
                         {t('cycles.empty')}
                       </td>
                     </tr>
@@ -95,6 +122,7 @@ export default async function CurriculumPage({
                     <th className="px-4 py-2 text-start">{t('levels.table.code')}</th>
                     <th className="px-4 py-2 text-start">{t('levels.table.label')}</th>
                     <th className="px-4 py-2 text-end">{t('levels.table.order')}</th>
+                    <th className="px-4 py-2 text-end">{t('levels.table.actions')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -104,11 +132,18 @@ export default async function CurriculumPage({
                       <td className="px-4 py-2 font-mono text-xs">{l.code}</td>
                       <td className="px-4 py-2 font-medium text-slate-900">{l.label}</td>
                       <td className="px-4 py-2 text-end text-xs text-slate-500">{l.order}</td>
+                      <td className="px-4 py-2 text-end">
+                        <LevelRowActions
+                          id={l.id}
+                          initial={{ cycleId: l.cycleId, code: l.code, label: l.label, order: l.order }}
+                          cycles={cycles.map((c) => ({ id: c.id, label: c.label }))}
+                        />
+                      </td>
                     </tr>
                   ))}
                   {levels.length === 0 && (
                     <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-slate-500">
+                      <td colSpan={5} className="px-4 py-8 text-center text-slate-500">
                         {t('levels.empty')}
                       </td>
                     </tr>

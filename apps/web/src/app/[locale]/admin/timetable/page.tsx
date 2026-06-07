@@ -189,6 +189,7 @@ export default async function TimetableDashboardPage({
               empty={kpis.teacherAvailability.teachersWithEmptyAvailability}
               emptyList={kpis.teacherAvailability.teachersWithEmptyList}
               noSpecialtyList={kpis.teacherAvailability.teachersWithoutSpecialtyList}
+              sharedRoomList={kpis.teacherAvailability.teachersSharingRoomList}
               uncovered={kpis.teacherAvailability.uncoveredSlots}
               uncoveredCells={kpis.teacherAvailability.uncoveredCells}
               avg={kpis.teacherAvailability.avgTeachersPerSlot}
@@ -199,6 +200,9 @@ export default async function TimetableDashboardPage({
               teacher={kpis.conflicts.teacher}
               room={kpis.conflicts.room}
               cls={kpis.conflicts.class}
+              teacherList={kpis.conflicts.teacherList}
+              roomList={kpis.conflicts.roomList}
+              classList={kpis.conflicts.classList}
               t={t}
             />
           </div>

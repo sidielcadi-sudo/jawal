@@ -405,9 +405,18 @@ export default async function PersonDetailPage({
 
       <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-4">
-          <div className="grid h-16 w-16 place-items-center rounded-xl bg-slate-200 text-2xl font-semibold text-slate-600">
-            {(person.firstName[0] ?? '') + (person.lastName[0] ?? '')}
-          </div>
+          {person.photoFileId ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={`/api/admin/persons/${person.id}/photo`}
+              alt=""
+              className="h-16 w-16 rounded-xl object-cover"
+            />
+          ) : (
+            <div className="grid h-16 w-16 place-items-center rounded-xl bg-slate-200 text-2xl font-semibold text-slate-600">
+              {(person.firstName[0] ?? '') + (person.lastName[0] ?? '')}
+            </div>
+          )}
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">
               {person.lastName} {person.firstName}
