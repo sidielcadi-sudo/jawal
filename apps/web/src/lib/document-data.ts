@@ -2,6 +2,7 @@ import 'server-only';
 import type { Prisma } from '@/lib/db';
 import { computeMention, type Mention } from '@/lib/grades';
 import { loadBulletinData } from '@/lib/bulletin-data';
+import { tallyAttendance } from '@/lib/attendance-category';
 
 type Tx = Prisma.TransactionClient;
 
@@ -114,18 +115,20 @@ export async function loadDocumentData(
       const records = await tx.attendanceRecord.findMany({
         where: {
           studentId: opts.studentId,
-          session: { date: { gte: period.startDate, lte: period.endDate } },
+          session: {
+            finalizedAt: { not: null },
+            date: { gte: period.startDate, lte: period.endDate },
+          },
         },
-        select: { status: true },
+        select: { status: true, infirmary: true, punishment: true, exclusion: true },
       });
-      const total = records.length;
-      const present = records.filter((r) => r.status === 'PRESENT').length;
+      const { present, total, rate } = tallyAttendance(records);
       return {
         ...base,
         attendance: {
           present,
           total,
-          rate: total > 0 ? (present / total) * 100 : null,
+          rate,
           periodLabel: period.label,
         },
       };

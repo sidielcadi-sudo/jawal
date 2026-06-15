@@ -64,6 +64,8 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
         const isParent = !user.isSuperAdmin && roleCodes.includes('parent');
         const isTeacher =
           !user.isSuperAdmin && !isParent && roleCodes.includes('enseignant');
+        const isStudent =
+          !user.isSuperAdmin && !isParent && !isTeacher && roleCodes.includes('eleve');
 
         await prismaAdmin.user.update({
           where: { id: user.id },
@@ -77,6 +79,7 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           isSuperAdmin: user.isSuperAdmin,
           isParent,
           isTeacher,
+          isStudent,
         };
       },
     }),

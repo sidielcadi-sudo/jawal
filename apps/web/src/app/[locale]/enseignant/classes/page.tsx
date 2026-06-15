@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
@@ -35,13 +36,20 @@ export default async function TeacherClassesPage({
     // Dédup par (classe × matière).
     const map = new Map<
       string,
-      { classId: string; className: string; levelLabel: string; subject: string }
+      {
+        classId: string;
+        subjectId: string | null;
+        className: string;
+        levelLabel: string;
+        subject: string;
+      }
     >();
     for (const a of [...assignments, ...entries]) {
       const key = `${a.classId}|${a.subjectId ?? 'none'}`;
       if (!map.has(key)) {
         map.set(key, {
           classId: a.classId,
+          subjectId: a.subjectId ?? null,
           className: a.class.name,
           levelLabel: a.class.level.label,
           subject: a.subject?.label ?? '—',
@@ -73,22 +81,40 @@ export default async function TeacherClassesPage({
         <p className="mt-6 text-sm text-slate-500">{t('empty')}</p>
       ) : (
         <ul className="mt-6 space-y-2">
-          {rows.map((r, i) => (
-            <li
-              key={`${r.classId}-${i}`}
-              className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4"
-            >
-              <div>
-                <div className="font-medium text-slate-900">{r.className}</div>
-                <div className="text-xs text-slate-500">
-                  {r.levelLabel} · {r.subject}
+          {rows.map((r, i) => {
+            const inner = (
+              <>
+                <div>
+                  <div className="font-medium text-slate-900">{r.className}</div>
+                  <div className="text-xs text-slate-500">
+                    {r.levelLabel} · {r.subject}
+                  </div>
                 </div>
-              </div>
-              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
-                {t('studentCount', { count: r.students })}
-              </span>
-            </li>
-          ))}
+                <span className="flex items-center gap-3">
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                    {t('studentCount', { count: r.students })}
+                  </span>
+                  {r.subjectId && <span className="text-brand-600 text-sm">{t('openGrades')} ›</span>}
+                </span>
+              </>
+            );
+            const cls =
+              'flex items-center justify-between rounded-2xl border border-slate-200 bg-white px-5 py-4';
+            return (
+              <li key={`${r.classId}-${i}`}>
+                {r.subjectId ? (
+                  <Link
+                    href={`/${locale}/enseignant/classes/${r.classId}/grades/${r.subjectId}`}
+                    className={`${cls} transition-colors hover:border-brand-300 hover:bg-brand-50/40`}
+                  >
+                    {inner}
+                  </Link>
+                ) : (
+                  <div className={cls}>{inner}</div>
+                )}
+              </li>
+            );
+          })}
         </ul>
       )}
     </div>

@@ -108,9 +108,15 @@ export default async function EnrollmentsListPage({
           </Link>
           <Link
             href={`/${locale}/admin/enrollments/new${currentYearId ? `?year=${currentYearId}` : ''}`}
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            {t('reenrollButton')}
+          </Link>
+          <Link
+            href={`/${locale}/admin/persons/new?type=STUDENT&admission=1`}
             className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
-            + {t('newButton')}
+            + {t('newAdmissionButton')}
           </Link>
         </div>
       </header>
@@ -267,21 +273,26 @@ function FilterPill({
   );
 }
 
-function StatusBadge({
-  status,
-  t,
-}: {
-  status: 'DRAFT' | 'ACTIVE' | 'WITHDRAWN' | 'GRADUATED';
-  t: (k: string) => string;
-}) {
-  const map = {
-    DRAFT: 'bg-amber-100 text-amber-700',
-    ACTIVE: 'bg-emerald-100 text-emerald-700',
-    WITHDRAWN: 'bg-red-100 text-red-700',
-    GRADUATED: 'bg-blue-100 text-blue-700',
-  } as const;
+const ENROLLMENT_STATUS_BADGE: Record<string, string> = {
+  DRAFT: 'bg-slate-100 text-slate-700',
+  DOCUMENTS_MANQUANTS: 'bg-amber-100 text-amber-700',
+  DOSSIER_COMPLET: 'bg-sky-100 text-sky-700',
+  ACCEPTE: 'bg-indigo-100 text-indigo-700',
+  REFUSE: 'bg-red-100 text-red-700',
+  INSCRIPTION_VALIDEE: 'bg-teal-100 text-teal-700',
+  AFFECTE: 'bg-violet-100 text-violet-700',
+  ACTIVE: 'bg-emerald-100 text-emerald-700',
+  WITHDRAWN: 'bg-red-100 text-red-700',
+  GRADUATED: 'bg-blue-100 text-blue-700',
+};
+
+function StatusBadge({ status, t }: { status: string; t: (k: string) => string }) {
   return (
-    <span className={`rounded px-2 py-0.5 text-[11px] font-medium ${map[status]}`}>
+    <span
+      className={`rounded px-2 py-0.5 text-[11px] font-medium ${
+        ENROLLMENT_STATUS_BADGE[status] ?? 'bg-slate-100 text-slate-700'
+      }`}
+    >
       {t(`status.${status}`)}
     </span>
   );

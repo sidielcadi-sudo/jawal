@@ -172,6 +172,8 @@
       "dashboard": "لوحة التحكم",
       "pilotage": "القيادة",
       "vieScolaire": "الحياة المدرسية",
+      "carnet": "دفتر المراسلة",
+      "absenceMgmt": "تدبير الغيابات",
       "students": "التلاميذ",
       "teachers": "الأساتذة",
       "staff": "الموظفون",
@@ -276,6 +278,41 @@
         "red": "مستوى حرج — يتطلب إجراءً عاجلاً."
       }
     },
+    "absenceMgmt": {
+      "title": "تدبير الغيابات",
+      "subtitle": "قائمة الأحداث المبلّغ عنها من طرف الأساتذة. لا تُعدَّل ورقة مناداة الأستاذ هنا أبدًا.",
+      "allClasses": "كل الأقسام",
+      "filter": "تصفية",
+      "empty": "لا يوجد حدث.",
+      "converted": "محوّل من",
+      "justifyPrompt": "سبب التبرير:",
+      "cancelConfirm": "إلغاء هذا الحدث (خطأ في الإدخال)؟",
+      "status": {
+        "PENDING": "قيد المعالجة",
+        "CONFIRMED": "مؤكَّد",
+        "JUSTIFIED": "مبرَّر",
+        "CANCELLED": "ملغى"
+      },
+      "category": {
+        "ABSENCE": "غياب",
+        "RETARD": "تأخر",
+        "EXCLUSION": "طرد"
+      },
+      "col": {
+        "student": "التلميذ",
+        "class": "القسم",
+        "date": "التاريخ",
+        "category": "الصنف",
+        "status": "الحالة",
+        "actions": "إجراءات"
+      },
+      "actions": {
+        "confirm": "تأكيد",
+        "justify": "تبرير",
+        "convert": "تحويل",
+        "cancel": "إلغاء"
+      }
+    },
     "vieScolaire": {
       "title": "لوحة القيادة — الحياة المدرسية",
       "period": "الفترة",
@@ -305,7 +342,92 @@
       "atRiskLabel": "متابعة ذات أولوية",
       "atRiskEmpty": "لا يوجد تلميذ في وضعية هشة.",
       "reasonAbsence": "غيابات",
-      "reasonGrade": "نقط"
+      "reasonGrade": "نقط",
+      "board": {
+        "title": "لوحة القيادة اليومية",
+        "apply": "عرض",
+        "tabs": {
+          "cockpit": "اللوحة الإجمالية",
+          "board": "لوحة القيادة"
+        },
+        "prevDay": "اليوم السابق",
+        "nextDay": "اليوم التالي",
+        "allClasses": "كل الأقسام",
+        "searchStudent": "ابحث عن تلميذ…",
+        "clear": "مسح",
+        "slot": "الحصة",
+        "total": "المجموع",
+        "noSlots": "لا توجد حصص زمنية محددة.",
+        "absencesGroup": "غيابات",
+        "sansExcuses": "بدون عذر",
+        "cols": {
+          "absRA": "مبرّر",
+          "absNonRA": "غير مبرّر",
+          "retards": "تأخّر",
+          "exclCours": "طرد حصة",
+          "incidents": "عقوبات",
+          "punitionsProg": "عقوبات مبرمجة",
+          "convocations": "استدعاء",
+          "exclEtab": "طرد مؤسسة",
+          "exclClasse": "طرد قسم",
+          "infirmerie": "مستوصف",
+          "ensMaison": "التدريس في المنزل",
+          "presents": "حاضرون",
+          "elevesSansCours": "بدون حصة",
+          "appelsNonFaits": "نداءات غير منجزة"
+        },
+        "detailTitle": "{col} — {slot}",
+        "detailCount": "{count} تلميذ",
+        "col": {
+          "student": "التلميذ",
+          "class": "القسم",
+          "category": "الفئة",
+          "subject": "المادة",
+          "motif": "السبب",
+          "reason": "السبب",
+          "justif": "تبرير",
+          "ra": "م",
+          "action": "إجراء"
+        },
+        "motif": {
+          "action": "إجراء",
+          "title": "اختر سبب الغياب",
+          "search": "بحث…",
+          "validate": "تأكيد",
+          "cancel": "إلغاء",
+          "saving": "…",
+          "empty": "لا توجد أسباب. اضبطها في الإعدادات."
+        },
+        "appel": {
+          "title": "نداءات غير منجزة — {slot}",
+          "count": "{count} أستاذ",
+          "teacher": "الأستاذ",
+          "noTeacher": "بدون أستاذ",
+          "noAccount": "لا حساب",
+          "notify": "تنبيه",
+          "sending": "إرسال…",
+          "notified": "تم التنبيه",
+          "empty": "كل النداءات منجزة لهذه الحصة."
+        },
+        "cat": {
+          "PRESENT": "حاضر",
+          "LATE": "تأخّر",
+          "INFIRMARY": "المستوصف",
+          "PUNISHMENT": "عقوبة",
+          "EXCLUSION": "طرد",
+          "EXCUSED": "إعفاء",
+          "ABSENT": "غياب"
+        },
+        "justif": {
+          "PENDING": "قيد الانتظار",
+          "APPROVED": "مقبول",
+          "REJECTED": "مرفوض"
+        },
+        "noEvent": "لا يوجد تلميذ لهذه الحصة.",
+        "pickStudent": "اختر تلميذًا…",
+        "pickClassFirst": "اختر قسمًا أولًا.",
+        "noStudentEvent": "لا يوجد حدث لهذا التلميذ في هذا اليوم."
+      }
     },
     "teacherDashboard": {
       "title": "لوحة قيادة الأستاذ",
@@ -422,15 +544,91 @@
       "year": "السنة",
       "apply": "تصفية",
       "newButton": "تسجيل جديد",
+      "newAdmissionButton": "تسجيل جديد",
+      "reenrollButton": "ربط تلميذ موجود",
       "bulkButton": "↻ إعادة التسجيل دفعة واحدة",
       "empty": "لا توجد ملفات تسجيل لهذه السنة.",
       "yes": "نعم",
       "no": "لا",
       "status": {
-        "DRAFT": "مسودة",
-        "ACTIVE": "مُسجل",
-        "WITHDRAWN": "منسحب",
+        "DRAFT": "في الانتظار",
+        "DOCUMENTS_MANQUANTS": "وثائق ناقصة",
+        "DOSSIER_COMPLET": "ملف مكتمل",
+        "ACCEPTE": "مقبول",
+        "REFUSE": "مرفوض",
+        "INSCRIPTION_VALIDEE": "تسجيل مؤكد",
+        "AFFECTE": "مُسند",
+        "ACTIVE": "نشط",
+        "WITHDRAWN": "مؤرشف",
         "GRADUATED": "متخرج"
+      },
+      "admission": {
+        "title": "ملف القبول",
+        "documents": "الوثائق المطلوبة",
+        "noRequiredDocs": "لا توجد وثائق مطلوبة مُعدّة.",
+        "view": "عرض",
+        "upload": "إيداع",
+        "replace": "استبدال",
+        "validate": "تصديق",
+        "invalidate": "رفض",
+        "accept": "قبول الملف",
+        "refuse": "رفض",
+        "refuseReasonPrompt": "سبب الرفض:",
+        "refuseConfirm": "تأكيد رفض هذا الملف؟",
+        "validatePayment": "تأكيد الأداء ← مؤدى",
+        "confirmPayment": "تأكيد الأداء",
+        "affect": "إسناد إلى قسم",
+        "noClass": "لا يوجد قسم متاح",
+        "choosePlaceholder": "اختر قسماً",
+        "activate": "تفعيل (يصبح التلميذ نشطاً)",
+        "discountPct": "تخفيض %",
+        "discountReason": "سبب التخفيض",
+        "discountNone": "بدون تخفيض",
+        "otherDoc": "وثيقة مودعة",
+        "echeancier": {
+          "title": "تفصيل جدول الأداء",
+          "n": "ر.",
+          "due": "آخر أجل",
+          "amount": "المبلغ",
+          "method": "الطريقة",
+          "status": "الحالة",
+          "action": "إجراء",
+          "paid": "مؤدى",
+          "pending": "في الانتظار",
+          "cancelled": "ملغى",
+          "record": "تسجيل",
+          "confirm": "تحصيل",
+          "reference": "مرجع (تحويل، وصل…)",
+          "chequeRef": "رقم الشيك",
+          "chequeHint": "مسح الشيك (قريباً)",
+          "ref": "مرجع"
+        },
+        "steps": {
+          "pending": "في الانتظار",
+          "dossier": "الملف",
+          "accepted": "مقبول",
+          "paid": "مؤدى",
+          "affected": "مُسند",
+          "active": "نشط"
+        },
+        "closed": {
+          "REFUSE": "مرفوض",
+          "WITHDRAWN": "مؤرشف",
+          "GRADUATED": "متخرج"
+        },
+        "docStatus": {
+          "MISSING": "ناقص",
+          "PENDING": "للتحقق",
+          "VALID": "مُصدّق",
+          "INVALID": "مرفوض"
+        },
+        "method": {
+          "CASH": "نقدا",
+          "CHEQUE": "شيك",
+          "TRANSFER": "تحويل",
+          "CMI": "CMI",
+          "OTHER": "أخرى"
+        }
       },
       "filter": {
         "all": "الكل",
@@ -476,13 +674,18 @@
         "withdrawalReason": "سبب الانسحاب",
         "notes": "ملاحظات",
         "fees": "الرسوم والأقساط",
-        "feesEmpty": "لم يتم إنشاء أي قسط. ربما تكون شبكة الرسوم فارغة لهذا المستوى.",
+        "feesEmpty": "لا توجد شبكة رسوم لهذا المستوى. اضبطها في الإعدادات ← الرسوم.",
+        "feesPreviewHint": "جدول أداء تقديري حسب شبكة المستوى:",
+        "feesPreviewTotal": "الإجمالي التقديري",
+        "feesPreviewNote": "تُنشأ الأقساط الفعلية عند قبول الملف (مع تطبيق التخفيض).",
         "feesGenerated": "أقساط مُنشأة",
         "totalDue": "الإجمالي المستحق",
         "totalPaid": "الإجمالي المسدد",
         "remaining": "المتبقي للسداد",
         "cancelledCount": "أقساط مُلغاة",
-        "viewFinance": "عرض في المالية"
+        "viewFinance": "عرض في المالية",
+        "previousDueTitle": "دين سابق غير مُسدَّد",
+        "previousDueHint": "لهذا التلميذ رصيد غير مؤدى من سنوات سابقة: {amount} {currency}."
       },
       "actions": {
         "validate": "مصادقة التسجيل",
@@ -592,6 +795,32 @@
     "timetableDashboard": {
       "title": "لوحة التحكم — تحضير الجدول",
       "subtitle": "تحقق من تناسق الإعدادات قبل تشغيل التوليد الآلي. لتوقع المشاكل الهيكلية.",
+      "subjectCoverage": {
+        "title": "التغطية الزمنية حسب المادة",
+        "hint": "الساعات المطلوبة من البرنامج (× عدد الأقسام) مقارنة بالساعات التعاقدية لأساتذة المادة. الفرق السالب = نقص في الأساتذة.",
+        "subject": "المادة",
+        "demand": "البرنامج",
+        "teachers": "الأساتذة",
+        "supply": "ساعات متاحة",
+        "gap": "الفرق",
+        "empty": "لا توجد بيانات (البرنامج أو الأساتذة غير مهيّأين)."
+      },
+      "roomCapacity": {
+        "title": "سعة القاعات حسب النوع مقابل الحصص المطلوبة",
+        "hint": "الحصص/الأسبوع المتاحة (قاعات × أيام × فترات) مقارنة بالحصص المطلوبة من البرنامج. مع تمييز مختبرات الفيزياء/علوم الحياة، قاعات المعلوميات والقاعات العادية. الفرق السالب = اختناق.",
+        "roomType": "نوع القاعة",
+        "rooms": "القاعات",
+        "capacity": "حصص متاحة/أسبوع",
+        "needed": "حصص مطلوبة/أسبوع",
+        "gap": "الفرق",
+        "types": {
+          "LABO_PC": "مختبر الفيزياء والكيمياء",
+          "LABO_SVT": "مختبر علوم الحياة والأرض",
+          "INFO": "قاعة المعلوميات",
+          "EPS": "القاعة الرياضية",
+          "STD": "قاعات عادية (مواد أخرى)"
+        }
+      },
       "year": "السنة",
       "apply": "عرض",
       "manageSlots": "الحصص ←",
@@ -825,6 +1054,7 @@
       "breadcrumbRooms": "القاعات",
       "roomWeek": "إشغال القاعة",
       "roomWeekSummary": "{total} حصة · {classes} قسم · {occupancy}% نسبة الإشغال",
+      "roomOccupancyReadOnly": "عرض للقراءة فقط: الإشغال مستنتَج من الجدول الزمني. لإشغال/تحرير قاعة، أسندها إلى حصة في محرّر الجدول الزمني.",
       "roomFree": "متاحة",
       "overrides": {
         "title": "الاستبدالات القادمة",
@@ -968,7 +1198,7 @@
     },
     "timetableConstraints": {
       "title": "قيود توليد الجدول",
-      "subtitle": "تتحكم في حلال OR-Tools عند التوليد الآلي. فعّل القيود المناسبة لمؤسستك.",
+      "subtitle": "تتحكم في الحلال عند التوليد الآلي (FET و OR-Tools). بعضها خاص بـ OR-Tools فقط — مبيّن في مساعدة كل قيد. فعّل القيود المناسبة لمؤسستك ثم أعد توليد الجدول لتأخذ مفعولها.",
       "enabled": "مفعّلة",
       "save": "حفظ",
       "saving": "جاري الحفظ…",
@@ -1086,6 +1316,19 @@
       },
       "topUnpaid": "التلاميذ الذين لديهم متأخرات",
       "noUnpaid": "لا توجد متأخرات.",
+      "students": {
+        "title": "الوضعية حسب التلميذ",
+        "searchPlaceholder": "اسم التلميذ…",
+        "search": "بحث",
+        "due": "الإجمالي المستحق",
+        "status": "الحالة",
+        "empty": "لا يوجد تلميذ عليه رسوم.",
+        "statusLabel": {
+          "PAID": "مُسدَّد",
+          "LATE": "متأخر",
+          "UPTODATE": "محدّث"
+        }
+      },
       "table": {
         "student": "التلميذ",
         "remaining": "المتبقي",
@@ -1249,7 +1492,13 @@
         "apply": "تصفية",
         "showArchived": "إظهار المؤرشفين",
         "showActive": "إظهار النشطين",
-        "allServices": "كل المصالح"
+        "allServices": "كل المصالح",
+        "cycle": "السلك",
+        "level": "المستوى",
+        "class": "القسم",
+        "allCycles": "كل الأسلاك",
+        "allLevels": "كل المستويات",
+        "allClasses": "كل الأقسام"
       },
       "pagination": {
         "page": "الصفحة {page} من {total}",
@@ -1259,6 +1508,7 @@
       "actions": {
         "new": "إضافة شخص",
         "newStudent": "تلميذ جديد",
+        "newAdmission": "تسجيل جديد",
         "newTeacher": "أستاذ جديد",
         "newStaff": "موظف جديد",
         "newParent": "ولي جديد",
@@ -1313,7 +1563,16 @@
           "absent": "غائب",
           "late": "متأخر",
           "excused": "معذر",
-          "leave": "إجازة"
+          "leave": "إجازة",
+          "cat": {
+            "PRESENT": "حاضر",
+            "LATE": "تأخر",
+            "INFIRMARY": "المستوصف",
+            "PUNISHMENT": "عقوبة",
+            "EXCLUSION": "طرد",
+            "EXCUSED": "إعفاء",
+            "ABSENT": "غياب"
+          }
         },
         "enrollmentHistory": {
           "title": "سجل التسجيلات",
@@ -1368,7 +1627,10 @@
           "FATHER": "الأب",
           "MOTHER": "الأم",
           "LEGAL_GUARDIAN": "الوصي القانوني",
-          "GUARDIAN": "الوصي"
+          "GUARDIAN": "الوصي",
+          "siblingsTitle": "الإخوة المرتبطون",
+          "siblingsNone": "لا يوجد أطفال آخرون مرتبطون.",
+          "siblingsNoClass": "غير مُسند"
         },
         "portalAccess": "الدخول إلى بوابة ولي الأمر",
         "portalAccessTeacher": "الدخول إلى بوابة الأستاذ",
@@ -1464,7 +1726,8 @@
           "contract": "عقد العمل",
           "skills": "الكفاءات البيداغوجية",
           "hr": "معطيات الموارد البشرية",
-          "financial": "المعطيات المالية"
+          "financial": "المعطيات المالية",
+          "admission": "التسجيل"
         },
         "specialties": "التخصصات (المواد المُتقنة)",
         "specialtiesHint": "المواد القادر هذا الأستاذ على تدريسها (مختلفة عن التكاليف الفعلية للسنة).",
@@ -1549,6 +1812,13 @@
         "birthDate": "تاريخ الازدياد",
         "nationality": "الجنسية",
         "cin": "ب.و.م / جواز السفر",
+        "regime": {
+          "label": "النظام",
+          "none": "— غير محدد —",
+          "EXTERNE": "خارجي",
+          "DEMI_PENSIONNAIRE": "نصف داخلي",
+          "INTERNE": "داخلي"
+        },
         "contactEmail": "البريد الإلكتروني",
         "contactPhone": "الهاتف",
         "contactWhatsapp": "واتساب",
@@ -1572,6 +1842,9 @@
         "homeRoomHint": "القاعة المعتادة للأستاذ. تُلقى فيها الدروس غير المتخصصة (التلاميذ هم من يتنقلون)؛ أما مواد المختبر فتبقى في قاعاتها المتخصصة.",
         "addPhoto": "إضافة صورة",
         "photoAfterCreate": "يمكن إضافة الصورة بعد الإنشاء",
+        "admissionLevel": "المستوى المطلوب",
+        "admissionYear": "السنة الدراسية",
+        "admissionNotes": "ملاحظات (اختياري)",
         "contractTypes": {
           "CDI": "عقد غير محدد المدة",
           "CDD": "عقد محدد المدة",
@@ -1931,17 +2204,91 @@
       "title": "الإعدادات",
       "subtitle": "ضبط المرجعية البيداغوجية والمستخدمين بالمؤسسة.",
       "tabs": {
+        "establishment": "المؤسسة",
         "years": "السنوات الدراسية",
         "curriculum": "الأسلاك والمستويات",
         "subjects": "المواد",
         "rooms": "القاعات",
-        "timetable-settings": "المؤسسة",
+        "timetable-settings": "إعدادات الجدول",
         "timetable-slots": "الحصص الزمنية",
         "timetable-constraints": "قيود الجدول",
         "fees": "الرسوم",
+        "admissions": "القبول",
+        "attendance-reasons": "أسباب المناداة",
         "roles": "الأدوار",
         "users": "المستخدمون",
         "audit": "سجل التدقيق"
+      },
+      "establishment": {
+        "title": "هوية المؤسسة",
+        "subtitle": "الاسم واللغة الافتراضية والعملة والمنطقة الزمنية. خاص بالمدير.",
+        "name": "اسم المؤسسة / المجموعة المدرسية",
+        "slug": "معرّف الدخول (slug)",
+        "slugHint": "يُستعمل عند الدخول. غير قابل للتعديل هنا (تواصل مع الدعم).",
+        "localeDefault": "اللغة الافتراضية",
+        "locales": { "fr": "الفرنسية", "ar": "العربية" },
+        "currency": "العملة",
+        "timezone": "المنطقة الزمنية",
+        "logoSoon": "شعار المؤسسة: قريبًا (التحميل قيد التطوير).",
+        "save": "حفظ",
+        "saving": "جارٍ الحفظ…",
+        "saved": "تم حفظ التعديلات."
+      },
+      "attendanceReasons": {
+        "title": "أسباب المناداة",
+        "subtitle": "قائمة أسباب التأخر/الغياب المقترحة على الأساتذة أثناء المناداة.",
+        "label": "التسمية",
+        "color": "اللون",
+        "order": "الترتيب",
+        "active": "مفعّل",
+        "actions": "إجراءات",
+        "edit": "تعديل",
+        "delete": "حذف",
+        "confirmDelete": "حذف هذا السبب؟",
+        "empty": "لا يوجد سبب. أضف واحدًا أدناه.",
+        "addTitle": "إضافة سبب",
+        "add": "إضافة",
+        "save": "حفظ",
+        "cancel": "إلغاء"
+      },
+      "admissions": {
+        "docs": {
+          "title": "الوثائق المطلوبة للتسجيل",
+          "subtitle": "قائمة الوثائق الواجب تقديمها. « كل المستويات » = مطلوبة في كل مكان.",
+          "create": "إضافة وثيقة",
+          "empty": "لا توجد وثائق مُعدّة."
+        },
+        "doc": {
+          "code": "الرمز",
+          "label": "التسمية",
+          "labelFr": "التسمية (FR)",
+          "labelAr": "التسمية (AR)",
+          "level": "المستوى",
+          "allLevels": "كل المستويات",
+          "required": "إجباري",
+          "order": "الترتيب",
+          "actions": "إجراءات",
+          "yes": "نعم",
+          "no": "لا",
+          "create": "إضافة",
+          "creating": "جارٍ الإضافة…",
+          "edit": "تعديل",
+          "delete": "حذف",
+          "confirmDelete": "حذف هذه الوثيقة المطلوبة؟",
+          "save": "حفظ",
+          "saving": "جارٍ الحفظ…",
+          "cancel": "إلغاء"
+        },
+        "quota": {
+          "title": "حصص المقاعد",
+          "subtitle": "عدد المقاعد حسب المستوى لسنة {year}. 0 = غير محدود.",
+          "noYear": "لا توجد سنة نشطة.",
+          "level": "المستوى",
+          "taken": "مشغول",
+          "capacity": "المقاعد",
+          "save": "موافق",
+          "saving": "…"
+        }
       },
       "years": {
         "table": { "label": "السنة", "start": "البداية", "end": "النهاية", "status": "الحالة", "actions": "إجراءات" },
@@ -1951,6 +2298,27 @@
         "createHint": "سنة واحدة فقط يمكن أن تكون نشطة.",
         "edit": "تعديل",
         "backToList": "العودة إلى القائمة",
+        "periods": {
+          "title": "الفترات (أسدس / دورات)",
+          "empty": "لا توجد فترات. ولّدها أو أضفها يدويًا. ضرورية للنقاط وكشوف النقاط.",
+          "gen3": "توليد 3 أثلاث",
+          "gen2": "توليد أسدسين",
+          "add": "إضافة",
+          "delete": "حذف",
+          "confirmDelete": "حذف هذه الفترة؟",
+          "kinds": {
+            "TRIMESTER": "ثلث",
+            "SEMESTER": "أسدس",
+            "MODULE": "وحدة",
+            "SESSION": "دورة"
+          },
+          "form": {
+            "kind": "النوع",
+            "label": "التسمية",
+            "start": "البداية",
+            "end": "النهاية"
+          }
+        },
         "actions": { "activate": "تفعيل", "edit": "تعديل" },
         "form": {
           "label": "التسمية (مثال : 2026-2027)",
@@ -2094,6 +2462,7 @@
         },
         "active": "مفعّل",
         "inactive": "معطّل",
+        "toggleHint": "انقر للتفعيل / التعطيل",
         "empty": "لا توجد أدوار محدَّدة لهذه الفئة.",
         "create": "إضافة دور",
         "createHint": "أدخل رمزًا ثابتًا (بالأحرف الكبيرة) ثم التسمية بالفرنسية والعربية. عطِّل الدور بدل حذفه إذا كان مستعملًا.",
@@ -2133,7 +2502,7 @@
         "create": "لائحة جديدة",
         "createHint": "المبلغ السنوي وعدد الأقساط الشهرية.",
         "confirmDelete": "حذف لائحة الأسعار هذه؟",
-        "actions": { "delete": "حذف" },
+        "actions": { "edit": "تعديل", "delete": "حذف" },
         "form": {
           "year": "السنة الدراسية",
           "level": "المستوى",
@@ -2142,7 +2511,29 @@
           "installmentCount": "عدد الأقساط",
           "firstDueMonth": "شهر القسط الأول",
           "create": "إنشاء",
-          "creating": "جاري الإنشاء…"
+          "creating": "جاري الإنشاء…",
+          "save": "حفظ",
+          "saving": "جارٍ الحفظ…",
+          "cancel": "إلغاء"
+        },
+        "discounts": {
+          "title": "التخفيضات",
+          "subtitle": "قائمة تخفيضات قابلة للضبط (الإخوة، الأداء النقدي…)، تُختار عند قبول الملف.",
+          "label": "التسمية",
+          "labelPlaceholder": "الإخوة (الأصغر)",
+          "pct": "النسبة",
+          "order": "الترتيب",
+          "active": "مفعّل",
+          "on": "مفعّل",
+          "off": "غير مفعّل",
+          "empty": "لا توجد تخفيضات مضبوطة.",
+          "create": "تخفيض جديد",
+          "createHint": "التسمية + النسبة %. يختار الموظف التخفيض المطبق عند قبول الملف.",
+          "creating": "جاري الإنشاء…",
+          "save": "حفظ",
+          "saving": "جاري الحفظ…",
+          "cancel": "إلغاء",
+          "confirmDelete": "هل تريد حذف هذا التخفيض؟"
         }
       },
       "rooms": {
@@ -2165,14 +2556,16 @@
         "you": "أنت",
         "invite": "دعوة مستخدم",
         "inviteHint": "ينشئ حسابًا بكلمة مرور مؤقتة تُعطى للمستخدم.",
-        "actions": { "disable": "تعطيل", "enable": "تفعيل", "confirmDisable": "هل تريد تعطيل هذا المستخدم؟" },
+        "actions": { "disable": "تعطيل", "enable": "تفعيل", "confirmDisable": "هل تريد تعطيل هذا المستخدم؟", "delete": "حذف", "confirmDelete": "حذف هذا الحساب غير المستعمل نهائيًا؟ يبقى الشخص المرتبط محفوظًا." },
         "form": {
           "email": "البريد الإلكتروني",
           "firstName": "الاسم",
           "lastName": "اللقب",
           "personType": "نوع الشخص",
           "personTypes": { "TEACHER": "أستاذ", "STAFF": "موظف" },
-          "role": "الدور",
+          "personRole": "نوع الموظف (الوظيفة)",
+          "personRoleNone": "— لا شيء —",
+          "role": "الدور (الصلاحيات)",
           "create": "إنشاء الحساب",
           "creating": "جاري الإنشاء…",
           "createdTitle": "تم إنشاء الحساب",
@@ -2186,6 +2579,65 @@
         "table": { "when": "التاريخ", "who": "المؤلف", "action": "العملية", "entity": "الكيان", "entityId": "المعرّف", "diff": "قبل / بعد" },
         "empty": "لا توجد سجلات للمعايير المحددة.",
         "filter": { "entity": "الكيان", "action": "العملية", "all": "الكل", "apply": "تصفية", "clear": "مسح" },
+        "actions": {
+          "create": "إنشاء",
+          "update": "تعديل",
+          "delete": "حذف",
+          "restore": "استرجاع",
+          "save": "حفظ",
+          "approve": "قبول",
+          "reject": "رفض",
+          "resubmit": "إعادة إرسال",
+          "notify": "إشعار",
+          "enroll": "تسجيل",
+          "unenroll": "إلغاء التسجيل",
+          "invite": "دعوة",
+          "setActive": "تفعيل",
+          "login": "تسجيل الدخول"
+        },
+        "entities": {
+          "Person": "شخص",
+          "PersonRole": "دور (الموظفون)",
+          "Service": "مصلحة",
+          "Subject": "مادة",
+          "CurriculumSubject": "البرنامج (مادة)",
+          "Class": "قسم",
+          "Level": "مستوى",
+          "Cycle": "سلك",
+          "Room": "قاعة",
+          "Period": "فترة",
+          "AcademicYear": "السنة الدراسية",
+          "Evaluation": "تقييم",
+          "EvaluationGrades": "النقاط",
+          "SubjectAppreciation": "ملاحظة",
+          "AttendanceSession": "حصة النداء",
+          "AttendanceRecord": "حضور",
+          "AttendanceEvent": "حدث حضور",
+          "AttendanceReason": "سبب الغياب",
+          "AbsenceJustification": "تبرير الغياب",
+          "CarnetEntry": "إدخال الدفتر",
+          "Conversation": "محادثة",
+          "Announcement": "إعلان",
+          "Enrollment": "تسجيل",
+          "EnrollmentDocument": "وثيقة التسجيل",
+          "FeeScheduleItem": "شبكة الرسوم",
+          "Installment": "قسط",
+          "Installments": "أقساط",
+          "Payment": "أداء",
+          "StaffAttendance": "تتبع حضور الموظفين",
+          "StudentClass": "إسناد إلى قسم",
+          "TeacherAssignment": "إسناد أستاذ",
+          "TimetableEntry": "حصة في الجدول",
+          "TimetableSlot": "حصة زمنية",
+          "RequiredDocument": "وثيقة مطلوبة",
+          "AdmissionQuota": "حصة القبول",
+          "CouncilEntry": "مجلس القسم",
+          "Survey": "استطلاع",
+          "Tenant": "المؤسسة",
+          "User": "مستخدم",
+          "PersonContract": "عقد",
+          "PersonPhoto": "صورة"
+        },
         "pagination": "الصفحة {page} / {total}"
       }
     }
@@ -2207,6 +2659,69 @@
         "slug": "المعرّف (URL)",
         "profile": "النمط",
         "submit": "إنشاء المؤسسة"
+      }
+    }
+  },
+  "eleve": {
+    "signOut": "تسجيل الخروج",
+    "noProfile": "لا يوجد ملف تلميذ مرتبط بهذا الحساب.",
+    "carnetTitle": "دفتر مراسلتي",
+    "nav": {
+      "home": "الرئيسية",
+      "notes": "نقاطي",
+      "bulletins": "كشوف النقاط",
+      "carnet": "دفتري"
+    },
+    "bulletins": {
+      "title": "كشوف نقاطي",
+      "view": "عرض الكشف",
+      "empty": "لا يوجد كشف متاح حاليًا."
+    },
+    "home": {
+      "hello": "مرحبًا {name}",
+      "noClass": "لا يوجد قسم",
+      "generalAverage": "المعدل العام",
+      "attendanceRate": "نسبة الحضور",
+      "carnet": "الدفتر",
+      "carnetUnread": "إدخالات جديدة غير مقروءة",
+      "recentCarnet": "آخر إدخالات الدفتر",
+      "seeAll": "عرض الكل",
+      "carnetEmpty": "لا توجد إدخالات حاليًا.",
+      "recentAbsences": "الغيابات الأخيرة",
+      "noAbsence": "لا غياب. واصل هكذا!"
+    },
+    "notes": {
+      "title": "نقاطي",
+      "general": "المعدل العام",
+      "average": "المعدل",
+      "empty": "لا توجد نقاط حاليًا.",
+      "evaluation": "التقييم",
+      "period": "الفترة",
+      "mark": "النقطة",
+      "classAvg": "معدل القسم"
+    },
+    "carnet": {
+      "type": {
+        "OBSERVATION": "ملاحظة",
+        "ENCOURAGEMENT": "تشجيع",
+        "FELICITATION": "تهنئة",
+        "REMARQUE_DISCIPLINAIRE": "ملاحظة سلوكية",
+        "DEFAUT_CARNET": "نقص الدفتر",
+        "AVERTISSEMENT": "إنذار",
+        "MESSAGE_DIRECTION": "الإدارة",
+        "CONVOCATION": "استدعاء",
+        "ABSENCE": "غياب",
+        "RETARD": "تأخّر",
+        "EXCLUSION": "طرد"
+      },
+      "eventCat": {
+        "PRESENT": "حاضر",
+        "LATE": "تأخّر",
+        "INFIRMARY": "المستوصف",
+        "PUNISHMENT": "عقوبة",
+        "EXCLUSION": "طرد",
+        "EXCUSED": "إعفاء",
+        "ABSENT": "غياب"
       }
     }
   },
@@ -2284,6 +2799,7 @@
       "absences": "الغيابات",
       "remaining": "المتبقّي",
       "upToDate": "مُسدَّد",
+      "carnetUnread": "{count} غير مقروء",
       "latestAnnouncements": "آخر الإعلانات",
       "seeAll": "عرض الكل",
       "noAnnouncement": "لا توجد إعلانات حاليًا."
@@ -2299,6 +2815,34 @@
         "empty": "لا يوجد كشف متاح.",
         "download": "تحميل PDF"
       },
+      "notes": {
+        "title": "النقاط",
+        "empty": "لا توجد نقاط مسجلة حاليًا.",
+        "evaluation": "التقييم",
+        "period": "الفترة",
+        "mark": "النقطة",
+        "classAvg": "معدل القسم"
+      },
+      "carnet": {
+        "title": "دفتر المراسلة",
+        "empty": "لا توجد رسائل حاليًا.",
+        "unread": "{count} غير مقروء",
+        "new": "جديد",
+        "seenOn": "اطُّلع عليه في {date}",
+        "type": {
+          "OBSERVATION": "ملاحظة",
+          "ENCOURAGEMENT": "تشجيع",
+          "FELICITATION": "تهنئة",
+          "REMARQUE_DISCIPLINAIRE": "ملاحظة تأديبية",
+          "DEFAUT_CARNET": "مخالفة الدفتر",
+          "AVERTISSEMENT": "إنذار",
+          "MESSAGE_DIRECTION": "الإدارة",
+          "CONVOCATION": "استدعاء",
+          "ABSENCE": "غياب",
+          "RETARD": "تأخر",
+          "EXCLUSION": "طرد"
+        }
+      },
       "attendance": {
         "title": "الحضور",
         "empty": "لا توجد سجلات حضور.",
@@ -2309,11 +2853,33 @@
         "ABSENT": "غائب",
         "LATE": "متأخر",
         "EXCUSED": "بعذر",
-        "recent": "الغيابات والتأخّرات الأخيرة",
+        "cat": {
+          "PRESENT": "حاضر",
+          "LATE": "تأخر",
+          "INFIRMARY": "المستوصف",
+          "PUNISHMENT": "عقوبة",
+          "EXCLUSION": "طرد",
+          "EXCUSED": "إعفاء",
+          "ABSENT": "غياب"
+        },
+        "recent": "الأحداث الأخيرة",
+        "justified": "مبرّرة",
         "justif": {
           "PENDING": "تبرير قيد الانتظار",
           "APPROVED": "تبرير مقبول",
           "REJECTED": "تبرير مرفوض"
+        },
+        "justify": {
+          "button": "تبرير",
+          "pending": "قيد الانتظار",
+          "title": "تبرير غياب",
+          "chooseReason": "اختر سببًا",
+          "uploadFile": "حمّل وثيقة مبرّرة",
+          "comment": "أضف تعليقًا",
+          "cancel": "إلغاء",
+          "validate": "تأكيد",
+          "sending": "إرسال…",
+          "reasonRequired": "اختر سببًا."
         }
       },
       "finance": {
@@ -2354,14 +2920,114 @@
     "nav": {
       "home": "لوحة القيادة",
       "timetable": "الجدول الزمني",
+      "appel": "المناداة",
       "cahier": "دفتر النصوص",
+      "notes": "النقاط",
+      "carnet": "الدفتر",
       "classes": "أقسامي",
       "messages": "الرسائل",
       "account": "حسابي"
     },
+    "notes": {
+      "tabs": {
+        "saisie": "الإدخال",
+        "releve": "الكشف",
+        "appreciations": "ملاحظات الكشف",
+        "graphes": "الرسوم البيانية"
+      },
+      "saisieTitle": "إدخال النقاط",
+      "apply": "عرض",
+      "average": "المعدل",
+      "releve": {
+        "title": "ملاحظات أساتذة كشف النقاط",
+        "readOnly": "أنت لا تُدرّس هذه المادة في هذا القسم: الملاحظات للقراءة فقط.",
+        "student": "التلميذ",
+        "hAbs": "س.غياب",
+        "hAbsFull": "ساعات الغياب (الفترة)",
+        "ret": "تأخّر",
+        "retFull": "التأخّرات (الفترة)",
+        "notes": "ع.نقاط",
+        "moy": "المعدل",
+        "eval": "التقييمات",
+        "appreciation": "ملاحظة",
+        "placeholder": "أدخل ملاحظة…",
+        "noAppreciation": "لا توجد ملاحظة",
+        "saving": "جارٍ الحفظ…",
+        "saved": "محفوظ",
+        "saveError": "فشل",
+        "empty": "لا يوجد تلميذ في هذا القسم."
+      },
+      "studentsCount": "{count} تلميذ",
+      "createDevoir": "إنشاء فرض",
+      "editDevoir": "إعدادات الفرض",
+      "deleteDevoir": "حذف هذا الفرض",
+      "confirmDeleteDevoir": "حذف هذا الفرض ونقاطه؟",
+      "noService": "لا يوجد قسم/مادة لإسنادك إليها.",
+      "noDevoir": "لا يوجد فرض. أنشئ واحدًا.",
+      "noStudents": "لا يوجد تلميذ مسجل.",
+      "save": "حفظ",
+      "saving": "جارٍ الحفظ…",
+      "savedAt": "تم الحفظ في {time}",
+      "comingSoon": "متوفّر قريبًا.",
+      "badge": {
+        "bonus": "إضافي",
+        "optional": "اختياري"
+      },
+      "form": {
+        "label": "التسمية",
+        "date": "التاريخ",
+        "max": "السلم",
+        "weight": "المعامل",
+        "create": "إنشاء",
+        "saveDevoir": "حفظ",
+        "cancel": "إلغاء",
+        "optional": "اختياري",
+        "asBonus": "كنقاط إضافية",
+        "asNote": "كنقطة",
+        "optionalHint": "إضافي: النقاط فوق 10 تُضاف إلى المعدل. نقطة: تُحتسب فقط إذا حسّنت المعدل. دون أي عقوبة.",
+        "normalHint": "فرض عادي: يُحتسب في المعدل المرجّح."
+      }
+    },
     "home": {
       "title": "لوحة القيادة",
       "noTeacher": "لا يوجد أستاذ مرتبط بحسابك. يرجى الاتصال بالمؤسسة."
+    },
+    "appel": {
+      "title": "المناداة",
+      "subtitle": "انقر على حصة لإجراء المناداة.",
+      "prevWeek": "الأسبوع السابق",
+      "thisWeek": "هذا الأسبوع",
+      "nextWeek": "الأسبوع التالي",
+      "emptyWeek": "لا توجد حصص هذا الأسبوع.",
+      "selectSession": "اختر حصة من الجدول الزمني لإجراء المناداة.",
+      "studentsCount": "{count} تلميذ",
+      "noStudents": "لا يوجد تلميذ مسجل في هذا القسم.",
+      "cols": {
+        "absence": "غياب",
+        "retard": "تأخر",
+        "infirmerie": "المستوصف",
+        "punition": "عقوبة",
+        "exclusion": "طرد",
+        "dispense": "إعفاء",
+        "observation": "ملاحظات لعناية الأولياء",
+        "encouragement": "تشجيعات"
+      },
+      "addObservation": "إدخال",
+      "addEncouragement": "إدخال",
+      "publishToParents": "النشر في فضاء الأولياء",
+      "min": "دق",
+      "motif": "السبب",
+      "motifTitle": "اختر سبب التأخر",
+      "motifUnknown": "السبب غير معروف بعد",
+      "cancel": "إلغاء",
+      "save": "حفظ",
+      "saving": "جارٍ الحفظ…",
+      "validate": "تأكيد المناداة",
+      "validating": "جارٍ التأكيد…",
+      "reopen": "إلغاء القفل",
+      "reopening": "جارٍ إلغاء القفل…",
+      "lockedHint": "تم تأكيد المناداة.",
+      "savedAt": "تم الحفظ في {time}"
     },
     "cahier": {
       "title": "دفتر النصوص",
@@ -2370,6 +3036,7 @@
       "thisWeek": "هذا الأسبوع",
       "nextWeek": "الأسبوع التالي",
       "emptyWeek": "لا توجد حصص هذا الأسبوع.",
+      "selectSession": "اختر حصة من جدول الحصص لإدخال دفتر النصوص.",
       "filled": "مُعبّأ",
       "toFill": "للتعبئة",
       "reminder": {
@@ -2446,7 +3113,40 @@
     "classes": {
       "title": "أقسامي",
       "empty": "لا توجد أقسام مسندة.",
-      "studentCount": "{count} تلميذ"
+      "studentCount": "{count} تلميذ",
+      "openGrades": "إدخال النقاط"
+    },
+    "grades": {
+      "title": "النقاط",
+      "myClasses": "أقسامي",
+      "create": "تقييم جديد",
+      "createHint": "أنشئ فرضًا ثم أدخل النقاط.",
+      "empty": "لا يوجد تقييم لهذه المادة.",
+      "openSheet": "إدخال",
+      "delete": "حذف",
+      "confirmDelete": "حذف هذا التقييم ونقاطه؟",
+      "filter": {
+        "period": "الفترة",
+        "allPeriods": "كل الفترات",
+        "apply": "تصفية"
+      },
+      "table": {
+        "label": "التقييم",
+        "period": "الفترة",
+        "date": "التاريخ",
+        "filled": "المُدخلة",
+        "actions": "إجراءات"
+      },
+      "form": {
+        "subject": "المادة",
+        "label": "التسمية",
+        "period": "الفترة",
+        "date": "التاريخ",
+        "maxValue": "السلم",
+        "weight": "المعامل",
+        "create": "إنشاء",
+        "creating": "جارٍ الإنشاء…"
+      }
     },
     "messages": {
       "title": "الرسائل",
@@ -2467,6 +3167,54 @@
       "save": "حفظ",
       "saving": "جارٍ الحفظ…",
       "done": "تم تحديث كلمة المرور."
+    }
+  },
+  "carnet": {
+    "title": "دفتر المراسلة",
+    "apply": "عرض",
+    "noAccess": "الوصول غير متاح.",
+    "noStudent": "اختر تلميذًا.",
+    "empty": "لا توجد إدخالات.",
+    "noEvent": "لا توجد أحداث مسجّلة.",
+    "eventsTitle": "أحداث مُبلّغ عنها في أوراق المناداة",
+    "placeholder": "اكتب نصك…",
+    "save": "حفظ",
+    "saving": "جارٍ الحفظ…",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "confirmDelete": "حذف هذا الإدخال؟",
+    "sections": {
+      "OBSERVATION": "ملاحظات",
+      "ENCOURAGEMENT": "تشجيعات",
+      "DEFAUT_CARNET": "مخالفات الدفتر",
+      "REMARQUE_DISCIPLINAIRE": "ملاحظات تأديبية"
+    },
+    "add": {
+      "OBSERVATION": "إدخال ملاحظة جديدة",
+      "ENCOURAGEMENT": "إدخال تشجيع جديد",
+      "DEFAUT_CARNET": "إدخال مخالفة جديدة",
+      "REMARQUE_DISCIPLINAIRE": "إدخال ملاحظة جديدة"
+    },
+    "col": {
+      "date": "التاريخ",
+      "author": "أدخلها",
+      "content": "المحتوى",
+      "class": "القسم",
+      "event": "الحدث",
+      "justif": "المبرّر"
+    },
+    "eventCat": {
+      "ABSENT": "غياب",
+      "LATE": "تأخر",
+      "EXCLUSION": "طرد",
+      "EXCUSED": "إعفاء",
+      "INFIRMARY": "المستوصف",
+      "PUNISHMENT": "عقوبة"
+    },
+    "justif": {
+      "PENDING": "قيد الانتظار",
+      "APPROVED": "مبرّر",
+      "REJECTED": "مرفوض"
     }
   }
 }

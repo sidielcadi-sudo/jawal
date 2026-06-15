@@ -42,7 +42,27 @@ export default async function EditPersonPage({
         tx.person.findMany({
           where: { type: 'PARENT', deletedAt: null, id: { not: id } },
           orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-          select: { id: true, firstName: true, lastName: true },
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            address: true,
+            relationsAsParent: {
+              select: {
+                child: {
+                  select: {
+                    firstName: true,
+                    lastName: true,
+                    studentClasses: {
+                      where: { unenrolledAt: null },
+                      select: { class: { select: { name: true } } },
+                      take: 1,
+                    },
+                  },
+                },
+              },
+            },
+          },
         }),
         tx.subject.findMany({ orderBy: [{ order: 'asc' }, { label: 'asc' }] }),
         tx.cycle.findMany({ orderBy: { order: 'asc' } }),
@@ -56,7 +76,22 @@ export default async function EditPersonPage({
       return {
         person,
         roles,
-        availableParents,
+        availableParents: availableParents.map((p) => ({
+          id: p.id,
+          firstName: p.firstName,
+          lastName: p.lastName,
+          address: (p.address ?? null) as {
+            line1?: string;
+            city?: string;
+            postalCode?: string;
+            country?: string;
+          } | null,
+          children: p.relationsAsParent.map((r) => ({
+            firstName: r.child.firstName,
+            lastName: r.child.lastName,
+            className: r.child.studentClasses[0]?.class.name ?? null,
+          })),
+        })),
         allSubjects,
         allCycles,
         allClasses: classes,
@@ -110,6 +145,7 @@ export default async function EditPersonPage({
             gender: person.gender ?? undefined,
             nationality: person.nationality ?? undefined,
             cin: person.cin ?? undefined,
+            regime: person.regime ?? undefined,
             contacts,
             address,
             parents: person.relationsAsChild.map((r) => ({

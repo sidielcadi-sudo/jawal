@@ -99,6 +99,27 @@ enum AttendanceStatus {
   EXCUSED // dispense, sortie anticipée, retrait justifié
 }
 
+/// Mode d'un devoir facultatif (cf. Evaluation.optionalMode).
+enum EvaluationOptionalMode {
+  BONUS // points au-dessus de 10/20 ajoutés directement à la moyenne
+  NOTE  // comptée seulement si elle améliore la moyenne
+}
+
+/// Catégorie d'un événement de vie scolaire (module Gestion des absences).
+enum AttendanceEventCategory {
+  ABSENCE
+  RETARD
+  EXCLUSION
+}
+
+/// Statut de traitement par la Vie Scolaire d'un événement d'absence.
+enum AttendanceEventStatus {
+  PENDING   // signalé par le prof, à traiter
+  CONFIRMED // confirmé officiel (→ carnet + notif)
+  JUSTIFIED // justifié
+  CANCELLED // annulé (erreur de saisie côté prof)
+}
+
 /// Statut de pointage du personnel (enseignants ou administratif).
 /// EXCUSED couvre congés, maladies, formations — sans retenue. ABSENT non
 /// excusé déclenche une retenue calculée pro-rata sur le salaire mensuel.
@@ -127,10 +148,23 @@ enum InstallmentStatus {
 /// validation. ACTIVE = élève inscrit (StudentClass + échéancier générés).
 /// WITHDRAWN = retrait en cours d'année. GRADUATED = clôture par succès.
 enum EnrollmentStatus {
-  DRAFT
-  ACTIVE
-  WITHDRAWN
-  GRADUATED
+  DRAFT // = EN_ATTENTE (dossier créé, aucune pièce)
+  DOCUMENTS_MANQUANTS // pièces incomplètes/invalides (auto)
+  DOSSIER_COMPLET // toutes pièces présentes et conformes (auto)
+  ACCEPTE // validé par l'administration, paiement non encore effectué
+  REFUSE // rejeté (non-conformité, manque de place…) — motif requis
+  INSCRIPTION_VALIDEE // frais d'inscription encaissés (auto via finance)
+  AFFECTE // classe/niveau attribués → visible Vie scolaire
+  ACTIVE // = ACTIF (intégré : classe, EDT, comptes activés)
+  WITHDRAWN // = ARCHIVE (départ/transfert)
+  GRADUATED // fin de cursus
+}
+
+/// Statut d'une pièce justificative déposée pour un dossier d'inscription.
+enum DocumentStatus {
+  PENDING // déposée, en attente de vérification
+  VALID // vérifiée et conforme
+  INVALID // refusée (illisible, non conforme…)
 }
 
 enum DayOfWeek {
@@ -299,6 +333,9 @@ model Tenant {
   auditLogs      AuditLog[]
   attendanceSessions AttendanceSession[]
   attendanceRecords  AttendanceRecord[]
+  attendanceReasons  AttendanceReason[]
+  attendanceEvents   AttendanceEvent[]
+  carnetEntries      CarnetEntry[]
   absenceJustifications AbsenceJustification[]
   subjects       Subject[]
   evaluations    Evaluation[]
@@ -310,6 +347,7 @@ model Tenant {
   messages       Message[]
   conversationParticipants ConversationParticipant[]
   feeSchedules   FeeScheduleItem[]
+  discountRules  DiscountRule[]
   installments   Installment[]
   payments       Payment[]
   files          FileObject[]
@@ -324,6 +362,9 @@ model Tenant {
   diplomas           Diploma[]
   staffAttendance    StaffAttendance[]
   enrollments        Enrollment[]
+  admissionQuotas    AdmissionQuota[]
+  requiredDocuments  RequiredDocument[]
+  enrollmentDocuments EnrollmentDocument[]
   timetableSlots     TimetableSlot[]
   timetableEntries   TimetableEntry[]
   timetableOverrides TimetableOverride[]
@@ -383,6 +424,13 @@ model User {
   @@map("users")
 }
 
+/// Régime de l'élève (restauration / hébergement). Null pour non-élèves.
+enum StudentRegime {
+  EXTERNE           // externe (ne déjeune pas sur place)
+  DEMI_PENSIONNAIRE // demi-pensionnaire (déjeune à la cantine)
+  INTERNE           // interne (hébergé)
+}
+
 model Person {
   id          String     @id @default(uuid()) @db.Uuid
   tenantId    String     @map("tenant_id") @db.Uuid
@@ -400,6 +448,8 @@ model Person {
   gender      Gender?
   nationality String?
   cin         String?    // CIN / passeport
+  /// Régime de l'élève (externe / demi-pensionnaire / interne). Null sinon.
+  regime      StudentRegime?
   contacts    Json       @default("{}") // { email, phone, ... }
   address     Json       @default("{}")
   metadata    Json       @default("{}")
@@ -447,6 +497,8 @@ model Person {
   grades             Grade[]            @relation("StudentGrades")
   subjectAppreciations SubjectAppreciation[] @relation("StudentSubjectAppreciations")
   councilEntries     CouncilEntry[]     @relation("StudentCouncil")
+  carnetEntries      CarnetEntry[]      @relation("StudentCarnet")
+  attendanceEvents   AttendanceEvent[]  @relation("StudentAttendanceEvents")
   installments       Installment[]      @relation("StudentInstallments")
   teacherAssignments TeacherAssignment[] @relation("TeacherAssignments")
   teacherSpecialties TeacherSpecialty[]
@@ -735,6 +787,7 @@ model AcademicYear {
   teacherAssignments TeacherAssignment[]
   enrollments  Enrollment[]
   timetableEntries TimetableEntry[]
+  admissionQuotas AdmissionQuota[]
 
   @@unique([tenantId, label])
   @@map("academic_years")
@@ -792,6 +845,8 @@ model Level {
   feeSchedules      FeeScheduleItem[]
   curriculumSubjects CurriculumSubject[]
   enrollments       Enrollment[]
+  admissionQuotas   AdmissionQuota[]
+  requiredDocuments RequiredDocument[]
 
   @@unique([tenantId, code])
   @@map("levels")
@@ -926,6 +981,7 @@ model FileObject {
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contractOf Person? @relation("ContractFile")
   photoOf    Person? @relation("PhotoFile")
+  enrollmentDoc EnrollmentDocument? @relation("EnrollmentDocFile")
 
   @@index([tenantId, ownerType, ownerId])
   @@map("files")
@@ -944,12 +1000,17 @@ model AttendanceSession {
   date         DateTime  @db.Date
   periodLabel  String?   @map("period_label") // "08h00-09h00", "Cours 1", "Matin", ...
   finalizedAt  DateTime? @map("finalized_at") // null = brouillon, set = validé
+  /// Verrou Vie Scolaire : posé à la confirmation d'un événement. Empêche le prof
+  /// de rouvrir l'appel.
+  vsLocked     Boolean   @default(false) @map("vs_locked")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
   tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   class   Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
   records AttendanceRecord[]
+  carnetEntries CarnetEntry[]
+  events  AttendanceEvent[]
 
   @@unique([classId, date, periodLabel])
   @@index([tenantId, date])
@@ -966,6 +1027,12 @@ model AttendanceRecord {
   studentId    String           @map("student_id") @db.Uuid
   status       AttendanceStatus @default(PRESENT)
   lateMinutes  Int?             @map("late_minutes") // utilisé si status=LATE
+  /// Motif paramétrable (surtout pour LATE) — null = « non encore connu ».
+  lateReasonId String?          @map("late_reason_id") @db.Uuid
+  /// Marqueurs « vie scolaire » cumulables avec n'importe quel statut de présence.
+  infirmary    Boolean          @default(false) // passage à l'infirmerie
+  punishment   Boolean          @default(false) // punition
+  exclusion    Boolean          @default(false) // exclusion de cours
   note         String?
   createdAt    DateTime         @default(now()) @map("created_at")
   updatedAt    DateTime         @updatedAt @map("updated_at")
@@ -973,11 +1040,71 @@ model AttendanceRecord {
   tenant       Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   session      AttendanceSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   student      Person                @relation("StudentAttendance", fields: [studentId], references: [id])
+  lateReason   AttendanceReason?     @relation(fields: [lateReasonId], references: [id], onDelete: SetNull)
   justification AbsenceJustification?
+  event        AttendanceEvent?
 
   @@unique([sessionId, studentId])
   @@index([tenantId, studentId])
   @@map("attendance_records")
+}
+
+/// Couche ADMINISTRATIVE (Vie Scolaire) — événement de présence à traiter,
+/// distinct du cahier d'appel du prof (qui n'est jamais modifié). Généré à la
+/// validation de l'appel pour chaque absence/retard/exclusion. La VS confirme,
+/// justifie, annule ou convertit l'événement ; la confirmation matérialise une
+/// entrée de carnet (couche communication) et verrouille la session.
+model AttendanceEvent {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  tenantId           String                  @map("tenant_id") @db.Uuid
+  /// Lien 1-1 vers le record source (jamais modifié).
+  attendanceRecordId String                  @unique @map("attendance_record_id") @db.Uuid
+  studentId          String                  @map("student_id") @db.Uuid
+  classId            String                  @map("class_id") @db.Uuid
+  sessionId          String                  @map("session_id") @db.Uuid
+  date               DateTime                @db.Date
+  /// Catégorie signalée par le prof (snapshot, lecture seule).
+  signaledCategory   AttendanceEventCategory @map("signaled_category")
+  /// Catégorie officielle après traitement VS (modifiable : convert absence↔retard).
+  category           AttendanceEventCategory
+  lateMinutes        Int?                    @map("late_minutes")
+  status             AttendanceEventStatus   @default(PENDING)
+  justifReason       String?                 @map("justif_reason")
+  reviewNote         String?                 @map("review_note")
+  processedByUserId  String?                 @map("processed_by_user_id") @db.Uuid
+  processedAt        DateTime?               @map("processed_at")
+  /// Entrée carnet matérialisée à la confirmation (couche communication).
+  carnetEntryId      String?                 @map("carnet_entry_id") @db.Uuid
+  createdAt          DateTime                @default(now()) @map("created_at")
+  updatedAt          DateTime                @updatedAt @map("updated_at")
+
+  tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  attendanceRecord AttendanceRecord  @relation(fields: [attendanceRecordId], references: [id], onDelete: Cascade)
+  student          Person            @relation("StudentAttendanceEvents", fields: [studentId], references: [id], onDelete: Cascade)
+  session          AttendanceSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([tenantId, date])
+  @@map("attendance_events")
+}
+
+/// Motif d'appel paramétrable (retard, absence…) géré par l'établissement.
+/// Affiché dans la modale de sélection côté enseignant (barre de couleur).
+model AttendanceReason {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  label     String
+  /// Token de couleur (ex. « cyan », « rose », « amber ») pour la barre latérale.
+  color     String?
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  records AttendanceRecord[]
+
+  @@index([tenantId])
+  @@map("attendance_reasons")
 }
 
 /// Pointage journalier d'un membre du personnel (TEACHER ou STAFF).
@@ -1081,6 +1208,12 @@ model Evaluation {
   date      DateTime @db.Date
   weight    Float    @default(1.0)  // pondération de cette évaluation au sein de la matière
   maxValue  Float    @default(20.0) @map("max_value")
+  /// Devoir facultatif : ne pénalise jamais la moyenne.
+  optional  Boolean  @default(false)
+  /// Mode du devoir facultatif (ignoré si optional=false).
+  /// BONUS : les points au-dessus de 10/20 s'ajoutent à la moyenne.
+  /// NOTE  : la note n'est comptée que si elle améliore la moyenne.
+  optionalMode EvaluationOptionalMode @default(BONUS) @map("optional_mode")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -1136,6 +1269,59 @@ model SubjectAppreciation {
   @@unique([studentId, subjectId, periodId])
   @@index([tenantId, periodId])
   @@map("subject_appreciations")
+}
+
+/// Type d'entrée du carnet de correspondance.
+enum CarnetEntryType {
+  OBSERVATION            // remarque pédagogique (enseignant)
+  ENCOURAGEMENT
+  FELICITATION
+  REMARQUE_DISCIPLINAIRE // vie scolaire
+  DEFAUT_CARNET
+  AVERTISSEMENT
+  MESSAGE_DIRECTION
+  CONVOCATION            // demande d'entretien
+  // Entrées officielles matérialisées par la Vie Scolaire (module absences).
+  ABSENCE
+  RETARD
+  EXCLUSION
+}
+
+/// Entrée manuelle du carnet de correspondance d'un élève (observation,
+/// encouragement, remarque disciplinaire, défaut…). Les événements automatiques
+/// (absences/retards/exclusions) ne sont PAS stockés ici : ils sont dérivés à
+/// l'affichage depuis les AttendanceRecord finalisés (source unique de vérité).
+model CarnetEntry {
+  id               String          @id @default(uuid()) @db.Uuid
+  tenantId         String          @map("tenant_id") @db.Uuid
+  studentId        String          @map("student_id") @db.Uuid
+  type             CarnetEntryType
+  content          String
+  classId          String?         @map("class_id") @db.Uuid
+  subjectId        String?         @map("subject_id") @db.Uuid
+  /// Lien optionnel vers la séance d'appel d'origine (obs./encour. saisis dans
+  /// la feuille d'appel). Permet l'upsert idempotent par (séance, élève, type).
+  attendanceSessionId String?      @map("attendance_session_id") @db.Uuid
+  occurredAt       DateTime        @default(now()) @map("occurred_at")
+  authorUserId     String?         @map("author_user_id") @db.Uuid
+  /// Snapshot lisible de l'auteur (ex. « Mme BROWN J. »).
+  authorName       String          @map("author_name")
+  /// Snapshot du rôle : 'teacher' | 'vie-scolaire' | 'direction'.
+  authorRole       String          @map("author_role")
+  /// Visibilité parents/élève (utilisé par l'incrément portail parent).
+  visibleToParents Boolean         @default(true) @map("visible_to_parents")
+  /// Première consultation par un parent (« Vu le »). Null = non lu.
+  parentReadAt     DateTime?       @map("parent_read_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student           Person             @relation("StudentCarnet", fields: [studentId], references: [id], onDelete: Cascade)
+  attendanceSession AttendanceSession? @relation(fields: [attendanceSessionId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, studentId])
+  @@index([attendanceSessionId])
+  @@map("carnet_entries")
 }
 
 /// Décision du conseil de classe pour un élève sur une période.
@@ -1194,6 +1380,10 @@ model Enrollment {
   notes               String?
   createdByUserId     String?          @map("created_by_user_id") @db.Uuid
   validatedByUserId   String?          @map("validated_by_user_id") @db.Uuid
+  /// Décision d'admission (ACCEPTE / REFUSE).
+  refusalReason       String?          @map("refusal_reason")
+  decidedAt           DateTime?        @map("decided_at")
+  decidedByUserId     String?          @map("decided_by_user_id") @db.Uuid
   createdAt           DateTime         @default(now()) @map("created_at")
   updatedAt           DateTime         @updatedAt @map("updated_at")
 
@@ -1202,11 +1392,76 @@ model Enrollment {
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   level        Level        @relation(fields: [levelId], references: [id], onDelete: Cascade)
   class        Class?       @relation(fields: [classId], references: [id], onDelete: SetNull)
+  documents    EnrollmentDocument[]
 
   @@unique([studentId, academicYearId])
   @@index([tenantId, academicYearId, status])
   @@index([tenantId, classId])
   @@map("enrollments")
+}
+
+/// Quota de places par niveau × année (politique d'admission).
+model AdmissionQuota {
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  academicYearId String   @map("academic_year_id") @db.Uuid
+  levelId        String   @map("level_id") @db.Uuid
+  capacity       Int      @default(0)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  level        Level        @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@unique([academicYearId, levelId])
+  @@index([tenantId, academicYearId])
+  @@map("admission_quotas")
+}
+
+/// Pièce justificative requise (checklist configurable). levelId null = tous niveaux.
+model RequiredDocument {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  code      String
+  labelFr   String   @map("label_fr")
+  labelAr   String   @map("label_ar")
+  levelId   String?  @map("level_id") @db.Uuid
+  required  Boolean  @default(true)
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant    Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  level     Level?               @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  documents EnrollmentDocument[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, levelId])
+  @@map("required_documents")
+}
+
+/// Pièce déposée pour un dossier d'inscription (FileObject dans MinIO).
+model EnrollmentDocument {
+  id                 String         @id @default(uuid()) @db.Uuid
+  tenantId           String         @map("tenant_id") @db.Uuid
+  enrollmentId       String         @map("enrollment_id") @db.Uuid
+  requiredDocumentId String?        @map("required_document_id") @db.Uuid
+  fileId             String?        @unique @map("file_id") @db.Uuid
+  status             DocumentStatus @default(PENDING)
+  note               String?
+  validatedAt        DateTime?      @map("validated_at")
+  validatedByUserId  String?        @map("validated_by_user_id") @db.Uuid
+  createdAt          DateTime       @default(now()) @map("created_at")
+  updatedAt          DateTime       @updatedAt @map("updated_at")
+
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  enrollment Enrollment        @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  required   RequiredDocument? @relation(fields: [requiredDocumentId], references: [id], onDelete: SetNull)
+  file       FileObject?       @relation("EnrollmentDocFile", fields: [fileId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId, enrollmentId])
+  @@map("enrollment_documents")
 }
 
 // ─── Emploi du temps (M12) ─────────────────────────────────
@@ -1591,6 +1846,25 @@ model FeeScheduleItem {
 
   @@unique([tenantId, academicYearId, levelId, label])
   @@map("fee_schedules")
+}
+
+/// Règle de réduction tarifaire paramétrable (catalogue tenant).
+/// Ex. "Fratrie (cadet)" −10 %, "Paiement annuel comptant" −5 %.
+/// Sélectionnable manuellement à l'acceptation d'un dossier d'inscription.
+model DiscountRule {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  label     String
+  pct       Decimal  @db.Decimal(5, 2)
+  active    Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("discount_rules")
 }
 
 /// Échéance due pour un élève. Générée à la volée depuis une FeeScheduleItem.

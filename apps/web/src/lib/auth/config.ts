@@ -24,12 +24,14 @@ export const authConfig = {
           isSuperAdmin: boolean;
           isParent: boolean;
           isTeacher: boolean;
+          isStudent: boolean;
         };
         token.uid = u.id!;
         token.tenantId = u.tenantId;
         token.isSuperAdmin = u.isSuperAdmin;
         token.isParent = u.isParent;
         token.isTeacher = u.isTeacher;
+        token.isStudent = u.isStudent;
       }
       return token;
     },
@@ -40,6 +42,7 @@ export const authConfig = {
         session.user.isSuperAdmin = Boolean(token.isSuperAdmin);
         session.user.isParent = Boolean(token.isParent);
         session.user.isTeacher = Boolean(token.isTeacher);
+        session.user.isStudent = Boolean(token.isStudent);
       }
       return session;
     },
@@ -53,11 +56,13 @@ export const authConfig = {
         path.startsWith('/super-admin') ||
         path.startsWith('/parent') ||
         path.startsWith('/enseignant') ||
+        path.startsWith('/eleve') ||
         path.startsWith('/dashboard');
       const isSuperAdminRoute = path.startsWith('/super-admin');
       const isAdminRoute = path.startsWith('/admin') || path.startsWith('/dashboard');
       const isParentRoute = path.startsWith('/parent');
       const isTeacherRoute = path.startsWith('/enseignant');
+      const isStudentRoute = path.startsWith('/eleve');
       const isLoginPage = path.startsWith('/login');
 
       /** Destination par défaut d'un utilisateur connecté selon son profil. */
@@ -68,18 +73,27 @@ export const authConfig = {
             ? '/parent'
             : u.isTeacher
               ? '/enseignant'
-              : '/admin';
+              : u.isStudent
+                ? '/eleve'
+                : '/admin';
 
       if (isProtected && !isLoggedIn) return false;
       if (isSuperAdminRoute && !auth?.user.isSuperAdmin) return false;
       // Cloisonnement : chaque profil reste dans son espace.
-      if (isAdminRoute && isLoggedIn && (auth!.user.isParent || auth!.user.isTeacher)) {
+      if (
+        isAdminRoute &&
+        isLoggedIn &&
+        (auth!.user.isParent || auth!.user.isTeacher || auth!.user.isStudent)
+      ) {
         return Response.redirect(new URL(`/${locale}${home(auth!.user)}`, nextUrl));
       }
       if (isParentRoute && isLoggedIn && !auth!.user.isParent && !auth!.user.isSuperAdmin) {
         return Response.redirect(new URL(`/${locale}${home(auth!.user)}`, nextUrl));
       }
       if (isTeacherRoute && isLoggedIn && !auth!.user.isTeacher && !auth!.user.isSuperAdmin) {
+        return Response.redirect(new URL(`/${locale}${home(auth!.user)}`, nextUrl));
+      }
+      if (isStudentRoute && isLoggedIn && !auth!.user.isStudent && !auth!.user.isSuperAdmin) {
         return Response.redirect(new URL(`/${locale}${home(auth!.user)}`, nextUrl));
       }
       if (isLoginPage && isLoggedIn) {

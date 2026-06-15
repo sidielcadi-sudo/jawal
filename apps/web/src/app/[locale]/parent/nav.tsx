@@ -21,8 +21,10 @@ export function ParentSidebar({
 
   const linkCls = (active: boolean) =>
     [
-      'block rounded-lg px-3 py-2 text-sm transition-colors',
-      active ? 'bg-brand-50 font-medium text-brand-700' : 'text-slate-700 hover:bg-slate-100',
+      'flex items-center rounded-lg border-s-[3px] px-3 py-2 text-sm transition-colors',
+      active
+        ? 'border-brand-600 bg-brand-50 font-semibold text-brand-600'
+        : 'border-transparent text-slate-700 hover:bg-slate-100',
     ].join(' ');
 
   return (

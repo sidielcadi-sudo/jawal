@@ -3,7 +3,6 @@
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { saveGradesAction } from '../actions';
 
 type Row = {
   studentId: string;
@@ -13,40 +12,60 @@ type Row = {
   comment: string | null;
 };
 
+type EditRow = {
+  studentId: string;
+  firstName: string;
+  lastName: string;
+  text: string;
+  comment: string | null;
+};
+
+/** '12,5' ou '12.5' → 12.5 ; vide/NaN → null. */
+function parseMark(text: string): number | null {
+  const t = text.replace(',', '.').trim();
+  if (t === '') return null;
+  const n = Number(t);
+  return Number.isNaN(n) ? null : n;
+}
+
 export function GradeMatrix({
   evaluationId,
   maxValue,
   rows: initialRows,
   backUrl,
+  onSave,
 }: {
   evaluationId: string;
   maxValue: number;
   rows: Row[];
   backUrl: string;
+  /** Action serveur de sauvegarde (admin ou enseignant selon le contexte). */
+  onSave: (fd: FormData) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const t = useTranslations('admin.grades.sheet');
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [rows, setRows] = useState(initialRows);
+  const [rows, setRows] = useState<EditRow[]>(() =>
+    initialRows.map((r) => ({
+      studentId: r.studentId,
+      firstName: r.firstName,
+      lastName: r.lastName,
+      text: r.value === null ? '' : String(r.value),
+      comment: r.comment,
+    })),
+  );
   const [error, setError] = useState('');
   const [savedAt, setSavedAt] = useState<Date | null>(null);
 
   function setValue(studentId: string, raw: string) {
-    setRows((rs) =>
-      rs.map((r) => {
-        if (r.studentId !== studentId) return r;
-        if (raw.trim() === '') return { ...r, value: null };
-        // Accepter virgule comme séparateur décimal (usage FR)
-        const normalized = raw.replace(',', '.');
-        const n = Number(normalized);
-        if (Number.isNaN(n)) return r;
-        return { ...r, value: n };
-      }),
-    );
+    // On conserve le texte brut tel quel (autorise « 12,5 » pendant la frappe).
+    setRows((rs) => rs.map((r) => (r.studentId === studentId ? { ...r, text: raw } : r)));
   }
 
   const stats = useMemo(() => {
-    const valid = rows.filter((r) => r.value !== null).map((r) => r.value as number);
+    const valid = rows
+      .map((r) => parseMark(r.text))
+      .filter((v): v is number => v !== null);
     if (valid.length === 0) return null;
     const avg = valid.reduce((s, x) => s + x, 0) / valid.length;
     const min = Math.min(...valid);
@@ -63,15 +82,15 @@ export function GradeMatrix({
         evaluationId,
         grades: rows.map((r) => ({
           studentId: r.studentId,
-          value: r.value,
+          value: parseMark(r.text),
           comment: r.comment,
         })),
       }),
     );
     startTransition(async () => {
-      const result = await saveGradesAction(fd);
+      const result = await onSave(fd);
       if (!result.ok) {
-        setError(result.error);
+        setError(result.error ?? 'Erreur');
         return;
       }
       setSavedAt(new Date());
@@ -80,7 +99,8 @@ export function GradeMatrix({
   }
 
   // Validation visuelle : note > maxValue
-  function isOver(v: number | null) {
+  function isOver(text: string) {
+    const v = parseMark(text);
     return v !== null && v > maxValue;
   }
 
@@ -114,11 +134,11 @@ export function GradeMatrix({
                     <input
                       type="text"
                       inputMode="decimal"
-                      value={r.value === null ? '' : String(r.value)}
+                      value={r.text}
                       onChange={(e) => setValue(r.studentId, e.target.value)}
                       placeholder="—"
                       className={`w-20 rounded border px-2 py-1 text-end text-sm tabular-nums shadow-sm focus:outline-none focus:ring-1 ${
-                        isOver(r.value)
+                        isOver(r.text)
                           ? 'border-red-400 bg-red-50 text-red-900 focus:border-red-500 focus:ring-red-500'
                           : 'border-slate-300 focus:border-brand-500 focus:ring-brand-500'
                       }`}

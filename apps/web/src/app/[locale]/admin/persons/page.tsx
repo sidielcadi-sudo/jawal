@@ -23,6 +23,9 @@ export default async function PersonsListPage({
     page?: string;
     archived?: string;
     service?: string;
+    cycle?: string;
+    level?: string;
+    classId?: string;
   }>;
 }) {
   const { locale } = await params;
@@ -42,6 +45,10 @@ export default async function PersonsListPage({
   const isStudentView = typeFilter === 'STUDENT';
   // Le filtre service ne s'applique qu'au personnel (STAFF) ; valeur = serviceId.
   const requestedService = typeFilter === 'STAFF' ? (sp.service ?? '') : '';
+  // Filtres scolarité (vue Élèves) : cycle / niveau / classe.
+  const cycleFilter = isStudentView ? sp.cycle || '' : '';
+  const levelFilter = isStudentView ? sp.level || '' : '';
+  const classFilter = isStudentView ? sp.classId || '' : '';
 
   type StudentRow = {
     className: string | null;
@@ -49,7 +56,17 @@ export default async function PersonsListPage({
     father: string | null;
     mother: string | null;
   };
-  const { persons, total, teacherExtras, studentExtras, services, serviceFilter } = await withTenant(
+  const {
+    persons,
+    total,
+    teacherExtras,
+    studentExtras,
+    services,
+    serviceFilter,
+    cycles,
+    levels,
+    classOptions,
+  } = await withTenant(
     tenantId,
     async (tx) => {
       const services = await tx.service.findMany({
@@ -65,6 +82,23 @@ export default async function PersonsListPage({
         deletedAt: showArchived ? { not: null } : null,
         ...(typeFilter ? { type: typeFilter } : {}),
         ...(serviceFilter ? { serviceId: serviceFilter } : {}),
+        // Le menu Élèves ne montre que les élèves réellement inscrits (affectés
+        // à une classe). Les candidats encore dans le pipeline d'admission sont
+        // masqués ici — ils vivent dans /admin/enrollments.
+        ...(typeFilter === 'STUDENT' && !showArchived
+          ? {
+              studentClasses: {
+                some: {
+                  unenrolledAt: null,
+                  class: {
+                    ...(classFilter ? { id: classFilter } : {}),
+                    ...(levelFilter ? { levelId: levelFilter } : {}),
+                    ...(cycleFilter ? { level: { cycleId: cycleFilter } } : {}),
+                  },
+                },
+              },
+            }
+          : {}),
         ...(search
           ? {
               OR: [
@@ -186,7 +220,43 @@ export default async function PersonsListPage({
         }
       }
 
-      return { persons, total, teacherExtras, studentExtras, services, serviceFilter };
+      // Options des filtres scolarité (vue Élèves).
+      let cycles: { id: string; label: string }[] = [];
+      let levels: { id: string; cycleId: string; label: string }[] = [];
+      let classOptions: { id: string; levelId: string; name: string }[] = [];
+      if (typeFilter === 'STUDENT') {
+        const activeYear = await tx.academicYear.findFirst({
+          where: { active: true },
+          select: { id: true },
+        });
+        const [cyc, lvl, cls] = await Promise.all([
+          tx.cycle.findMany({ orderBy: { order: 'asc' }, select: { id: true, label: true } }),
+          tx.level.findMany({
+            orderBy: { order: 'asc' },
+            select: { id: true, cycleId: true, label: true },
+          }),
+          tx.class.findMany({
+            where: { deletedAt: null, ...(activeYear ? { academicYearId: activeYear.id } : {}) },
+            orderBy: { name: 'asc' },
+            select: { id: true, levelId: true, name: true },
+          }),
+        ]);
+        cycles = cyc;
+        levels = lvl;
+        classOptions = cls;
+      }
+
+      return {
+        persons,
+        total,
+        teacherExtras,
+        studentExtras,
+        services,
+        serviceFilter,
+        cycles,
+        levels,
+        classOptions,
+      };
     },
   );
 
@@ -202,6 +272,12 @@ export default async function PersonsListPage({
     if (overrides.search) usp.set('search', overrides.search);
     if (showArchived && overrides.archived === undefined) usp.set('archived', '1');
     if (overrides.archived) usp.set('archived', overrides.archived);
+    if (cycleFilter && overrides.cycle === undefined) usp.set('cycle', cycleFilter);
+    if (overrides.cycle) usp.set('cycle', overrides.cycle);
+    if (levelFilter && overrides.level === undefined) usp.set('level', levelFilter);
+    if (overrides.level) usp.set('level', overrides.level);
+    if (classFilter && overrides.classId === undefined) usp.set('classId', classFilter);
+    if (overrides.classId) usp.set('classId', overrides.classId);
     if (overrides.page) usp.set('page', overrides.page);
     const s = usp.toString();
     return s ? `${baseHref}?${s}` : baseHref;
@@ -229,12 +305,17 @@ export default async function PersonsListPage({
           >
             {t('actions.import')}
           </Link>
-          <Link
-            href={`${baseHref}/new${typeFilter ? `?type=${typeFilter}` : ''}`}
-            className="bg-brand-600 hover:bg-brand-700 rounded-lg px-4 py-2 text-sm font-medium text-white shadow"
-          >
-            {newLabel}
-          </Link>
+          {/* Les élèves entrent par l'inscription (menu Inscriptions), pas par
+              une création directe. La création directe reste possible via
+              l'import CSV pour les reprises de données. */}
+          {!isStudentView && (
+            <Link
+              href={`${baseHref}/new${typeFilter ? `?type=${typeFilter}` : ''}`}
+              className="bg-brand-600 hover:bg-brand-700 rounded-lg px-4 py-2 text-sm font-medium text-white shadow"
+            >
+              {newLabel}
+            </Link>
+          )}
         </div>
       </div>
 
@@ -273,6 +354,59 @@ export default async function PersonsListPage({
               ))}
             </select>
           </div>
+        )}
+        {isStudentView && (
+          <>
+            <div className="min-w-[140px]">
+              <label className="block text-xs font-medium text-slate-600">{t('filters.cycle')}</label>
+              <select
+                name="cycle"
+                defaultValue={cycleFilter}
+                className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
+              >
+                <option value="">{t('filters.allCycles')}</option>
+                {cycles.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="min-w-[140px]">
+              <label className="block text-xs font-medium text-slate-600">{t('filters.level')}</label>
+              <select
+                name="level"
+                defaultValue={levelFilter}
+                className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
+              >
+                <option value="">{t('filters.allLevels')}</option>
+                {levels
+                  .filter((l) => !cycleFilter || l.cycleId === cycleFilter)
+                  .map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.label}
+                    </option>
+                  ))}
+              </select>
+            </div>
+            <div className="min-w-[140px]">
+              <label className="block text-xs font-medium text-slate-600">{t('filters.class')}</label>
+              <select
+                name="classId"
+                defaultValue={classFilter}
+                className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
+              >
+                <option value="">{t('filters.allClasses')}</option>
+                {classOptions
+                  .filter((c) => !levelFilter || c.levelId === levelFilter)
+                  .map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          </>
         )}
         <button
           type="submit"

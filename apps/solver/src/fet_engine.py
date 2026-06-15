@@ -168,6 +168,9 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
     # Id, Activity_Group_Id, Active, Comments
     activities_list = ET.SubElement(root, "Activities_List")
     act_to_assignment: Dict[int, str] = {}
+    # Ids d'activités par (classe, matière) — sert à imposer la répartition sur
+    # des jours distincts (MAX_SAME_SUBJECT_PER_DAY) via ConstraintMinDaysBetweenActivities.
+    acts_by_class_subject: Dict[tuple[str, str], list[int]] = {}
     next_id = 1
     for a in req.assignments:
         teacher_slug = teacher_slugs.get(a.teacher_id)
@@ -177,6 +180,7 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
             continue
         for _ in range(a.weekly_hours):
             act_to_assignment[next_id] = a.id
+            acts_by_class_subject.setdefault((a.class_id, a.subject_id), []).append(next_id)
             node = ET.SubElement(activities_list, "Activity")
             ET.SubElement(node, "Teacher").text = teacher_slug
             ET.SubElement(node, "Subject").text = subj_slug
@@ -309,32 +313,50 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
             ET.SubElement(cons, "Active").text = "true"
             ET.SubElement(cons, "Comments").text = ""
 
-    # MAX_SAME_SUBJECT_PER_DAY → ConstraintStudentsSetMaxHoursDailyWithAnActivityTag
-    # FET n'a pas de "max matière/jour" direct : on plafonne le nombre d'heures/jour
-    # des activités portant le tag de la matière (1 tag par matière), par classe.
-    # Chaque séance dure 1h, donc Maximum_Hours_Daily = nb max de séances/jour.
+    # MAX_SAME_SUBJECT_PER_DAY.
+    # NB : ConstraintStudentsSetMaxHoursDailyWithAnActivityTag est silencieusement
+    # ignorée par fet-cl à l'échelle (testé : 57 violations). On utilise la
+    # contrainte FET canonique et fiable : ConstraintMinDaysBetweenActivities, qui
+    # impose ≥1 jour entre les séances d'une même (classe, matière) → au plus 1/jour.
     if cons_params.max_same_subject_per_day is not None:
         max_same = cons_params.max_same_subject_per_day
-        for cid in req.class_ids:
-            if cid not in class_slugs:
-                continue
-            for sub_id, tag_slug in subject_tag.items():
-                # Uniquement si la classe a au moins une activité de cette matière.
-                has = any(
-                    a.class_id == cid and a.subject_id == sub_id for a in req.assignments
-                )
-                if not has:
+        if max_same <= 1:
+            for (cid, sub_id), ids in acts_by_class_subject.items():
+                if len(ids) < 2:
                     continue
                 cons = ET.SubElement(
-                    time_constraints,
-                    "ConstraintStudentsSetMaxHoursDailyWithAnActivityTag",
+                    time_constraints, "ConstraintMinDaysBetweenActivities"
                 )
                 ET.SubElement(cons, "Weight_Percentage").text = "100"
-                ET.SubElement(cons, "Maximum_Hours_Daily").text = str(max_same)
-                ET.SubElement(cons, "Students").text = class_slugs[cid]
-                ET.SubElement(cons, "Activity_Tag").text = tag_slug
+                ET.SubElement(cons, "Consecutive_If_Same_Day").text = "true"
+                ET.SubElement(cons, "Number_of_Activities").text = str(len(ids))
+                for aid in ids:
+                    ET.SubElement(cons, "Activity_Id").text = str(aid)
+                ET.SubElement(cons, "MinDays").text = "1"
                 ET.SubElement(cons, "Active").text = "true"
                 ET.SubElement(cons, "Comments").text = ""
+        else:
+            # max >= 2 : repli best-effort par tag (contrôle strict à >1 : OR-Tools).
+            for cid in req.class_ids:
+                if cid not in class_slugs:
+                    continue
+                for sub_id, tag_slug in subject_tag.items():
+                    has = any(
+                        a.class_id == cid and a.subject_id == sub_id
+                        for a in req.assignments
+                    )
+                    if not has:
+                        continue
+                    cons = ET.SubElement(
+                        time_constraints,
+                        "ConstraintStudentsSetMaxHoursDailyWithAnActivityTag",
+                    )
+                    ET.SubElement(cons, "Weight_Percentage").text = "100"
+                    ET.SubElement(cons, "Maximum_Hours_Daily").text = str(max_same)
+                    ET.SubElement(cons, "Students").text = class_slugs[cid]
+                    ET.SubElement(cons, "Activity_Tag").text = tag_slug
+                    ET.SubElement(cons, "Active").text = "true"
+                    ET.SubElement(cons, "Comments").text = ""
 
     # ─ Space Constraints ─
     space_constraints = ET.SubElement(root, "Space_Constraints_List")

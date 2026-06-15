@@ -14,6 +14,7 @@ export default async function StudentFinancePage({
   const { locale, id } = await params;
   setRequestLocale(locale);
   const t = await getTranslations('admin.studentFinance');
+  const tPersons = await getTranslations('admin.persons');
 
   const session = (await auth())!;
   const tenantId = session.user.tenantId;
@@ -51,8 +52,8 @@ export default async function StudentFinancePage({
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
       <nav className="mb-4 text-xs text-slate-500">
-        <Link href={`/${locale}/admin/persons`} className="hover:text-brand-700">
-          {t('persons')}
+        <Link href={`/${locale}/admin/persons?type=STUDENT`} className="hover:text-brand-700">
+          {tPersons('title.STUDENT')}
         </Link>
         <span className="mx-1.5">›</span>
         <Link href={`/${locale}/admin/persons/${id}`} className="hover:text-brand-700">

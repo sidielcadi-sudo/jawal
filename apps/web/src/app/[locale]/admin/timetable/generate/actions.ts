@@ -292,8 +292,9 @@ export async function generateMultiTimetableAction(
           teachers: [...teacherMap.values()],
           rooms: solverRooms,
           assignments: solverAssignments,
-          // FET tourne en ~1s sur 240h ; OR-Tools peut prendre 1-3 min.
-          max_solve_seconds: engine === 'fet' ? 180 : 60,
+          // FET tourne en ~1s sur 240h ; OR-Tools peut prendre 1-3 min sur une
+          // grille dense → on lui laisse 180s pour converger vers une solution complète.
+          max_solve_seconds: 180,
           consecutive_bonus: 1,
           constraints,
           engine,
@@ -342,21 +343,44 @@ export async function generateMultiTimetableAction(
       ]),
     );
 
-    // Salle d'une séance (modèle « le prof garde sa salle ») :
-    //  1. matière spécialisée → salle du solveur (labo/info/gymnase typé) ;
-    //  2. cycle HOMEROOM → salle principale du PROF, sinon salle attitrée de
-    //     la classe (fallback primaire), sinon salle du solveur ;
-    //  3. cycle POOL → salle du solveur (mutualisée).
-    const roomForEntry = (
-      data: { classId: string; teacherId: string; requiredRoomType: string | null },
-      solverRoomId: string | null,
+    // Affectation des SALLES (le solveur ne les place pas toujours — FET notamment).
+    // Règle : matière spécialisée → salle du type requis (Labo PC/SVT, Info, Gymnase) ;
+    // sinon → salle attitrée de la classe. Allocation conflit-free par (jour, créneau).
+    void teacherHomeRoom; // (modèle « salle de la classe » : on n'utilise pas la salle du prof)
+    const roomsByType = new Map<string, string[]>();
+    for (const r of payload.rooms) {
+      const ty = r.room_type ?? 'STD';
+      const arr = roomsByType.get(ty) ?? [];
+      arr.push(r.id);
+      roomsByType.set(ty, arr);
+    }
+    const stdRooms = roomsByType.get('STD') ?? [];
+    const classHomeRoom = new Map<string, string | null>();
+    classIds.forEach((cid, i) => {
+      const explicit = classRoomInfo[cid]?.homeRoomId ?? null;
+      classHomeRoom.set(cid, explicit ?? (stdRooms.length ? (stdRooms[i % stdRooms.length] ?? null) : null));
+    });
+    const usedByCell = new Map<string, Set<string>>();
+    const allocRoom = (
+      data: { classId: string; requiredRoomType: string | null },
+      day: string,
+      slotId: string,
     ): string | null => {
-      if (data.requiredRoomType) return solverRoomId;
-      const info = classRoomInfo[data.classId];
-      if (info && info.roomMode === 'HOMEROOM') {
-        return teacherHomeRoom[data.teacherId] ?? info.homeRoomId ?? solverRoomId;
+      const key = `${day}|${slotId}`;
+      const used = usedByCell.get(key) ?? new Set<string>();
+      let chosen: string | null = null;
+      if (data.requiredRoomType && data.requiredRoomType !== 'STD') {
+        chosen = (roomsByType.get(data.requiredRoomType) ?? []).find((r) => !used.has(r)) ?? null;
       }
-      return solverRoomId;
+      if (!chosen) {
+        const home = classHomeRoom.get(data.classId) ?? null;
+        chosen = home && !used.has(home) ? home : (stdRooms.find((r) => !used.has(r)) ?? null);
+      }
+      if (chosen) {
+        used.add(chosen);
+        usedByCell.set(key, used);
+      }
+      return chosen;
     };
 
     await withTenant(tenantId, async (tx) => {
@@ -377,7 +401,7 @@ export async function generateMultiTimetableAction(
             dayOfWeek: p.day,
             subjectId: data.subjectId,
             teacherId: data.teacherId,
-            roomId: roomForEntry(data, p.room_id ?? null),
+            roomId: allocRoom(data, p.day, p.slot_id),
           },
         });
       }

@@ -19,6 +19,8 @@ const inviteSchema = z.object({
   lastName: z.string().min(1).max(80),
   personType: z.enum(['TEACHER', 'STAFF']),
   roleCode: z.string().min(1).max(60),
+  // Type de personnel (PersonRole du paramétrage) — optionnel.
+  personRoleId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
 });
 
 function input(formData: FormData) {
@@ -32,6 +34,7 @@ function input(formData: FormData) {
     lastName: get('lastName'),
     personType: get('personType'),
     roleCode: get('roleCode'),
+    personRoleId: get('personRoleId'),
   };
 }
 
@@ -63,6 +66,19 @@ export async function inviteUserAction(formData: FormData): Promise<Result> {
       });
       if (!role) throw new Error(`Rôle introuvable : ${parsed.data.roleCode}`);
 
+      // Type de personnel (PersonRole) optionnel : doit correspondre au type choisi.
+      let personRoleId: string | null = null;
+      let serviceId: string | null = null;
+      if (parsed.data.personRoleId) {
+        const pr = await tx.personRole.findFirst({
+          where: { id: parsed.data.personRoleId, appliesTo: parsed.data.personType },
+          select: { id: true, serviceId: true },
+        });
+        if (!pr) throw new Error('Type de personnel invalide pour ce type de compte.');
+        personRoleId = pr.id;
+        serviceId = pr.serviceId;
+      }
+
       const user = await tx.user.create({
         data: {
           tenantId,
@@ -79,6 +95,8 @@ export async function inviteUserAction(formData: FormData): Promise<Result> {
           firstName: parsed.data.firstName,
           lastName: parsed.data.lastName,
           contacts: { email: parsed.data.email },
+          roleId: personRoleId,
+          serviceId,
         },
       });
 
@@ -131,6 +149,46 @@ export async function disableUserAction(userId: string): Promise<Result> {
     });
   });
 
+  revalidatePath('/admin/settings/users');
+  return { ok: true };
+}
+
+/**
+ * Supprime définitivement un compte **inutilisé** (jamais connecté ou déjà
+ * désactivé). Refuse : soi-même, un super-admin, ou un compte actif déjà utilisé
+ * (le désactiver d'abord). La personne liée (Person) n'est PAS supprimée.
+ */
+export async function deleteUserAction(userId: string): Promise<Result> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requirePermission('users.write');
+  if (userId === session.user.id) return { ok: false, error: 'On ne peut pas se supprimer soi-même.' };
+
+  const tenantId = session.user.tenantId;
+  try {
+    await withTenant(tenantId, async (tx) => {
+      const u = await tx.user.findUnique({
+        where: { id: userId },
+        select: { id: true, email: true, isSuperAdmin: true, disabledAt: true, lastLoginAt: true },
+      });
+      if (!u) throw new Error('Utilisateur introuvable');
+      if (u.isSuperAdmin) throw new Error('Compte super-administrateur protégé.');
+      if (!u.disabledAt && u.lastLoginAt) {
+        throw new Error('Ce compte est actif et déjà utilisé. Désactivez-le avant de le supprimer.');
+      }
+      await tx.user.delete({ where: { id: userId } });
+      await logAudit(tx, {
+        tenantId,
+        userId: session.user.id,
+        action: 'delete',
+        entityType: 'User',
+        entityId: userId,
+        before: { email: u.email },
+      });
+    });
+  } catch (e: unknown) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Suppression impossible.' };
+  }
   revalidatePath('/admin/settings/users');
   return { ok: true };
 }

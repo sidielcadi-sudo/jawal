@@ -3,20 +3,34 @@
 import { useState, useTransition, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { disableUserAction, enableUserAction, inviteUserAction } from './actions';
+import {
+  disableUserAction,
+  enableUserAction,
+  inviteUserAction,
+  deleteUserAction,
+} from './actions';
 
 const inputCls =
   'mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
 
 type Credentials = { email: string; tempPassword: string };
 
-export function InviteUserForm({ roles }: { roles: { code: string; label: string }[] }) {
+export function InviteUserForm({
+  roles,
+  personRoles,
+}: {
+  roles: { code: string; label: string }[];
+  personRoles: { id: string; label: string; appliesTo: 'TEACHER' | 'STAFF' }[];
+}) {
   const t = useTranslations('admin.settings.users.form');
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState('');
   const [credentials, setCredentials] = useState<Credentials | null>(null);
+  const [personType, setPersonType] = useState<'TEACHER' | 'STAFF'>('TEACHER');
   const ref = useRef<HTMLFormElement>(null);
+
+  const filteredPersonRoles = personRoles.filter((r) => r.appliesTo === personType);
 
   function onSubmit(formData: FormData) {
     setError('');
@@ -81,9 +95,26 @@ export function InviteUserForm({ roles }: { roles: { code: string; label: string
         </div>
         <label className="block">
           <span className="block text-xs font-medium text-slate-700">{t('personType')}</span>
-          <select name="personType" required defaultValue="TEACHER" className={inputCls}>
+          <select
+            name="personType"
+            required
+            value={personType}
+            onChange={(e) => setPersonType(e.target.value as 'TEACHER' | 'STAFF')}
+            className={inputCls}
+          >
             <option value="TEACHER">{t('personTypes.TEACHER')}</option>
             <option value="STAFF">{t('personTypes.STAFF')}</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="block text-xs font-medium text-slate-700">{t('personRole')}</span>
+          <select name="personRoleId" defaultValue="" className={inputCls}>
+            <option value="">{t('personRoleNone')}</option>
+            {filteredPersonRoles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.label}
+              </option>
+            ))}
           </select>
         </label>
         <label className="block">
@@ -117,11 +148,13 @@ export function InviteUserForm({ roles }: { roles: { code: string; label: string
 export function UserActions({
   userId,
   disabled,
+  canDelete,
   labels,
 }: {
   userId: string;
   disabled: boolean;
-  labels: { disable: string; enable: string; confirm: string };
+  canDelete: boolean;
+  labels: { disable: string; enable: string; confirm: string; delete: string; confirmDelete: string };
 }) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -135,19 +168,40 @@ export function UserActions({
     });
   }
 
+  function del() {
+    if (!confirm(labels.confirmDelete)) return;
+    startTransition(async () => {
+      const r = await deleteUserAction(userId);
+      if (!r.ok) alert(r.error);
+      router.refresh();
+    });
+  }
+
   return (
-    <button
-      type="button"
-      onClick={toggle}
-      disabled={isPending}
-      className={[
-        'rounded-lg border px-2 py-0.5 text-xs',
-        disabled
-          ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-          : 'border-red-300 bg-white text-red-700 hover:bg-red-50',
-      ].join(' ')}
-    >
-      {disabled ? labels.enable : labels.disable}
-    </button>
+    <div className="flex justify-end gap-2">
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={isPending}
+        className={[
+          'rounded-lg border px-2 py-0.5 text-xs',
+          disabled
+            ? 'border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+            : 'border-red-300 bg-white text-red-700 hover:bg-red-50',
+        ].join(' ')}
+      >
+        {disabled ? labels.enable : labels.disable}
+      </button>
+      {canDelete && (
+        <button
+          type="button"
+          onClick={del}
+          disabled={isPending}
+          className="rounded-lg border border-red-300 bg-white px-2 py-0.5 text-xs text-red-700 hover:bg-red-50"
+        >
+          {labels.delete}
+        </button>
+      )}
+    </div>
   );
 }

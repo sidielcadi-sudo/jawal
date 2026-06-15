@@ -172,6 +172,8 @@
       "dashboard": "Tableau de bord",
       "pilotage": "Pilotage",
       "vieScolaire": "Vie scolaire",
+      "carnet": "Carnet de correspondance",
+      "absenceMgmt": "Gestion des absences",
       "students": "Élèves",
       "teachers": "Enseignants",
       "staff": "Personnel",
@@ -276,6 +278,41 @@
         "red": "Niveau critique — action urgente nécessaire."
       }
     },
+    "absenceMgmt": {
+      "title": "Gestion des absences",
+      "subtitle": "File des événements signalés par les enseignants. La feuille d'appel du professeur n'est jamais modifiée ici.",
+      "allClasses": "Toutes les classes",
+      "filter": "Filtrer",
+      "empty": "Aucun événement.",
+      "converted": "converti depuis",
+      "justifyPrompt": "Motif de justification :",
+      "cancelConfirm": "Annuler cet événement (erreur de saisie) ?",
+      "status": {
+        "PENDING": "À traiter",
+        "CONFIRMED": "Confirmé",
+        "JUSTIFIED": "Justifié",
+        "CANCELLED": "Annulé"
+      },
+      "category": {
+        "ABSENCE": "Absence",
+        "RETARD": "Retard",
+        "EXCLUSION": "Exclusion"
+      },
+      "col": {
+        "student": "Élève",
+        "class": "Classe",
+        "date": "Date",
+        "category": "Catégorie",
+        "status": "Statut",
+        "actions": "Actions"
+      },
+      "actions": {
+        "confirm": "Confirmer",
+        "justify": "Justifier",
+        "convert": "Convertir",
+        "cancel": "Annuler"
+      }
+    },
     "vieScolaire": {
       "title": "Tableau de bord — Vie scolaire",
       "period": "Période",
@@ -305,7 +342,91 @@
       "atRiskLabel": "Suivi prioritaire",
       "atRiskEmpty": "Aucun élève à risque.",
       "reasonAbsence": "Absences",
-      "reasonGrade": "Notes"
+      "reasonGrade": "Notes",
+      "board": {
+        "title": "Tableau de bord journalier",
+        "apply": "Voir",
+        "tabs": {
+          "cockpit": "Cockpit",
+          "board": "Tableau de bord"
+        },
+        "prevDay": "Jour précédent",
+        "nextDay": "Jour suivant",
+        "allClasses": "Toutes les classes",
+        "searchStudent": "Rechercher un élève…",
+        "clear": "Effacer",
+        "slot": "Créneau",
+        "total": "Total",
+        "noSlots": "Aucun créneau horaire défini.",
+        "absencesGroup": "Absences",
+        "sansExcuses": "Sans excuses",
+        "cols": {
+          "absRA": "AR",
+          "absNonRA": "Non AR",
+          "retards": "R",
+          "exclCours": "Ex Cours",
+          "incidents": "Pu/Sa",
+          "punitionsProg": "Pu prog",
+          "convocations": "Conv",
+          "exclEtab": "Ex Eta",
+          "exclClasse": "Exc cla",
+          "infirmerie": "Inf",
+          "presents": "Elv Pres",
+          "elevesSansCours": "Elv sans cours",
+          "appelsNonFaits": "ANF"
+        },
+        "detailTitle": "{col} — {slot}",
+        "detailCount": "{count} élève(s)",
+        "col": {
+          "student": "Élève",
+          "class": "Classe",
+          "category": "Catégorie",
+          "subject": "Matière",
+          "motif": "Motif",
+          "reason": "Motif",
+          "justif": "Just",
+          "ra": "RA",
+          "action": "Action"
+        },
+        "motif": {
+          "action": "Action",
+          "title": "Sélectionner un motif d'absence",
+          "search": "Rechercher…",
+          "validate": "Valider",
+          "cancel": "Annuler",
+          "saving": "…",
+          "empty": "Aucun motif. Configurez-les dans Paramètres."
+        },
+        "appel": {
+          "title": "Appels non faits — {slot}",
+          "count": "{count} enseignant(s)",
+          "teacher": "Enseignant",
+          "noTeacher": "Sans enseignant",
+          "noAccount": "Pas de compte",
+          "notify": "Notifier",
+          "sending": "Envoi…",
+          "notified": "Notifié",
+          "empty": "Tous les appels sont faits pour ce créneau."
+        },
+        "cat": {
+          "PRESENT": "Présent",
+          "LATE": "Retard",
+          "INFIRMARY": "Infirmerie",
+          "PUNISHMENT": "Punition",
+          "EXCLUSION": "Exclusion",
+          "EXCUSED": "Dispense",
+          "ABSENT": "Absence"
+        },
+        "justif": {
+          "PENDING": "En attente",
+          "APPROVED": "Acceptée",
+          "REJECTED": "Refusée"
+        },
+        "noEvent": "Aucun élève pour ce créneau.",
+        "pickStudent": "Choisir un élève…",
+        "pickClassFirst": "Sélectionnez d'abord une classe.",
+        "noStudentEvent": "Aucun événement pour cet élève ce jour."
+      }
     },
     "teacherDashboard": {
       "title": "Tableau de bord enseignant",
@@ -422,15 +543,91 @@
       "year": "Année",
       "apply": "Filtrer",
       "newButton": "Nouvelle inscription",
+      "newAdmissionButton": "Nouvelle inscription",
+      "reenrollButton": "Rattacher un élève existant",
       "bulkButton": "↻ Réinscrire en lot",
       "empty": "Aucun dossier d'inscription pour cette année.",
       "yes": "Oui",
       "no": "Non",
       "status": {
-        "DRAFT": "Brouillon",
-        "ACTIVE": "Inscrit",
-        "WITHDRAWN": "Retiré",
+        "DRAFT": "En attente",
+        "DOCUMENTS_MANQUANTS": "Documents manquants",
+        "DOSSIER_COMPLET": "Dossier complet",
+        "ACCEPTE": "Accepté",
+        "REFUSE": "Refusé",
+        "INSCRIPTION_VALIDEE": "Inscription validée",
+        "AFFECTE": "Affecté",
+        "ACTIVE": "Actif",
+        "WITHDRAWN": "Archivé",
         "GRADUATED": "Diplômé"
+      },
+      "admission": {
+        "title": "Dossier d'admission",
+        "documents": "Pièces justificatives",
+        "noRequiredDocs": "Aucune pièce requise configurée.",
+        "view": "Voir",
+        "upload": "Déposer",
+        "replace": "Remplacer",
+        "validate": "Valider",
+        "invalidate": "Rejeter",
+        "accept": "Accepter le dossier",
+        "refuse": "Refuser",
+        "refuseReasonPrompt": "Motif du refus :",
+        "refuseConfirm": "Confirmer le refus de ce dossier ?",
+        "validatePayment": "Valider le paiement → Payé",
+        "confirmPayment": "Confirmer le paiement",
+        "affect": "Affecter à la classe",
+        "noClass": "Aucune classe disponible",
+        "choosePlaceholder": "Choisir une classe",
+        "activate": "Activer (l'élève devient actif)",
+        "discountPct": "Réduction %",
+        "discountReason": "Motif réduction",
+        "discountNone": "Aucune réduction",
+        "otherDoc": "Pièce déposée",
+        "echeancier": {
+          "title": "Détail de l'échéancier",
+          "n": "N°",
+          "due": "Date limite",
+          "amount": "Montant",
+          "method": "Mode",
+          "status": "Statut",
+          "action": "Action",
+          "paid": "Payé",
+          "pending": "En attente",
+          "cancelled": "Annulé",
+          "record": "Enregistrer",
+          "confirm": "Encaisser",
+          "reference": "Référence (virement, reçu…)",
+          "chequeRef": "N° de chèque",
+          "chequeHint": "Scan du chèque (à venir)",
+          "ref": "Réf."
+        },
+        "steps": {
+          "pending": "En attente",
+          "dossier": "Dossier",
+          "accepted": "Accepté",
+          "paid": "Payé",
+          "affected": "Affecté",
+          "active": "Actif"
+        },
+        "closed": {
+          "REFUSE": "Refusé",
+          "WITHDRAWN": "Archivé",
+          "GRADUATED": "Diplômé"
+        },
+        "docStatus": {
+          "MISSING": "Manquant",
+          "PENDING": "À vérifier",
+          "VALID": "Validé",
+          "INVALID": "Rejeté"
+        },
+        "method": {
+          "CASH": "Espèces",
+          "CHEQUE": "Chèque",
+          "TRANSFER": "Virement",
+          "CMI": "CMI",
+          "OTHER": "Autre"
+        }
       },
       "filter": {
         "all": "Tous",
@@ -476,13 +673,18 @@
         "withdrawalReason": "Motif retrait",
         "notes": "Notes",
         "fees": "Frais & échéances",
-        "feesEmpty": "Aucune échéance générée. La grille tarifaire de ce niveau est peut-être vide.",
+        "feesEmpty": "Aucune grille tarifaire définie pour ce niveau. Configurez-la dans Paramètres → Frais.",
+        "feesPreviewHint": "Échéancier prévisionnel d'après la grille du niveau :",
+        "feesPreviewTotal": "Total prévisionnel",
+        "feesPreviewNote": "Les échéances réelles seront générées à l'acceptation du dossier (réduction appliquée).",
         "feesGenerated": "Échéances générées",
         "totalDue": "Total dû",
         "totalPaid": "Total réglé",
         "remaining": "Reste à régler",
         "cancelledCount": "Échéances annulées",
-        "viewFinance": "Voir dans Finance"
+        "viewFinance": "Voir dans Finance",
+        "previousDueTitle": "Créance antérieure non soldée",
+        "previousDueHint": "Cet élève a un solde impayé d'années précédentes : {amount} {currency}."
       },
       "actions": {
         "validate": "Valider l'inscription",
@@ -592,6 +794,32 @@
     "timetableDashboard": {
       "title": "Tableau de bord — Préparation EDT",
       "subtitle": "Vérifie la cohérence de la configuration avant de lancer la génération automatique. Anticipe les problèmes structurels.",
+      "subjectCoverage": {
+        "title": "Couverture horaire par matière",
+        "hint": "Heures requises par le programme (× nombre de classes) comparées aux heures contractuelles des enseignants de la matière. Écart négatif = déficit d'enseignants.",
+        "subject": "Matière",
+        "demand": "Programme",
+        "teachers": "Profs",
+        "supply": "Profs dispo",
+        "gap": "Écart",
+        "empty": "Aucune donnée (programme ou enseignants non configurés)."
+      },
+      "roomCapacity": {
+        "title": "Capacité des salles par type vs séances requises",
+        "hint": "Séances/semaine disponibles (salles × jours × créneaux) comparées aux séances requises par le programme. Labos PC/SVT, salles info et salles standard distingués. Écart négatif = goulot d'étranglement.",
+        "roomType": "Type de salle",
+        "rooms": "Salles",
+        "capacity": "Séances/sem dispo",
+        "needed": "Séances/sem requises",
+        "gap": "Écart",
+        "types": {
+          "LABO_PC": "Labo Physique-Chimie (PC)",
+          "LABO_SVT": "Labo SVT",
+          "INFO": "Salle informatique",
+          "EPS": "Gymnase / EPS",
+          "STD": "Salles standard (autres matières)"
+        }
+      },
       "year": "Année",
       "apply": "Voir",
       "manageSlots": "Créneaux →",
@@ -825,6 +1053,7 @@
       "breadcrumbRooms": "Salles",
       "roomWeek": "Occupation salle",
       "roomWeekSummary": "{total} cours · {classes} classes · {occupancy}% d'occupation",
+      "roomOccupancyReadOnly": "Vue en lecture seule : l'occupation est déduite de l'emploi du temps. Pour occuper/libérer une salle, affectez-la à un cours dans l'éditeur d'emploi du temps.",
       "roomFree": "Libre",
       "overrides": {
         "title": "Remplacements à venir",
@@ -968,7 +1197,7 @@
     },
     "timetableConstraints": {
       "title": "Contraintes de génération d'EDT",
-      "subtitle": "Pilotent le solveur OR-Tools lors de la génération automatique. Activez celles qui s'appliquent à votre établissement.",
+      "subtitle": "Pilotent le solveur lors de la génération automatique (FET et OR-Tools). Certaines ne s'appliquent qu'à OR-Tools — c'est indiqué dans l'aide de chaque contrainte. Activez celles qui s'appliquent à votre établissement, puis régénérez l'EDT pour qu'elles prennent effet.",
       "enabled": "Activée",
       "save": "Enregistrer",
       "saving": "Enregistrement…",
@@ -1086,6 +1315,19 @@
       },
       "topUnpaid": "Élèves avec impayés",
       "noUnpaid": "Aucun impayé. Tous les élèves sont à jour.",
+      "students": {
+        "title": "Situation par élève",
+        "searchPlaceholder": "Nom de l'élève…",
+        "search": "Rechercher",
+        "due": "Total dû",
+        "status": "Statut",
+        "empty": "Aucun élève avec des frais.",
+        "statusLabel": {
+          "PAID": "Soldé",
+          "LATE": "En retard",
+          "UPTODATE": "À jour"
+        }
+      },
       "table": {
         "student": "Élève",
         "remaining": "Reste dû",
@@ -1249,7 +1491,13 @@
         "apply": "Filtrer",
         "showArchived": "Voir les archivés",
         "showActive": "Voir les actifs",
-        "allServices": "Tous les services"
+        "allServices": "Tous les services",
+        "cycle": "Cycle",
+        "level": "Niveau",
+        "class": "Classe",
+        "allCycles": "Tous les cycles",
+        "allLevels": "Tous les niveaux",
+        "allClasses": "Toutes les classes"
       },
       "pagination": {
         "page": "Page {page} sur {total}",
@@ -1259,6 +1507,7 @@
       "actions": {
         "new": "Nouvelle personne",
         "newStudent": "Nouvel élève",
+        "newAdmission": "Nouvelle inscription",
         "newTeacher": "Nouvel enseignant",
         "newStaff": "Nouveau personnel",
         "newParent": "Nouveau parent",
@@ -1313,7 +1562,16 @@
           "absent": "Absents",
           "late": "Retards",
           "excused": "Excusés",
-          "leave": "Congés"
+          "leave": "Congés",
+          "cat": {
+            "PRESENT": "Présent",
+            "LATE": "Retard",
+            "INFIRMARY": "Infirmerie",
+            "PUNISHMENT": "Punition",
+            "EXCLUSION": "Exclusion",
+            "EXCUSED": "Dispense",
+            "ABSENT": "Absence"
+          }
         },
         "enrollmentHistory": {
           "title": "Historique des inscriptions",
@@ -1368,7 +1626,10 @@
           "FATHER": "Père",
           "MOTHER": "Mère",
           "LEGAL_GUARDIAN": "Tuteur légal",
-          "GUARDIAN": "Tuteur"
+          "GUARDIAN": "Tuteur",
+          "siblingsTitle": "Fratrie déjà rattachée",
+          "siblingsNone": "Aucun autre enfant rattaché.",
+          "siblingsNoClass": "non affecté"
         },
         "portalAccess": "Accès portail parent",
         "portalAccessTeacher": "Accès portail enseignant",
@@ -1464,7 +1725,8 @@
           "contract": "Contrat de travail",
           "skills": "Compétences pédagogiques",
           "hr": "Informations RH",
-          "financial": "Données financières"
+          "financial": "Données financières",
+          "admission": "Inscription"
         },
         "specialties": "Spécialités (matières maîtrisées)",
         "specialtiesHint": "Matières que cet enseignant est capable d'enseigner (distinct des affectations effectives de l'année).",
@@ -1549,6 +1811,13 @@
         "birthDate": "Date de naissance",
         "nationality": "Nationalité",
         "cin": "CIN / passeport",
+        "regime": {
+          "label": "Régime",
+          "none": "— Non renseigné —",
+          "EXTERNE": "Externe",
+          "DEMI_PENSIONNAIRE": "Demi-pensionnaire",
+          "INTERNE": "Interne"
+        },
         "contactEmail": "Email",
         "contactPhone": "Téléphone",
         "contactWhatsapp": "WhatsApp",
@@ -1572,6 +1841,9 @@
         "homeRoomHint": "Salle habituelle du prof. Les cours non spécialisés s'y tiennent (les élèves se déplacent) ; les matières de labo gardent leur salle spécialisée.",
         "addPhoto": "Ajouter une photo",
         "photoAfterCreate": "Photo ajoutable après création",
+        "admissionLevel": "Niveau demandé",
+        "admissionYear": "Année scolaire",
+        "admissionNotes": "Notes (facultatif)",
         "contractTypes": {
           "CDI": "CDI",
           "CDD": "CDD",
@@ -1931,17 +2203,91 @@
       "title": "Paramètres",
       "subtitle": "Configurez le référentiel pédagogique et les utilisateurs de l'établissement.",
       "tabs": {
+        "establishment": "Établissement",
         "years": "Années scolaires",
         "curriculum": "Cycles & niveaux",
         "subjects": "Matières",
         "rooms": "Salles",
-        "timetable-settings": "Établissement",
+        "timetable-settings": "Réglages EDT",
         "timetable-slots": "Créneaux horaires",
         "timetable-constraints": "Contraintes EDT",
         "fees": "Frais",
+        "admissions": "Admissions",
+        "attendance-reasons": "Motifs d'appel",
         "roles": "Rôles",
         "users": "Utilisateurs",
         "audit": "Journal d'audit"
+      },
+      "establishment": {
+        "title": "Identité de l'établissement",
+        "subtitle": "Nom, langue par défaut, devise et fuseau horaire. Réservé à l'administrateur.",
+        "name": "Nom de l'établissement / groupe scolaire",
+        "slug": "Identifiant de connexion (slug)",
+        "slugHint": "Utilisé à la connexion. Non modifiable ici (contacter le support).",
+        "localeDefault": "Langue par défaut",
+        "locales": { "fr": "Français", "ar": "Arabe" },
+        "currency": "Devise",
+        "timezone": "Fuseau horaire",
+        "logoSoon": "Logo de l'établissement : bientôt disponible (téléversement à venir).",
+        "save": "Enregistrer",
+        "saving": "Enregistrement…",
+        "saved": "Modifications enregistrées."
+      },
+      "attendanceReasons": {
+        "title": "Motifs d'appel",
+        "subtitle": "Liste des motifs de retard/absence proposés aux enseignants lors de l'appel.",
+        "label": "Libellé",
+        "color": "Couleur",
+        "order": "Ordre",
+        "active": "Actif",
+        "actions": "Actions",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "confirmDelete": "Supprimer ce motif ?",
+        "empty": "Aucun motif. Ajoutez-en un ci-dessous.",
+        "addTitle": "Ajouter un motif",
+        "add": "Ajouter",
+        "save": "Enregistrer",
+        "cancel": "Annuler"
+      },
+      "admissions": {
+        "docs": {
+          "title": "Pièces requises à l'inscription",
+          "subtitle": "Checklist des documents à fournir. « Tous niveaux » = exigé partout.",
+          "create": "Ajouter une pièce",
+          "empty": "Aucune pièce configurée."
+        },
+        "doc": {
+          "code": "Code",
+          "label": "Libellé",
+          "labelFr": "Libellé (FR)",
+          "labelAr": "Libellé (AR)",
+          "level": "Niveau",
+          "allLevels": "Tous niveaux",
+          "required": "Obligatoire",
+          "order": "Ordre",
+          "actions": "Actions",
+          "yes": "Oui",
+          "no": "Non",
+          "create": "Ajouter",
+          "creating": "Ajout…",
+          "edit": "Modifier",
+          "delete": "Supprimer",
+          "confirmDelete": "Supprimer cette pièce requise ?",
+          "save": "Enregistrer",
+          "saving": "Enregistrement…",
+          "cancel": "Annuler"
+        },
+        "quota": {
+          "title": "Quotas de places",
+          "subtitle": "Nombre de places par niveau pour {year}. 0 = illimité.",
+          "noYear": "Aucune année active.",
+          "level": "Niveau",
+          "taken": "Pris",
+          "capacity": "Places",
+          "save": "OK",
+          "saving": "…"
+        }
       },
       "years": {
         "table": {
@@ -1957,6 +2303,27 @@
         "createHint": "Une seule année peut être active à la fois.",
         "edit": "Modifier",
         "backToList": "Retour à la liste",
+        "periods": {
+          "title": "Périodes (trimestres / semestres)",
+          "empty": "Aucune période. Générez-les ou ajoutez-les manuellement. Indispensable pour les notes et bulletins.",
+          "gen3": "Générer 3 trimestres",
+          "gen2": "Générer 2 semestres",
+          "add": "Ajouter",
+          "delete": "Supprimer",
+          "confirmDelete": "Supprimer cette période ?",
+          "kinds": {
+            "TRIMESTER": "Trimestre",
+            "SEMESTER": "Semestre",
+            "MODULE": "Module",
+            "SESSION": "Session"
+          },
+          "form": {
+            "kind": "Type",
+            "label": "Libellé",
+            "start": "Début",
+            "end": "Fin"
+          }
+        },
         "actions": {
           "activate": "Activer",
           "edit": "Modifier"
@@ -2103,6 +2470,7 @@
         },
         "active": "Actif",
         "inactive": "Désactivé",
+        "toggleHint": "Cliquer pour activer / désactiver",
         "empty": "Aucun rôle défini pour cette catégorie.",
         "create": "Ajouter un rôle",
         "createHint": "Saisissez un code stable (MAJUSCULES) et le libellé dans les deux langues. Désactivez plutôt que supprimer si le rôle est déjà utilisé.",
@@ -2143,6 +2511,7 @@
         "createHint": "Total annuel + nombre d'échéances mensuelles. Chaque élève hérite à la génération.",
         "confirmDelete": "Supprimer cette grille tarifaire ?",
         "actions": {
+          "edit": "Modifier",
           "delete": "Supprimer"
         },
         "form": {
@@ -2153,7 +2522,29 @@
           "installmentCount": "Nombre d'échéances",
           "firstDueMonth": "Mois de la 1ère échéance",
           "create": "Créer",
-          "creating": "Création…"
+          "creating": "Création…",
+          "save": "Enregistrer",
+          "saving": "Enregistrement…",
+          "cancel": "Annuler"
+        },
+        "discounts": {
+          "title": "Réductions",
+          "subtitle": "Catalogue de réductions paramétrables (fratrie, paiement comptant…), sélectionnables à l'acceptation d'un dossier.",
+          "label": "Libellé",
+          "labelPlaceholder": "Fratrie (cadet)",
+          "pct": "Taux",
+          "order": "Ordre",
+          "active": "Actif",
+          "on": "Actif",
+          "off": "Inactif",
+          "empty": "Aucune réduction paramétrée.",
+          "create": "Nouvelle réduction",
+          "createHint": "Libellé + taux %. L'agent choisit la réduction applicable au moment d'accepter le dossier.",
+          "creating": "Création…",
+          "save": "Enregistrer",
+          "saving": "Enregistrement…",
+          "cancel": "Annuler",
+          "confirmDelete": "Supprimer cette réduction ?"
         }
       },
       "rooms": {
@@ -2200,7 +2591,9 @@
         "actions": {
           "disable": "Désactiver",
           "enable": "Réactiver",
-          "confirmDisable": "Désactiver cet utilisateur ?"
+          "confirmDisable": "Désactiver cet utilisateur ?",
+          "delete": "Supprimer",
+          "confirmDelete": "Supprimer définitivement ce compte inutilisé ? La personne liée est conservée."
         },
         "form": {
           "email": "Email",
@@ -2208,7 +2601,9 @@
           "lastName": "Nom",
           "personType": "Type de personne",
           "personTypes": { "TEACHER": "Enseignant", "STAFF": "Personnel" },
-          "role": "Rôle",
+          "personRole": "Type de personnel (fonction)",
+          "personRoleNone": "— Aucun —",
+          "role": "Rôle (accès)",
           "create": "Créer le compte",
           "creating": "Création…",
           "createdTitle": "Compte créé",
@@ -2235,6 +2630,65 @@
           "apply": "Filtrer",
           "clear": "Effacer"
         },
+        "actions": {
+          "create": "Création",
+          "update": "Modification",
+          "delete": "Suppression",
+          "restore": "Restauration",
+          "save": "Enregistrement",
+          "approve": "Approbation",
+          "reject": "Rejet",
+          "resubmit": "Resoumission",
+          "notify": "Notification",
+          "enroll": "Inscription",
+          "unenroll": "Désinscription",
+          "invite": "Invitation",
+          "setActive": "Activation",
+          "login": "Connexion"
+        },
+        "entities": {
+          "Person": "Personne",
+          "PersonRole": "Rôle (personnel)",
+          "Service": "Service",
+          "Subject": "Matière",
+          "CurriculumSubject": "Programme (matière)",
+          "Class": "Classe",
+          "Level": "Niveau",
+          "Cycle": "Cycle",
+          "Room": "Salle",
+          "Period": "Période",
+          "AcademicYear": "Année scolaire",
+          "Evaluation": "Évaluation",
+          "EvaluationGrades": "Notes",
+          "SubjectAppreciation": "Appréciation",
+          "AttendanceSession": "Séance d'appel",
+          "AttendanceRecord": "Présence",
+          "AttendanceEvent": "Événement de présence",
+          "AttendanceReason": "Motif d'absence",
+          "AbsenceJustification": "Justification d'absence",
+          "CarnetEntry": "Entrée de carnet",
+          "Conversation": "Conversation",
+          "Announcement": "Annonce",
+          "Enrollment": "Inscription",
+          "EnrollmentDocument": "Document d'inscription",
+          "FeeScheduleItem": "Grille tarifaire",
+          "Installment": "Échéance",
+          "Installments": "Échéances",
+          "Payment": "Paiement",
+          "StaffAttendance": "Pointage personnel",
+          "StudentClass": "Affectation à une classe",
+          "TeacherAssignment": "Affectation enseignant",
+          "TimetableEntry": "Créneau d'EDT",
+          "TimetableSlot": "Créneau horaire",
+          "RequiredDocument": "Document requis",
+          "AdmissionQuota": "Quota d'admission",
+          "CouncilEntry": "Conseil de classe",
+          "Survey": "Sondage",
+          "Tenant": "Établissement",
+          "User": "Utilisateur",
+          "PersonContract": "Contrat",
+          "PersonPhoto": "Photo"
+        },
         "pagination": "Page {page} / {total}"
       }
     }
@@ -2256,6 +2710,69 @@
         "slug": "Slug (URL)",
         "profile": "Profil",
         "submit": "Créer l'établissement"
+      }
+    }
+  },
+  "eleve": {
+    "signOut": "Déconnexion",
+    "noProfile": "Aucun profil élève rattaché à ce compte.",
+    "carnetTitle": "Mon carnet de correspondance",
+    "nav": {
+      "home": "Accueil",
+      "notes": "Mes notes",
+      "bulletins": "Bulletins",
+      "carnet": "Mon carnet"
+    },
+    "bulletins": {
+      "title": "Mes bulletins",
+      "view": "Voir le bulletin",
+      "empty": "Aucun bulletin disponible pour le moment."
+    },
+    "home": {
+      "hello": "Bonjour {name}",
+      "noClass": "Aucune classe",
+      "generalAverage": "Moyenne générale",
+      "attendanceRate": "Taux de présence",
+      "carnet": "Carnet",
+      "carnetUnread": "Nouvelles entrées non lues",
+      "recentCarnet": "Carnet récent",
+      "seeAll": "Tout voir",
+      "carnetEmpty": "Aucune entrée pour le moment.",
+      "recentAbsences": "Absences récentes",
+      "noAbsence": "Aucune absence. Continuez ainsi !"
+    },
+    "notes": {
+      "title": "Mes notes",
+      "general": "Moyenne générale",
+      "average": "Moyenne",
+      "empty": "Aucune note pour le moment.",
+      "evaluation": "Évaluation",
+      "period": "Période",
+      "mark": "Note",
+      "classAvg": "Moy. classe"
+    },
+    "carnet": {
+      "type": {
+        "OBSERVATION": "Observation",
+        "ENCOURAGEMENT": "Encouragement",
+        "FELICITATION": "Félicitations",
+        "REMARQUE_DISCIPLINAIRE": "Remarque",
+        "DEFAUT_CARNET": "Défaut de carnet",
+        "AVERTISSEMENT": "Avertissement",
+        "MESSAGE_DIRECTION": "Direction",
+        "CONVOCATION": "Convocation",
+        "ABSENCE": "Absence",
+        "RETARD": "Retard",
+        "EXCLUSION": "Exclusion"
+      },
+      "eventCat": {
+        "PRESENT": "Présent",
+        "LATE": "Retard",
+        "INFIRMARY": "Infirmerie",
+        "PUNISHMENT": "Punition",
+        "EXCLUSION": "Exclusion",
+        "EXCUSED": "Dispense",
+        "ABSENT": "Absence"
       }
     }
   },
@@ -2333,6 +2850,7 @@
       "absences": "Absences",
       "remaining": "Reste dû",
       "upToDate": "À jour",
+      "carnetUnread": "{count} non lu(s)",
       "latestAnnouncements": "Dernières annonces",
       "seeAll": "Tout voir",
       "noAnnouncement": "Aucune annonce pour le moment."
@@ -2348,6 +2866,34 @@
         "empty": "Aucun bulletin disponible.",
         "download": "Télécharger PDF"
       },
+      "notes": {
+        "title": "Notes",
+        "empty": "Aucune note enregistrée pour le moment.",
+        "evaluation": "Évaluation",
+        "period": "Période",
+        "mark": "Note",
+        "classAvg": "Moy. classe"
+      },
+      "carnet": {
+        "title": "Carnet de correspondance",
+        "empty": "Aucun message pour le moment.",
+        "unread": "{count} non lu(s)",
+        "new": "Nouveau",
+        "seenOn": "Vu le {date}",
+        "type": {
+          "OBSERVATION": "Observation",
+          "ENCOURAGEMENT": "Encouragement",
+          "FELICITATION": "Félicitations",
+          "REMARQUE_DISCIPLINAIRE": "Remarque",
+          "DEFAUT_CARNET": "Défaut de carnet",
+          "AVERTISSEMENT": "Avertissement",
+          "MESSAGE_DIRECTION": "Direction",
+          "CONVOCATION": "Convocation",
+          "ABSENCE": "Absence",
+          "RETARD": "Retard",
+          "EXCLUSION": "Exclusion"
+        }
+      },
       "attendance": {
         "title": "Présences",
         "empty": "Aucune présence enregistrée.",
@@ -2358,11 +2904,33 @@
         "ABSENT": "Absent",
         "LATE": "Retard",
         "EXCUSED": "Excusé",
-        "recent": "Absences & retards récents",
+        "cat": {
+          "PRESENT": "Présent",
+          "LATE": "Retard",
+          "INFIRMARY": "Infirmerie",
+          "PUNISHMENT": "Punition",
+          "EXCLUSION": "Exclusion",
+          "EXCUSED": "Dispense",
+          "ABSENT": "Absence"
+        },
+        "recent": "Événements récents",
+        "justified": "Justifiée",
         "justif": {
           "PENDING": "Justification en attente",
           "APPROVED": "Justification acceptée",
           "REJECTED": "Justification refusée"
+        },
+        "justify": {
+          "button": "Justifier",
+          "pending": "En attente",
+          "title": "Justifier une absence",
+          "chooseReason": "Choisissez une raison",
+          "uploadFile": "Téléchargez un justificatif",
+          "comment": "Ajouter un commentaire",
+          "cancel": "Annuler",
+          "validate": "Valider",
+          "sending": "Envoi…",
+          "reasonRequired": "Choisissez une raison."
         }
       },
       "finance": {
@@ -2403,14 +2971,114 @@
     "nav": {
       "home": "Tableau de bord",
       "timetable": "Emploi du temps",
+      "appel": "Appel",
       "cahier": "Cahier de texte",
+      "notes": "Notes",
+      "carnet": "Carnet",
       "classes": "Mes classes",
       "messages": "Messages",
       "account": "Mon compte"
     },
+    "notes": {
+      "tabs": {
+        "saisie": "Saisie",
+        "releve": "Relevé",
+        "appreciations": "Appréciations du relevé",
+        "graphes": "Graphes"
+      },
+      "saisieTitle": "Saisie des notes",
+      "apply": "Afficher",
+      "average": "Moyenne",
+      "releve": {
+        "title": "Appréciations des professeurs du bulletin",
+        "readOnly": "Vous n'enseignez pas cette matière dans cette classe : appréciations en lecture seule.",
+        "student": "Élève",
+        "hAbs": "H.Abs",
+        "hAbsFull": "Heures d'absence (période)",
+        "ret": "Ret.",
+        "retFull": "Retards (période)",
+        "notes": "N.Not.",
+        "moy": "Moy.",
+        "eval": "Évaluations",
+        "appreciation": "Appréciation",
+        "placeholder": "Saisir une appréciation…",
+        "noAppreciation": "Aucune appréciation",
+        "saving": "Enregistrement…",
+        "saved": "Enregistré",
+        "saveError": "Échec",
+        "empty": "Aucun élève dans cette classe."
+      },
+      "studentsCount": "{count} élèves",
+      "createDevoir": "Créer un devoir",
+      "editDevoir": "Paramètres du devoir",
+      "deleteDevoir": "Supprimer ce devoir",
+      "confirmDeleteDevoir": "Supprimer ce devoir et ses notes ?",
+      "noService": "Aucune classe/matière à noter pour vous.",
+      "noDevoir": "Aucun devoir. Créez-en un.",
+      "noStudents": "Aucun élève inscrit.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "savedAt": "Enregistré à {time}",
+      "comingSoon": "Bientôt disponible.",
+      "badge": {
+        "bonus": "Bonus",
+        "optional": "Facultatif"
+      },
+      "form": {
+        "label": "Libellé",
+        "date": "Date",
+        "max": "Barème",
+        "weight": "Coeff.",
+        "create": "Créer",
+        "saveDevoir": "Enregistrer",
+        "cancel": "Annuler",
+        "optional": "Facultatif",
+        "asBonus": "Comme un bonus",
+        "asNote": "Comme une note",
+        "optionalHint": "Bonus : les points au-dessus de 10 s'ajoutent à la moyenne. Note : comptée seulement si elle améliore la moyenne. Jamais de pénalité.",
+        "normalHint": "Devoir normal : compté dans la moyenne pondérée."
+      }
+    },
     "home": {
       "title": "Tableau de bord",
       "noTeacher": "Aucun enseignant rattaché à votre compte. Contactez l'établissement."
+    },
+    "appel": {
+      "title": "Appel",
+      "subtitle": "Cliquez sur une séance pour faire l'appel.",
+      "prevWeek": "Semaine préc.",
+      "thisWeek": "Cette semaine",
+      "nextWeek": "Semaine suiv.",
+      "emptyWeek": "Aucune séance cette semaine.",
+      "selectSession": "Sélectionnez une séance dans l'emploi du temps pour faire l'appel.",
+      "studentsCount": "{count} élèves",
+      "noStudents": "Aucun élève inscrit dans cette classe.",
+      "cols": {
+        "absence": "Absence",
+        "retard": "Retard",
+        "infirmerie": "Infirmerie",
+        "punition": "Punition",
+        "exclusion": "Exclusion",
+        "dispense": "Dispense",
+        "observation": "Observations à l'attention des parents",
+        "encouragement": "Encouragements"
+      },
+      "addObservation": "Saisir",
+      "addEncouragement": "Saisir",
+      "publishToParents": "Publier sur l'Espace Parents",
+      "min": "min",
+      "motif": "Motif",
+      "motifTitle": "Sélectionner un motif de retard",
+      "motifUnknown": "Motif non encore connu",
+      "cancel": "Annuler",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "validate": "Valider l'appel",
+      "validating": "Validation…",
+      "reopen": "Déverrouiller",
+      "reopening": "Déverrouillage…",
+      "lockedHint": "Appel validé.",
+      "savedAt": "Enregistré à {time}"
     },
     "cahier": {
       "title": "Cahier de texte",
@@ -2419,6 +3087,7 @@
       "thisWeek": "Cette semaine",
       "nextWeek": "Semaine suiv.",
       "emptyWeek": "Aucune séance cette semaine.",
+      "selectSession": "Sélectionnez une séance dans l'emploi du temps pour saisir le cahier de texte.",
       "filled": "Rempli",
       "toFill": "À remplir",
       "reminder": {
@@ -2495,7 +3164,40 @@
     "classes": {
       "title": "Mes classes",
       "empty": "Aucune classe affectée.",
-      "studentCount": "{count} élève(s)"
+      "studentCount": "{count} élève(s)",
+      "openGrades": "Saisir les notes"
+    },
+    "grades": {
+      "title": "Notes",
+      "myClasses": "Mes classes",
+      "create": "Nouvelle évaluation",
+      "createHint": "Créez un contrôle puis saisissez les notes.",
+      "empty": "Aucune évaluation pour cette matière.",
+      "openSheet": "Saisir",
+      "delete": "Supprimer",
+      "confirmDelete": "Supprimer cette évaluation et ses notes ?",
+      "filter": {
+        "period": "Période",
+        "allPeriods": "Toutes les périodes",
+        "apply": "Filtrer"
+      },
+      "table": {
+        "label": "Évaluation",
+        "period": "Période",
+        "date": "Date",
+        "filled": "Saisies",
+        "actions": "Actions"
+      },
+      "form": {
+        "subject": "Matière",
+        "label": "Libellé",
+        "period": "Période",
+        "date": "Date",
+        "maxValue": "Barème",
+        "weight": "Coeff.",
+        "create": "Créer",
+        "creating": "Création…"
+      }
     },
     "messages": {
       "title": "Messages",
@@ -2516,6 +3218,54 @@
       "save": "Enregistrer",
       "saving": "Enregistrement…",
       "done": "Mot de passe mis à jour."
+    }
+  },
+  "carnet": {
+    "title": "Carnet de correspondance",
+    "apply": "Afficher",
+    "noAccess": "Accès indisponible.",
+    "noStudent": "Sélectionnez un élève.",
+    "empty": "Aucune entrée.",
+    "noEvent": "Aucun événement signalé.",
+    "eventsTitle": "Événements signalés dans les feuilles d'appel",
+    "placeholder": "Saisissez votre texte…",
+    "save": "Enregistrer",
+    "saving": "Enregistrement…",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "confirmDelete": "Supprimer cette entrée ?",
+    "sections": {
+      "OBSERVATION": "Observations",
+      "ENCOURAGEMENT": "Encouragements",
+      "DEFAUT_CARNET": "Défauts de carnet",
+      "REMARQUE_DISCIPLINAIRE": "Remarques disciplinaires"
+    },
+    "add": {
+      "OBSERVATION": "Saisir une nouvelle observation",
+      "ENCOURAGEMENT": "Saisir un nouvel encouragement",
+      "DEFAUT_CARNET": "Saisir un nouveau défaut de carnet",
+      "REMARQUE_DISCIPLINAIRE": "Saisir une nouvelle remarque"
+    },
+    "col": {
+      "date": "Date",
+      "author": "Saisie par",
+      "content": "Contenu",
+      "class": "Classe",
+      "event": "Événement",
+      "justif": "Justificatif"
+    },
+    "eventCat": {
+      "ABSENT": "Absence",
+      "LATE": "Retard",
+      "EXCLUSION": "Exclusion",
+      "EXCUSED": "Dispense",
+      "INFIRMARY": "Infirmerie",
+      "PUNISHMENT": "Punition"
+    },
+    "justif": {
+      "PENDING": "En attente",
+      "APPROVED": "Justifié",
+      "REJECTED": "Refusé"
     }
   }
 }

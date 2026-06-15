@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createPersonAction, updatePersonAction } from './actions';
+import { createAdmissionEnrollmentAction } from '../enrollments/admission-actions';
 import {
   MultiPicker,
   DiplomasField,
@@ -23,7 +24,15 @@ type RoleOption = {
   labelAr: string;
 };
 
-type ParentOption = { id: string; firstName: string; lastName: string };
+type ParentAddress = { line1?: string; city?: string; postalCode?: string; country?: string } | null;
+type ParentChild = { firstName: string; lastName: string; className: string | null };
+type ParentOption = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  address?: ParentAddress;
+  children?: ParentChild[];
+};
 
 type ParentLink = { parentId: string; type: RelationType };
 
@@ -50,6 +59,7 @@ type PersonInitial = {
   gender?: 'M' | 'F' | 'X';
   nationality?: string;
   cin?: string;
+  regime?: 'EXTERNE' | 'DEMI_PENSIONNAIRE' | 'INTERNE';
   contacts?: { email?: string; phone?: string; whatsapp?: string };
   address?: { line1?: string; city?: string; postalCode?: string; country?: string };
   parents?: ParentLink[];
@@ -86,6 +96,7 @@ export function PersonForm({
   allClasses,
   rooms,
   lockType = false,
+  admission,
 }: {
   mode: 'create' | 'edit';
   initial?: PersonInitial;
@@ -98,6 +109,12 @@ export function PersonForm({
   rooms: { id: string; label: string }[];
   /** Verrouille (et masque) le type — ex. création d'un élève. */
   lockType?: boolean;
+  /** Mode « Nouvelle inscription » : ouvre un dossier d'admission après création. */
+  admission?: {
+    years: { id: string; label: string }[];
+    defaultYearId: string;
+    levels: { id: string; label: string }[];
+  };
 }) {
   const t = useTranslations('admin.persons.form');
   const tRel = useTranslations('admin.persons.detail.relations');
@@ -107,6 +124,12 @@ export function PersonForm({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [type, setType] = useState<PersonType>(initial?.type ?? 'STUDENT');
   const [parents, setParents] = useState<ParentLink[]>(initial?.parents ?? []);
+  const [address, setAddress] = useState({
+    line1: initial?.address?.line1 ?? '',
+    city: initial?.address?.city ?? '',
+    postalCode: initial?.address?.postalCode ?? '',
+    country: initial?.address?.country ?? 'Maroc',
+  });
   const [stagedPhoto, setStagedPhoto] = useState<File | null>(null);
   const [stagedPhotoUrl, setStagedPhotoUrl] = useState<string | null>(null);
 
@@ -140,6 +163,20 @@ export function PersonForm({
           () => {},
         );
       }
+      // Mode inscription : ouvre le dossier d'admission et y redirige.
+      if (admission && mode === 'create') {
+        const levelId = String(formData.get('admissionLevelId') ?? '');
+        const yearId = String(formData.get('admissionYearId') ?? admission.defaultYearId);
+        const notes = String(formData.get('admissionNotes') ?? '');
+        const r = await createAdmissionEnrollmentAction(id, yearId, levelId, notes);
+        if (!r.ok) {
+          setError(r.error);
+          return;
+        }
+        router.push(`/${locale}/admin/enrollments/${r.id}`);
+        router.refresh();
+        return;
+      }
       router.push(`/${locale}/admin/persons/${id}`);
       router.refresh();
     });
@@ -160,11 +197,61 @@ export function PersonForm({
     setParents(parents.filter((_, i) => i !== idx));
   }
   function setParent(idx: number, patch: Partial<ParentLink>) {
-    setParents(parents.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
+    const next = parents.map((p, i) => (i === idx ? { ...p, ...patch } : p));
+    setParents(next);
+    // #2 — Adresse par défaut = celle du père (modifiable). On ne pré-remplit
+    // que si l'adresse élève est encore vide, pour ne pas écraser une saisie.
+    const link = next[idx];
+    if (!link?.parentId) return;
+    const parent = availableParents.find((ap) => ap.id === link.parentId);
+    const padr = parent?.address;
+    const isFather = link.type === 'FATHER';
+    const addressEmpty = !address.line1.trim() && !address.city.trim();
+    if (isFather && padr && addressEmpty) {
+      setAddress({
+        line1: padr.line1 ?? '',
+        city: padr.city ?? '',
+        postalCode: padr.postalCode ?? '',
+        country: padr.country ?? 'Maroc',
+      });
+    }
   }
 
   return (
     <form action={onSubmit} className="space-y-6">
+      {admission && (
+        <SectionCard title={t('section.admission')} bodyClass="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <Field label={t('admissionYear')}>
+            <select
+              name="admissionYearId"
+              defaultValue={admission.defaultYearId}
+              className={inputCls}
+            >
+              {admission.years.map((y) => (
+                <option key={y.id} value={y.id}>
+                  {y.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label={t('admissionLevel')}>
+            <select name="admissionLevelId" required defaultValue="" className={inputCls}>
+              <option value="" disabled>
+                —
+              </option>
+              {admission.levels.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <div className="sm:col-span-2">
+            <label className="block text-xs font-medium text-slate-700">{t('admissionNotes')}</label>
+            <textarea name="admissionNotes" rows={2} className={inputCls} />
+          </div>
+        </SectionCard>
+      )}
       <SectionCard title={t('section.identity')}>
         <div className="flex flex-col gap-5 sm:flex-row">
           <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
@@ -259,6 +346,16 @@ export function PersonForm({
               className={inputCls}
             />
           </Field>
+          {type === 'STUDENT' && (
+            <Field label={t('regime.label')}>
+              <select name="regime" defaultValue={initial?.regime ?? ''} className={inputCls}>
+                <option value="">{t('regime.none')}</option>
+                <option value="EXTERNE">{t('regime.EXTERNE')}</option>
+                <option value="DEMI_PENSIONNAIRE">{t('regime.DEMI_PENSIONNAIRE')}</option>
+                <option value="INTERNE">{t('regime.INTERNE')}</option>
+              </select>
+            </Field>
+          )}
           </div>
           <PhotoBox
             personId={initial?.id}
@@ -268,6 +365,98 @@ export function PersonForm({
           />
         </div>
       </SectionCard>
+
+      {/* #2 — Bloc Parent/Tuteur juste après l'identité */}
+      {showParentsField && (
+        <SectionCard title={t('section.parents')}>
+          <p className="text-xs text-slate-500">{t('parentsHint')}</p>
+          <div className="mt-3 space-y-2">
+            {parents.map((p, idx) => {
+              const selected = availableParents.find((ap) => ap.id === p.parentId);
+              const siblings = selected?.children ?? [];
+              return (
+                <div key={idx} className="rounded-lg border border-slate-200 p-2">
+                  <div className="flex flex-wrap items-end gap-2">
+                    <div className="min-w-[200px] flex-1">
+                      <label className="block text-xs font-medium text-slate-700">
+                        {t('parentLabel')}
+                      </label>
+                      <select
+                        value={p.parentId}
+                        onChange={(e) => setParent(idx, { parentId: e.target.value })}
+                        className={inputCls}
+                        required
+                      >
+                        <option value="">— {t('selectParent')} —</option>
+                        {availableParents.map((ap) => (
+                          <option key={ap.id} value={ap.id}>
+                            {ap.lastName} {ap.firstName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-slate-700">
+                        {t('relationLabel')}
+                      </label>
+                      <select
+                        value={p.type}
+                        onChange={(e) => setParent(idx, { type: e.target.value as RelationType })}
+                        className={inputCls}
+                      >
+                        <option value="FATHER">{tRel('FATHER')}</option>
+                        <option value="MOTHER">{tRel('MOTHER')}</option>
+                        <option value="LEGAL_GUARDIAN">{tRel('LEGAL_GUARDIAN')}</option>
+                        <option value="GUARDIAN">{tRel('GUARDIAN')}</option>
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeParent(idx)}
+                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 hover:bg-red-100"
+                    >
+                      {t('removeParent')}
+                    </button>
+                  </div>
+                  {/* #9 — Sous-bloc fratrie : enfants déjà rattachés à ce parent */}
+                  {selected && (
+                    <div className="mt-2 border-t border-slate-100 pt-2">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                        {tRel('siblingsTitle')}
+                      </p>
+                      {siblings.length === 0 ? (
+                        <p className="mt-1 text-xs text-slate-400">{tRel('siblingsNone')}</p>
+                      ) : (
+                        <ul className="mt-1 flex flex-wrap gap-1.5">
+                          {siblings.map((s, i) => (
+                            <li
+                              key={i}
+                              className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-700"
+                            >
+                              {s.firstName} {s.lastName}
+                              {s.className ? ` · ${s.className}` : ` · ${tRel('siblingsNoClass')}`}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              onClick={addParent}
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              + {t('addParent')}
+            </button>
+            {availableParents.length === 0 && (
+              <p className="text-xs text-amber-700">{t('noParentAvailable')}</p>
+            )}
+          </div>
+        </SectionCard>
+      )}
 
       <SectionCard title={t('section.contact')} bodyClass="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label={t('contactEmail')}>
@@ -302,7 +491,8 @@ export function PersonForm({
             <input
               type="text"
               name="addressLine1"
-              defaultValue={initial?.address?.line1 ?? ''}
+              value={address.line1}
+              onChange={(e) => setAddress((a) => ({ ...a, line1: e.target.value }))}
               className={inputCls}
             />
           </Field>
@@ -310,7 +500,8 @@ export function PersonForm({
             <input
               type="text"
               name="addressCity"
-              defaultValue={initial?.address?.city ?? ''}
+              value={address.city}
+              onChange={(e) => setAddress((a) => ({ ...a, city: e.target.value }))}
               className={inputCls}
             />
           </Field>
@@ -318,7 +509,8 @@ export function PersonForm({
             <input
               type="text"
               name="addressPostalCode"
-              defaultValue={initial?.address?.postalCode ?? ''}
+              value={address.postalCode}
+              onChange={(e) => setAddress((a) => ({ ...a, postalCode: e.target.value }))}
               className={inputCls}
             />
           </Field>
@@ -326,7 +518,8 @@ export function PersonForm({
             <input
               type="text"
               name="addressCountry"
-              defaultValue={initial?.address?.country ?? 'Maroc'}
+              value={address.country}
+              onChange={(e) => setAddress((a) => ({ ...a, country: e.target.value }))}
               className={inputCls}
             />
           </Field>
@@ -524,71 +717,6 @@ export function PersonForm({
           </div>
           <BenefitsField initial={initial?.benefits ?? []} />
           <DeductionsField initial={initial?.deductions ?? []} />
-        </SectionCard>
-      )}
-
-      {showParentsField && (
-        <SectionCard title={t('section.parents')}>
-          <p className="text-xs text-slate-500">{t('parentsHint')}</p>
-          <div className="mt-3 space-y-2">
-            {parents.map((p, idx) => (
-              <div
-                key={idx}
-                className="flex flex-wrap items-end gap-2 rounded-lg border border-slate-200 p-2"
-              >
-                <div className="min-w-[200px] flex-1">
-                  <label className="block text-xs font-medium text-slate-700">
-                    {t('parentLabel')}
-                  </label>
-                  <select
-                    value={p.parentId}
-                    onChange={(e) => setParent(idx, { parentId: e.target.value })}
-                    className={inputCls}
-                    required
-                  >
-                    <option value="">— {t('selectParent')} —</option>
-                    {availableParents.map((ap) => (
-                      <option key={ap.id} value={ap.id}>
-                        {ap.lastName} {ap.firstName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-700">
-                    {t('relationLabel')}
-                  </label>
-                  <select
-                    value={p.type}
-                    onChange={(e) => setParent(idx, { type: e.target.value as RelationType })}
-                    className={inputCls}
-                  >
-                    <option value="FATHER">{tRel('FATHER')}</option>
-                    <option value="MOTHER">{tRel('MOTHER')}</option>
-                    <option value="LEGAL_GUARDIAN">{tRel('LEGAL_GUARDIAN')}</option>
-                    <option value="GUARDIAN">{tRel('GUARDIAN')}</option>
-                  </select>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeParent(idx)}
-                  className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 hover:bg-red-100"
-                >
-                  {t('removeParent')}
-                </button>
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={addParent}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              + {t('addParent')}
-            </button>
-            {availableParents.length === 0 && (
-              <p className="text-xs text-amber-700">{t('noParentAvailable')}</p>
-            )}
-          </div>
         </SectionCard>
       )}
 

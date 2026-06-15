@@ -8,6 +8,13 @@ import { ParentAccess } from './parent-access';
 import { TeacherAccess } from './teacher-access';
 import { DocumentsPanel } from '@/components/documents-panel';
 import { computeContractStatus, contractStatusBadgeClass } from '@/lib/contract-status';
+import {
+  categoryOf,
+  tallyAttendance,
+  emptyAttendanceCounts,
+  ATTENDANCE_CATEGORIES,
+  type AttendanceCategory,
+} from '@/lib/attendance-category';
 
 export default async function PersonDetailPage({
   params,
@@ -146,15 +153,12 @@ export default async function PersonDetailPage({
   // Récap présences élève (TOUTE l'année active : présent/absent/retard/excusé).
   type StudentAttSummary = {
     total: number;
-    present: number;
-    absent: number;
-    late: number;
-    excused: number;
+    counts: Record<AttendanceCategory, number>;
     rate: number | null;
     recentAbsences: Array<{
       id: string;
       date: Date;
-      status: 'ABSENT' | 'LATE' | 'EXCUSED';
+      cat: AttendanceCategory;
       className: string;
       justificationStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
     }>;
@@ -164,21 +168,14 @@ export default async function PersonDetailPage({
     studentAttendance = await withTenant(tenantId, async (tx) => {
       const activeYear = await tx.academicYear.findFirst({ where: { active: true } });
       if (!activeYear) {
-        return {
-          total: 0,
-          present: 0,
-          absent: 0,
-          late: 0,
-          excused: 0,
-          rate: null,
-          recentAbsences: [],
-        };
+        return { total: 0, counts: emptyAttendanceCounts(), rate: null, recentAbsences: [] };
       }
 
       const records = await tx.attendanceRecord.findMany({
         where: {
           studentId: id,
           session: {
+            finalizedAt: { not: null },
             date: { gte: activeYear.startDate, lte: activeYear.endDate },
           },
         },
@@ -189,33 +186,23 @@ export default async function PersonDetailPage({
         orderBy: { session: { date: 'desc' } },
       });
 
-      const counts = records.reduce(
-        (acc, r) => {
-          acc.total += 1;
-          if (r.status === 'PRESENT') acc.present += 1;
-          if (r.status === 'ABSENT') acc.absent += 1;
-          if (r.status === 'LATE') acc.late += 1;
-          if (r.status === 'EXCUSED') acc.excused += 1;
-          return acc;
-        },
-        { total: 0, present: 0, absent: 0, late: 0, excused: 0 },
-      );
-
-      const rate = counts.total > 0 ? (counts.present / counts.total) * 100 : null;
+      const tally = tallyAttendance(records);
+      const rate = tally.rate;
 
       const recentAbsences = records
-        .filter((r) => r.status !== 'PRESENT')
+        .map((r) => ({ r, cat: categoryOf(r) }))
+        .filter(({ cat }) => cat !== 'PRESENT')
         .slice(0, 5)
-        .map((r) => ({
+        .map(({ r, cat }) => ({
           id: r.id,
           date: r.session.date,
-          status: r.status as 'ABSENT' | 'LATE' | 'EXCUSED',
+          cat,
           className: r.session.class.name,
           justificationStatus:
             (r.justification?.status as 'PENDING' | 'APPROVED' | 'REJECTED' | undefined) ?? null,
         }));
 
-      return { ...counts, rate, recentAbsences };
+      return { total: tally.total, counts: tally.counts, rate, recentAbsences };
     });
   }
 
@@ -256,14 +243,17 @@ export default async function PersonDetailPage({
           const att = await tx.attendanceRecord.findMany({
             where: {
               studentId: child.id,
-              session: { date: { gte: activeYear.startDate, lte: activeYear.endDate } },
+              session: {
+                finalizedAt: { not: null },
+                date: { gte: activeYear.startDate, lte: activeYear.endDate },
+              },
             },
-            select: { status: true },
+            select: { status: true, infirmary: true, punishment: true, exclusion: true },
           });
           if (att.length > 0) {
-            const present = att.filter((a) => a.status === 'PRESENT').length;
-            attendanceRate = (present / att.length) * 100;
-            absences = att.filter((a) => a.status === 'ABSENT' || a.status === 'LATE').length;
+            const tally = tallyAttendance(att);
+            attendanceRate = tally.rate;
+            absences = tally.counts.ABSENT + tally.counts.EXCLUSION;
           }
         }
 
@@ -345,7 +335,11 @@ export default async function PersonDetailPage({
   let documentPeriods: { id: string; label: string }[] = [];
   if (person.type === 'STUDENT') {
     const dd = await withTenant(tenantId, async (tx) => {
-      const years = await tx.academicYear.findMany({ orderBy: { startDate: 'desc' } });
+      // Année active en tête (les deux années peuvent partager la même date
+      // de début → on lève l'ambiguïté pour que le dossier pointe sur l'active).
+      const years = await tx.academicYear.findMany({
+        orderBy: [{ active: 'desc' }, { startDate: 'desc' }],
+      });
       const active = years.find((y) => y.active) ?? years[0];
       const periods = active
         ? await tx.period.findMany({
@@ -499,6 +493,12 @@ export default async function PersonDetailPage({
             />
             <Row label={tDetail('cin')} value={person.cin ?? undefined} />
             <Row label={tDetail('nationality')} value={person.nationality ?? undefined} />
+            {person.type === 'STUDENT' && (
+              <Row
+                label={tForm('regime.label')}
+                value={person.regime ? tForm(`regime.${person.regime}` as never) : undefined}
+              />
+            )}
           </dl>
         </section>
 
@@ -921,27 +921,17 @@ export default async function PersonDetailPage({
                         : '—'}
                     </span>
                   </div>
-                  <div className="mt-3 grid grid-cols-4 gap-1.5 text-xs">
-                    <MiniStat
-                      label={tDetail('attendance.present')}
-                      value={studentAttendance.present}
-                      color="emerald"
-                    />
-                    <MiniStat
-                      label={tDetail('attendance.absent')}
-                      value={studentAttendance.absent}
-                      color="red"
-                    />
-                    <MiniStat
-                      label={tDetail('attendance.late')}
-                      value={studentAttendance.late}
-                      color="amber"
-                    />
-                    <MiniStat
-                      label={tDetail('attendance.excused')}
-                      value={studentAttendance.excused}
-                      color="blue"
-                    />
+                  <div className="mt-3 grid grid-cols-3 gap-1.5 text-xs sm:grid-cols-4">
+                    {ATTENDANCE_CATEGORIES.filter((c) => studentAttendance!.counts[c] > 0).map(
+                      (c) => (
+                        <MiniStat
+                          key={c}
+                          label={tDetail(`attendance.cat.${c}`)}
+                          value={studentAttendance!.counts[c]}
+                          color={CATEGORY_MINI_COLOR[c]}
+                        />
+                      ),
+                    )}
                   </div>
 
                   {studentAttendance.recentAbsences.length > 0 && (
@@ -963,7 +953,7 @@ export default async function PersonDetailPage({
                               · <span className="text-slate-500">{a.className}</span>
                             </span>
                             <span className="flex items-center gap-1.5">
-                              <StudentAttBadge status={a.status} t={tDetail} />
+                              <StudentAttBadge cat={a.cat} t={tDetail} />
                               {a.justificationStatus && (
                                 <JustifBadge status={a.justificationStatus} t={tDetail} />
                               )}
@@ -1181,26 +1171,32 @@ function EnrollmentBadge({
   );
 }
 
-function StudentAttBadge({
-  status,
-  t,
-}: {
-  status: 'ABSENT' | 'LATE' | 'EXCUSED';
-  t: (k: string) => string;
-}) {
-  const map = {
-    ABSENT: 'bg-red-100 text-red-700',
-    LATE: 'bg-amber-100 text-amber-700',
-    EXCUSED: 'bg-blue-100 text-blue-700',
-  } as const;
-  const labelMap = {
-    ABSENT: 'attendance.absent',
-    LATE: 'attendance.late',
-    EXCUSED: 'attendance.excused',
-  } as const;
+const CATEGORY_BADGE: Record<AttendanceCategory, string> = {
+  PRESENT: 'bg-emerald-100 text-emerald-700',
+  LATE: 'bg-amber-100 text-amber-700',
+  INFIRMARY: 'bg-blue-100 text-blue-700',
+  PUNISHMENT: 'bg-purple-100 text-purple-700',
+  EXCLUSION: 'bg-rose-100 text-rose-700',
+  EXCUSED: 'bg-green-100 text-green-700',
+  ABSENT: 'bg-red-100 text-red-700',
+};
+const CATEGORY_MINI_COLOR: Record<
+  AttendanceCategory,
+  'emerald' | 'red' | 'amber' | 'blue' | 'purple' | 'rose' | 'green'
+> = {
+  PRESENT: 'emerald',
+  LATE: 'amber',
+  INFIRMARY: 'blue',
+  PUNISHMENT: 'purple',
+  EXCLUSION: 'rose',
+  EXCUSED: 'green',
+  ABSENT: 'red',
+};
+
+function StudentAttBadge({ cat, t }: { cat: AttendanceCategory; t: (k: string) => string }) {
   return (
-    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${map[status]}`}>
-      {t(labelMap[status])}
+    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${CATEGORY_BADGE[cat]}`}>
+      {t(`attendance.cat.${cat}`)}
     </span>
   );
 }
@@ -1234,7 +1230,7 @@ function MiniStat({
 }: {
   label: string;
   value: number;
-  color: 'emerald' | 'red' | 'amber' | 'blue' | 'slate';
+  color: 'emerald' | 'red' | 'amber' | 'blue' | 'slate' | 'purple' | 'rose' | 'green';
 }) {
   const colors: Record<string, string> = {
     emerald: 'text-emerald-700',
@@ -1242,6 +1238,9 @@ function MiniStat({
     amber: 'text-amber-700',
     blue: 'text-blue-700',
     slate: 'text-slate-600',
+    purple: 'text-purple-700',
+    rose: 'text-rose-700',
+    green: 'text-green-700',
   };
   return (
     <div className="rounded-lg border border-slate-100 px-2 py-1.5 text-center">

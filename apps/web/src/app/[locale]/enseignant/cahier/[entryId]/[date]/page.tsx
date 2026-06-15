@@ -1,10 +1,16 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { getTeacherPersonId } from '@/lib/teacher';
-import { getSessionForTeacher, toDateStr } from '@/lib/lesson-book';
+import {
+  getSessionForTeacher,
+  getTeacherWeekSessions,
+  mondayOf,
+  toDateStr,
+  type TeacherSession,
+} from '@/lib/lesson-book';
+import { CahierFrame } from '../../cahier-frame';
 import { LessonForm } from './lesson-form';
 import { ResourcesPanel } from './resources-panel';
 
@@ -21,16 +27,20 @@ export default async function FillLessonPage({
 
   const session = (await auth())!;
   const t = await getTranslations('enseignant.cahier');
+  const monday = mondayOf(date);
 
   const data = await withTenant(session.user.tenantId, async (tx) => {
     const teacherId = await getTeacherPersonId(tx, session.user.id);
     if (!teacherId) return null;
-    return getSessionForTeacher(tx, teacherId, entryId, date);
+    const detail = await getSessionForTeacher(tx, teacherId, entryId, date);
+    if (!detail) return null;
+    const week = await getTeacherWeekSessions(tx, teacherId, monday);
+    return { detail, week };
   });
   if (!data) notFound();
 
-  const { entry, lesson } = data;
-  const base = `/${locale}/enseignant/cahier`;
+  const { entry, lesson } = data.detail;
+  const week = data.week as { days: { date: string; dow: string }[]; sessions: TeacherSession[] };
   const fmtDate = new Date(`${date}T00:00:00.000Z`).toLocaleDateString(locale, {
     weekday: 'long',
     day: 'numeric',
@@ -40,15 +50,13 @@ export default async function FillLessonPage({
   });
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-8">
-      <nav className="mb-4 text-xs text-slate-500">
-        <Link href={`${base}?week=${date}`} className="hover:text-brand-700">
-          {t('title')}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <span>{entry.subject?.label ?? '—'}</span>
-      </nav>
-
+    <CahierFrame
+      locale={locale}
+      monday={monday}
+      days={week.days}
+      sessions={week.sessions}
+      activeKey={`${entryId}|${date}`}
+    >
       {/* Bloc 1 — Infos de séance (auto, depuis l'EDT) */}
       <header className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
         <h1 className="text-xl font-semibold text-slate-900">{entry.subject?.label ?? '—'}</h1>
@@ -105,7 +113,7 @@ export default async function FillLessonPage({
           {t('resources.saveFirst')}
         </p>
       )}
-    </div>
+    </CahierFrame>
   );
 }
 

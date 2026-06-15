@@ -7,7 +7,7 @@
  */
 
 import type { prisma } from '@jawal/db';
-import { readTimetableSettings, type TimetableSettings } from '@jawal/shared';
+import { readTimetableSettings, isSlotAllowedOnDay, type TimetableSettings } from '@jawal/shared';
 
 type Tx = typeof prisma;
 
@@ -153,6 +153,8 @@ export type KpiResult = {
     slotsPlaceable: number;
     breaks: number;
     daysActive: number;
+    /** Cellules (jour × créneau) réellement plaçables, demi-journées comprises. */
+    placeableCells: number;
     ok: boolean;
   };
   pedagogicalConstraints: {
@@ -258,6 +260,15 @@ export async function computeKpis(
     (d) => settings.days[d] !== 'OFF',
   );
 
+  // Nombre RÉEL de cellules (jour × créneau) plaçables, en respectant les
+  // demi-journées (MORNING_ONLY / AFTERNOON_ONLY) — ex. mercredi/samedi après-midi
+  // non travaillés. Évite de surévaluer la capacité par un simple produit.
+  const placeableCellCount = daysActiveList.reduce(
+    (sum, d) =>
+      sum + placeableSlots.filter((s) => isSlotAllowedOnDay(d, s.startTime, s.endTime, settings)).length,
+    0,
+  );
+
   const totalSlotCells = placeableSlots.length * daysActiveList.length;
   let uncoveredSlots = 0;
   let teachersAvailPerCellSum = 0;
@@ -304,20 +315,29 @@ export async function computeKpis(
     const t = classifyRoom(r.code, r.label, r.equipment);
     roomsByType.set(t, (roomsByType.get(t) ?? 0) + 1);
   }
-  // Estimation des besoins par type via les matières et leurs hoursPerWeek
+  // Besoins par type de salle = volume du PROGRAMME : pour chaque matière,
+  // Σ (heures hebdo du programme × nombre de classes du niveau). Les matières de
+  // labo/info/EPS sont mappées vers leur salle ; les autres → salles standard (STD).
+  const curriculumForRooms = await tx.curriculumSubject.findMany({
+    select: { levelId: true, weeklyHours: true, subject: { select: { label: true } } },
+  });
+  const classCountByLevelRooms = new Map<string, number>();
+  for (const c of classes)
+    classCountByLevelRooms.set(c.levelId, (classCountByLevelRooms.get(c.levelId) ?? 0) + 1);
   const needsByType = new Map<RoomType, number>();
-  for (const a of assignments) {
-    const req = subjectRoomRequirement(a.subject.label);
-    if (req && a.hoursPerWeek) {
-      needsByType.set(req, (needsByType.get(req) ?? 0) + a.hoursPerWeek);
-    }
+  for (const cs of curriculumForRooms) {
+    const n = classCountByLevelRooms.get(cs.levelId) ?? 0;
+    if (n === 0) continue;
+    const req = subjectRoomRequirement(cs.subject.label) ?? 'STD';
+    needsByType.set(req, (needsByType.get(req) ?? 0) + cs.weeklyHours * n);
   }
   const specialized: KpiResult['specializedRooms'] = [];
   for (const t of ['LABO_PC', 'LABO_SVT', 'INFO', 'EPS', 'STD'] as RoomType[]) {
     const available = roomsByType.get(t) ?? 0;
     const needed = needsByType.get(t) ?? 0;
-    // Capacité = available × daysActive × placeableSlots (1 cours par cellule)
-    const capacity = available * daysActiveList.length * placeableSlots.length;
+    // Capacité = salles × nombre de cellules plaçables réelles (1 cours/cellule),
+    // en tenant compte des demi-journées (mercredi/samedi après-midi off, etc.).
+    const capacity = available * placeableCellCount;
     const surchargePct =
       capacity > 0
         ? Math.max(0, Math.round(((needed - capacity) / capacity) * 100))
@@ -596,6 +616,7 @@ export async function computeKpis(
       slotsPlaceable: placeableSlots.length,
       breaks: slots.filter((s) => s.isBreak).length,
       daysActive: daysActiveList.length,
+      placeableCells: placeableCellCount,
       ok: scheduleOk,
     },
     pedagogicalConstraints: {

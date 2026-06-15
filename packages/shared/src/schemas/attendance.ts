@@ -28,9 +28,20 @@ export const attendanceRecordSchema = z.object({
       z.number().int().min(0).max(600).optional(),
     )
     .optional(),
+  /** Motif paramétrable (surtout pour LATE). null/absent = « non encore connu ». */
+  lateReasonId: z
+    .preprocess(
+      (v) => (typeof v === 'string' && v.trim() === '' ? null : v),
+      z.string().uuid().nullable(),
+    )
+    .optional(),
+  /** Marqueurs vie scolaire cumulables avec le statut de présence. */
+  infirmary: z.boolean().optional().default(false),
+  punishment: z.boolean().optional().default(false),
+  exclusion: z.boolean().optional().default(false),
   note: z
     .preprocess(
-      (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+      (v) => (typeof v === 'string' && v.trim() === '' ? undefined : (v ?? undefined)),
       z.string().max(500).optional(),
     )
     .optional(),

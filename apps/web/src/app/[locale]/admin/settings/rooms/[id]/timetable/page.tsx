@@ -112,6 +112,10 @@ export default async function RoomTimetablePage({
         </form>
       </header>
 
+      <div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-800">
+        {t('roomOccupancyReadOnly')}
+      </div>
+
       {slots.length === 0 ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
           {t('noSlots')}
@@ -133,8 +137,10 @@ export default async function RoomTimetablePage({
               {slots.map((s) => (
                 <tr key={s.id} className={s.isBreak ? 'bg-amber-50/30' : ''}>
                   <th className="w-32 px-3 py-2 text-start align-top">
-                    <div className="font-medium tabular-nums">{s.startTime}</div>
-                    <div className="text-[10px] text-slate-400">{s.endTime}</div>
+                    <div className="font-medium tabular-nums">
+                      {s.startTime}
+                      <span className="text-slate-400"> – {s.endTime}</span>
+                    </div>
                   </th>
                   {DAYS.map((d) => {
                     if (s.isBreak) {

@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { computeKpis } from '@/lib/kpi-edt';
+import { loadSubjectCoverage } from '@/lib/subject-coverage';
 import {
   CircularGauge,
   CoherenceCard,
@@ -31,7 +32,7 @@ export default async function TimetableDashboardPage({
   const session = (await auth())!;
   const t = await getTranslations('admin.timetableDashboard');
 
-  const { years, currentYearId, kpis } = await withTenant(session.user.tenantId, async (tx) => {
+  const { years, currentYearId, kpis, subjectCoverage } = await withTenant(session.user.tenantId, async (tx) => {
     const years = await tx.academicYear.findMany({
       orderBy: { startDate: 'desc' },
       select: { id: true, label: true, active: true },
@@ -40,10 +41,11 @@ export default async function TimetableDashboardPage({
     const currentYearId = sp.year ?? activeYear?.id ?? years[0]?.id ?? null;
 
     if (!currentYearId) {
-      return { years, currentYearId: null, kpis: null };
+      return { years, currentYearId: null, kpis: null, subjectCoverage: [] };
     }
     const kpis = await computeKpis(tx, session.user.tenantId, currentYearId);
-    return { years, currentYearId, kpis };
+    const subjectCoverage = await loadSubjectCoverage(tx, currentYearId);
+    return { years, currentYearId, kpis, subjectCoverage };
   });
 
   return (
@@ -234,6 +236,100 @@ export default async function TimetableDashboardPage({
               />
             </div>
           </div>
+
+          {/* Indicateur salles spécialisées : capacité (séances/sem) vs séances requises */}
+          <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-2">
+              <h2 className="text-sm font-semibold text-slate-700">{t('roomCapacity.title')}</h2>
+              <p className="text-[11px] text-slate-500">{t('roomCapacity.hint')}</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
+                  <tr>
+                    <th className="px-4 py-2 text-start">{t('roomCapacity.roomType')}</th>
+                    <th className="px-4 py-2 text-end">{t('roomCapacity.rooms')}</th>
+                    <th className="px-4 py-2 text-end">{t('roomCapacity.capacity')}</th>
+                    <th className="px-4 py-2 text-end">{t('roomCapacity.needed')}</th>
+                    <th className="px-4 py-2 text-end">{t('roomCapacity.gap')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {kpis.specializedRooms.map((s) => {
+                    // Capacité = salles × cellules réellement plaçables (demi-journées incluses).
+                    const capacity = s.available * kpis.schedule.placeableCells;
+                    const gap = capacity - s.needed;
+                    return (
+                      <tr key={s.type}>
+                        <td className="px-4 py-2 font-medium text-slate-800">
+                          {t(`roomCapacity.types.${s.type}`)}
+                        </td>
+                        <td className="px-4 py-2 text-end tabular-nums text-slate-600">{s.available}</td>
+                        <td className="px-4 py-2 text-end tabular-nums text-slate-600">{capacity}</td>
+                        <td className="px-4 py-2 text-end tabular-nums text-slate-600">{s.needed}</td>
+                        <td className="px-4 py-2 text-end tabular-nums font-semibold">
+                          <span
+                            className={gap < 0 ? 'text-red-700' : gap === 0 ? 'text-amber-700' : 'text-emerald-700'}
+                          >
+                            {gap > 0 ? '+' : ''}
+                            {gap}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          {/* Couverture horaire par matière : programme vs profs disponibles */}
+          <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div className="border-b border-slate-200 bg-slate-50 px-4 py-2">
+              <h2 className="text-sm font-semibold text-slate-700">{t('subjectCoverage.title')}</h2>
+              <p className="text-[11px] text-slate-500">{t('subjectCoverage.hint')}</p>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
+                  <tr>
+                    <th className="px-4 py-2 text-start">{t('subjectCoverage.subject')}</th>
+                    <th className="px-4 py-2 text-end">{t('subjectCoverage.demand')}</th>
+                    <th className="px-4 py-2 text-end">{t('subjectCoverage.teachers')}</th>
+                    <th className="px-4 py-2 text-end">{t('subjectCoverage.supply')}</th>
+                    <th className="px-4 py-2 text-end">{t('subjectCoverage.gap')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {subjectCoverage.map((r) => (
+                    <tr key={r.subjectId}>
+                      <td className="px-4 py-2 font-medium text-slate-800">{r.label}</td>
+                      <td className="px-4 py-2 text-end tabular-nums text-slate-600">{r.demandHours} h</td>
+                      <td className="px-4 py-2 text-end tabular-nums text-slate-600">{r.teacherCount}</td>
+                      <td className="px-4 py-2 text-end tabular-nums text-slate-600">{r.supplyHours} h</td>
+                      <td className="px-4 py-2 text-end tabular-nums font-semibold">
+                        <span
+                          className={
+                            r.gap < 0 ? 'text-red-700' : r.gap === 0 ? 'text-amber-700' : 'text-emerald-700'
+                          }
+                        >
+                          {r.gap > 0 ? '+' : ''}
+                          {r.gap} h
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                  {subjectCoverage.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-4 py-6 text-center text-xs text-slate-400">
+                        {t('subjectCoverage.empty')}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
           {/* Bouton générer en bas, centré */}
           <div className="flex justify-center">

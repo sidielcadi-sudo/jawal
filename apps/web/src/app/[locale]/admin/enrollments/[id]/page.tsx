@@ -3,11 +3,9 @@ import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
-import {
-  validateEnrollmentFormAction,
-  withdrawEnrollmentFormAction,
-} from '../form-actions';
-import { readSiblingDiscountPct } from '@/lib/enrollment-discount';
+import { withdrawEnrollmentFormAction } from '../form-actions';
+import { AdmissionPanel } from './admission-panel';
+import { EcheancierTable } from './echeancier-table';
 
 export default async function EnrollmentDetailPage({
   params,
@@ -47,6 +45,20 @@ export default async function EnrollmentDetailPage({
       select: { id: true },
     });
     const feeIds = fees.map((f) => f.id);
+
+    // Grille du niveau (#4) : aperçu prévisionnel tant qu'aucune échéance générée.
+    const feeGrid = await tx.feeScheduleItem.findMany({
+      where: { academicYearId: enrollment.academicYearId, levelId: enrollment.levelId },
+      orderBy: { label: 'asc' },
+      select: { label: true, totalAmount: true, installmentCount: true },
+    });
+
+    // Catalogue de réductions actives (#5).
+    const discountRules = await tx.discountRule.findMany({
+      where: { active: true },
+      orderBy: [{ order: 'asc' }, { label: 'asc' }],
+      select: { id: true, label: true, pct: true },
+    });
     const installments = await tx.installment.findMany({
       where: {
         studentId: enrollment.studentId,
@@ -56,14 +68,106 @@ export default async function EnrollmentDetailPage({
       orderBy: { dueDate: 'asc' },
     });
 
+    const requiredDocs = await tx.requiredDocument.findMany({
+      where: { active: true, OR: [{ levelId: null }, { levelId: enrollment.levelId }] },
+      orderBy: [{ order: 'asc' }, { labelFr: 'asc' }],
+      select: { id: true, labelFr: true, labelAr: true },
+    });
+    const enrollmentDocs = await tx.enrollmentDocument.findMany({
+      where: { enrollmentId: id },
+      include: { file: { select: { filename: true } } },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    // Créances antérieures non soldées (échéances impayées dues avant le début
+    // de l'année du dossier) — à signaler à l'ouverture.
+    const previousDue = await tx.installment.findMany({
+      where: {
+        studentId: enrollment.studentId,
+        status: { in: ['PENDING', 'PARTIAL'] },
+        dueDate: { lt: enrollment.academicYear.startDate },
+      },
+      include: { payments: true },
+      orderBy: { dueDate: 'asc' },
+    });
+
     const tenant = await tx.tenant.findFirstOrThrow();
-    return { enrollment, compatibleClasses, installments, tenant };
+    return {
+      enrollment,
+      compatibleClasses,
+      installments,
+      tenant,
+      requiredDocs,
+      enrollmentDocs,
+      previousDue,
+      feeGrid,
+      discountRules,
+    };
   });
 
   if (!data) notFound();
 
-  const { enrollment, compatibleClasses, installments, tenant } = data;
-  const tenantPct = readSiblingDiscountPct(tenant.settings);
+  const {
+    enrollment,
+    compatibleClasses,
+    installments,
+    tenant,
+    requiredDocs,
+    enrollmentDocs,
+    previousDue,
+    feeGrid,
+    discountRules,
+  } = data;
+
+  const docByReq = new Map<string, (typeof enrollmentDocs)[number]>();
+  for (const d of enrollmentDocs) {
+    if (d.requiredDocumentId && !docByReq.has(d.requiredDocumentId)) docByReq.set(d.requiredDocumentId, d);
+  }
+  const installmentRows = installments.map((i) => {
+    const firstPayment = i.payments[0];
+    return {
+      id: i.id,
+      label: i.label,
+      dueDate: i.dueDate.toISOString(),
+      amount: Number(i.amount),
+      status: i.status as 'PENDING' | 'PARTIAL' | 'PAID' | 'CANCELLED',
+      method: firstPayment?.method ?? null,
+      reference: firstPayment?.reference ?? null,
+    };
+  });
+  const showEcheancier = ['ACCEPTE', 'INSCRIPTION_VALIDEE', 'AFFECTE', 'ACTIVE'].includes(
+    enrollment.status,
+  );
+  const previousDueTotal = previousDue.reduce(
+    (s, i) => s + Number(i.amount) - i.payments.reduce((ps, p) => ps + Number(p.amount), 0),
+    0,
+  );
+
+  const docRows = requiredDocs.map((rd) => {
+    const ed = docByReq.get(rd.id);
+    return {
+      requiredId: rd.id,
+      label: locale === 'ar' ? rd.labelAr : rd.labelFr,
+      doc: ed
+        ? { id: ed.id, status: ed.status as 'PENDING' | 'VALID' | 'INVALID', filename: ed.file?.filename ?? '' }
+        : null,
+    };
+  });
+  // Pièces déposées hors liste requise (#8) : toujours listées en plus.
+  const requiredIds = new Set(requiredDocs.map((rd) => rd.id));
+  const otherDocs = enrollmentDocs
+    .filter((d) => !d.requiredDocumentId || !requiredIds.has(d.requiredDocumentId))
+    .map((d) => ({
+      id: d.id,
+      label: d.file?.filename ?? '',
+      status: d.status as 'PENDING' | 'VALID' | 'INVALID',
+    }));
+  const classOptions = compatibleClasses.map((c) => ({
+    id: c.id,
+    name: c.name,
+    capacity: c.capacity,
+    count: c._count.students,
+  }));
 
   const totalDue = installments.reduce(
     (s, i) => (i.status === 'CANCELLED' ? s : s + Number(i.amount)),
@@ -145,7 +249,31 @@ export default async function EnrollmentDetailPage({
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="text-sm font-semibold text-slate-700">{t('detail.fees')}</h2>
           {installments.length === 0 ? (
-            <p className="mt-2 text-xs text-slate-500">{t('detail.feesEmpty')}</p>
+            feeGrid.length > 0 ? (
+              <div className="mt-3">
+                <p className="text-xs text-slate-500">{t('detail.feesPreviewHint')}</p>
+                <dl className="mt-2 space-y-2 text-sm">
+                  {feeGrid.map((f) => (
+                    <Row
+                      key={f.label}
+                      label={f.label}
+                      value={`${Number(f.totalAmount).toFixed(2)} ${tenant.currency} · ${f.installmentCount}× ${(
+                        Number(f.totalAmount) / f.installmentCount
+                      ).toFixed(2)}`}
+                    />
+                  ))}
+                  <Row
+                    label={t('detail.feesPreviewTotal')}
+                    value={`${feeGrid
+                      .reduce((s, f) => s + Number(f.totalAmount), 0)
+                      .toFixed(2)} ${tenant.currency}`}
+                  />
+                </dl>
+                <p className="mt-2 text-[11px] text-slate-400">{t('detail.feesPreviewNote')}</p>
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-slate-500">{t('detail.feesEmpty')}</p>
+            )
           ) : (
             <>
               <dl className="mt-3 space-y-2 text-sm">
@@ -180,89 +308,68 @@ export default async function EnrollmentDetailPage({
         </section>
       </div>
 
-      {/* Actions selon le statut */}
-      {(enrollment.status === 'DRAFT' || enrollment.status === 'ACTIVE') && (
+      {/* Créance antérieure non soldée */}
+      {previousDue.length > 0 && (
+        <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+          <h2 className="text-sm font-semibold text-amber-900">
+            ⚠ {t('detail.previousDueTitle')}
+          </h2>
+          <p className="mt-1 text-xs text-amber-800">
+            {t('detail.previousDueHint', {
+              amount: previousDueTotal.toFixed(2),
+              currency: tenant.currency,
+            })}
+          </p>
+          <ul className="mt-2 flex flex-wrap gap-1.5">
+            {previousDue.map((i) => (
+              <li
+                key={i.id}
+                className="rounded border border-amber-200 bg-white px-1.5 py-0.5 text-[11px] text-amber-800"
+              >
+                {i.label} · {new Date(i.dueDate).toLocaleDateString(locale)} ·{' '}
+                {Number(i.amount).toFixed(0)} {tenant.currency}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Pipeline d'admission */}
+      <AdmissionPanel
+        enrollmentId={enrollment.id}
+        status={enrollment.status}
+        docs={docRows}
+        classes={classOptions}
+        discountRules={discountRules.map((d) => ({ id: d.id, label: d.label, pct: Number(d.pct) }))}
+        otherDocs={otherDocs}
+      />
+
+      {/* Échéancier (encaissement par ligne) — dès l'acceptation */}
+      {showEcheancier && <EcheancierTable rows={installmentRows} currency={tenant.currency} />}
+
+      {/* Radiation d'un dossier actif (la validation passe par le Dossier d'admission) */}
+      {enrollment.status === 'ACTIVE' && (
         <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
-          {enrollment.status === 'DRAFT' ? (
-            <>
-              <h2 className="text-sm font-semibold text-slate-700">{t('actions.validate')}</h2>
-              <p className="mt-1 text-xs text-slate-500">
-                {t('actions.validateHint', { pct: tenantPct })}
-              </p>
-              {compatibleClasses.length === 0 ? (
-                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                  {t('actions.noCompatibleClass')}
-                </div>
-              ) : (
-                <form action={validateEnrollmentFormAction} className="mt-3 space-y-3">
-                  <input type="hidden" name="enrollmentId" value={enrollment.id} />
-                  <Field label={t('actions.chooseClass')}>
-                    <select
-                      name="classId"
-                      required
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                    >
-                      <option value="">{t('actions.chooseClassPlaceholder')}</option>
-                      {compatibleClasses.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name} ({c._count.students}/{c.capacity})
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Field label={t('actions.discountOverride')}>
-                      <input
-                        type="number"
-                        name="discountPctOverride"
-                        min={0}
-                        max={100}
-                        step="any"
-                        placeholder={t('actions.discountAuto', { pct: tenantPct })}
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                      />
-                    </Field>
-                    <Field label={t('actions.discountReason')}>
-                      <input
-                        type="text"
-                        name="discountReason"
-                        className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                      />
-                    </Field>
-                  </div>
-                  <button
-                    type="submit"
-                    className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
-                  >
-                    ✓ {t('actions.validateBtn')}
-                  </button>
-                </form>
-              )}
-            </>
-          ) : (
-            <>
-              <h2 className="text-sm font-semibold text-slate-700">{t('actions.withdraw')}</h2>
-              <p className="mt-1 text-xs text-slate-500">{t('actions.withdrawHint')}</p>
-              <form action={withdrawEnrollmentFormAction} className="mt-3 space-y-3">
-                <input type="hidden" name="enrollmentId" value={enrollment.id} />
-                <Field label={t('actions.withdrawReason')}>
-                  <input
-                    type="text"
-                    name="reason"
-                    required
-                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                    placeholder={t('actions.withdrawReasonPlaceholder')}
-                  />
-                </Field>
-                <button
-                  type="submit"
-                  className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
-                >
-                  ✕ {t('actions.withdrawBtn')}
-                </button>
-              </form>
-            </>
-          )}
+          <h2 className="text-sm font-semibold text-slate-700">{t('actions.withdraw')}</h2>
+          <p className="mt-1 text-xs text-slate-500">{t('actions.withdrawHint')}</p>
+          <form action={withdrawEnrollmentFormAction} className="mt-3 space-y-3">
+            <input type="hidden" name="enrollmentId" value={enrollment.id} />
+            <Field label={t('actions.withdrawReason')}>
+              <input
+                type="text"
+                name="reason"
+                required
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                placeholder={t('actions.withdrawReasonPlaceholder')}
+              />
+            </Field>
+            <button
+              type="submit"
+              className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
+            >
+              ✕ {t('actions.withdrawBtn')}
+            </button>
+          </form>
         </section>
       )}
     </div>
@@ -295,21 +402,24 @@ function Row({
   );
 }
 
-function StatusBadge({
-  status,
-  t,
-}: {
-  status: 'DRAFT' | 'ACTIVE' | 'WITHDRAWN' | 'GRADUATED';
-  t: (k: string) => string;
-}) {
-  const map = {
-    DRAFT: 'bg-amber-100 text-amber-700',
-    ACTIVE: 'bg-emerald-100 text-emerald-700',
-    WITHDRAWN: 'bg-red-100 text-red-700',
-    GRADUATED: 'bg-blue-100 text-blue-700',
-  } as const;
+const STATUS_BADGE: Record<string, string> = {
+  DRAFT: 'bg-slate-100 text-slate-700',
+  DOCUMENTS_MANQUANTS: 'bg-amber-100 text-amber-700',
+  DOSSIER_COMPLET: 'bg-sky-100 text-sky-700',
+  ACCEPTE: 'bg-indigo-100 text-indigo-700',
+  REFUSE: 'bg-red-100 text-red-700',
+  INSCRIPTION_VALIDEE: 'bg-teal-100 text-teal-700',
+  AFFECTE: 'bg-violet-100 text-violet-700',
+  ACTIVE: 'bg-emerald-100 text-emerald-700',
+  WITHDRAWN: 'bg-red-100 text-red-700',
+  GRADUATED: 'bg-blue-100 text-blue-700',
+};
+
+function StatusBadge({ status, t }: { status: string; t: (k: string) => string }) {
   return (
-    <span className={`rounded px-3 py-1 text-xs font-medium ${map[status]}`}>
+    <span
+      className={`rounded px-3 py-1 text-xs font-medium ${STATUS_BADGE[status] ?? 'bg-slate-100 text-slate-700'}`}
+    >
       {t(`status.${status}`)}
     </span>
   );

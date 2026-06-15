@@ -15,3 +15,30 @@ export async function getTeacherPersonId(tx: Tx, userId: string): Promise<string
   });
   return link?.personId ?? null;
 }
+
+/**
+ * Vrai si l'enseignant enseigne bien cette matière dans cette classe sur
+ * l'année active — via une affectation (`TeacherAssignment`) OU une case d'EDT
+ * (`TimetableEntry`). Garde d'accès pour la saisie des notes côté prof.
+ * À appeler dans un `withTenant`.
+ */
+export async function teacherTeachesClassSubject(
+  tx: Tx,
+  teacherId: string,
+  classId: string,
+  subjectId: string,
+): Promise<boolean> {
+  const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
+  if (!year) return false;
+  const [assignment, entry] = await Promise.all([
+    tx.teacherAssignment.findFirst({
+      where: { teacherId, classId, subjectId, academicYearId: year.id },
+      select: { id: true },
+    }),
+    tx.timetableEntry.findFirst({
+      where: { teacherId, classId, subjectId, academicYearId: year.id },
+      select: { id: true },
+    }),
+  ]);
+  return Boolean(assignment || entry);
+}

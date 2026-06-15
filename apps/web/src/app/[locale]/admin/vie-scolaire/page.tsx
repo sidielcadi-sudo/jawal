@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { computeVieScolaire } from '@/lib/kpi-vie-scolaire';
 import type { KpiStatus } from '@/lib/kpi-pilotage';
+import { VieScolaireTabs } from './tabs';
 
 const TEXT: Record<KpiStatus, string> = {
   green: 'text-emerald-600',
@@ -57,6 +58,9 @@ export default async function VieScolairePage({
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="mb-4">
+        <VieScolaireTabs locale={locale} />
+      </div>
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>

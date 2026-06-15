@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
+import { tallyAttendance } from '@/lib/attendance-category';
+import { countUnreadCarnet } from '@/lib/carnet';
 import { getParentChildren, getParentAnnouncements } from '@/lib/parent';
 
 export default async function ParentHomePage({
@@ -27,14 +29,17 @@ export default async function ParentHomePage({
           const att = await tx.attendanceRecord.findMany({
             where: {
               studentId: child.id,
-              session: { date: { gte: activeYear.startDate, lte: activeYear.endDate } },
+              session: {
+                finalizedAt: { not: null },
+                date: { gte: activeYear.startDate, lte: activeYear.endDate },
+              },
             },
-            select: { status: true },
+            select: { status: true, infirmary: true, punishment: true, exclusion: true },
           });
           if (att.length > 0) {
-            const present = att.filter((a) => a.status === 'PRESENT').length;
-            attendanceRate = (present / att.length) * 100;
-            absences = att.filter((a) => a.status === 'ABSENT' || a.status === 'LATE').length;
+            const t = tallyAttendance(att);
+            attendanceRate = t.rate;
+            absences = t.counts.ABSENT + t.counts.EXCLUSION;
           }
         }
 
@@ -48,7 +53,9 @@ export default async function ParentHomePage({
           0,
         );
 
-        return { child, attendanceRate, absences, remaining: Math.max(0, due - paid) };
+        const carnetUnread = await countUnreadCarnet(tx, child.id);
+
+        return { child, attendanceRate, absences, remaining: Math.max(0, due - paid), carnetUnread };
       }),
     );
 
@@ -67,7 +74,7 @@ export default async function ParentHomePage({
         </div>
       ) : (
         <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {data.cards.map(({ child, attendanceRate, absences, remaining }) => (
+          {data.cards.map(({ child, attendanceRate, absences, remaining, carnetUnread }) => (
             <Link
               key={child.id}
               href={`/${locale}/parent/children/${child.id}`}
@@ -82,7 +89,14 @@ export default async function ParentHomePage({
                     <div className="text-xs text-slate-500">{child.className}</div>
                   )}
                 </div>
-                <span className="text-brand-600">→</span>
+                <span className="flex items-center gap-2">
+                  {carnetUnread > 0 && (
+                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+                      {t('carnetUnread', { count: carnetUnread })}
+                    </span>
+                  )}
+                  <span className="text-brand-600">→</span>
+                </span>
               </div>
 
               <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">

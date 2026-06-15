@@ -1,5 +1,6 @@
 import 'server-only';
 import nodemailer from 'nodemailer';
+import type Mail from 'nodemailer/lib/mailer';
 
 /**
  * Transport SMTP partagé. En dev : Mailpit (localhost:1025, sans auth).
@@ -23,7 +24,15 @@ function getTransporter() {
 
 const FROM = process.env.SMTP_FROM ?? 'Jawal <no-reply@jawal.local>';
 
-export async function sendEmail(opts: { to: string; subject: string; html: string; text?: string }) {
+export type EmailOptions = {
+  to: string;
+  subject: string;
+  html: string;
+  text?: string;
+  attachments?: Mail.Attachment[];
+};
+
+export async function sendEmail(opts: EmailOptions) {
   const t = getTransporter();
   return t.sendMail({
     from: FROM,
@@ -31,6 +40,7 @@ export async function sendEmail(opts: { to: string; subject: string; html: strin
     subject: opts.subject,
     html: opts.html,
     text: opts.text,
+    attachments: opts.attachments,
   });
 }
 
@@ -38,7 +48,7 @@ export async function sendEmail(opts: { to: string; subject: string; html: strin
  * Helper pour les notifications d'absence aux parents.
  * Tolère l'échec : on log et on continue (ne doit pas casser la finalisation).
  */
-export async function safeSendEmail(opts: { to: string; subject: string; html: string; text?: string }) {
+export async function safeSendEmail(opts: EmailOptions) {
   try {
     await sendEmail(opts);
     return { ok: true as const };

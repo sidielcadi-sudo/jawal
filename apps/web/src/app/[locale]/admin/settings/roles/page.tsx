@@ -7,6 +7,7 @@ import {
   ServiceCreateForm,
   ServiceRowActions,
   GroupTabs,
+  ActiveToggle,
 } from './client';
 
 type SP = { group?: string };
@@ -52,7 +53,7 @@ export default async function RolesPage({
       {group === 'SERVICE' ? (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <section className="lg:col-span-2">
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
               <table className="w-full text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
@@ -74,13 +75,7 @@ export default async function RolesPage({
                       </td>
                       <td className="px-4 py-3 text-end text-xs text-slate-500">{s.order}</td>
                       <td className="px-4 py-3 text-center">
-                        <span
-                          className={`rounded px-2 py-0.5 text-xs font-medium ${
-                            s.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
-                          }`}
-                        >
-                          {s.active ? t('active') : t('inactive')}
-                        </span>
+                        <ActiveToggle id={s.id} active={s.active} kind="service" />
                       </td>
                       <td className="px-4 py-3 text-end">
                         <ServiceRowActions
@@ -121,7 +116,7 @@ export default async function RolesPage({
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <section className="lg:col-span-2">
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
               <table className="w-full text-sm">
                 <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                   <tr>
@@ -147,13 +142,7 @@ export default async function RolesPage({
                       </td>
                       <td className="px-4 py-3 text-end text-xs text-slate-500">{r.order}</td>
                       <td className="px-4 py-3 text-center">
-                        <span
-                          className={`rounded px-2 py-0.5 text-xs font-medium ${
-                            r.active ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'
-                          }`}
-                        >
-                          {r.active ? t('active') : t('inactive')}
-                        </span>
+                        <ActiveToggle id={r.id} active={r.active} kind="role" />
                       </td>
                       <td className="px-4 py-3 text-end">
                         <RoleRowActions

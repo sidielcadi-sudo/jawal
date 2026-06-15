@@ -5,11 +5,14 @@ import { withTenant } from '@/lib/db';
 
 export default async function FinanceDashboardPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ q?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  const q = ((await searchParams).q ?? '').trim();
   const t = await getTranslations('admin.finance');
 
   const session = (await auth())!;
@@ -21,7 +24,7 @@ export default async function FinanceDashboardPage({
     // Sommes globales en JS (Decimal Prisma → Number via aggregate)
     const allInstallments = await tx.installment.findMany({
       where: { status: { not: 'CANCELLED' } },
-      select: { id: true, amount: true, status: true, studentId: true },
+      select: { id: true, amount: true, status: true, studentId: true, dueDate: true },
     });
     const allPayments = await tx.payment.findMany({
       select: { amount: true, paidAt: true, installmentId: true },
@@ -59,6 +62,57 @@ export default async function FinanceDashboardPage({
         })
       : [];
 
+    // Statut par élève basé sur la date d'échéance :
+    //  - Soldé : plus rien à payer ;
+    //  - En retard : au moins une échéance impayée dont la date est dépassée ;
+    //  - À jour : reste à payer mais aucune échéance encore échue.
+    const now = new Date();
+    const dueByStudent = new Map<string, number>();
+    const overdueByStudent = new Set<string>();
+    for (const i of allInstallments) {
+      dueByStudent.set(i.studentId, (dueByStudent.get(i.studentId) ?? 0) + Number(i.amount));
+      const rem = Number(i.amount) - (paidByInst.get(i.id) ?? 0);
+      if (rem > 0 && i.dueDate < now) overdueByStudent.add(i.studentId);
+    }
+    const studentIds = [...dueByStudent.keys()];
+    const persons = studentIds.length
+      ? await tx.person.findMany({
+          where: {
+            id: { in: studentIds },
+            ...(q
+              ? {
+                  OR: [
+                    { firstName: { contains: q, mode: 'insensitive' } },
+                    { lastName: { contains: q, mode: 'insensitive' } },
+                  ],
+                }
+              : {}),
+          },
+          select: { id: true, firstName: true, lastName: true },
+        })
+      : [];
+    const statusRank = { LATE: 0, UPTODATE: 1, PAID: 2 } as const;
+    const studentList = persons
+      .map((p) => {
+        const remaining = remainingByStudent.get(p.id) ?? 0;
+        const status: 'PAID' | 'LATE' | 'UPTODATE' =
+          remaining <= 0 ? 'PAID' : overdueByStudent.has(p.id) ? 'LATE' : 'UPTODATE';
+        return {
+          id: p.id,
+          name: `${p.lastName} ${p.firstName}`,
+          due: dueByStudent.get(p.id) ?? 0,
+          remaining,
+          status,
+        };
+      })
+      .sort(
+        (a, b) =>
+          statusRank[a.status] - statusRank[b.status] ||
+          b.remaining - a.remaining ||
+          a.name.localeCompare(b.name),
+      )
+      .slice(0, 100);
+
     // Encaissements des 30 derniers jours
     const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const recent = allPayments.filter((p) => p.paidAt >= since);
@@ -78,6 +132,7 @@ export default async function FinanceDashboardPage({
         ...p,
         remaining: remainingByStudent.get(p.id) ?? 0,
       })),
+      studentList,
       recentTotal,
       recentCount: recent.length,
     };
@@ -179,6 +234,86 @@ export default async function FinanceDashboardPage({
           </div>
         </aside>
       </div>
+
+      {/* Recherche élève (tous statuts, basé sur la date d'échéance) */}
+      <section className="mt-8">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
+          <h2 className="text-base font-semibold text-slate-900">{t('students.title')}</h2>
+          <form method="get" className="flex items-end gap-2">
+            <input
+              type="search"
+              name="q"
+              defaultValue={q}
+              placeholder={t('students.searchPlaceholder')}
+              className="focus:border-brand-500 focus:ring-brand-500 w-64 rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
+            />
+            <button
+              type="submit"
+              className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              {t('students.search')}
+            </button>
+          </form>
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <table className="w-full text-sm">
+            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3 text-start">{t('table.student')}</th>
+                <th className="px-4 py-3 text-end">{t('students.due')}</th>
+                <th className="px-4 py-3 text-end">{t('table.remaining')}</th>
+                <th className="px-4 py-3 text-start">{t('students.status')}</th>
+                <th className="px-4 py-3 text-end">{t('table.actions')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {data.studentList.map((s) => (
+                <tr key={s.id}>
+                  <td className="px-4 py-3 font-medium text-slate-900">{s.name}</td>
+                  <td className="px-4 py-3 text-end tabular-nums text-slate-600">
+                    {formatNumber(s.due)} {data.currency}
+                  </td>
+                  <td
+                    className={`px-4 py-3 text-end tabular-nums ${
+                      s.remaining > 0 ? 'text-red-700' : 'text-emerald-700'
+                    }`}
+                  >
+                    {formatNumber(s.remaining)} {data.currency}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`rounded px-2 py-0.5 text-xs font-medium ${
+                        s.status === 'PAID'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : s.status === 'LATE'
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-amber-100 text-amber-800'
+                      }`}
+                    >
+                      {t(`students.statusLabel.${s.status}`)}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-end">
+                    <Link
+                      href={`/${locale}/admin/persons/${s.id}/finance`}
+                      className="text-xs text-brand-700 hover:underline"
+                    >
+                      {t('table.view')}
+                    </Link>
+                  </td>
+                </tr>
+              ))}
+              {data.studentList.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-slate-500">
+                    {t('students.empty')}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

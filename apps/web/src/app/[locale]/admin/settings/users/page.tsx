@@ -11,8 +11,8 @@ export default async function UsersPage({ params }: { params: Promise<{ locale: 
   const session = (await auth())!;
   const tenantId = session.user.tenantId;
 
-  const { users, roles } = await withTenant(tenantId, async (tx) => {
-    const [users, roles] = await Promise.all([
+  const { users, roles, personRoles } = await withTenant(tenantId, async (tx) => {
+    const [users, roles, personRoles] = await Promise.all([
       tx.user.findMany({
         orderBy: { createdAt: 'desc' },
         include: {
@@ -21,8 +21,13 @@ export default async function UsersPage({ params }: { params: Promise<{ locale: 
         },
       }),
       tx.role.findMany({ where: { code: { notIn: ['parent', 'eleve'] } }, orderBy: { code: 'asc' } }),
+      tx.personRole.findMany({
+        where: { active: true, appliesTo: { in: ['TEACHER', 'STAFF'] } },
+        orderBy: [{ appliesTo: 'asc' }, { order: 'asc' }],
+        select: { id: true, labelFr: true, labelAr: true, appliesTo: true },
+      }),
     ]);
-    return { users, roles };
+    return { users, roles, personRoles };
   });
 
   return (
@@ -83,10 +88,13 @@ export default async function UsersPage({ params }: { params: Promise<{ locale: 
                         <UserActions
                           userId={u.id}
                           disabled={!!u.disabledAt}
+                          canDelete={(!!u.disabledAt || !u.lastLoginAt) && !u.isSuperAdmin}
                           labels={{
                             disable: t('actions.disable'),
                             enable: t('actions.enable'),
                             confirm: t('actions.confirmDisable'),
+                            delete: t('actions.delete'),
+                            confirmDelete: t('actions.confirmDelete'),
                           }}
                         />
                       )}
@@ -104,7 +112,14 @@ export default async function UsersPage({ params }: { params: Promise<{ locale: 
           <h2 className="text-base font-semibold text-slate-900">{t('invite')}</h2>
           <p className="mt-1 text-xs text-slate-500">{t('inviteHint')}</p>
           <div className="mt-4">
-            <InviteUserForm roles={roles.map((r) => ({ code: r.code, label: r.label }))} />
+            <InviteUserForm
+              roles={roles.map((r) => ({ code: r.code, label: r.label }))}
+              personRoles={personRoles.map((r) => ({
+                id: r.id,
+                label: locale === 'ar' ? r.labelAr : r.labelFr,
+                appliesTo: r.appliesTo as 'TEACHER' | 'STAFF',
+              }))}
+            />
           </div>
         </div>
       </aside>

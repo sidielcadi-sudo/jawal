@@ -8,9 +8,11 @@ import {
   createRoleAction,
   deleteRoleAction,
   updateRoleAction,
+  toggleRoleActiveAction,
   createServiceAction,
   deleteServiceAction,
   updateServiceAction,
+  toggleServiceActiveAction,
 } from './actions';
 
 const inputCls =
@@ -91,6 +93,52 @@ function ServiceField({
         ))}
       </select>
     </div>
+  );
+}
+
+/** Badge Actif/Inactif cliquable (bascule en 1 clic). */
+export function ActiveToggle({
+  id,
+  active,
+  kind,
+}: {
+  id: string;
+  active: boolean;
+  kind: 'role' | 'service';
+}) {
+  const t = useTranslations('admin.settings.roles');
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [value, setValue] = useState(active);
+
+  function toggle() {
+    const next = !value;
+    setValue(next); // optimiste
+    startTransition(async () => {
+      const action = kind === 'role' ? toggleRoleActiveAction : toggleServiceActiveAction;
+      const r = await action(id, next);
+      if (!r.ok) {
+        setValue(!next); // rollback
+        alert(r.error);
+      }
+      router.refresh();
+    });
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={isPending}
+      title={t('toggleHint')}
+      className={`rounded px-2 py-0.5 text-xs font-medium transition-colors disabled:opacity-50 ${
+        value
+          ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+          : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+      }`}
+    >
+      {value ? t('active') : t('inactive')}
+    </button>
   );
 }
 

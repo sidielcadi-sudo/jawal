@@ -20,7 +20,10 @@ export function TeacherSidebar({
   const items = [
     { href: prefix, key: 'home', exact: true },
     { href: `${prefix}/timetable`, key: 'timetable', exact: false },
+    { href: `${prefix}/appel`, key: 'appel', exact: false },
     { href: `${prefix}/cahier`, key: 'cahier', exact: false },
+    { href: `${prefix}/notes`, key: 'notes', exact: false },
+    { href: `${prefix}/carnet`, key: 'carnet', exact: false },
     { href: `${prefix}/classes`, key: 'classes', exact: false },
     { href: `${prefix}/messages`, key: 'messages', exact: false },
     { href: `${prefix}/account`, key: 'account', exact: false },

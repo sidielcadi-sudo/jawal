@@ -111,6 +111,28 @@ export async function deleteSubjectAction(id: string): Promise<Result> {
     await withTenant(tenantId, async (tx) => {
       const before = await tx.subject.findUnique({ where: { id } });
       if (!before) throw new Error('Matière introuvable');
+
+      // Garde anti-cascade : supprimer une matière effacerait en chaîne ses
+      // entrées de programme, évaluations (et notes !), affectations et cases d'EDT.
+      // On refuse si elle est utilisée et on oriente vers « Programme par niveau ».
+      const [curriculum, evaluations, assignments, timetable] = await Promise.all([
+        tx.curriculumSubject.count({ where: { subjectId: id } }),
+        tx.evaluation.count({ where: { subjectId: id } }),
+        tx.teacherAssignment.count({ where: { subjectId: id } }),
+        tx.timetableEntry.count({ where: { subjectId: id } }),
+      ]);
+      if (curriculum + evaluations + assignments + timetable > 0) {
+        const parts: string[] = [];
+        if (curriculum > 0) parts.push(`${curriculum} programme(s)`);
+        if (evaluations > 0) parts.push(`${evaluations} évaluation(s)`);
+        if (assignments > 0) parts.push(`${assignments} affectation(s)`);
+        if (timetable > 0) parts.push(`${timetable} créneau(x) d'EDT`);
+        throw new Error(
+          `Impossible de supprimer « ${before.label} » : utilisée par ${parts.join(', ')}. ` +
+            `Retirez-la d'abord du Programme par niveau (Paramètres → Programme).`,
+        );
+      }
+
       await tx.subject.delete({ where: { id } });
       await logAudit(tx, {
         tenantId,
@@ -123,9 +145,9 @@ export async function deleteSubjectAction(id: string): Promise<Result> {
     });
   } catch (e: unknown) {
     if (e instanceof Error && e.message.includes('Foreign key')) {
-      return { ok: false, error: 'Impossible de supprimer : des évaluations sont rattachées.' };
+      return { ok: false, error: 'Impossible de supprimer : des éléments sont rattachés.' };
     }
-    throw e;
+    return { ok: false, error: e instanceof Error ? e.message : 'Suppression impossible.' };
   }
   revalidatePath('/admin/settings/subjects');
   return { ok: true };

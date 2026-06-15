@@ -20,7 +20,8 @@ const ROLE_SCHEMA = z.object({
   labelAr: z.string().min(1).max(100),
   serviceId: z.preprocess((v) => (v === '' ? undefined : v), z.string().uuid().optional()),
   order: z.coerce.number().int().min(0).max(9999).default(0),
-  active: z.coerce.boolean().default(true),
+  // Vrai booléen : z.coerce.boolean('false') === true (bug) → on reçoit déjà un boolean.
+  active: z.boolean().default(true),
 });
 
 const SERVICE_SCHEMA = z.object({
@@ -28,7 +29,7 @@ const SERVICE_SCHEMA = z.object({
   labelFr: z.string().min(1).max(100),
   labelAr: z.string().min(1).max(100),
   order: z.coerce.number().int().min(0).max(9999).default(0),
-  active: z.coerce.boolean().default(true),
+  active: z.boolean().default(true),
 });
 
 function input(formData: FormData) {
@@ -43,7 +44,7 @@ function input(formData: FormData) {
     labelAr: get('labelAr'),
     serviceId: get('serviceId'),
     order: get('order') || '0',
-    active: formData.get('active') === 'on' || formData.get('active') === 'true' ? 'true' : 'false',
+    active: formData.get('active') === 'on' || formData.get('active') === 'true',
   };
 }
 
@@ -57,7 +58,7 @@ function serviceInput(formData: FormData) {
     labelFr: get('labelFr'),
     labelAr: get('labelAr'),
     order: get('order') || '0',
-    active: formData.get('active') === 'on' || formData.get('active') === 'true' ? 'true' : 'false',
+    active: formData.get('active') === 'on' || formData.get('active') === 'true',
   };
 }
 
@@ -173,6 +174,31 @@ export async function deleteRoleAction(id: string): Promise<Result> {
   return { ok: true };
 }
 
+/** Bascule rapide actif/inactif d'un rôle (clic direct sur le badge). */
+export async function toggleRoleActiveAction(id: string, active: boolean): Promise<Result> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requirePermission('tenants.manage');
+  const tenantId = session.user.tenantId;
+  try {
+    await withTenant(tenantId, async (tx) => {
+      await tx.personRole.update({ where: { id }, data: { active } });
+      await logAudit(tx, {
+        tenantId,
+        userId: session.user.id,
+        action: 'update',
+        entityType: 'PersonRole',
+        entityId: id,
+        after: { active },
+      });
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
+  }
+  revalidatePath('/admin/settings/roles');
+  return { ok: true };
+}
+
 // ─── Services (départements) ───────────────────────────────────
 
 export async function createServiceAction(formData: FormData): Promise<Result> {
@@ -229,6 +255,31 @@ export async function updateServiceAction(id: string, formData: FormData): Promi
       after: { labelFr: parsed.data.labelFr, labelAr: parsed.data.labelAr, active: parsed.data.active },
     });
   });
+  revalidatePath('/admin/settings/roles');
+  return { ok: true };
+}
+
+/** Bascule rapide actif/inactif d'un service. */
+export async function toggleServiceActiveAction(id: string, active: boolean): Promise<Result> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requirePermission('tenants.manage');
+  const tenantId = session.user.tenantId;
+  try {
+    await withTenant(tenantId, async (tx) => {
+      await tx.service.update({ where: { id }, data: { active } });
+      await logAudit(tx, {
+        tenantId,
+        userId: session.user.id,
+        action: 'update',
+        entityType: 'Service',
+        entityId: id,
+        after: { active },
+      });
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
+  }
   revalidatePath('/admin/settings/roles');
   return { ok: true };
 }

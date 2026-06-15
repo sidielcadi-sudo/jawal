@@ -4,6 +4,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { GradeMatrix } from './grade-matrix';
+import { saveGradesAction } from '../actions';
 
 export default async function EvaluationSheetPage({
   params,
@@ -91,6 +92,7 @@ export default async function EvaluationSheetPage({
         maxValue={ev.maxValue}
         rows={rows}
         backUrl={`/${locale}/admin/classes/${id}/grades`}
+        onSave={saveGradesAction}
       />
     </div>
   );

@@ -17,6 +17,9 @@ export default async function AuditLogPage({
   setRequestLocale(locale);
   const sp = await searchParams;
   const t = await getTranslations('admin.settings.audit');
+  // Traduction des valeurs techniques (entité/action) avec repli sur la valeur brute.
+  const labelEntity = (e: string) => (t.has(`entities.${e}`) ? t(`entities.${e}`) : e);
+  const labelAction = (a: string) => (t.has(`actions.${a}`) ? t(`actions.${a}`) : a);
 
   const session = (await auth())!;
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
@@ -88,7 +91,7 @@ export default async function AuditLogPage({
             <option value="">{t('filter.all')}</option>
             {distinctEntities.map((e) => (
               <option key={e} value={e}>
-                {e}
+                {labelEntity(e)}
               </option>
             ))}
           </select>
@@ -103,7 +106,7 @@ export default async function AuditLogPage({
             <option value="">{t('filter.all')}</option>
             {distinctActions.map((a) => (
               <option key={a} value={a}>
-                {a}
+                {labelAction(a)}
               </option>
             ))}
           </select>
@@ -141,9 +144,9 @@ export default async function AuditLogPage({
                 </td>
                 <td className="px-3 py-2 text-slate-700">{log.user?.email ?? '—'}</td>
                 <td className="px-3 py-2">
-                  <ActionBadge action={log.action} />
+                  <ActionBadge action={log.action} label={labelAction(log.action)} />
                 </td>
-                <td className="px-3 py-2 font-medium text-slate-900">{log.entityType}</td>
+                <td className="px-3 py-2 font-medium text-slate-900">{labelEntity(log.entityType)}</td>
                 <td className="px-3 py-2 font-mono text-[10px] text-slate-500">
                   {log.entityId ? log.entityId.slice(0, 8) : '—'}
                 </td>
@@ -190,7 +193,7 @@ export default async function AuditLogPage({
   );
 }
 
-function ActionBadge({ action }: { action: string }) {
+function ActionBadge({ action, label }: { action: string; label: string }) {
   const styles: Record<string, string> = {
     create: 'bg-emerald-100 text-emerald-700',
     update: 'bg-blue-100 text-blue-700',
@@ -200,10 +203,15 @@ function ActionBadge({ action }: { action: string }) {
     unenroll: 'bg-orange-100 text-orange-700',
     invite: 'bg-indigo-100 text-indigo-700',
     setActive: 'bg-emerald-100 text-emerald-700',
+    approve: 'bg-emerald-100 text-emerald-700',
+    reject: 'bg-red-100 text-red-700',
+    notify: 'bg-indigo-100 text-indigo-700',
+    save: 'bg-blue-100 text-blue-700',
+    resubmit: 'bg-amber-100 text-amber-700',
   };
   return (
     <span className={`rounded px-1.5 py-0.5 text-[11px] font-medium ${styles[action] ?? 'bg-slate-100 text-slate-700'}`}>
-      {action}
+      {label}
     </span>
   );
 }

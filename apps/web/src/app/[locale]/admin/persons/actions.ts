@@ -130,6 +130,7 @@ function formToInput(formData: FormData) {
     gender: get('gender'),
     nationality: get('nationality'),
     cin: get('cin'),
+    regime: get('regime'),
     contacts: {
       email: get('contactEmail'),
       phone: get('contactPhone'),
@@ -186,6 +187,8 @@ export async function createPersonAction(
   const contractEndDate = isEmployee ? (parsed.data.contractEndDate ?? null) : null;
   const contractType = isEmployee ? (parsed.data.contractType ?? null) : null;
   const contractualHoursPerWeek = isTeacher ? (parsed.data.contractualHoursPerWeek ?? null) : null;
+  // Régime : pertinent uniquement pour un élève.
+  const regime = parsed.data.type === 'STUDENT' ? (parsed.data.regime ?? null) : null;
   const homeRoomRaw = formData.get('homeRoomId');
   const homeRoomId =
     isTeacher && typeof homeRoomRaw === 'string' && homeRoomRaw ? homeRoomRaw : null;
@@ -206,6 +209,7 @@ export async function createPersonAction(
         gender: parsed.data.gender,
         nationality: parsed.data.nationality,
         cin: parsed.data.cin,
+        regime,
         contacts: parsed.data.contacts ?? {},
         address: parsed.data.address ?? {},
         hireDate,
@@ -325,6 +329,7 @@ export async function updatePersonAction(id: string, formData: FormData): Promis
     const contractualHoursPerWeek = isTeacher
       ? (parsed.data.contractualHoursPerWeek ?? null)
       : null;
+    const regime = before.type === 'STUDENT' ? (parsed.data.regime ?? null) : null;
     const serviceId = await deriveServiceId(tx, tenantId, before.type, roleId);
 
     const homeRoomRaw = formData.get('homeRoomId');
@@ -345,6 +350,7 @@ export async function updatePersonAction(id: string, formData: FormData): Promis
         gender: parsed.data.gender,
         nationality: parsed.data.nationality,
         cin: parsed.data.cin,
+        regime,
         contacts: parsed.data.contacts ?? before.contacts ?? undefined,
         address: parsed.data.address ?? before.address ?? undefined,
         hireDate,

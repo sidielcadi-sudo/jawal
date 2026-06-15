@@ -9,6 +9,10 @@ export type RelationTypeValue = z.infer<typeof relationTypeSchema>;
 export const contractTypeSchema = z.enum(['CDI', 'CDD', 'VACATAIRE', 'STAGIAIRE', 'AUTRE']);
 export type ContractTypeValue = z.infer<typeof contractTypeSchema>;
 
+/** Régime de l'élève (restauration / hébergement). */
+export const regimeSchema = z.enum(['EXTERNE', 'DEMI_PENSIONNAIRE', 'INTERNE']);
+export type RegimeValue = z.infer<typeof regimeSchema>;
+
 export const payrollMethodSchema = z.enum(['BANK_TRANSFER', 'CHECK', 'CASH', 'OTHER']);
 export type PayrollMethodValue = z.infer<typeof payrollMethodSchema>;
 
@@ -107,6 +111,8 @@ export const personCreateSchema = z.object({
   gender: genderSchema.optional(),
   nationality: z.string().max(60).optional(),
   cin: z.string().max(40).optional(),
+  /// Régime de l'élève (STUDENT uniquement) : externe / demi-pensionnaire / interne.
+  regime: regimeSchema.optional(),
   contacts: z
     .object({
       email: z.string().email().optional(),

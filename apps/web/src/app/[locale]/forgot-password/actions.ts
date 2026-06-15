@@ -14,10 +14,11 @@ const schema = z.object({
 });
 
 /**
- * Demande de réinitialisation (flux « mot de passe oublié » parent).
+ * Demande de réinitialisation (flux « mot de passe oublié »).
  *
  * Pré-authentification : on traverse les tenants via `prismaAdmin` (comme le
- * provider de login). Réservé aux comptes portant le rôle `parent`.
+ * provider de login). Ouvert à **tous les comptes** du tenant (admin, personnel,
+ * enseignant, parent, élève…) — plus de restriction au rôle parent.
  *
  * Anti-énumération : on renvoie toujours `{ ok: true }`, que l'adresse existe
  * ou non. Aucun signal ne permet de distinguer un email connu d'un inconnu.
@@ -42,16 +43,10 @@ export async function requestParentPasswordResetAction(formData: FormData): Prom
   if (tenant && tenant.status === 'ACTIVE') {
     const user = await prismaAdmin.user.findFirst({
       where: { email, tenantId: tenant.id, disabledAt: null },
-      select: {
-        id: true,
-        email: true,
-        userRoles: { select: { role: { select: { code: true } } } },
-      },
+      select: { id: true, email: true },
     });
 
-    const isParent = user?.userRoles.some((r) => r.role.code === 'parent') ?? false;
-
-    if (user && isParent) {
+    if (user) {
       const rawToken = generateResetToken();
       const tokenHash = hashResetToken(rawToken);
       const expiresAt = new Date(Date.now() + RESET_TOKEN_TTL_MS);
@@ -74,7 +69,7 @@ export async function requestParentPasswordResetAction(formData: FormData): Prom
         subject: `Réinitialisation de votre mot de passe — ${tenantName}`,
         html:
           `<p>Bonjour,</p>` +
-          `<p>Vous avez demandé à réinitialiser le mot de passe de votre espace parent ` +
+          `<p>Vous avez demandé à réinitialiser le mot de passe de votre compte ` +
           `<strong>${tenantName}</strong>.</p>` +
           `<p><a href="${link}">Cliquez ici pour choisir un nouveau mot de passe</a>. ` +
           `Ce lien est valable 1 heure et ne peut servir qu'une fois.</p>` +

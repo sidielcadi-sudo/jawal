@@ -146,13 +146,17 @@ export default async function JustificationsQueuePage({
                   <JustificationStatusBadge status={j.status} t={t} />
                 </div>
 
-                <div className="mt-3 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+                <div className="mt-3 whitespace-pre-wrap rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-sm text-slate-700">
                   {j.reason}
                 </div>
 
                 {j.attachmentUrl && (
                   <a
-                    href={j.attachmentUrl}
+                    href={
+                      /^https?:\/\//.test(j.attachmentUrl)
+                        ? j.attachmentUrl
+                        : `/api/justifications/${j.id}/attachment`
+                    }
                     target="_blank"
                     rel="noopener"
                     className="mt-2 inline-block text-xs text-brand-700 hover:underline"

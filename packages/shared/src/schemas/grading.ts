@@ -47,7 +47,7 @@ export const gradeRowSchema = z.object({
     .nullable(),
   comment: z
     .preprocess(
-      (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+      (v) => (typeof v === 'string' && v.trim() === '' ? undefined : (v ?? undefined)),
       z.string().max(500).optional(),
     )
     .optional(),

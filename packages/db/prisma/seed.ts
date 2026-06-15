@@ -7,12 +7,25 @@ import {
   PeriodKind,
   RelationType,
   ContractType,
-  PayrollPaymentMethod,
 } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+// ─── RNG déterministe (reproductible) ──────────────────────────
+function mulberry32(seed: number) {
+  return function () {
+    seed |= 0;
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const rand = mulberry32(20260610);
+const pick = <T>(arr: readonly T[]): T => arr[Math.floor(rand() * arr.length)]!;
+
+// ─── Nomenclatures ─────────────────────────────────────────────
 const SYSTEM_ROLES = [
   { code: 'tenant_admin', label: 'Administrateur établissement', permissions: ['*'] },
   { code: 'direction', label: 'Direction', permissions: ['*.read', 'reports.*'] },
@@ -25,31 +38,30 @@ const SYSTEM_ROLES = [
 ] as const;
 
 const TEACHER_ROLES = [
-  { code: 'TEACHER',             labelFr: 'Professeur',                labelAr: 'أستاذ',           order: 10 },
-  { code: 'MAIN_TEACHER',        labelFr: 'Professeur principal',      labelAr: 'أستاذ رئيسي',     order: 20 },
-  { code: 'SUBJECT_COORDINATOR', labelFr: 'Coordinateur de matière',   labelAr: 'منسق المادة',    order: 30 },
-  { code: 'LEVEL_COORDINATOR',   labelFr: 'Coordinateur de niveau',    labelAr: 'منسق المستوى',   order: 40 },
-  { code: 'LIBRARIAN_TEACHER',   labelFr: 'Documentaliste pédagogique', labelAr: 'موثق تربوي',    order: 50 },
+  { code: 'TEACHER', labelFr: 'Professeur', labelAr: 'أستاذ', order: 10 },
+  { code: 'MAIN_TEACHER', labelFr: 'Professeur principal', labelAr: 'أستاذ رئيسي', order: 20 },
+  { code: 'SUBJECT_COORDINATOR', labelFr: 'Coordinateur de matière', labelAr: 'منسق المادة', order: 30 },
+  { code: 'LEVEL_COORDINATOR', labelFr: 'Coordinateur de niveau', labelAr: 'منسق المستوى', order: 40 },
+  { code: 'LIBRARIAN_TEACHER', labelFr: 'Documentaliste pédagogique', labelAr: 'موثق تربوي', order: 50 },
 ] as const;
 
 const STAFF_ROLES = [
-  { code: 'DIRECTOR',          labelFr: 'Directeur',                       labelAr: 'المدير',                 order: 10 },
-  { code: 'DEPUTY_DIRECTOR',   labelFr: 'Directeur adjoint',               labelAr: 'نائب المدير',            order: 20 },
+  { code: 'DIRECTOR', labelFr: 'Directeur', labelAr: 'المدير', order: 10 },
+  { code: 'DEPUTY_DIRECTOR', labelFr: 'Directeur adjoint', labelAr: 'نائب المدير', order: 20 },
   { code: 'EDUCATION_ADVISOR', labelFr: "Conseiller principal d'éducation", labelAr: 'مستشار التربية الرئيسي', order: 30 },
-  { code: 'BURSAR',            labelFr: 'Gestionnaire',                    labelAr: 'المسير المالي',          order: 40 },
-  { code: 'SUPERVISOR',        labelFr: 'Surveillant général',             labelAr: 'الحارس العام',           order: 50 },
-  { code: 'MONITOR',           labelFr: 'Surveillant',                     labelAr: 'المراقب',                order: 60 },
-  { code: 'SECRETARY',         labelFr: 'Secrétaire',                      labelAr: 'كاتب الإدارة',           order: 70 },
-  { code: 'ACCOUNTANT',        labelFr: 'Comptable',                       labelAr: 'المحاسب',                order: 80 },
-  { code: 'LIBRARIAN',         labelFr: 'Bibliothécaire',                  labelAr: 'أمين المكتبة',           order: 90 },
-  { code: 'NURSE',             labelFr: 'Infirmier(ère)',                  labelAr: 'الممرض(ة)',              order: 100 },
-  { code: 'IT_OFFICER',        labelFr: 'Responsable informatique',        labelAr: 'مسؤول المعلوميات',       order: 110 },
-  { code: 'MAINTENANCE',       labelFr: "Agent d'entretien",               labelAr: 'عامل النظافة',           order: 120 },
-  { code: 'SECURITY',          labelFr: 'Agent de sécurité',               labelAr: 'عون الأمن',              order: 130 },
-  { code: 'DRIVER',            labelFr: 'Chauffeur',                       labelAr: 'السائق',                 order: 140 },
+  { code: 'BURSAR', labelFr: 'Gestionnaire', labelAr: 'المسير المالي', order: 40 },
+  { code: 'SUPERVISOR', labelFr: 'Surveillant général', labelAr: 'الحارس العام', order: 50 },
+  { code: 'MONITOR', labelFr: 'Surveillant', labelAr: 'المراقب', order: 60 },
+  { code: 'SECRETARY', labelFr: 'Secrétaire', labelAr: 'كاتب الإدارة', order: 70 },
+  { code: 'ACCOUNTANT', labelFr: 'Comptable', labelAr: 'المحاسب', order: 80 },
+  { code: 'LIBRARIAN', labelFr: 'Bibliothécaire', labelAr: 'أمين المكتبة', order: 90 },
+  { code: 'NURSE', labelFr: 'Infirmier(ère)', labelAr: 'الممرض(ة)', order: 100 },
+  { code: 'IT_OFFICER', labelFr: 'Responsable informatique', labelAr: 'مسؤول المعلوميات', order: 110 },
+  { code: 'MAINTENANCE', labelFr: "Agent d'entretien", labelAr: 'عامل النظافة', order: 120 },
+  { code: 'SECURITY', labelFr: 'Agent de sécurité', labelAr: 'عون الأمن', order: 130 },
+  { code: 'DRIVER', labelFr: 'Chauffeur', labelAr: 'السائق', order: 140 },
 ] as const;
 
-// Services / départements paramétrables (modèle Service). Remplace l'enum figé.
 const SERVICES = [
   { code: 'DIRECTION', labelFr: 'Direction', labelAr: 'المديرية', order: 10 },
   { code: 'VIE_SCOLAIRE', labelFr: 'Vie scolaire', labelAr: 'الحياة المدرسية', order: 20 },
@@ -62,10 +74,7 @@ const SERVICES = [
   { code: 'CDI', labelFr: 'CDI', labelAr: 'مركز التوثيق والإعلام', order: 90 },
   { code: 'SOCIAL', labelFr: 'Social', labelAr: 'الشؤون الاجتماعية', order: 100 },
 ] as const;
-
 const TEACHER_SERVICE_CODE = 'ENSEIGNANTS';
-
-// Service par défaut de chaque type de personnel STAFF (sinon Administration).
 const STAFF_ROLE_SERVICE: Record<string, string> = {
   DIRECTOR: 'DIRECTION',
   DEPUTY_DIRECTOR: 'DIRECTION',
@@ -83,990 +92,588 @@ const STAFF_ROLE_SERVICE: Record<string, string> = {
   DRIVER: 'TECHNIQUES',
 };
 
-const CORE_MODULES = [
-  'core',
-  'admissions',
-  'scolarite',
-  'edt',
-  'presences',
-  'notes',
-  'examens',
-  'lms',
-  'communication',
-  'finance',
+const CORE_MODULES = ['core', 'admissions', 'scolarite', 'edt', 'presences', 'notes', 'examens', 'lms', 'communication', 'finance'];
+
+// Motifs d'absence / appel (paramétrage > Motifs). Liste complète.
+const ATTENDANCE_REASONS = [
+  { label: 'CONVOCATION ADMINISTRATIVE', color: 'cyan', order: 1 },
+  { label: 'DIVERS', color: 'slate', order: 2 },
+  { label: 'EXCLUSION TEMPORAIRE', color: 'red', order: 3 },
+  { label: 'INFIRMERIE', color: 'cyan', order: 4 },
+  { label: 'MALADIE AVEC CERTIFICAT', color: 'green', order: 5 },
+  { label: 'MALADIE SANS CERTIFICAT', color: 'blue', order: 6 },
+  { label: 'PROBLEME DE REVEIL', color: 'blue', order: 7 },
+  { label: 'PROBLEME DE TRANSPORT', color: 'amber', order: 8 },
+  { label: 'RAISON FAMILIALE', color: 'green', order: 9 },
+  { label: 'RDV ASSISTANTE SOCIALE', color: 'purple', order: 10 },
+  { label: 'RDV MEDICAL EXTERIEUR', color: 'rose', order: 11 },
+  { label: 'RDV PSYCHOLOGUE', color: 'purple', order: 12 },
+  { label: 'REUNION DELEGUES', color: 'blue', order: 13 },
+  { label: 'SANS EXCUSES', color: 'red', order: 14 },
+  { label: 'SORTIE SCOLAIRE OU PEDAGOGIQUE', color: 'green', order: 15 },
+  { label: 'STAGE EN ENTREPRISE', color: 'amber', order: 16 },
+  { label: 'VISITE MEDICALE', color: 'cyan', order: 17 },
 ];
 
-const DEMO_ADMIN_EMAIL = 'admin@demo.jawal.ma';
-const DEMO_ADMIN_PASSWORD = 'demo1234';
-const SUPER_ADMIN_EMAIL = 'super@jawal.ma';
-const SUPER_ADMIN_PASSWORD = 'super1234';
-const DEMO_PARENT_EMAIL = 'hassan.benani@demo.jawal.ma';
-const DEMO_PARENT_PASSWORD = 'parent1234';
-const DEMO_TEACHER_EMAIL = 'amina.prof@demo.jawal.ma';
-const DEMO_TEACHER_PASSWORD = 'prof1234';
-const DEMO_DIRECTION_EMAIL = 'directeur@demo.jawal.ma';
-const DEMO_DIRECTION_PASSWORD = 'direction1234';
-const DEMO_VIESCO_EMAIL = 'vie.scolaire@demo.jawal.ma';
-const DEMO_VIESCO_PASSWORD = 'cpe1234';
+// Matières du collège (code, label, coef, heures/sem) + le prof affecté.
+const SUBJECTS = [
+  { code: 'math', label: 'Mathématiques', coef: 4, hours: 5, teacher: { firstName: 'Amina', lastName: 'El Idrissi', gender: Gender.F } },
+  { code: 'fr', label: 'Français', coef: 3, hours: 4, teacher: { firstName: 'Sophie', lastName: 'Bennani', gender: Gender.F } },
+  { code: 'ar', label: 'Arabe', coef: 3, hours: 4, teacher: { firstName: 'Khalid', lastName: 'Fassi', gender: Gender.M } },
+  { code: 'pc', label: 'Physique-Chimie', coef: 2, hours: 3, teacher: { firstName: 'Rachid', lastName: 'Berrada', gender: Gender.M } },
+  { code: 'svt', label: 'SVT', coef: 2, hours: 2, teacher: { firstName: 'Nadia', lastName: 'Sebti', gender: Gender.F } },
+  { code: 'hg', label: 'Histoire-Géographie', coef: 2, hours: 3, teacher: { firstName: 'Younes', lastName: 'El Amrani', gender: Gender.M } },
+  { code: 'angl', label: 'Anglais', coef: 2, hours: 2, teacher: { firstName: 'Laila', lastName: 'Naciri', gender: Gender.F } },
+  { code: 'islam', label: 'Éducation islamique', coef: 2, hours: 2, teacher: { firstName: 'Hicham', lastName: 'Lahlou', gender: Gender.M } },
+  { code: 'eps', label: 'EPS', coef: 1, hours: 2, teacher: { firstName: 'Karim', lastName: 'Kettani', gender: Gender.M } },
+  { code: 'info', label: 'Informatique', coef: 1, hours: 1, teacher: { firstName: 'Salma', lastName: 'Sqalli', gender: Gender.F } },
+] as const;
+
+const ROOMS = [
+  { code: 'S01', label: 'Salle 01' },
+  { code: 'S02', label: 'Salle 02' },
+  { code: 'S03', label: 'Salle 03' },
+  { code: 'S04', label: 'Salle 04' },
+  { code: 'S05', label: 'Salle 05' },
+  { code: 'S06', label: 'Salle 06' },
+  { code: 'S07', label: 'Salle 07' },
+  { code: 'S08', label: 'Salle 08' },
+  { code: 'S09', label: 'Salle 09' },
+  { code: 'S10', label: 'Salle 10' },
+  { code: 'S11', label: 'Salle 11' },
+  { code: 'S12', label: 'Salle 12' },
+  { code: 'S13', label: 'Salle 13' },
+  { code: 'S14', label: 'Salle 14' },
+  { code: 'LABO-PC', label: 'Laboratoire Physique-Chimie' },
+  { code: 'LABO-SVT', label: 'Laboratoire SVT' },
+  { code: 'INFO', label: 'Salle informatique' },
+  { code: 'GYM', label: 'Gymnase' },
+];
+
+const SLOTS = [
+  { start: '08:00', end: '09:00', label: null, isBreak: false, order: 1 },
+  { start: '09:00', end: '10:00', label: null, isBreak: false, order: 2 },
+  { start: '10:00', end: '10:15', label: 'Récréation', isBreak: true, order: 3 },
+  { start: '10:15', end: '11:15', label: null, isBreak: false, order: 4 },
+  { start: '11:15', end: '12:15', label: null, isBreak: false, order: 5 },
+  { start: '12:15', end: '14:00', label: 'Pause déjeuner', isBreak: true, order: 6 },
+  { start: '14:00', end: '15:00', label: null, isBreak: false, order: 7 },
+  { start: '15:00', end: '16:00', label: null, isBreak: false, order: 8 },
+];
+
+const LEVELS = [
+  { code: '1ac', label: '1ère année collège', order: 1 },
+  { code: '2ac', label: '2ème année collège', order: 2 },
+  { code: '3ac', label: '3ème année collège', order: 3 },
+];
+const CLASS_LETTERS = ['A', 'B', 'C', 'D', 'E'];
+
+const FIRST_M = ['Adam', 'Omar', 'Mehdi', 'Anas', 'Bilal', 'Ayoub', 'Hamza', 'Youssef', 'Zakaria', 'Ilyas', 'Rayan', 'Amine', 'Soufiane', 'Nabil', 'Walid'];
+const FIRST_F = ['Lina', 'Nour', 'Hiba', 'Imane', 'Sara', 'Aya', 'Maryam', 'Ghita', 'Rim', 'Doha', 'Hind', 'Kenza', 'Asma', 'Salma', 'Wiam'];
+const LASTS = ['Cherkaoui', 'Tazi', 'Alaoui', 'Fassi', 'Berrada', 'El Amrani', 'Naciri', 'Bouzoubaa', 'Lahlou', 'Kettani', 'El Khattabi', 'Sqalli', 'Bennis', 'Chraibi', 'Hassani', 'Ouazzani', 'Mansouri', 'Idrissi', 'Bennani', 'Saidi'];
+
+const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
+const WEEKDAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI'] as const;
+
+// Comptes de démo
+const DEMO = {
+  admin: { email: 'admin@demo.jawal.ma', password: 'demo1234' },
+  super: { email: 'super@jawal.ma', password: 'super1234' },
+  parent: { email: 'hassan.benani@demo.jawal.ma', password: 'parent1234' },
+  teacher: { email: 'amina.prof@demo.jawal.ma', password: 'prof1234' },
+  student: { email: 'yassine.benani@demo.jawal.ma', password: 'eleve1234' },
+  direction: { email: 'directeur@demo.jawal.ma', password: 'direction1234' },
+  viesco: { email: 'vie.scolaire@demo.jawal.ma', password: 'cpe1234' },
+  comptable: { email: 'comptable@demo.jawal.ma', password: 'finance1234' },
+};
+
+const periodLabelOf = (s: string, e: string) => `${s}-${e}`;
 
 async function main() {
-  console.log('🌱 Seed Jawal…');
+  console.log('🌱 Seed Jawal — base propre (collège)…');
 
-  // 1. Tenant de démo
-  const tenant = await prisma.tenant.upsert({
-    where: { slug: 'demo' },
-    update: {},
-    create: {
+  // 0. VIDER LA BASE (cascade depuis Tenant)
+  await prisma.tenant.deleteMany({});
+  console.log('  🧹 Base vidée.');
+
+  // 1. Tenant
+  const tenant = await prisma.tenant.create({
+    data: {
       slug: 'demo',
-      name: 'Établissement de démonstration',
+      name: 'Collège Al Massira',
       profile: TenantProfile.K12,
       status: TenantStatus.ACTIVE,
       localeDefault: 'fr',
       currency: 'MAD',
       timezone: 'Africa/Casablanca',
+      settings: {
+        siblingDiscountPct: 10,
+        // Réglages EDT : mercredi & samedi après-midi non travaillés (norme MA).
+        days: {
+          MON: 'FULL',
+          TUE: 'FULL',
+          WED: 'MORNING_ONLY',
+          THU: 'FULL',
+          FRI: 'FULL',
+          SAT: 'MORNING_ONLY',
+          SUN: 'OFF',
+        },
+        morningEndsAt: '13:00',
+      },
     },
   });
-  console.log(`  ✓ Tenant: ${tenant.name} (${tenant.id})`);
+  console.log(`  ✓ Tenant : ${tenant.name}`);
 
-  // 2. Modules activés
-  for (const code of CORE_MODULES) {
-    await prisma.tenantModule.upsert({
-      where: { tenantId_code: { tenantId: tenant.id, code } },
-      update: { enabled: true },
-      create: { tenantId: tenant.id, code, enabled: true },
-    });
-  }
-  console.log(`  ✓ ${CORE_MODULES.length} modules activés`);
+  // 2. Modules
+  await prisma.tenantModule.createMany({
+    data: CORE_MODULES.map((code) => ({ tenantId: tenant.id, code, enabled: true })),
+  });
 
-  // 3. Rôles système
+  // 3. Motifs d'absence
+  await prisma.attendanceReason.createMany({
+    data: ATTENDANCE_REASONS.map((r) => ({ tenantId: tenant.id, ...r })),
+  });
+  const reasons = await prisma.attendanceReason.findMany({ where: { tenantId: tenant.id } });
+  const reasonByLabel = new Map(reasons.map((r) => [r.label, r.id]));
+  console.log(`  ✓ ${ATTENDANCE_REASONS.length} motifs d'absence`);
+
+  // 4. Rôles système
   const rolesByCode = new Map<string, string>();
   for (const r of SYSTEM_ROLES) {
-    const role = await prisma.role.upsert({
-      where: { tenantId_code: { tenantId: tenant.id, code: r.code } },
-      update: {},
-      create: {
-        tenantId: tenant.id,
-        code: r.code,
-        label: r.label,
-        permissions: [...r.permissions],
-        isSystem: true,
-      },
+    const role = await prisma.role.create({
+      data: { tenantId: tenant.id, code: r.code, label: r.label, permissions: [...r.permissions], isSystem: true },
     });
     rolesByCode.set(r.code, role.id);
   }
-  console.log(`  ✓ ${SYSTEM_ROLES.length} rôles système`);
 
-  // 4. Utilisateur admin de démo (tenant_admin)
-  const adminPasswordHash = await bcrypt.hash(DEMO_ADMIN_PASSWORD, 10);
-  const adminUser = await prisma.user.upsert({
-    where: { tenantId_email: { tenantId: tenant.id, email: DEMO_ADMIN_EMAIL } },
-    update: { passwordHash: adminPasswordHash },
-    create: {
-      tenantId: tenant.id,
-      email: DEMO_ADMIN_EMAIL,
-      passwordHash: adminPasswordHash,
-      emailVerified: new Date(),
-      locale: 'fr',
-    },
-  });
-  await prisma.userRole.upsert({
-    where: { userId_roleId: { userId: adminUser.id, roleId: rolesByCode.get('tenant_admin')! } },
-    update: {},
-    create: {
-      tenantId: tenant.id,
-      userId: adminUser.id,
-      roleId: rolesByCode.get('tenant_admin')!,
-    },
-  });
-  console.log(`  ✓ Admin tenant: ${DEMO_ADMIN_EMAIL} / ${DEMO_ADMIN_PASSWORD}`);
-
-  // 4.bis Accès de démo par rôle (point 3) : direction + vie scolaire (CPE).
-  // Comptes admin (sans Person rattachée) : connexion à /admin avec une
-  // navigation et un tableau de bord adaptés à leur rôle.
-  for (const acc of [
-    { email: DEMO_DIRECTION_EMAIL, password: DEMO_DIRECTION_PASSWORD, role: 'direction' },
-    { email: DEMO_VIESCO_EMAIL, password: DEMO_VIESCO_PASSWORD, role: 'cpe' },
-  ] as const) {
-    const roleId = rolesByCode.get(acc.role);
-    if (!roleId) continue;
-    const passwordHash = await bcrypt.hash(acc.password, 10);
-    const u = await prisma.user.upsert({
-      where: { tenantId_email: { tenantId: tenant.id, email: acc.email } },
-      update: { passwordHash },
-      create: {
-        tenantId: tenant.id,
-        email: acc.email,
-        passwordHash,
-        emailVerified: new Date(),
-        locale: 'fr',
-      },
-    });
-    await prisma.userRole.upsert({
-      where: { userId_roleId: { userId: u.id, roleId } },
-      update: {},
-      create: { tenantId: tenant.id, userId: u.id, roleId },
-    });
-    console.log(`  ✓ Accès ${acc.role}: ${acc.email} / ${acc.password}`);
+  // 5. Services + rôles personnels
+  const servicesByCode = new Map<string, string>();
+  for (const s of SERVICES) {
+    const svc = await prisma.service.create({ data: { tenantId: tenant.id, code: s.code, labelFr: s.labelFr, labelAr: s.labelAr, order: s.order } });
+    servicesByCode.set(s.code, svc.id);
   }
+  const teacherServiceId = servicesByCode.get(TEACHER_SERVICE_CODE)!;
+  const personRoleByCode = new Map<string, string>();
+  for (const r of TEACHER_ROLES) {
+    const pr = await prisma.personRole.create({
+      data: { tenantId: tenant.id, appliesTo: PersonType.TEACHER, code: r.code, labelFr: r.labelFr, labelAr: r.labelAr, order: r.order, serviceId: teacherServiceId },
+    });
+    personRoleByCode.set(r.code, pr.id);
+  }
+  for (const r of STAFF_ROLES) {
+    const pr = await prisma.personRole.create({
+      data: { tenantId: tenant.id, appliesTo: PersonType.STAFF, code: r.code, labelFr: r.labelFr, labelAr: r.labelAr, order: r.order, serviceId: servicesByCode.get(STAFF_ROLE_SERVICE[r.code] ?? 'ADMINISTRATION') ?? null },
+    });
+    personRoleByCode.set(r.code, pr.id);
+  }
+  console.log(`  ✓ ${SERVICES.length} services, ${SYSTEM_ROLES.length} rôles, ${TEACHER_ROLES.length + STAFF_ROLES.length} rôles personnels`);
 
-  // 5. Super-admin SaaS (rattaché au tenant demo mais isSuperAdmin=true)
-  const superPasswordHash = await bcrypt.hash(SUPER_ADMIN_PASSWORD, 10);
-  await prisma.user.upsert({
-    where: { tenantId_email: { tenantId: tenant.id, email: SUPER_ADMIN_EMAIL } },
-    update: { passwordHash: superPasswordHash, isSuperAdmin: true },
-    create: {
-      tenantId: tenant.id,
-      email: SUPER_ADMIN_EMAIL,
-      passwordHash: superPasswordHash,
-      emailVerified: new Date(),
-      isSuperAdmin: true,
-      locale: 'fr',
-    },
+  // 6. Comptes admin / direction / vie scolaire / super-admin
+  const hash = (p: string) => bcrypt.hash(p, 10);
+  const adminUser = await prisma.user.create({
+    data: { tenantId: tenant.id, email: DEMO.admin.email, passwordHash: await hash(DEMO.admin.password), emailVerified: new Date(), locale: 'fr' },
   });
-  console.log(`  ✓ Super-admin SaaS: ${SUPER_ADMIN_EMAIL} / ${SUPER_ADMIN_PASSWORD}`);
-
-  // 6. Année scolaire active
-  const year = await prisma.academicYear.upsert({
-    where: { tenantId_label: { tenantId: tenant.id, label: '2025-2026' } },
-    update: { active: true },
-    create: {
-      tenantId: tenant.id,
-      label: '2025-2026',
-      startDate: new Date('2025-09-01'),
-      endDate: new Date('2026-07-15'),
-      active: true,
-    },
+  await prisma.userRole.create({ data: { tenantId: tenant.id, userId: adminUser.id, roleId: rolesByCode.get('tenant_admin')! } });
+  for (const [role, acc] of [['direction', DEMO.direction], ['cpe', DEMO.viesco], ['comptable', DEMO.comptable]] as const) {
+    const u = await prisma.user.create({ data: { tenantId: tenant.id, email: acc.email, passwordHash: await hash(acc.password), emailVerified: new Date(), locale: 'fr' } });
+    await prisma.userRole.create({ data: { tenantId: tenant.id, userId: u.id, roleId: rolesByCode.get(role)! } });
+  }
+  await prisma.user.create({
+    data: { tenantId: tenant.id, email: DEMO.super.email, passwordHash: await hash(DEMO.super.password), emailVerified: new Date(), isSuperAdmin: true, locale: 'fr' },
   });
 
-  const existingPeriods = await prisma.period.count({
-    where: { tenantId: tenant.id, academicYearId: year.id },
+  // 7. Année + trimestres
+  const year = await prisma.academicYear.create({
+    data: { tenantId: tenant.id, label: '2025-2026', startDate: new Date('2025-09-01'), endDate: new Date('2026-07-15'), active: true },
   });
-  if (existingPeriods === 0) {
-    const trimesters = [
-      { label: 'Trimestre 1', start: '2025-09-01', end: '2025-12-15' },
-      { label: 'Trimestre 2', start: '2026-01-05', end: '2026-03-31' },
-      { label: 'Trimestre 3', start: '2026-04-15', end: '2026-07-10' },
-    ];
-    for (const tri of trimesters) {
-      await prisma.period.create({
-        data: {
-          tenantId: tenant.id,
-          academicYearId: year.id,
-          kind: PeriodKind.TRIMESTER,
-          label: tri.label,
-          startDate: new Date(tri.start),
-          endDate: new Date(tri.end),
-        },
-      });
-    }
+  const trimesters = [
+    { label: 'Trimestre 1', start: '2025-09-01', end: '2025-12-15' },
+    { label: 'Trimestre 2', start: '2026-01-05', end: '2026-03-31' },
+    { label: 'Trimestre 3', start: '2026-04-15', end: '2026-07-10' },
+  ];
+  const periods: { id: string; label: string; start: Date; end: Date }[] = [];
+  for (const tri of trimesters) {
+    const p = await prisma.period.create({
+      data: { tenantId: tenant.id, academicYearId: year.id, kind: PeriodKind.TRIMESTER, label: tri.label, startDate: new Date(tri.start), endDate: new Date(tri.end) },
+    });
+    periods.push({ id: p.id, label: p.label, start: new Date(tri.start), end: new Date(tri.end) });
   }
   console.log(`  ✓ Année ${year.label} + 3 trimestres`);
 
-  // 7. Cycles + niveaux
-  const cyclePrim = await prisma.cycle.upsert({
-    where: { tenantId_code: { tenantId: tenant.id, code: 'primaire' } },
-    update: {},
-    create: { tenantId: tenant.id, code: 'primaire', label: 'Primaire', order: 1 },
-  });
-  const cycleCollege = await prisma.cycle.upsert({
-    where: { tenantId_code: { tenantId: tenant.id, code: 'college' } },
-    update: {},
-    create: { tenantId: tenant.id, code: 'college', label: 'Collège', order: 2 },
-  });
-
-  const levels = [
-    { cycleId: cyclePrim.id, code: '1ap', label: '1ère année primaire', order: 1 },
-    { cycleId: cyclePrim.id, code: '2ap', label: '2ème année primaire', order: 2 },
-    { cycleId: cyclePrim.id, code: '6ap', label: '6ème année primaire', order: 6 },
-    { cycleId: cycleCollege.id, code: '1ac', label: '1ère année collège', order: 1 },
-    { cycleId: cycleCollege.id, code: '3ac', label: '3ème année collège', order: 3 },
-  ];
-  for (const l of levels) {
-    await prisma.level.upsert({
-      where: { tenantId_code: { tenantId: tenant.id, code: l.code } },
-      update: {},
-      create: { tenantId: tenant.id, ...l },
-    });
-  }
-  console.log(`  ✓ 2 cycles + ${levels.length} niveaux`);
-
-  // 7.bis.0 Services / départements paramétrables (idempotent)
-  const servicesByCode = new Map<string, string>(); // code → id
-  for (const s of SERVICES) {
-    const svc = await prisma.service.upsert({
-      where: { tenantId_code: { tenantId: tenant.id, code: s.code } },
-      update: { labelFr: s.labelFr, labelAr: s.labelAr, order: s.order },
-      create: {
-        tenantId: tenant.id,
-        code: s.code,
-        labelFr: s.labelFr,
-        labelAr: s.labelAr,
-        order: s.order,
-      },
-    });
-    servicesByCode.set(s.code, svc.id);
-  }
-  const teacherServiceId = servicesByCode.get(TEACHER_SERVICE_CODE) ?? null;
-  console.log(`  ✓ ${SERVICES.length} services paramétrables (FR/AR)`);
-
-  // 7.bis Rôles paramétrables (enseignants + personnel) — bilingues FR/AR
-  // Chaque type est rattaché à un service (TEACHER → Enseignants).
-  for (const r of TEACHER_ROLES) {
-    await prisma.personRole.upsert({
-      where: { tenantId_code: { tenantId: tenant.id, code: r.code } },
-      update: { labelFr: r.labelFr, labelAr: r.labelAr, order: r.order, serviceId: teacherServiceId },
-      create: {
-        tenantId: tenant.id,
-        appliesTo: PersonType.TEACHER,
-        code: r.code,
-        labelFr: r.labelFr,
-        labelAr: r.labelAr,
-        order: r.order,
-        serviceId: teacherServiceId,
-      },
-    });
-  }
-  for (const r of STAFF_ROLES) {
-    const svcId = servicesByCode.get(STAFF_ROLE_SERVICE[r.code] ?? 'ADMINISTRATION') ?? null;
-    await prisma.personRole.upsert({
-      where: { tenantId_code: { tenantId: tenant.id, code: r.code } },
-      update: { labelFr: r.labelFr, labelAr: r.labelAr, order: r.order, serviceId: svcId },
-      create: {
-        tenantId: tenant.id,
-        appliesTo: PersonType.STAFF,
-        code: r.code,
-        labelFr: r.labelFr,
-        labelAr: r.labelAr,
-        order: r.order,
-        serviceId: svcId,
-      },
-    });
-  }
-  console.log(`  ✓ ${TEACHER_ROLES.length + STAFF_ROLES.length} rôles paramétrables (FR/AR)`);
-
-  // 7.bis.1 Déduit le service de chaque personne : TEACHER → Enseignants,
-  // STAFF → service de son type (PersonRole.serviceId).
-  if (teacherServiceId) {
-    await prisma.person.updateMany({
-      where: { tenantId: tenant.id, type: PersonType.TEACHER },
-      data: { serviceId: teacherServiceId },
-    });
-  }
-  const staffRoles = await prisma.personRole.findMany({
-    where: { tenantId: tenant.id, appliesTo: PersonType.STAFF, serviceId: { not: null } },
-    select: { id: true, serviceId: true },
-  });
-  for (const role of staffRoles) {
-    await prisma.person.updateMany({
-      where: { tenantId: tenant.id, type: PersonType.STAFF, roleId: role.id },
-      data: { serviceId: role.serviceId },
-    });
+  // 8. Cycle collège + niveaux
+  const cycle = await prisma.cycle.create({ data: { tenantId: tenant.id, code: 'college', label: 'Collège', order: 1 } });
+  const levelByCode = new Map<string, string>();
+  for (const l of LEVELS) {
+    const lvl = await prisma.level.create({ data: { tenantId: tenant.id, cycleId: cycle.id, code: l.code, label: l.label, order: l.order } });
+    levelByCode.set(l.code, lvl.id);
   }
 
-  // 7.ter Attribuer le rôle MAIN_TEACHER à l'enseignant Amina existant (rétro-compat)
-  const mainTeacherRoleUpgrade = await prisma.personRole.findUnique({
-    where: { tenantId_code: { tenantId: tenant.id, code: 'MAIN_TEACHER' } },
-  });
-  if (mainTeacherRoleUpgrade) {
-    await prisma.person.updateMany({
-      where: { tenantId: tenant.id, type: PersonType.TEACHER, roleId: null },
-      data: { roleId: mainTeacherRoleUpgrade.id },
-    });
+  // 9. Matières + programme par niveau
+  const subjectByCode = new Map<string, string>();
+  for (const s of SUBJECTS) {
+    const subj = await prisma.subject.create({ data: { tenantId: tenant.id, code: s.code, label: s.label, coefficient: s.coef, order: SUBJECTS.indexOf(s) * 10 } });
+    subjectByCode.set(s.code, subj.id);
   }
-
-  // 7.quaterMatières standard + programme par niveau (idempotent)
-  const STD_SUBJECTS = [
-    { code: 'math', label: 'Mathématiques', coefficient: 4, order: 10 },
-    { code: 'fr', label: 'Français', coefficient: 3, order: 20 },
-    { code: 'ar', label: 'Arabe', coefficient: 3, order: 30 },
-    { code: 'phys', label: 'Sciences physiques', coefficient: 2, order: 40 },
-    { code: 'svt', label: 'SVT', coefficient: 2, order: 50 },
-  ] as const;
-  for (const s of STD_SUBJECTS) {
-    // Évite les conflits si l'utilisateur a renommé code ou label : on skip
-    // toute matière qui existe déjà par l'un des deux champs uniques.
-    const existing = await prisma.subject.findFirst({
-      where: {
-        tenantId: tenant.id,
-        OR: [{ code: s.code }, { label: s.label }],
-      },
-    });
-    if (existing) continue;
-    await prisma.subject.create({ data: { tenantId: tenant.id, ...s } });
-  }
-  // Programme par niveau (1AC = collège 1ère année — coef/heures alignés sur Maroc K-12)
-  const level1ac = await prisma.level.findUnique({
-    where: { tenantId_code: { tenantId: tenant.id, code: '1ac' } },
-  });
-  if (level1ac) {
-    const PROGRAMME_1AC = [
-      { code: 'math', label: 'Mathématiques',      weeklyHours: 5, coefficient: 4 },
-      { code: 'fr',   label: 'Français',           weeklyHours: 4, coefficient: 3 },
-      { code: 'ar',   label: 'Arabe',              weeklyHours: 5, coefficient: 3 },
-      { code: 'phys', label: 'Sciences physiques', weeklyHours: 3, coefficient: 2 },
-      { code: 'svt',  label: 'SVT',                weeklyHours: 2, coefficient: 2 },
-    ];
-    for (const [order, p] of PROGRAMME_1AC.entries()) {
-      const subj = await prisma.subject.findFirst({
-        where: {
-          tenantId: tenant.id,
-          OR: [{ code: p.code }, { label: p.label }],
-        },
-      });
-      if (!subj) continue;
-      await prisma.curriculumSubject.upsert({
-        where: { levelId_subjectId: { levelId: level1ac.id, subjectId: subj.id } },
-        update: { weeklyHours: p.weeklyHours, coefficient: p.coefficient, order },
-        create: {
-          tenantId: tenant.id,
-          levelId: level1ac.id,
-          subjectId: subj.id,
-          weeklyHours: p.weeklyHours,
-          coefficient: p.coefficient,
-          order,
-        },
+  for (const lvlId of levelByCode.values()) {
+    for (const [i, s] of SUBJECTS.entries()) {
+      await prisma.curriculumSubject.create({
+        data: { tenantId: tenant.id, levelId: lvlId, subjectId: subjectByCode.get(s.code)!, weeklyHours: s.hours, coefficient: s.coef, order: i },
       });
     }
-    console.log(`  ✓ Programme 1AC : ${PROGRAMME_1AC.length} matières (total ${PROGRAMME_1AC.reduce((s, p) => s + p.weeklyHours, 0)}h/sem)`);
   }
+  console.log(`  ✓ Cycle Collège, ${LEVELS.length} niveaux, ${SUBJECTS.length} matières + programme`);
 
-  // 7.quater Contrat démo + matière + affectation pour Amina
-  const aminaUpd = await prisma.person.findFirst({
-    where: { tenantId: tenant.id, type: PersonType.TEACHER, firstName: 'Amina' },
+  // 10. Salles
+  await prisma.room.createMany({ data: ROOMS.map((r) => ({ tenantId: tenant.id, code: r.code, label: r.label, capacity: 30 })) });
+  const rooms = await prisma.room.findMany({ where: { tenantId: tenant.id } });
+
+  // 11. Créneaux horaires
+  await prisma.timetableSlot.createMany({
+    data: SLOTS.map((s) => ({ tenantId: tenant.id, startTime: s.start, endTime: s.end, label: s.label, isBreak: s.isBreak, order: s.order })),
   });
-  if (aminaUpd) {
-    // Donne à Amina un CDI + date d'entrée si pas déjà fait.
-    if (!aminaUpd.hireDate) {
-      await prisma.person.update({
-        where: { id: aminaUpd.id },
+  const slots = await prisma.timetableSlot.findMany({ where: { tenantId: tenant.id }, orderBy: { order: 'asc' } });
+  const courseSlots = slots.filter((s) => !s.isBreak);
+
+  // 12. Enseignants — PLUSIEURS par matière (charge ≤ ~20h chacun, sinon FET
+  // infaisable) + DISPONIBILITÉS renseignées (sans dispo, le solveur considère
+  // le prof indisponible → aucune solution). Amina (maths) = compte démo prof.
+  const teacherRoleId = personRoleByCode.get('TEACHER')!;
+  const mainTeacherRoleId = personRoleByCode.get('MAIN_TEACHER')!;
+  const NB_CLASSES = LEVELS.length * CLASS_LETTERS.length; // 15
+  // Disponible toute la semaine 08:00–18:00 ; les demi-journées (mer/sam PM) sont
+  // gérées par les créneaux interdits côté classe, pas ici.
+  const AVAILABILITY = Object.fromEntries(
+    (['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const).map((d) => [d, [{ from: '08:00', to: '18:00' }]]),
+  );
+  const TEACHER_FIRST = ['Samira', 'Mounir', 'Khadija', 'Brahim', 'Najat', 'Tarik', 'Houda', 'Said', 'Malika', 'Aziz', 'Rabia', 'Jamal', 'Siham', 'Adil', 'Latifa', 'Othmane', 'Zineb', 'Driss', 'Karima', 'Mustapha', 'Souad', 'Naoufal', 'Wafaa', 'Hamid', 'Sanae'];
+  const TEACHER_LAST = ['Benjelloun', 'Tahiri', 'Lamrani', 'Belghiti', 'Sefrioui', 'Cherradi', 'Bargach', 'Skalli', 'Filali', 'Benkirane', 'Alami', 'Sbai', 'El Ouazzani', 'Bennis', 'Lahmidi', 'Naciri', 'Berrada', 'Fassi', 'El Khattabi', 'Sqalli', 'Kettani', 'Bouayad', 'Chraibi', 'Mernissi', 'Ziani'];
+
+  const teachersBySubject = new Map<string, string[]>();
+  const teacherIds: string[] = [];
+  let tcount = 0;
+  for (const s of SUBJECTS) {
+    const totalHours = s.hours * NB_CLASSES;
+    const n = Math.max(1, Math.ceil(totalHours / 20)); // ≤ ~20h/prof
+    const ids: string[] = [];
+    for (let i = 0; i < n; i++) {
+      const isAmina = s.code === 'math' && i === 0;
+      const firstName = isAmina ? 'Amina' : TEACHER_FIRST[tcount % TEACHER_FIRST.length]!;
+      const lastName = isAmina ? 'El Idrissi' : TEACHER_LAST[(tcount * 3) % TEACHER_LAST.length]!;
+      const email = isAmina ? 'amina.elidrissi@demo.jawal.ma' : `prof${tcount + 1}.${s.code}@demo.jawal.ma`;
+      const t = await prisma.person.create({
         data: {
+          tenantId: tenant.id,
+          type: PersonType.TEACHER,
+          firstName,
+          lastName,
+          gender: i % 2 === 0 ? Gender.F : Gender.M,
+          contacts: { email },
+          roleId: isAmina ? mainTeacherRoleId : teacherRoleId,
+          serviceId: teacherServiceId,
           contractType: ContractType.CDI,
-          hireDate: new Date('2024-09-01'),
+          hireDate: new Date('2022-09-01'),
+          contractualHoursPerWeek: 24,
+          availability: AVAILABILITY,
         },
       });
+      await prisma.teacherSpecialty.create({ data: { tenantId: tenant.id, teacherId: t.id, subjectId: subjectByCode.get(s.code)! } });
+      await prisma.teacherCycle.create({ data: { tenantId: tenant.id, teacherId: t.id, cycleId: cycle.id } });
+      ids.push(t.id);
+      teacherIds.push(t.id);
+      tcount += 1;
     }
-    // Données RH/financières démo — appliquées si absentes (idempotent).
-    if (aminaUpd.grossSalary === null || aminaUpd.experienceYears === null) {
-      await prisma.person.update({
-        where: { id: aminaUpd.id },
-        data: {
-          experienceYears: 8,
-          availability: {
-            MON: [{ from: '08:00', to: '12:00' }, { from: '14:00', to: '17:00' }],
-            TUE: [{ from: '08:00', to: '12:00' }],
-            WED: [{ from: '08:00', to: '12:00' }],
-            THU: [{ from: '08:00', to: '12:00' }, { from: '14:00', to: '17:00' }],
-            FRI: [{ from: '08:00', to: '12:00' }],
-          },
-          rib: '007 780 0001234567890123 45',
-          bankName: 'Attijariwafa Bank',
-          payrollMethod: PayrollPaymentMethod.BANK_TRANSFER,
-          grossSalary: 12000,
-          netSalary: 9800,
-          benefits: [
-            { label: 'Prime de transport', amount: 800 },
-            { label: 'Prime de rendement', amount: 500 },
-          ],
-          deductions: [],
-        },
+    teachersBySubject.set(s.code, ids);
+  }
+  const aminaId = teachersBySubject.get('math')![0]!;
+  // Prof affecté à une (matière × classe) — réparti en round-robin sur les profs
+  // de la matière pour équilibrer la charge.
+  const teacherFor = (code: string, idx: number): string => {
+    const ids = teachersBySubject.get(code)!;
+    return ids[idx % ids.length]!;
+  };
+  console.log(`  ✓ ${tcount} enseignants (plusieurs/matière, disponibilités renseignées)`);
+
+  // 13. Classes (5 par niveau) + élèves + EDT + affectations
+  let nameIdx = 0;
+  let classIdx = 0;
+  const allClasses: { id: string; name: string; levelCode: string; studentIds: string[] }[] = [];
+  const studentRegime = new Map<string, 'EXTERNE' | 'DEMI_PENSIONNAIRE' | 'INTERNE'>();
+  const regimeOf = (firstName: string): 'EXTERNE' | 'DEMI_PENSIONNAIRE' | 'INTERNE' => {
+    if (firstName === 'Yassine') return 'DEMI_PENSIONNAIRE'; // élève démo
+    const r = rand();
+    return r < 0.5 ? 'EXTERNE' : r < 0.85 ? 'DEMI_PENSIONNAIRE' : 'INTERNE';
+  };
+
+  for (const lvl of LEVELS) {
+    for (const letter of CLASS_LETTERS) {
+      const className = `${lvl.code.toUpperCase()}-${letter}`;
+      const mainTeacherId = teacherIds[classIdx % teacherIds.length]!;
+      const klass = await prisma.class.create({
+        data: { tenantId: tenant.id, academicYearId: year.id, levelId: levelByCode.get(lvl.code)!, name: className, capacity: 32, mainTeacherId },
       });
-    }
-    // Spécialités + cycles + diplômes (idempotent) — recherche tolérante au renommage de code.
-    const subjMath = await prisma.subject.findFirst({
-      where: {
-        tenantId: tenant.id,
-        OR: [{ code: 'math' }, { label: 'Mathématiques' }],
-      },
-    });
-    const subjPhys = await prisma.subject.findFirst({
-      where: {
-        tenantId: tenant.id,
-        OR: [{ code: 'phys' }, { label: 'Sciences physiques' }],
-      },
-    });
-    for (const subj of [subjMath, subjPhys].filter(Boolean) as Array<{ id: string }>) {
-      await prisma.teacherSpecialty
-        .create({
-          data: { tenantId: tenant.id, teacherId: aminaUpd.id, subjectId: subj.id },
-        })
-        .catch(() => null);
-    }
-    const cycleCol = await prisma.cycle.findFirst({
-      where: { tenantId: tenant.id, code: 'college' },
-    });
-    if (cycleCol) {
-      await prisma.teacherCycle
-        .create({ data: { tenantId: tenant.id, teacherId: aminaUpd.id, cycleId: cycleCol.id } })
-        .catch(() => null);
-    }
-    const hasDiploma = await prisma.diploma.findFirst({ where: { personId: aminaUpd.id } });
-    if (!hasDiploma) {
-      await prisma.diploma.createMany({
-        data: [
-          {
-            tenantId: tenant.id,
-            personId: aminaUpd.id,
-            title: 'Master en didactique des mathématiques',
-            institution: 'Université Hassan II Casablanca',
-            year: 2016,
-            order: 0,
-          },
-          {
-            tenantId: tenant.id,
-            personId: aminaUpd.id,
-            title: 'CAPES Mathématiques',
-            institution: 'CRMEF Rabat',
-            year: 2017,
-            order: 1,
-          },
-        ],
-      });
-    }
-    // Matière Maths (idempotent) — tolérante au renommage de code/label
-    const maths =
-      (await prisma.subject.findFirst({
-        where: {
-          tenantId: tenant.id,
-          OR: [{ code: 'math' }, { label: 'Mathématiques' }],
-        },
-      })) ??
-      (await prisma.subject.create({
-        data: { tenantId: tenant.id, code: 'math', label: 'Mathématiques', coefficient: 4, order: 1 },
-      }));
-    // Une classe existante (la 1ère trouvée) pour l'affectation démo
-    const classe = await prisma.class.findFirst({
-      where: { tenantId: tenant.id, deletedAt: null },
-    });
-    if (classe) {
-      try {
+
+      // Élèves (10 par classe) — 1AC-A reçoit la famille Benani (démo).
+      const studentIds: string[] = [];
+      const isDemoClass = className === '1AC-A';
+      const roster: { firstName: string; lastName: string; gender: Gender }[] = [];
+      if (isDemoClass) {
+        roster.push({ firstName: 'Yassine', lastName: 'Benani', gender: Gender.M });
+        roster.push({ firstName: 'Youssra', lastName: 'Benani', gender: Gender.F });
+      }
+      while (roster.length < 10) {
+        const male = roster.length % 2 === 0;
+        roster.push({
+          firstName: male ? FIRST_M[nameIdx % FIRST_M.length]! : FIRST_F[nameIdx % FIRST_F.length]!,
+          lastName: LASTS[(nameIdx * 7) % LASTS.length]!,
+          gender: male ? Gender.M : Gender.F,
+        });
+        nameIdx += 1;
+      }
+      for (const r of roster) {
+        const regime = regimeOf(r.firstName);
+        const st = await prisma.person.create({
+          data: { tenantId: tenant.id, type: PersonType.STUDENT, firstName: r.firstName, lastName: r.lastName, gender: r.gender, birthDate: new Date('2012-03-15'), regime },
+        });
+        studentRegime.set(st.id, regime);
+        await prisma.studentClass.create({ data: { tenantId: tenant.id, studentId: st.id, classId: klass.id } });
+        await prisma.enrollment.create({
+          data: { tenantId: tenant.id, studentId: st.id, academicYearId: year.id, levelId: levelByCode.get(lvl.code)!, classId: klass.id, status: 'ACTIVE', siblingRank: 1, feesGenerated: true, validatedAt: new Date() },
+        });
+        studentIds.push(st.id);
+      }
+
+      // Affectations prof (round-robin par matière) pour la classe
+      for (const s of SUBJECTS) {
         await prisma.teacherAssignment.create({
-          data: {
-            tenantId: tenant.id,
-            teacherId: aminaUpd.id,
-            subjectId: maths.id,
-            classId: classe.id,
-            academicYearId: year.id,
-            hoursPerWeek: 4,
-          },
-        });
-      } catch {
-        // existe déjà — OK
-      }
-    }
-  }
-
-  // 7.quinquies Un CDD démo qui expire dans ~25 jours (déclenche EXPIRES_30)
-  const existingCDD = await prisma.person.findFirst({
-    where: { tenantId: tenant.id, type: PersonType.TEACHER, firstName: 'Karim' },
-  });
-  if (!existingCDD) {
-    const cddEnd = new Date();
-    cddEnd.setDate(cddEnd.getDate() + 25);
-    const teacherRole = await prisma.personRole.findUnique({
-      where: { tenantId_code: { tenantId: tenant.id, code: 'TEACHER' } },
-    });
-    await prisma.person.create({
-      data: {
-        tenantId: tenant.id,
-        type: PersonType.TEACHER,
-        firstName: 'Karim',
-        lastName: 'Lahcen',
-        gender: Gender.M,
-        contacts: { email: 'karim.lahcen@demo.jawal.ma' },
-        roleId: teacherRole?.id,
-        contractType: ContractType.CDD,
-        hireDate: new Date(new Date().getFullYear() - 1, 8, 1),
-        contractEndDate: cddEnd,
-      },
-    });
-  }
-
-  // 8. Classe + enseignant principal + élèves (idempotent : on saute si déjà présent).
-  // Garde sur l'existence de la classe 1AC-A (et non « un prof quelconque » : un
-  // CDD démo est créé juste avant, ce qui faisait sauter ce bloc à tort sur une
-  // base neuve et cassait les inscriptions plus bas).
-  const existing1acA = await prisma.class.findFirst({
-    where: { tenantId: tenant.id, name: '1AC-A' },
-  });
-  if (!existing1acA) {
-    const mainTeacherRole = await prisma.personRole.findUnique({
-      where: { tenantId_code: { tenantId: tenant.id, code: 'MAIN_TEACHER' } },
-    });
-    const teacher = await prisma.person.create({
-      data: {
-        tenantId: tenant.id,
-        type: PersonType.TEACHER,
-        firstName: 'Amina',
-        lastName: 'El Idrissi',
-        gender: Gender.F,
-        contacts: { email: 'amina.elidrissi@demo.jawal.ma' },
-        roleId: mainTeacherRole?.id,
-      },
-    });
-    const level1ac = await prisma.level.findUniqueOrThrow({
-      where: { tenantId_code: { tenantId: tenant.id, code: '1ac' } },
-    });
-    const classe = await prisma.class.create({
-      data: {
-        tenantId: tenant.id,
-        academicYearId: year.id,
-        levelId: level1ac.id,
-        name: '1AC-A',
-        capacity: 30,
-        mainTeacherId: teacher.id,
-      },
-    });
-    const students = [
-      { firstName: 'Yassine', lastName: 'Benani', gender: Gender.M },
-      { firstName: 'Salma', lastName: 'Cherkaoui', gender: Gender.F },
-      { firstName: 'Omar', lastName: 'Tazi', gender: Gender.M },
-    ];
-    const createdStudents: { id: string; lastName: string }[] = [];
-    for (const s of students) {
-      const p = await prisma.person.create({
-        data: {
-          tenantId: tenant.id,
-          type: PersonType.STUDENT,
-          ...s,
-          birthDate: new Date('2013-05-12'),
-        },
-      });
-      await prisma.studentClass.create({
-        data: { tenantId: tenant.id, studentId: p.id, classId: classe.id },
-      });
-      createdStudents.push({ id: p.id, lastName: s.lastName });
-    }
-
-    // 8.bis Parent de démo + liens de parenté (les 2 Benani sont frères)
-    const fatherBenani = await prisma.person.create({
-      data: {
-        tenantId: tenant.id,
-        type: PersonType.PARENT,
-        firstName: 'Hassan',
-        lastName: 'Benani',
-        gender: Gender.M,
-        contacts: { email: 'hassan.benani@demo.jawal.ma', phone: '+212612345678' },
-      },
-    });
-    const motherBenani = await prisma.person.create({
-      data: {
-        tenantId: tenant.id,
-        type: PersonType.PARENT,
-        firstName: 'Fatima',
-        lastName: 'Benani',
-        gender: Gender.F,
-        contacts: { email: 'fatima.benani@demo.jawal.ma', phone: '+212698765432' },
-      },
-    });
-    // 2e enfant Benani pour démontrer la fratrie déduite
-    const yassine = createdStudents.find((s) => s.lastName === 'Benani')!;
-    const youssra = await prisma.person.create({
-      data: {
-        tenantId: tenant.id,
-        type: PersonType.STUDENT,
-        firstName: 'Youssra',
-        lastName: 'Benani',
-        gender: Gender.F,
-        birthDate: new Date('2015-09-20'),
-      },
-    });
-    await prisma.studentClass.create({
-      data: { tenantId: tenant.id, studentId: youssra.id, classId: classe.id },
-    });
-    for (const childId of [yassine.id, youssra.id]) {
-      await prisma.personRelation.create({
-        data: { tenantId: tenant.id, childId, parentId: fatherBenani.id, type: RelationType.FATHER },
-      });
-      await prisma.personRelation.create({
-        data: { tenantId: tenant.id, childId, parentId: motherBenani.id, type: RelationType.MOTHER },
-      });
-    }
-    console.log(`  ✓ 1 enseignant, 1 classe (1AC-A), ${students.length + 1} élèves, 2 parents Benani + fratrie`);
-  } else {
-    console.log(`  ✓ Données pédagogiques déjà présentes (skip)`);
-  }
-
-  // 8.ter Parents Benani + fratrie déduite (idempotent — créés même si étape 8 est skippée)
-  const existingFatherBenani = await prisma.person.findFirst({
-    where: { tenantId: tenant.id, type: PersonType.PARENT, lastName: 'Benani', firstName: 'Hassan' },
-  });
-  if (!existingFatherBenani) {
-    const yassineDb = await prisma.person.findFirst({
-      where: { tenantId: tenant.id, type: PersonType.STUDENT, firstName: 'Yassine', lastName: 'Benani' },
-    });
-    if (yassineDb) {
-      const classe = await prisma.studentClass.findFirst({
-        where: { tenantId: tenant.id, studentId: yassineDb.id },
-        include: { class: true },
-      });
-      const fatherBenani = await prisma.person.create({
-        data: {
-          tenantId: tenant.id,
-          type: PersonType.PARENT,
-          firstName: 'Hassan',
-          lastName: 'Benani',
-          gender: Gender.M,
-          contacts: { email: 'hassan.benani@demo.jawal.ma', phone: '+212612345678' },
-        },
-      });
-      const motherBenani = await prisma.person.create({
-        data: {
-          tenantId: tenant.id,
-          type: PersonType.PARENT,
-          firstName: 'Fatima',
-          lastName: 'Benani',
-          gender: Gender.F,
-          contacts: { email: 'fatima.benani@demo.jawal.ma', phone: '+212698765432' },
-        },
-      });
-      const youssra = await prisma.person.create({
-        data: {
-          tenantId: tenant.id,
-          type: PersonType.STUDENT,
-          firstName: 'Youssra',
-          lastName: 'Benani',
-          gender: Gender.F,
-          birthDate: new Date('2015-09-20'),
-        },
-      });
-      if (classe?.classId) {
-        await prisma.studentClass.create({
-          data: { tenantId: tenant.id, studentId: youssra.id, classId: classe.classId },
+          data: { tenantId: tenant.id, teacherId: teacherFor(s.code, classIdx), subjectId: subjectByCode.get(s.code)!, classId: klass.id, academicYearId: year.id, hoursPerWeek: s.hours },
         });
       }
-      for (const childId of [yassineDb.id, youssra.id]) {
-        await prisma.personRelation.create({
-          data: { tenantId: tenant.id, childId, parentId: fatherBenani.id, type: RelationType.FATHER },
-        });
-        await prisma.personRelation.create({
-          data: { tenantId: tenant.id, childId, parentId: motherBenani.id, type: RelationType.MOTHER },
-        });
-      }
-      console.log(`  ✓ Famille Benani démo : 2 parents + 1 sœur (Youssra) → fratrie déduite OK`);
-    }
-  }
 
-  // 8.quater Accès portail parent de démo (Hassan Benani) — idempotent.
-  const fatherForLogin = await prisma.person.findFirst({
-    where: { tenantId: tenant.id, type: PersonType.PARENT, lastName: 'Benani', firstName: 'Hassan' },
-  });
-  if (fatherForLogin) {
-    const parentPasswordHash = await bcrypt.hash(DEMO_PARENT_PASSWORD, 10);
-    const parentUser = await prisma.user.upsert({
-      where: { tenantId_email: { tenantId: tenant.id, email: DEMO_PARENT_EMAIL } },
-      update: { passwordHash: parentPasswordHash },
-      create: {
-        tenantId: tenant.id,
-        email: DEMO_PARENT_EMAIL,
-        passwordHash: parentPasswordHash,
-        emailVerified: new Date(),
-        locale: 'fr',
-      },
-    });
-    const parentRoleId = rolesByCode.get('parent');
-    if (parentRoleId) {
-      await prisma.userRole.upsert({
-        where: { userId_roleId: { userId: parentUser.id, roleId: parentRoleId } },
-        update: {},
-        create: { tenantId: tenant.id, userId: parentUser.id, roleId: parentRoleId },
-      });
-    }
-    await prisma.userPerson.upsert({
-      where: { userId_personId: { userId: parentUser.id, personId: fatherForLogin.id } },
-      update: {},
-      create: {
-        tenantId: tenant.id,
-        userId: parentUser.id,
-        personId: fatherForLogin.id,
-        relationship: 'parent',
-      },
-    });
-    console.log(`  ✓ Accès portail parent : ${DEMO_PARENT_EMAIL} / ${DEMO_PARENT_PASSWORD}`);
-  }
-
-  // 8.quinquies Accès portail enseignant de démo (Amina) — idempotent.
-  const teacherForLogin = await prisma.person.findFirst({
-    where: { tenantId: tenant.id, type: PersonType.TEACHER, firstName: 'Amina' },
-  });
-  if (teacherForLogin) {
-    const teacherPasswordHash = await bcrypt.hash(DEMO_TEACHER_PASSWORD, 10);
-    const teacherUser = await prisma.user.upsert({
-      where: { tenantId_email: { tenantId: tenant.id, email: DEMO_TEACHER_EMAIL } },
-      update: { passwordHash: teacherPasswordHash },
-      create: {
-        tenantId: tenant.id,
-        email: DEMO_TEACHER_EMAIL,
-        passwordHash: teacherPasswordHash,
-        emailVerified: new Date(),
-        locale: 'fr',
-      },
-    });
-    const teacherRoleId = rolesByCode.get('enseignant');
-    if (teacherRoleId) {
-      await prisma.userRole.upsert({
-        where: { userId_roleId: { userId: teacherUser.id, roleId: teacherRoleId } },
-        update: {},
-        create: { tenantId: tenant.id, userId: teacherUser.id, roleId: teacherRoleId },
-      });
-    }
-    await prisma.userPerson.upsert({
-      where: { userId_personId: { userId: teacherUser.id, personId: teacherForLogin.id } },
-      update: {},
-      create: {
-        tenantId: tenant.id,
-        userId: teacherUser.id,
-        personId: teacherForLogin.id,
-        relationship: 'self',
-      },
-    });
-    console.log(`  ✓ Accès portail enseignant : ${DEMO_TEACHER_EMAIL} / ${DEMO_TEACHER_PASSWORD}`);
-  }
-
-  // 11.bis Inscriptions (Enrollments) — rétroactif pour les élèves Benani
-  // déjà rattachés à 1AC-A (Yassine ACTIVE rang 1, Youssra ACTIVE rang 2 avec
-  // réduction fratrie 10%). + Salma en DRAFT pour démo du workflow.
-  const enrollmentsExist = await prisma.enrollment.count({
-    where: { tenantId: tenant.id, academicYearId: year.id },
-  });
-  if (enrollmentsExist === 0) {
-    const level1ac = await prisma.level.findUniqueOrThrow({
-      where: { tenantId_code: { tenantId: tenant.id, code: '1ac' } },
-    });
-    const classe1ac = await prisma.class.findFirstOrThrow({
-      where: { tenantId: tenant.id, levelId: level1ac.id, academicYearId: year.id },
-    });
-
-    const yassineDb = await prisma.person.findFirst({
-      where: { tenantId: tenant.id, type: PersonType.STUDENT, firstName: 'Yassine', lastName: 'Benani' },
-    });
-    const youssraDb = await prisma.person.findFirst({
-      where: { tenantId: tenant.id, type: PersonType.STUDENT, firstName: 'Youssra', lastName: 'Benani' },
-    });
-    const salmaDb = await prisma.person.findFirst({
-      where: { tenantId: tenant.id, type: PersonType.STUDENT, firstName: 'Salma' },
-    });
-
-    if (yassineDb) {
-      await prisma.enrollment.create({
-        data: {
-          tenantId: tenant.id,
-          studentId: yassineDb.id,
-          academicYearId: year.id,
-          levelId: level1ac.id,
-          classId: classe1ac.id,
-          status: 'ACTIVE',
-          siblingRank: 1,
-          discountPct: null,
-          feesGenerated: true,
-          validatedAt: new Date(),
-        },
-      });
-    }
-    if (youssraDb) {
-      await prisma.enrollment.create({
-        data: {
-          tenantId: tenant.id,
-          studentId: youssraDb.id,
-          academicYearId: year.id,
-          levelId: level1ac.id,
-          classId: classe1ac.id,
-          status: 'ACTIVE',
-          siblingRank: 2,
-          discountPct: 10,
-          discountReason: 'Réduction fratrie (2ᵉ enfant Benani)',
-          feesGenerated: true,
-          validatedAt: new Date(),
-        },
-      });
-    }
-    if (salmaDb) {
-      await prisma.enrollment.create({
-        data: {
-          tenantId: tenant.id,
-          studentId: salmaDb.id,
-          academicYearId: year.id,
-          levelId: level1ac.id,
-          status: 'DRAFT',
-          notes: 'Préinscription en attente de validation',
-        },
-      });
-    }
-    console.log(`  ✓ Enrollments démo : Yassine + Youssra ACTIVE (fratrie 10%), Salma DRAFT`);
-  } else {
-    console.log(`  ✓ Enrollments déjà présents (${enrollmentsExist})`);
-  }
-
-  // 11.ter Tenant settings : siblingDiscountPct par défaut 10 (idempotent)
-  const currentTenant = await prisma.tenant.findUnique({ where: { id: tenant.id } });
-  const settings = (currentTenant?.settings ?? {}) as Record<string, unknown>;
-  if (settings.siblingDiscountPct === undefined) {
-    await prisma.tenant.update({
-      where: { id: tenant.id },
-      data: { settings: { ...settings, siblingDiscountPct: 10 } },
-    });
-    console.log(`  ✓ Tenant setting siblingDiscountPct = 10`);
-  }
-
-  // 12. Pointage personnel — 5 jours pour Amina (idempotent)
-  const aminaForAttendance = await prisma.person.findFirst({
-    where: { tenantId: tenant.id, type: PersonType.TEACHER, firstName: 'Amina' },
-    select: { id: true, grossSalary: true },
-  });
-  if (aminaForAttendance) {
-    const existingCount = await prisma.staffAttendance.count({
-      where: { personId: aminaForAttendance.id },
-    });
-    if (existingCount === 0) {
-      const gross = aminaForAttendance.grossSalary
-        ? Number(aminaForAttendance.grossSalary)
-        : 12000;
-      const dailyRate = gross / 26;
-      const hourlyRate = gross / 26 / 8;
-
-      const today = new Date();
-      today.setUTCHours(0, 0, 0, 0);
-
-      // 5 derniers jours ouvrables (skip dim/sam pour rester réaliste FR/MA)
-      const days: { offset: number; status: string; lateMinutes?: number; deduction: number; note?: string }[] = [];
-      let offset = 1;
-      while (days.length < 5) {
-        const candidate = new Date(today);
-        candidate.setUTCDate(candidate.getUTCDate() - offset);
-        const wd = candidate.getUTCDay();
-        if (wd !== 0 && wd !== 6) {
-          let entry: (typeof days)[number];
-          switch (days.length) {
-            case 0:
-              entry = { offset, status: 'PRESENT', deduction: 0 };
-              break;
-            case 1:
-              entry = { offset, status: 'PRESENT', deduction: 0 };
-              break;
-            case 2:
-              // Retard 25 min : 10 min facturables
-              entry = {
-                offset,
-                status: 'LATE',
-                lateMinutes: 25,
-                deduction: Math.round(((hourlyRate * 10) / 60) * 100) / 100,
-                note: 'Retard transport',
-              };
-              break;
-            case 3:
-              entry = {
-                offset,
-                status: 'ABSENT',
-                deduction: Math.round(dailyRate * 100) / 100,
-                note: 'Absence non justifiée',
-              };
-              break;
-            case 4:
-              entry = { offset, status: 'PRESENT', deduction: 0 };
-              break;
-            default:
-              entry = { offset, status: 'PRESENT', deduction: 0 };
+      // EDT hebdo : séquence pondérée des matières répartie sur la semaine.
+      const seq: string[] = [];
+      const remaining = new Map(SUBJECTS.map((s) => [s.code, s.hours]));
+      let total = SUBJECTS.reduce((a, s) => a + s.hours, 0);
+      while (total > 0) {
+        for (const s of SUBJECTS) {
+          const left = remaining.get(s.code)!;
+          if (left > 0) {
+            seq.push(s.code);
+            remaining.set(s.code, left - 1);
+            total -= 1;
           }
-          days.push(entry);
         }
-        offset += 1;
+      }
+      let k = 0;
+      for (const day of WEEKDAYS) {
+        for (const [si, slot] of courseSlots.entries()) {
+          if (k >= seq.length) break;
+          const code = seq[k++]!;
+          await prisma.timetableEntry.create({
+            data: {
+              tenantId: tenant.id,
+              academicYearId: year.id,
+              classId: klass.id,
+              slotId: slot.id,
+              dayOfWeek: day,
+              subjectId: subjectByCode.get(code)!,
+              teacherId: teacherFor(code, classIdx),
+              roomId: rooms[(classIdx * 6 + si) % rooms.length]!.id,
+            },
+          });
+        }
       }
 
-      for (const d of days) {
-        const date = new Date(today);
-        date.setUTCDate(date.getUTCDate() - d.offset);
-        await prisma.staffAttendance.create({
-          data: {
-            tenantId: tenant.id,
-            personId: aminaForAttendance.id,
-            date,
-            status: d.status as 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED' | 'LEAVE',
-            lateMinutes: d.lateMinutes ?? null,
-            deductionAmount: d.deduction,
-            note: d.note ?? null,
-          },
-        });
-      }
-      const totalDeduction = days.reduce((s, d) => s + d.deduction, 0);
-      console.log(
-        `  ✓ Pointage Amina : 5 jours (3 PRESENT, 1 LATE, 1 ABSENT) → retenues calculées ${totalDeduction.toFixed(2)} MAD`,
-      );
-    } else {
-      console.log(`  ✓ Pointage Amina déjà présent (${existingCount} entrées)`);
+      allClasses.push({ id: klass.id, name: className, levelCode: lvl.code, studentIds });
+      classIdx += 1;
     }
   }
+  console.log(`  ✓ ${allClasses.length} classes (5 × ${LEVELS.length} niveaux), ${nameIdx + 2} élèves, EDT + affectations`);
 
-  // 13. Emploi du temps — grille horaire standard + EDT type pour 1AC-A
-  const slotsCount = await prisma.timetableSlot.count({ where: { tenantId: tenant.id } });
-  if (slotsCount === 0) {
-    const slotDefs = [
-      { start: '08:00', end: '09:00', label: null, isBreak: false, order: 1 },
-      { start: '09:00', end: '10:00', label: null, isBreak: false, order: 2 },
-      { start: '10:00', end: '10:15', label: 'Récréation', isBreak: true, order: 3 },
-      { start: '10:15', end: '11:15', label: null, isBreak: false, order: 4 },
-      { start: '11:15', end: '12:15', label: null, isBreak: false, order: 5 },
-      { start: '12:15', end: '14:00', label: 'Pause déjeuner', isBreak: true, order: 6 },
-      { start: '14:00', end: '15:00', label: null, isBreak: false, order: 7 },
-      { start: '15:00', end: '16:00', label: null, isBreak: false, order: 8 },
-    ];
-    for (const s of slotDefs) {
-      await prisma.timetableSlot.create({
-        data: {
-          tenantId: tenant.id,
-          startTime: s.start,
-          endTime: s.end,
-          label: s.label,
-          isBreak: s.isBreak,
-          order: s.order,
-        },
+  // 14. Parents Benani + portail (Yassine + Youssra de 1AC-A)
+  const benaniClass = allClasses.find((c) => c.name === '1AC-A')!;
+  const yassine = await prisma.person.findFirstOrThrow({ where: { tenantId: tenant.id, type: PersonType.STUDENT, firstName: 'Yassine', lastName: 'Benani' } });
+  const youssra = await prisma.person.findFirstOrThrow({ where: { tenantId: tenant.id, type: PersonType.STUDENT, firstName: 'Youssra', lastName: 'Benani' } });
+  const father = await prisma.person.create({ data: { tenantId: tenant.id, type: PersonType.PARENT, firstName: 'Hassan', lastName: 'Benani', gender: Gender.M, contacts: { email: DEMO.parent.email, phone: '+212612345678' } } });
+  const mother = await prisma.person.create({ data: { tenantId: tenant.id, type: PersonType.PARENT, firstName: 'Fatima', lastName: 'Benani', gender: Gender.F, contacts: { email: 'fatima.benani@demo.jawal.ma', phone: '+212698765432' } } });
+  for (const childId of [yassine.id, youssra.id]) {
+    await prisma.personRelation.create({ data: { tenantId: tenant.id, childId, parentId: father.id, type: RelationType.FATHER } });
+    await prisma.personRelation.create({ data: { tenantId: tenant.id, childId, parentId: mother.id, type: RelationType.MOTHER } });
+  }
+
+  // 15. Comptes portail parent / enseignant / élève
+  const parentUser = await prisma.user.create({ data: { tenantId: tenant.id, email: DEMO.parent.email, passwordHash: await hash(DEMO.parent.password), emailVerified: new Date(), locale: 'fr' } });
+  await prisma.userRole.create({ data: { tenantId: tenant.id, userId: parentUser.id, roleId: rolesByCode.get('parent')! } });
+  await prisma.userPerson.create({ data: { tenantId: tenant.id, userId: parentUser.id, personId: father.id, relationship: 'parent' } });
+
+  const teacherUser = await prisma.user.create({ data: { tenantId: tenant.id, email: DEMO.teacher.email, passwordHash: await hash(DEMO.teacher.password), emailVerified: new Date(), locale: 'fr' } });
+  await prisma.userRole.create({ data: { tenantId: tenant.id, userId: teacherUser.id, roleId: rolesByCode.get('enseignant')! } });
+  await prisma.userPerson.create({ data: { tenantId: tenant.id, userId: teacherUser.id, personId: aminaId, relationship: 'self' } });
+
+  const studentUser = await prisma.user.create({ data: { tenantId: tenant.id, email: DEMO.student.email, passwordHash: await hash(DEMO.student.password), emailVerified: new Date(), locale: 'fr' } });
+  await prisma.userRole.create({ data: { tenantId: tenant.id, userId: studentUser.id, roleId: rolesByCode.get('eleve')! } });
+  await prisma.userPerson.create({ data: { tenantId: tenant.id, userId: studentUser.id, personId: yassine.id, relationship: 'self' } });
+  console.log('  ✓ Famille Benani + comptes portail (parent / prof / élève)');
+
+  // 16. Notes — 2 évaluations en Trimestre 1 pour math/fr/ar, toutes classes
+  const t1 = periods[0]!;
+  let evalCount = 0;
+  for (const klass of allClasses) {
+    for (const code of ['math', 'fr', 'ar'] as const) {
+      for (const [n, dstr] of [['Contrôle 1', '2025-10-10'], ['Contrôle 2', '2025-11-20']] as const) {
+        const ev = await prisma.evaluation.create({
+          data: { tenantId: tenant.id, classId: klass.id, subjectId: subjectByCode.get(code)!, periodId: t1.id, label: n, date: new Date(dstr), weight: 1, maxValue: 20 },
+        });
+        await prisma.grade.createMany({
+          data: klass.studentIds.map((sid) => ({ tenantId: tenant.id, evaluationId: ev.id, studentId: sid, value: Math.round((8 + rand() * 11) * 4) / 4 })),
+        });
+        evalCount += 1;
+      }
+    }
+  }
+  console.log(`  ✓ ${evalCount} évaluations + notes (Trimestre 1)`);
+
+  // 17. Appels — 2 derniers jours ouvrés, ~85% finalisés (le reste = appels non faits)
+  const recentDays: Date[] = [];
+  {
+    const d = new Date();
+    d.setUTCHours(0, 0, 0, 0);
+    while (recentDays.length < 2) {
+      d.setUTCDate(d.getUTCDate() - 1);
+      const wd = d.getUTCDay();
+      if (wd !== 0 && wd !== 6) recentDays.push(new Date(d));
+    }
+  }
+  const sansExcusesId = reasonByLabel.get('SANS EXCUSES') ?? null;
+  let sessionCount = 0;
+  let absenceCount = 0;
+  for (const date of recentDays) {
+    const dow = DOW[date.getUTCDay()]!;
+    for (const klass of allClasses) {
+      const entries = await prisma.timetableEntry.findMany({
+        where: { classId: klass.id, academicYearId: year.id, dayOfWeek: dow as never },
+        include: { slot: { select: { startTime: true, endTime: true, isBreak: true } } },
       });
-    }
-    console.log(`  ✓ Grille horaire : ${slotDefs.length} créneaux (6 cours + 2 pauses)`);
-
-    // EDT type pour 1AC-A : place Amina en maths sur lundi 08-09 + 09-10
-    const classe1ac = await prisma.class.findFirst({
-      where: { tenantId: tenant.id, academicYearId: year.id },
-    });
-    const amina = await prisma.person.findFirst({
-      where: { tenantId: tenant.id, type: PersonType.TEACHER, firstName: 'Amina' },
-    });
-    const maths = await prisma.subject.findFirst({
-      where: { tenantId: tenant.id, label: 'Mathématiques' },
-    });
-    const slots = await prisma.timetableSlot.findMany({
-      where: { tenantId: tenant.id, isBreak: false },
-      orderBy: { order: 'asc' },
-    });
-    if (classe1ac && amina && maths && slots.length >= 2) {
-      const monMorning = slots.slice(0, 2);
-      for (const slot of monMorning) {
-        await prisma.timetableEntry.create({
-          data: {
-            tenantId: tenant.id,
-            academicYearId: year.id,
-            classId: classe1ac.id,
-            slotId: slot.id,
-            dayOfWeek: 'MON',
-            subjectId: maths.id,
-            teacherId: amina.id,
-          },
+      for (const e of entries) {
+        if (e.slot.isBreak) continue;
+        if (rand() > 0.85) continue; // 15% d'appels non faits
+        const session = await prisma.attendanceSession.create({
+          data: { tenantId: tenant.id, classId: klass.id, date, periodLabel: periodLabelOf(e.slot.startTime, e.slot.endTime), finalizedAt: new Date() },
         });
+        for (const sid of klass.studentIds) {
+          const r = rand();
+          let data: { status: 'PRESENT' | 'ABSENT' | 'LATE'; infirmary?: boolean; punishment?: boolean; exclusion?: boolean; lateMinutes?: number; lateReasonId?: string | null } = { status: 'PRESENT' };
+          if (r < 0.06) {
+            data = { status: 'ABSENT', lateReasonId: sansExcusesId }; // Non régularisée
+            absenceCount += 1;
+          } else if (r < 0.1) {
+            data = { status: 'LATE', lateMinutes: 10, lateReasonId: reasonByLabel.get('PROBLEME DE TRANSPORT') ?? null };
+          } else if (r < 0.12) {
+            data = { status: 'ABSENT', exclusion: true }; // Exclusion de cours
+          } else if (r < 0.14) {
+            data = { status: 'PRESENT', infirmary: true };
+          }
+          await prisma.attendanceRecord.create({
+            data: {
+              tenantId: tenant.id,
+              sessionId: session.id,
+              studentId: sid,
+              status: data.status,
+              lateMinutes: data.lateMinutes ?? null,
+              lateReasonId: data.lateReasonId ?? null,
+              infirmary: data.infirmary ?? false,
+              punishment: data.punishment ?? false,
+              exclusion: data.exclusion ?? false,
+            },
+          });
+        }
+        sessionCount += 1;
       }
-      console.log(`  ✓ EDT démo : Amina · Maths · 1AC-A lundi 08h-10h (2 créneaux)`);
     }
-  } else {
-    console.log(`  ✓ Grille horaire déjà présente (${slotsCount} créneaux)`);
   }
+  console.log(`  ✓ ${sessionCount} sessions d'appel finalisées (~${absenceCount} absences) sur 2 jours`);
+
+  // 18. Carnet de correspondance — quelques entrées pour Yassine (démo)
+  const carnetSamples = [
+    { type: 'ENCOURAGEMENT', content: 'Bon début de trimestre, continue ainsi.', authorRole: 'teacher' },
+    { type: 'OBSERVATION', content: 'Bavardages en classe, à surveiller.', authorRole: 'teacher' },
+    { type: 'CONVOCATION', content: 'Convocation des parents le vendredi à 16h.', authorRole: 'vie-scolaire' },
+  ] as const;
+  for (const c of carnetSamples) {
+    await prisma.carnetEntry.create({
+      data: {
+        tenantId: tenant.id,
+        studentId: yassine.id,
+        type: c.type as never,
+        content: c.content,
+        classId: benaniClass.id,
+        occurredAt: new Date('2025-10-05'),
+        authorName: c.authorRole === 'teacher' ? 'Mme El Idrissi' : 'Vie scolaire',
+        authorRole: c.authorRole,
+        visibleToParents: true,
+      },
+    });
+  }
+  console.log('  ✓ Carnet de correspondance (3 entrées démo pour Yassine)');
+
+  // 19. Finance — échéances trimestrielles + paiements (suivi & recouvrement)
+  const PAYMENT_METHODS = ['CASH', 'CHEQUE', 'TRANSFER'] as const;
+  const todayFin = new Date();
+  todayFin.setUTCHours(0, 0, 0, 0);
+  let instCount = 0;
+  let payCount = 0;
+  for (const klass of allClasses) {
+    for (const sid of klass.studentIds) {
+      const demiPension = studentRegime.get(sid) !== 'EXTERNE';
+      for (const tri of periods) {
+        const items = [{ label: `Scolarité — ${tri.label}`, amount: 3000 }];
+        if (demiPension) items.push({ label: `Cantine — ${tri.label}`, amount: 1500 });
+        for (const it of items) {
+          const overdue = tri.start < todayFin;
+          let status: 'PENDING' | 'PARTIAL' | 'PAID' = 'PENDING';
+          let payAmount = 0;
+          if (overdue) {
+            const roll = rand();
+            if (roll < 0.6) {
+              status = 'PAID';
+              payAmount = it.amount;
+            } else if (roll < 0.8) {
+              status = 'PARTIAL';
+              payAmount = Math.round(it.amount * 0.5);
+            }
+          }
+          const inst = await prisma.installment.create({
+            data: { tenantId: tenant.id, studentId: sid, label: it.label, amount: it.amount, dueDate: tri.start, status },
+          });
+          instCount += 1;
+          if (payAmount > 0) {
+            await prisma.payment.create({
+              data: {
+                tenantId: tenant.id,
+                installmentId: inst.id,
+                amount: payAmount,
+                method: pick(PAYMENT_METHODS),
+                paidAt: new Date(tri.start.getTime() + 5 * 86400000),
+              },
+            });
+            payCount += 1;
+          }
+        }
+      }
+    }
+  }
+  console.log(`  ✓ Finance : ${instCount} échéances, ${payCount} paiements (scolarité + cantine demi-pension)`);
 
   console.log('\n✅ Seed terminé.\n');
-  console.log('────────────── Comptes de démonstration ──────────────');
-  console.log(`  Admin établissement   : ${DEMO_ADMIN_EMAIL}`);
-  console.log(`  Mot de passe          : ${DEMO_ADMIN_PASSWORD}`);
-  console.log(`  Slug établissement    : demo`);
-  console.log('');
-  console.log(`  Super-admin SaaS      : ${SUPER_ADMIN_EMAIL}`);
-  console.log(`  Mot de passe          : ${SUPER_ADMIN_PASSWORD}`);
-  console.log(`  (laisser slug vide au login)`);
-  console.log('───────────────────────────────────────────────────────\n');
+  console.log('────────────── Comptes de démonstration (slug: demo) ──────────────');
+  console.log(`  Admin       : ${DEMO.admin.email} / ${DEMO.admin.password}`);
+  console.log(`  Direction   : ${DEMO.direction.email} / ${DEMO.direction.password}`);
+  console.log(`  Vie scolaire: ${DEMO.viesco.email} / ${DEMO.viesco.password}`);
+  console.log(`  Comptable   : ${DEMO.comptable.email} / ${DEMO.comptable.password}`);
+  console.log(`  Enseignant  : ${DEMO.teacher.email} / ${DEMO.teacher.password}`);
+  console.log(`  Parent      : ${DEMO.parent.email} / ${DEMO.parent.password}`);
+  console.log(`  Élève       : ${DEMO.student.email} / ${DEMO.student.password}`);
+  console.log(`  Super-admin : ${DEMO.super.email} / ${DEMO.super.password} (slug vide)`);
+  console.log('────────────────────────────────────────────────────────────────────\n');
 }
 
 main()
