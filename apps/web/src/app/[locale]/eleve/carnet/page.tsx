@@ -21,8 +21,10 @@ export default async function StudentCarnetPage({ params }: { params: Promise<{ 
   if (!data) return <div className="mx-auto max-w-5xl px-6 py-8 text-sm text-slate-500">{t('noProfile')}</div>;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
-      <h1 className="mb-5 text-2xl font-semibold text-slate-900">{t('carnetTitle')}</h1>
+    <div className="px-3 py-3">
+      <header className="mb-4 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{t('carnetTitle')}</h1>
+      </header>
       <CarnetView
         studentId={data.studentId}
         entries={data.carnet.entries.map((e) => ({

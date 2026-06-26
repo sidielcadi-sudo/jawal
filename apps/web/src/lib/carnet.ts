@@ -1,6 +1,7 @@
 import 'server-only';
 import type { Prisma } from '@/lib/db';
 import { categoryOf, type AttendanceCategory } from '@/lib/attendance-category';
+import { dowOf, toDateStr } from '@/lib/lesson-book';
 
 type Tx = Prisma.TransactionClient;
 
@@ -13,6 +14,8 @@ export type CarnetEntryRow = {
   authorRole: string;
   className: string | null;
   subjectLabel: string | null;
+  /** Créneau horaire de la séance liée (ex. « 08:00 → 09:00 »), si applicable. */
+  sessionLabel: string | null;
   parentReadAt: Date | null;
 };
 
@@ -36,7 +39,7 @@ export async function loadStudentCarnet(
 ): Promise<{ entries: CarnetEntryRow[]; events: CarnetEvent[] }> {
   const year = await tx.academicYear.findFirst({
     where: { active: true },
-    select: { startDate: true, endDate: true },
+    select: { id: true, startDate: true, endDate: true },
   });
 
   const [entriesRaw, recordsRaw] = await Promise.all([
@@ -76,17 +79,58 @@ export async function loadStudentCarnet(
   const classMap = new Map(classes.map((c) => [c.id, c.name]));
   const subjectMap = new Map(subjects.map((s) => [s.id, s.label]));
 
-  const entries: CarnetEntryRow[] = entriesRaw.map((e) => ({
-    id: e.id,
-    type: e.type,
-    content: e.content,
-    occurredAt: e.occurredAt,
-    authorName: e.authorName,
-    authorRole: e.authorRole,
-    className: e.classId ? classMap.get(e.classId) ?? null : null,
-    subjectLabel: e.subjectId ? subjectMap.get(e.subjectId) ?? null : null,
-    parentReadAt: e.parentReadAt,
-  }));
+  // Séance + matière des entrées liées à un appel (via attendanceSession → EDT).
+  const sessionIds = [
+    ...new Set(entriesRaw.map((e) => e.attendanceSessionId).filter(Boolean) as string[]),
+  ];
+  const sessions = sessionIds.length
+    ? await tx.attendanceSession.findMany({
+        where: { id: { in: sessionIds } },
+        select: { id: true, periodLabel: true, classId: true, date: true },
+      })
+    : [];
+  const sessionById = new Map(sessions.map((s) => [s.id, s]));
+  const sessClassIds = [...new Set(sessions.map((s) => s.classId))];
+  const ttEntries =
+    year && sessClassIds.length
+      ? await tx.timetableEntry.findMany({
+          where: { academicYearId: year.id, classId: { in: sessClassIds } },
+          select: {
+            classId: true,
+            dayOfWeek: true,
+            slot: { select: { startTime: true, endTime: true } },
+            subject: { select: { label: true } },
+          },
+        })
+      : [];
+  const ttSubjectMap = new Map<string, string | null>();
+  for (const en of ttEntries) {
+    ttSubjectMap.set(
+      `${en.classId}|${en.dayOfWeek}|${en.slot.startTime}-${en.slot.endTime}`,
+      en.subject?.label ?? null,
+    );
+  }
+
+  const entries: CarnetEntryRow[] = entriesRaw.map((e) => {
+    const sess = e.attendanceSessionId ? sessionById.get(e.attendanceSessionId) : null;
+    const sessSubject =
+      sess && sess.periodLabel
+        ? ttSubjectMap.get(`${sess.classId}|${dowOf(toDateStr(sess.date))}|${sess.periodLabel}`) ??
+          null
+        : null;
+    return {
+      id: e.id,
+      type: e.type,
+      content: e.content,
+      occurredAt: e.occurredAt,
+      authorName: e.authorName,
+      authorRole: e.authorRole,
+      className: e.classId ? classMap.get(e.classId) ?? null : sess ? classMap.get(sess.classId) ?? null : null,
+      subjectLabel: e.subjectId ? subjectMap.get(e.subjectId) ?? null : sessSubject,
+      sessionLabel: sess?.periodLabel ? sess.periodLabel.replace('-', ' → ') : null,
+      parentReadAt: e.parentReadAt,
+    };
+  });
 
   const events: CarnetEvent[] = recordsRaw
     .map((r) => ({ r, cat: categoryOf(r) }))

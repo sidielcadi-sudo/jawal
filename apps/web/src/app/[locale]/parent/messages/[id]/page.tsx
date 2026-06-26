@@ -48,7 +48,7 @@ export default async function ParentThreadPage({
             <div key={m.id} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
               <div
                 className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
-                  mine ? 'bg-brand-600 text-white' : 'border border-slate-200 bg-white text-slate-800'
+                  mine ? 'bg-brand-600 text-white' : 'border border-slate-100 bg-white text-slate-800'
                 }`}
               >
                 <div className={`mb-0.5 text-[10px] ${mine ? 'text-brand-100' : 'text-slate-400'}`}>
@@ -62,7 +62,7 @@ export default async function ParentThreadPage({
         })}
       </div>
 
-      <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="mt-6 rounded-2xl border border-slate-100 bg-white p-4">
         <ReplyForm conversationId={id} />
       </div>
     </div>

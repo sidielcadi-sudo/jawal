@@ -62,6 +62,16 @@ export async function presignedGet(s3Key: string, ttlSeconds = 15 * 60): Promise
   return minio.presignedGetObject(BUCKET, s3Key, ttlSeconds);
 }
 
+/** Récupère le contenu binaire complet d'un objet (pour inlining base64). */
+export async function getObjectBuffer(s3Key: string): Promise<Buffer> {
+  const stream = await minio.getObject(BUCKET, s3Key);
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks);
+}
+
 export async function deleteObject(s3Key: string): Promise<void> {
   try {
     await minio.removeObject(BUCKET, s3Key);

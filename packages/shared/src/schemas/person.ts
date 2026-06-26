@@ -113,6 +113,16 @@ export const personCreateSchema = z.object({
   cin: z.string().max(40).optional(),
   /// Régime de l'élève (STUDENT uniquement) : externe / demi-pensionnaire / interne.
   regime: regimeSchema.optional(),
+  /// L'élève utilise-t-il le transport scolaire ? (STUDENT uniquement.)
+  usesTransport: z.coerce.boolean().optional(),
+  /// Champs élève additionnels (stockés en metadata, pas en colonnes) :
+  cne: z.string().max(40).optional(), // Code National d'Examen
+  codeMassar: z.string().max(40).optional(), // Code Massar
+  imageRights: z.coerce.boolean().optional(), // Droit à l'image
+  exitRights: z.coerce.number().int().min(0).max(9).optional(), // Droit de sortie (0–9)
+  dietInfo: z.string().max(2000).optional(), // Régime alimentaire / allergies (DP/interne)
+  originSchool: z.string().max(200).optional(), // Établissement d'origine
+  repeating: z.coerce.boolean().optional(), // Redoublement
   contacts: z
     .object({
       email: z.string().email().optional(),
@@ -136,6 +146,10 @@ export const personCreateSchema = z.object({
   hireDate: z.coerce.date().optional(),
   contractEndDate: z.coerce.date().optional(),
   contractType: contractTypeSchema.optional(),
+  /// Données RH employeur (TEACHER + STAFF, stockées en metadata) :
+  cnssNumber: z.string().max(40).optional(), // N° CNSS
+  amoNumber: z.string().max(40).optional(), // N° AMO
+  employmentStatus: z.enum(['ACTIVE', 'SUSPENDED', 'RESIGNED', 'CONTRACT_END']).optional(), // Statut
   /// Volume horaire contractuel hebdomadaire (TEACHER uniquement) — sert
   /// au KPI de couverture horaire de l'établissement. Indépendant de
   /// availability et des heures réellement enseignées.

@@ -72,6 +72,11 @@ const STYLES = `
   .sign-box { width: 240px; text-align: center; }
   .sign-lbl { font-size: 11px; text-transform: uppercase; color: #64748b; border-top: 1px solid #94a3b8; padding-top: 6px; margin-top: 60px; }
   .foot { margin-top: 36px; border-top: 1px solid #e2e8f0; padding-top: 8px; text-align: center; font-size: 9px; color: #94a3b8; }
+  .sched-title { margin-top: 22px; font-size: 13px; font-weight: 700; }
+  .sched { width: 100%; border-collapse: collapse; margin: 8px 0 6px; font-size: 11px; }
+  .sched th { background: #f1f5f9; text-align: start; padding: 6px 8px; color: #475569; text-transform: uppercase; font-size: 9px; }
+  .sched td { padding: 6px 8px; border-bottom: 1px solid #eef2f7; }
+  .sched .num { text-align: end; font-variant-numeric: tabular-nums; }
 `;
 
 /** Document officiel autonome (CSS inline) prêt pour Chromium → PDF. */
@@ -101,6 +106,34 @@ export function renderDocumentHTML(data: DocumentData, opts: DocumentRenderOptio
 
   const figure = figureLine(data, opts);
 
+  // Détail de l'échéancier (attestation de paiement).
+  const fmtMoney = (n: number) =>
+    `${n.toLocaleString(locale, { minimumFractionDigits: 2 })} ${esc(opts.currency)}`;
+  const scheduleBlock =
+    data.schedule && data.schedule.length > 0
+      ? `<div class="sched-title">${esc(t('schedule.title'))}</div>
+    <table class="sched">
+      <thead><tr>
+        <th>${esc(t('schedule.label'))}</th>
+        <th>${esc(t('schedule.due'))}</th>
+        <th class="num">${esc(t('schedule.amount'))}</th>
+        <th class="num">${esc(t('schedule.paid'))}</th>
+        <th>${esc(t('schedule.status'))}</th>
+      </tr></thead>
+      <tbody>${data.schedule
+        .map(
+          (s) => `<tr>
+        <td>${esc(s.label)}</td>
+        <td>${new Date(s.dueDate).toLocaleDateString(locale)}</td>
+        <td class="num">${fmtMoney(s.amount)}</td>
+        <td class="num">${fmtMoney(s.paid)}</td>
+        <td>${esc(t(`schedule.statusLabels.${s.status}`))}</td>
+      </tr>`,
+        )
+        .join('')}</tbody>
+    </table>`
+      : '';
+
   return `<!DOCTYPE html>
 <html lang="${esc(locale)}" dir="${opts.dir}">
 <head>
@@ -126,6 +159,8 @@ export function renderDocumentHTML(data: DocumentData, opts: DocumentRenderOptio
     <p class="body">${esc(body)}</p>
 
     ${figure ? `<div class="figure">${figure}</div>` : ''}
+
+    ${scheduleBlock}
 
     <p class="delivered">${esc(t('delivered', { date: now }))}</p>
 

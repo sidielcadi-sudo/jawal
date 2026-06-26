@@ -146,6 +146,24 @@ export default async function EditPersonPage({
             nationality: person.nationality ?? undefined,
             cin: person.cin ?? undefined,
             regime: person.regime ?? undefined,
+            usesTransport: person.usesTransport,
+            ...(() => {
+              const m = (person.metadata ?? {}) as Record<string, unknown>;
+              return {
+                cne: typeof m.cne === 'string' ? m.cne : undefined,
+                codeMassar: typeof m.codeMassar === 'string' ? m.codeMassar : undefined,
+                imageRights: typeof m.imageRights === 'boolean' ? m.imageRights : undefined,
+                exitRights: typeof m.exitRights === 'number' ? m.exitRights : undefined,
+                dietInfo: typeof m.dietInfo === 'string' ? m.dietInfo : undefined,
+                originSchool: typeof m.originSchool === 'string' ? m.originSchool : undefined,
+                repeating: typeof m.repeating === 'boolean' ? m.repeating : undefined,
+                cnssNumber: typeof m.cnssNumber === 'string' ? m.cnssNumber : undefined,
+                amoNumber: typeof m.amoNumber === 'string' ? m.amoNumber : undefined,
+                employmentStatus: typeof m.employmentStatus === 'string' ? m.employmentStatus : undefined,
+                cinScanFileId: typeof m.cinScanFileId === 'string' ? m.cinScanFileId : null,
+                cnssAttestationFileId: typeof m.cnssAttestationFileId === 'string' ? m.cnssAttestationFileId : null,
+              };
+            })(),
             contacts,
             address,
             parents: person.relationsAsChild.map((r) => ({

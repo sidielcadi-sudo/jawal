@@ -19,8 +19,11 @@ function input(formData: FormData) {
     academicYearId: get('academicYearId'),
     levelId: get('levelId'),
     label: get('label'),
+    kind: get('kind') || 'ANNUAL',
+    category: get('category') || 'TUITION',
     totalAmount: get('totalAmount'),
     installmentCount: get('installmentCount'),
+    installmentLocked: formData.get('installmentLocked') === 'on' || formData.get('installmentLocked') === 'true',
     firstDueMonth: get('firstDueMonth'),
   };
 }
@@ -58,12 +61,14 @@ export async function createFeeScheduleAction(formData: FormData): Promise<Resul
 
 const FEE_UPDATE_SCHEMA = z.object({
   label: z.string().min(1).max(100),
+  category: z.enum(['TUITION', 'TRANSPORT', 'CANTEEN', 'DAYCARE', 'OTHER']),
   totalAmount: z.coerce.number().min(1).max(100_000_000),
   installmentCount: z.coerce.number().int().min(1).max(24),
+  installmentLocked: z.boolean(),
   firstDueMonth: z.coerce.number().int().min(1).max(12),
 });
 
-/** Modifie une grille tarifaire (libellé, montant, nb d'échéances, 1er mois). */
+/** Modifie une grille tarifaire (libellé, catégorie, montant, nb d'échéances, 1er mois). */
 export async function updateFeeScheduleAction(id: string, formData: FormData): Promise<Result> {
   const session = await auth();
   if (!session?.user) return { ok: false, error: 'Non authentifié' };
@@ -75,8 +80,10 @@ export async function updateFeeScheduleAction(id: string, formData: FormData): P
   };
   const parsed = FEE_UPDATE_SCHEMA.safeParse({
     label: get('label'),
+    category: get('category') || 'TUITION',
     totalAmount: get('totalAmount'),
     installmentCount: get('installmentCount') || '9',
+    installmentLocked: formData.get('installmentLocked') === 'on' || formData.get('installmentLocked') === 'true',
     firstDueMonth: get('firstDueMonth') || '9',
   });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalide' };
@@ -137,6 +144,7 @@ const DISCOUNT_SCHEMA = z.object({
   pct: z.coerce.number().min(0).max(100),
   active: z.coerce.boolean(),
   order: z.coerce.number().int().min(0).max(999),
+  feeScheduleItemId: z.string().uuid().nullable(),
 });
 
 function discountInput(formData: FormData) {
@@ -144,11 +152,13 @@ function discountInput(formData: FormData) {
     const v = formData.get(k);
     return typeof v === 'string' ? v.trim() : '';
   };
+  const feeId = get('feeScheduleItemId');
   return {
     label: get('label'),
     pct: get('pct'),
     active: formData.get('active') === 'on' || formData.get('active') === 'true',
     order: get('order') || '0',
+    feeScheduleItemId: feeId || null,
   };
 }
 

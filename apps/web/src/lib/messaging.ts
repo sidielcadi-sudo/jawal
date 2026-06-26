@@ -72,6 +72,30 @@ export async function listConversationsForParticipant(
   });
 }
 
+/** Nombre de conversations non lues d'un utilisateur (dernier message reçu, non lu). */
+export async function countUnreadConversations(tx: Tx, userId: string): Promise<number> {
+  const parts = await tx.conversationParticipant.findMany({
+    where: { userId },
+    select: { conversationId: true, lastReadAt: true },
+  });
+  if (parts.length === 0) return 0;
+  const lastReadById = new Map(parts.map((p) => [p.conversationId, p.lastReadAt]));
+  const convs = await tx.conversation.findMany({
+    where: { id: { in: parts.map((p) => p.conversationId) } },
+    select: {
+      id: true,
+      messages: { orderBy: { sentAt: 'desc' }, take: 1, select: { sentAt: true, senderUserId: true } },
+    },
+  });
+  let n = 0;
+  for (const c of convs) {
+    const last = c.messages[0];
+    const lastRead = lastReadById.get(c.id) ?? null;
+    if (last && last.senderUserId !== userId && (!lastRead || last.sentAt > lastRead)) n++;
+  }
+  return n;
+}
+
 export async function getThread(tx: Tx, conversationId: string): Promise<Thread | null> {
   const conv = await tx.conversation.findUnique({
     where: { id: conversationId },

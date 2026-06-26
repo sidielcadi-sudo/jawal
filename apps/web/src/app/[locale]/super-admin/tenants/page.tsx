@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
@@ -39,6 +40,9 @@ export default async function SuperAdminTenants({
               SaaS
             </span>
             <h1 className="text-lg font-semibold text-slate-900">{t('title')}</h1>
+            <Link href={`/${locale}/super-admin/groups`} className="text-sm text-brand-700 hover:underline">
+              Groupes scolaires →
+            </Link>
           </div>
           <div className="flex items-center gap-3">
             <span className="text-sm text-slate-700">{session.user.email}</span>

@@ -9,13 +9,14 @@ import { getTeacherPersonId } from '@/lib/teacher';
 import { upsertLesson, teacherOwnsLesson } from '@/lib/lesson-book';
 
 type Result = { ok: true } | { ok: false; error: string };
+type SaveResult = { ok: true; lessonEntryId: string } | { ok: false; error: string };
 
 /**
  * Saisie/maj du cahier de texte d'une séance par l'enseignant qui la donne.
  * L'appartenance de la séance + la cohérence de date sont revérifiées dans
  * `upsertLesson` (l'enseignant ne peut remplir que ses propres séances).
  */
-export async function saveLessonAction(formData: FormData): Promise<Result> {
+export async function saveLessonAction(formData: FormData): Promise<SaveResult> {
   const session = await auth();
   if (!session?.user) return { ok: false, error: 'Non authentifié' };
   if (!session.user.isTeacher) return { ok: false, error: 'Réservé aux comptes enseignant.' };
@@ -37,6 +38,7 @@ export async function saveLessonAction(formData: FormData): Promise<Result> {
     summary: (formData.get('summary') as string | null)?.trim() || undefined,
     activities: (formData.get('activities') as string | null)?.trim() || undefined,
     competencies: (formData.get('competencies') as string | null)?.trim() || undefined,
+    theme: (formData.get('theme') as string | null)?.trim() || undefined,
     visibleToStudents: formData.get('visibleToStudents') !== 'false',
     visibleToParents: formData.get('visibleToParents') !== 'false',
     publishAt: (formData.get('publishAt') as string | null)?.trim() || undefined,
@@ -58,7 +60,7 @@ export async function saveLessonAction(formData: FormData): Promise<Result> {
           : 'La date ne correspond pas au jour de la séance.';
       return { ok: false as const, error: msg };
     }
-    return { ok: true as const };
+    return { ok: true as const, lessonEntryId: r.id };
   });
 
   if (result.ok) {

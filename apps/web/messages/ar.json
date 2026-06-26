@@ -93,6 +93,7 @@
     "dashboard": {
       "title": "القيادة",
       "welcome": "مرحبًا، {name}",
+      "period": "الفترة",
       "kpi": {
         "students": "التلاميذ",
         "teachers": "الأساتذة",
@@ -165,6 +166,13 @@
         "triggering": "جاري الإرسال…",
         "triggerOk": "تم الإرسال إلى {recipients} مستلم(ين) · {alerts} تنبيه(ات)",
         "triggerFailed": "فشل إرسال التنبيهات."
+      },
+      "cat": {
+        "overview": "نظرة عامة",
+        "success": "النجاح الدراسي",
+        "vieScolaire": "الحياة المدرسية والمواظبة",
+        "effectifs": "الأعداد والبنية",
+        "rh": "الموارد البشرية / الأساتذة"
       }
     },
     "signOut": "تسجيل الخروج",
@@ -189,13 +197,23 @@
       "messages": "الرسائل",
       "finance": "المالية",
       "import": "استيراد CSV",
-      "settings": "الإعدادات"
+      "settings": "الإعدادات",
+      "group": "عرض المجموعة",
+      "transport": "النقل",
+      "leave": "العطل والغيابات",
+      "overtime": "الساعات الإضافية",
+      "payroll": "الأجور",
+      "bourse": "سوق الكتب"
     },
     "surveys": {
       "title": "استبيانات الرضا",
       "subtitle": "أنشئ الاستبيانات، انشرها وتابع النتائج. تُغذّي التنقيطات مؤشر الرضا في القيادة.",
       "empty": "لا يوجد أي استبيان حالياً.",
-      "status": { "DRAFT": "مسودة", "OPEN": "مفتوح", "CLOSED": "مغلق" },
+      "status": {
+        "DRAFT": "مسودة",
+        "OPEN": "مفتوح",
+        "CLOSED": "مغلق"
+      },
       "confirmDelete": "حذف هذا الاستبيان وكل أجوبته نهائياً؟",
       "actions": {
         "new": "استبيان جديد",
@@ -302,10 +320,30 @@
         "student": "التلميذ",
         "class": "القسم",
         "date": "التاريخ",
+        "session": "الحصة",
+        "subject": "المادة / الأستاذ",
         "category": "الصنف",
+        "observation": "ملاحظة الأستاذ",
+        "delegate": "المندوب",
+        "parentJustif": "تبرير ولي الأمر",
         "status": "الحالة",
         "actions": "إجراءات"
       },
+      "delegatePlaceholder": "— المندوب —",
+      "obsType": {
+        "OBSERVATION": "ملاحظة",
+        "ENCOURAGEMENT": "تشجيع"
+      },
+      "justifStatus": {
+        "PENDING": "قيد الفحص",
+        "APPROVED": "مقبول",
+        "REJECTED": "مرفوض"
+      },
+      "justifFile": "المبرّر",
+      "justifReviewNote": "السبب",
+      "justifAccept": "قبول",
+      "justifReject": "رفض",
+      "justifRejectPrompt": "سبب رفض التبرير:",
       "actions": {
         "confirm": "تأكيد",
         "justify": "تبرير",
@@ -445,7 +483,10 @@
         "distribution": "توزيع النقط",
         "below10": "< 10",
         "mid": "10–14",
-        "above14": "> 14"
+        "above14": "> 14",
+        "progression": "التطور",
+        "progressionNone": "—",
+        "distributionVariation": "تغير التوزيع"
       },
       "attendance": {
         "title": "الحضور والانضباط",
@@ -467,6 +508,23 @@
         "feedback": "رضا الآباء / التلاميذ",
         "unread": "رسائل غير مقروءة",
         "noAccount": "لا يوجد حساب دخول."
+      },
+      "appel": {
+        "title": "متابعة المناداة",
+        "onTime": "مناداة في الوقت",
+        "onTimeHint": "{done}/{total} حصة",
+        "late": "مناداة متأخرة",
+        "notDone": "مناداة غير منجزة",
+        "reminders": "التذكيرات المستلمة"
+      },
+      "classAvg": {
+        "title": "معدل الأقسام",
+        "empty": "لا توجد نقاط في الفترة."
+      },
+      "progressionTable": {
+        "title": "تطور التلاميذ حسب الفصل",
+        "empty": "لا توجد نقاط لهذا القسم.",
+        "student": "التلميذ"
       }
     },
     "attendanceIndex": {
@@ -585,10 +643,23 @@
         "discountReason": "سبب التخفيض",
         "discountNone": "بدون تخفيض",
         "otherDoc": "وثيقة مودعة",
+        "feeTable": {
+          "title": "الرسوم والأقساط",
+          "empty": "لا يوجد رسم سنوي قابل للتطبيق (تحقق من لائحة المستوى وخيارات التلميذ).",
+          "type": "نوع الرسم",
+          "amount": "المبلغ",
+          "discount": "التخفيض",
+          "installments": "الأقساط",
+          "perInstallment": "لكل قسط",
+          "total": "المجموع بعد التخفيض",
+          "locked": "عدد الأقساط مقفل في الإعدادات"
+        },
         "echeancier": {
           "title": "تفصيل جدول الأداء",
           "n": "ر.",
           "due": "آخر أجل",
+          "feeType": "نوع الرسم",
+          "dueTotal": "المجموع المستحق في {date}",
           "amount": "المبلغ",
           "method": "الطريقة",
           "status": "الحالة",
@@ -597,6 +668,8 @@
           "pending": "في الانتظار",
           "cancelled": "ملغى",
           "record": "تسجيل",
+          "recordAll": "تسجيل",
+          "confirmAll": "تحصيل {count} قسط/أقساط",
           "confirm": "تحصيل",
           "reference": "مرجع (تحويل، وصل…)",
           "chequeRef": "رقم الشيك",
@@ -685,7 +758,30 @@
         "cancelledCount": "أقساط مُلغاة",
         "viewFinance": "عرض في المالية",
         "previousDueTitle": "دين سابق غير مُسدَّد",
-        "previousDueHint": "لهذا التلميذ رصيد غير مؤدى من سنوات سابقة: {amount} {currency}."
+        "previousDueHint": "لهذا التلميذ رصيد غير مؤدى من سنوات سابقة: {amount} {currency}.",
+        "regimeEdit": {
+          "button": "تعديل النظام / النقل",
+          "title": "النظام والنقل",
+          "warning": "⚠ تعديل هذه الحقول يعيد حساب جدول الأداء (المطعم / النقل). الأقساط المؤداة تُحفظ ويُنبَّه إليها.",
+          "close": "إغلاق",
+          "save": "تأكيد وإعادة الحساب",
+          "feesTitle": "عدد الأقساط لكل رسم",
+          "installments": "قسط",
+          "feeLocked": "رسم مؤدى أو مقفل — غير قابل للتعديل",
+          "feesHint": "يعيد توزيع المبلغ على العدد الجديد من الأقساط. الرسوم المؤداة مقفلة."
+        },
+        "familyDebts": {
+          "method": "الطريقة",
+          "reference": "مرجع (رقم الشيك…)",
+          "settleAll": "تسوية المتأخرات ({amount} {currency})",
+          "methods": {
+            "CASH": "نقدًا",
+            "CHEQUE": "شيك",
+            "TRANSFER": "تحويل",
+            "CMI": "بطاقة (CMI)",
+            "OTHER": "أخرى"
+          }
+        }
       },
       "actions": {
         "validate": "مصادقة التسجيل",
@@ -740,6 +836,11 @@
           "decision": "القرار",
           "targetLevel": "المستوى المستهدف"
         }
+      },
+      "pagination": {
+        "page": "صفحة {page} / {total}",
+        "prev": "السابق",
+        "next": "التالي"
       }
     },
     "staffAttendance": {
@@ -753,6 +854,40 @@
       "noStaff": "لا يوجد أي موظف للتسجيل.",
       "totalDeduction": "إجمالي الاقتطاعات المحسوبة",
       "formulaHint": "اقتطاع الغياب = الراتب ÷ 26 يوم · اقتطاع التأخر = (دقائق التأخر−15) × التعرفة الساعية (الراتب ÷ 26 ÷ 8).",
+      "kpi": {
+        "presenceRate": "نسبة الحضور",
+        "presenceRateHint": "{attended} حاضرون من {recorded} مُسجلين",
+        "notRecorded": "غير مُسجلين",
+        "notRecordedHint": "من أصل {headcount}",
+        "lateMinutes": "مجموع التأخر",
+        "lateMinutesHint": "{count} حالة تأخر",
+        "deduction": "اقتطاع اليوم"
+      },
+      "syntheseLink": "الحصيلة الشهرية",
+      "synthese": {
+        "title": "الحصيلة الشهرية للموظفين",
+        "subtitle": "{headcount} موظف(ون)",
+        "backToDaily": "← دوام اليوم",
+        "absenteeism": "نسبة الغياب",
+        "absenteeismHint": "{absent} غياب من {records} يوم مُسجل",
+        "punctuality": "نسبة الانضباط",
+        "punctualityHint": "{late} حالة تأخر خلال الشهر",
+        "deductionMass": "إجمالي الاقتطاعات",
+        "deductionMassHint": "مجموع اقتطاعات الشهر",
+        "leaveDays": "أيام العطل",
+        "leaveDaysHint": "مجموع الشهر",
+        "topLate": "الأكثر تأخرًا",
+        "topAbsent": "الأكثر غيابًا",
+        "topEmpty": "لا توجد حالات هذا الشهر.",
+        "lateMinutesCol": "دقائق",
+        "absentCol": "غيابات",
+        "lateCount": "{count} حالة تأخر",
+        "absentDays": "{count} يوم",
+        "contractAlerts": "عقود قاربت على الانتهاء",
+        "contractAlertsEmpty": "لا توجد عقود للتجديد قريبًا.",
+        "expired": "منتهٍ",
+        "daysToEnd": "{count} يوم متبقٍ"
+      },
       "viewMonthlyHint": "لعرض ملخص شهري لشخص محدد :",
       "viewMonthlyLink": "افتح ملف أستاذ أو موظف",
       "lateMinutesPlaceholder": "دقيقة",
@@ -890,7 +1025,15 @@
         "noSpecialty": "أساتذة بدون تخصص (مواد مُتقنة)",
         "sharedRoom": "أساتذة يتقاسمون قاعة رئيسية",
         "uncoveredSlots": "حصص بدون أستاذ متاح",
-        "daysShort": { "MON": "الإثنين", "TUE": "الثلاثاء", "WED": "الأربعاء", "THU": "الخميس", "FRI": "الجمعة", "SAT": "السبت", "SUN": "الأحد" },
+        "daysShort": {
+          "MON": "الإثنين",
+          "TUE": "الثلاثاء",
+          "WED": "الأربعاء",
+          "THU": "الخميس",
+          "FRI": "الجمعة",
+          "SAT": "السبت",
+          "SUN": "الأحد"
+        },
         "avg": "أساتذة متاحون في المتوسط لكل حصة"
       },
       "conflicts": {
@@ -1123,8 +1266,13 @@
       "reset": "إعادة تعيين الكل",
       "confirmReset": "حذف جميع القيود الخاصة بهذا القسم ؟",
       "days": {
-        "MON": "إثن", "TUE": "ثلا", "WED": "أرب", "THU": "خمي",
-        "FRI": "جمع", "SAT": "سبت", "SUN": "أحد"
+        "MON": "إثن",
+        "TUE": "ثلا",
+        "WED": "أرب",
+        "THU": "خمي",
+        "FRI": "جمع",
+        "SAT": "سبت",
+        "SUN": "أحد"
       },
       "hours": {
         "title": "الحجم الساعي اليومي",
@@ -1305,14 +1453,235 @@
         "download": "تنزيل"
       }
     },
+    "exceptionalFees": {
+      "title": "الرسوم الاستثنائية",
+      "subtitle": "رسوم ظرفية ومستهدفة (رحلات، أسفار، كتب…).",
+      "backToFinance": "العودة إلى المالية",
+      "backToList": "العودة إلى القائمة",
+      "create": "رسم جديد",
+      "createHint": "أنشئ الرسم ثم خصّصه وانشره لإشعار الأولياء.",
+      "empty": "لا توجد رسوم استثنائية.",
+      "mandatoryBadge": "إلزامي",
+      "optionalBadge": "اختياري",
+      "publish": "نشر",
+      "close": "إغلاق",
+      "delete": "حذف",
+      "confirmDelete": "حذف هذا الرسم؟",
+      "statuses": {
+        "DRAFT": "مسودة",
+        "PUBLISHED": "منشور",
+        "CLOSED": "مغلق"
+      },
+      "consents": {
+        "PENDING": "قيد الانتظار",
+        "ACCEPTED": "مقبول",
+        "REFUSED": "مرفوض"
+      },
+      "table": {
+        "label": "الرسم",
+        "amount": "المبلغ",
+        "status": "الحالة",
+        "consent": "مقبول / قيد الانتظار / مرفوض",
+        "actions": "إجراءات"
+      },
+      "form": {
+        "label": "العنوان",
+        "labelPh": "مثال: زيارة المتحف",
+        "year": "السنة",
+        "type": "النوع",
+        "amount": "المبلغ",
+        "activityDate": "تاريخ النشاط",
+        "dueDate": "أجل الأداء",
+        "description": "الوصف",
+        "mandatory": "رسم إلزامي (بدون اختيار الولي)",
+        "mandatoryHint": "إذا كان إلزاميًا تُحتسب الرسوم فورًا، وإلا يقبلها الولي أو يرفضها.",
+        "target": "القسم/الأقسام المعنية",
+        "targetHint": "حدّد الأقسام (القسم كاملًا) و/أو تلاميذ محددين.",
+        "create": "إنشاء الرسم"
+      },
+      "types": {
+        "title": "أنواع الرسوم",
+        "subtitle": "فهرس الأنواع (رحلة، سفر، كتب…).",
+        "labelFr": "التسمية (بالفرنسية)",
+        "labelAr": "التسمية (بالعربية)",
+        "order": "الترتيب",
+        "active": "مفعّل",
+        "add": "إضافة",
+        "save": "حفظ",
+        "cancel": "إلغاء",
+        "edit": "تعديل",
+        "delete": "حذف",
+        "confirmDelete": "حذف هذا النوع؟",
+        "empty": "لا توجد أنواع."
+      },
+      "assign": {
+        "title": "تخصيص ونشر",
+        "subtitle": "استهدف أقسامًا كاملة و/أو تلاميذ محددين.",
+        "hint": "حدّد الأقسام (القسم كاملًا) و/أو تلاميذ محددين.",
+        "pickStudents": "اختيار تلاميذ",
+        "hideStudents": "إخفاء",
+        "noClass": "لا توجد أقسام.",
+        "publish": "تخصيص ونشر",
+        "publishHint": "سيتم إشعار الأولياء وسيمكنهم القبول أو الرفض.",
+        "publishHintMandatory": "رسم إلزامي: النشر يُحتسب فورًا على التلاميذ المعنيين (يصبح «للأداء»).",
+        "publishHintOptional": "النشر يُشعر الأولياء، وسيمكنهم القبول أو الرفض.",
+        "publishedNote": "تم نشر الرسم.",
+        "closedNote": "الرسم مغلق."
+      },
+      "pay": {
+        "record": "تسجيل دفعة",
+        "amount": "المبلغ",
+        "reference": "المرجع",
+        "confirm": "تأكيد",
+        "cancel": "إلغاء",
+        "methods": {
+          "CASH": "نقدًا",
+          "CHEQUE": "شيك",
+          "TRANSFER": "تحويل",
+          "OTHER": "أخرى"
+        }
+      },
+      "suivi": {
+        "student": "التلميذ",
+        "class": "القسم",
+        "consent": "الموافقة",
+        "payment": "الأداء",
+        "receipt": "الوصل",
+        "paid": "مؤدى",
+        "remaining": "المتبقي",
+        "notBilled": "غير محتسب",
+        "cancelled": "ملغى",
+        "refunded": "مُسترجع",
+        "credited": "مُحتسب",
+        "empty": "لا توجد تخصيصات بعد."
+      },
+      "cancelFee": {
+        "action": "إلغاء",
+        "confirmUnpaid": "إلغاء هذا الرسم لهذا التلميذ (غير مؤدى)؟",
+        "credit": "احتساب على قسط آخر",
+        "refund": "استرجاع فعلي (أرفق وثيقة مبررة)",
+        "confirm": "تأكيد الإلغاء",
+        "cancel": "إلغاء"
+      }
+    },
     "finance": {
       "title": "المالية",
       "subtitle": "نظرة شاملة على المداخيل والمتأخرات.",
+      "exceptionalLink": "الرسوم الاستثنائية",
+      "expensesLink": "المصاريف",
+      "year": "السنة",
+      "apply": "تطبيق",
+      "histo": {
+        "sectionTitle": "التوزيع حسب الوتيرة",
+        "tabGlobal": "نظرة شاملة",
+        "tabMonthly": "شهرية",
+        "tabQuarterly": "فصلية",
+        "tabSemestrial": "نصف سنوية",
+        "tabAnnual": "سنوية",
+        "monthlyTitle": "التوزيع الشهري (الأقساط الشهرية)",
+        "due": "المستحق",
+        "collected": "المُحصَّل",
+        "unpaid": "غير مؤدى",
+        "cumul": "التراكمي",
+        "total": "المجموع"
+      },
       "kpi": {
         "totalDue": "المبلغ المستحق",
         "totalPaid": "المُحصَّل",
         "totalRemaining": "المتبقي",
         "collectionRate": "معدل التحصيل"
+      },
+      "periods": {
+        "monthly": "شهري",
+        "quarterly": "فصلي",
+        "biannual": "نصف سنوي",
+        "annual": "سنوي"
+      },
+      "periodKpi": {
+        "revenue": "الإيرادات المحصَّلة",
+        "expectedVsCollected": "المتوقع مقابل المحصَّل",
+        "unpaid": "إجمالي المتأخرات",
+        "treasury": "رصيد الخزينة",
+        "families": "{count} أسرة معنية",
+        "vsPrev": "مقارنة بالفترة السابقة",
+        "thisPeriod": "خلال الفترة",
+        "netFlow": "صافي التدفق {value}"
+      },
+      "expenses": {
+        "title": "المصاريف",
+        "subtitle": "مصاريف المؤسسة (تُخصم من رصيد الخزينة).",
+        "backToFinance": "العودة إلى المالية",
+        "total": "إجمالي المصاريف",
+        "create": "مصروف جديد",
+        "createHint": "سجّل مصروفًا؛ يُخصم من رصيد الخزينة.",
+        "empty": "لا توجد مصاريف مسجّلة.",
+        "delete": "حذف",
+        "confirmDelete": "حذف هذا المصروف؟",
+        "table": {
+          "date": "التاريخ",
+          "label": "البيان",
+          "category": "الفئة",
+          "amount": "المبلغ",
+          "actions": "إجراءات"
+        },
+        "form": {
+          "label": "البيان",
+          "labelPh": "مثال: كراء شتنبر",
+          "category": "الفئة",
+          "amount": "المبلغ",
+          "date": "التاريخ",
+          "method": "الوسيلة",
+          "note": "ملاحظة",
+          "create": "تسجيل المصروف"
+        },
+        "categories": {
+          "SALARY": "الأجور",
+          "RENT": "الكراء",
+          "UTILITIES": "ماء / كهرباء / إنترنت",
+          "SUPPLIES": "لوازم",
+          "MAINTENANCE": "الصيانة",
+          "TRANSPORT": "النقل",
+          "TAXES": "الضرائب",
+          "OTHER": "أخرى"
+        },
+        "methods": {
+          "CASH": "نقدًا",
+          "CHEQUE": "شيك",
+          "TRANSFER": "تحويل",
+          "OTHER": "أخرى"
+        }
+      },
+      "unpaid": {
+        "familiesKpi": "أسر متأخرة في الأداء",
+        "manageLink": "تدبير المتأخرات",
+        "manageTitle": "تدبير المتأخرات",
+        "manageSubtitle": "{count} تلميذ(ة) متأخر · {amount} إجمالًا",
+        "backToFinance": "العودة إلى المالية",
+        "topTitle": "أكثر الأسر تأخرًا",
+        "seeAll": "عرض كل المتأخرات",
+        "family": "الأسرة",
+        "student": "التلميذ",
+        "amount": "المبلغ",
+        "impaye": "المتأخر",
+        "echeances": "الأقساط",
+        "daysLate": "مدة التأخر",
+        "days": "{count} يوم",
+        "action": "إجراء",
+        "empty": "لا توجد متأخرات. كل الأسر محيّنة.",
+        "searchPlaceholder": "أسرة أو تلميذ…",
+        "search": "بحث",
+        "noResult": "لا توجد نتائج لهذا البحث.",
+        "relance": "تذكير",
+        "relanceTitle": "التذكيرات",
+        "relanceEmpty": "لا توجد تذكيرات بعد.",
+        "relancePlaceholder": "وصف التذكير (مكالمة، بريد، رسالة…)",
+        "relanceSave": "حفظ التذكير",
+        "cancel": "إلغاء",
+        "pagination": {
+          "page": "صفحة {page} / {total}",
+          "prev": "السابق",
+          "next": "التالي"
+        }
       },
       "topUnpaid": "التلاميذ الذين لديهم متأخرات",
       "noUnpaid": "لا توجد متأخرات.",
@@ -1634,7 +2003,10 @@
         },
         "portalAccess": "الدخول إلى بوابة ولي الأمر",
         "portalAccessTeacher": "الدخول إلى بوابة الأستاذ",
-        "documents": "الوثائق الرسمية"
+        "documents": "الوثائق الرسمية",
+        "portalAccessStudent": "الدخول إلى بوابة التلميذ",
+        "employerInfo": "معلومات المشغل",
+        "view": "عرض"
       },
       "parentAccess": {
         "active": "مُفعّل",
@@ -1806,7 +2178,11 @@
           "AUTRE": "أخرى"
         },
         "gender": "الجنس",
-        "genders": { "M": "ذكر", "F": "أنثى", "X": "آخر" },
+        "genders": {
+          "M": "ذكر",
+          "F": "أنثى",
+          "X": "آخر"
+        },
         "lastName": "اللقب",
         "firstName": "الاسم",
         "birthDate": "تاريخ الازدياد",
@@ -1819,6 +2195,9 @@
           "DEMI_PENSIONNAIRE": "نصف داخلي",
           "INTERNE": "داخلي"
         },
+        "usesTransport": "النقل المدرسي",
+        "usesTransportYes": "نعم",
+        "usesTransportNo": "لا",
         "contactEmail": "البريد الإلكتروني",
         "contactPhone": "الهاتف",
         "contactWhatsapp": "واتساب",
@@ -1867,7 +2246,61 @@
           "save": "حفظ",
           "saving": "جاري الحفظ…",
           "cancel": "إلغاء"
-        }
+        },
+        "cne": "الرمز الوطني للامتحان (CNE)",
+        "codeMassar": "رمز مسار",
+        "imageRights": "الحق في الصورة",
+        "exitRights": "حق الخروج (0–9)",
+        "dietInfo": "النظام الغذائي / الحساسية",
+        "dietInfoHint": "النظام الغذائي، الحساسية الغذائية، نوع الوجبة (عادي، نباتي، آخر)…",
+        "originSchool": "مؤسسة المنشأ",
+        "originSchoolHint": "إذا غيّر التلميذ المؤسسة",
+        "repeating": "إعادة السنة",
+        "studentIdentity": "الهوية والأذونات",
+        "lockedViaEnrollment": "يُعدَّل فقط عبر التسجيل (يؤثر على الفوترة).",
+        "cnssNumber": "رقم CNSS",
+        "amoNumber": "رقم AMO",
+        "cinScan": "نسخة البطاقة",
+        "cnssAttestation": "شهادة CNSS",
+        "employmentStatus": {
+          "label": "الحالة",
+          "ACTIVE": "في المنصب",
+          "SUSPENDED": "موقوف",
+          "RESIGNED": "استقالة",
+          "CONTRACT_END": "انتهاء العقد"
+        },
+        "view": "عرض",
+        "docUpload": "تحميل (PDF/صورة)"
+      },
+      "studentAccess": {
+        "active": "مُفعّل",
+        "description": "إنشاء حساب دخول إلى بوابة التلميذ لهذا التلميذ.",
+        "emailPlaceholder": "البريد الإلكتروني للدخول",
+        "create": "إنشاء الدخول",
+        "creating": "جارٍ الإنشاء…",
+        "tempPasswordHint": "كلمة مرور مؤقتة تُسلَّم للتلميذ (تظهر مرة واحدة فقط):"
+      },
+      "health": {
+        "title": "الصحة والسلامة",
+        "edit": "تعديل",
+        "save": "حفظ",
+        "cancel": "إلغاء",
+        "yes": "نعم",
+        "empty": "لا توجد معلومات.",
+        "allergies": "الحساسية",
+        "chronicConditions": "الأمراض المزمنة",
+        "treatments": "العلاجات الطبية",
+        "pai": "مشروع الاستقبال الفردي (PAI)",
+        "paiNote": "تفاصيل PAI",
+        "vaccinations": "التلقيحات",
+        "doctor": "الطبيب المعالج",
+        "doctorName": "الطبيب المعالج",
+        "doctorPhone": "هاتف الطبيب",
+        "emergencyContact": "جهة اتصال الطوارئ",
+        "emergencyContactName": "جهة اتصال الطوارئ",
+        "emergencyContactPhone": "هاتف الطوارئ",
+        "medAuthorization": "الإذن بتناول الأدوية",
+        "outingAuthorization": "الإذن بالخروج المدرسي"
       }
     },
     "classes": {
@@ -1912,7 +2345,8 @@
           "save": "حفظ",
           "saving": "جاري الحفظ…",
           "cancel": "إلغاء"
-        }
+        },
+        "sectionTitle": "معلومات القسم"
       },
       "detail": {
         "mainTeacher": "الأستاذ الرئيسي",
@@ -1930,6 +2364,10 @@
         "enrollButton": "تسجيل",
         "enrolling": "جاري التسجيل…",
         "noAvailable": "لا يوجد تلاميذ متاحون.",
+        "delegate": "مندوب القسم",
+        "delegateHint": "يُختار من تلاميذ القسم. يظهر في تدبير الغيابات.",
+        "delegateNone": "— بدون مندوب —",
+        "delegateNoStudents": "سجّل التلاميذ أولاً.",
         "cannotEnroll": "التسجيل معطل (قسم مؤرشف أو ممتلئ).",
         "capacityReached": "السعة ممتلئة — قم بزيادتها أو احذف تلميذًا.",
         "utilization": "نسبة الإشغال",
@@ -2014,7 +2452,20 @@
       "delivered": "سُلّمت بتاريخ {date} للإدلاء بها عند الاقتضاء.",
       "signature": "رئيس(ة) المؤسسة",
       "footer": "وثيقة مُنشأة بواسطة {school} · مرجع {ref}",
-      "needPeriod": "اختر فترة."
+      "needPeriod": "اختر فترة.",
+      "schedule": {
+        "title": "تفصيل جدول الأداء",
+        "label": "البيان",
+        "due": "الاستحقاق",
+        "amount": "المبلغ",
+        "paid": "المُؤدى",
+        "status": "الحالة",
+        "statusLabels": {
+          "PENDING": "مستحق",
+          "PARTIAL": "جزئي",
+          "PAID": "مُؤدى"
+        }
+      }
     },
     "bulletin": {
       "classes": "الأقسام",
@@ -2226,10 +2677,21 @@
         "slug": "معرّف الدخول (slug)",
         "slugHint": "يُستعمل عند الدخول. غير قابل للتعديل هنا (تواصل مع الدعم).",
         "localeDefault": "اللغة الافتراضية",
-        "locales": { "fr": "الفرنسية", "ar": "العربية" },
+        "locales": {
+          "fr": "الفرنسية",
+          "ar": "العربية"
+        },
         "currency": "العملة",
         "timezone": "المنطقة الزمنية",
-        "logoSoon": "شعار المؤسسة: قريبًا (التحميل قيد التطوير).",
+        "logo": {
+          "title": "شعار المؤسسة",
+          "hint": "يظهر في البوابات (الإدارة، الأولياء، الأساتذة، التلاميذ).",
+          "formats": "JPG أو PNG أو WEBP أو SVG — بحد أقصى 2 ميغابايت.",
+          "upload": "تحميل",
+          "uploading": "جارٍ الإرسال…",
+          "remove": "حذف",
+          "error": "فشل التحميل."
+        },
         "save": "حفظ",
         "saving": "جارٍ الحفظ…",
         "saved": "تم حفظ التعديلات."
@@ -2291,7 +2753,13 @@
         }
       },
       "years": {
-        "table": { "label": "السنة", "start": "البداية", "end": "النهاية", "status": "الحالة", "actions": "إجراءات" },
+        "table": {
+          "label": "السنة",
+          "start": "البداية",
+          "end": "النهاية",
+          "status": "الحالة",
+          "actions": "إجراءات"
+        },
         "active": "نشطة",
         "empty": "لا توجد سنوات.",
         "create": "إنشاء سنة",
@@ -2319,7 +2787,10 @@
             "end": "النهاية"
           }
         },
-        "actions": { "activate": "تفعيل", "edit": "تعديل" },
+        "actions": {
+          "activate": "تفعيل",
+          "edit": "تعديل"
+        },
         "form": {
           "label": "التسمية (مثال : 2026-2027)",
           "start": "تاريخ البداية",
@@ -2332,12 +2803,21 @@
         }
       },
       "curriculum": {
-        "actions": { "edit": "تعديل", "delete": "حذف" },
+        "actions": {
+          "edit": "تعديل",
+          "delete": "حذف"
+        },
         "confirmDelete": "حذف هذا العنصر؟ لا يمكن التراجع عن هذا الإجراء.",
         "cycles": {
           "title": "الأسلاك",
           "subtitle": "ابتدائي، إعدادي، تأهيلي، إجازة، ماستر…",
-          "table": { "code": "الرمز", "label": "التسمية", "periods": "الفترات", "order": "الترتيب", "actions": "إجراءات" },
+          "table": {
+            "code": "الرمز",
+            "label": "التسمية",
+            "periods": "الفترات",
+            "order": "الترتيب",
+            "actions": "إجراءات"
+          },
           "empty": "لا توجد أسلاك.",
           "create": "إنشاء سلك",
           "form": {
@@ -2362,7 +2842,13 @@
           "title": "المستويات",
           "subtitle": "المستويات داخل كل سلك.",
           "openProgramme": "البرنامج حسب المستوى",
-          "table": { "cycle": "السلك", "code": "الرمز", "label": "التسمية", "order": "الترتيب", "actions": "إجراءات" },
+          "table": {
+            "cycle": "السلك",
+            "code": "الرمز",
+            "label": "التسمية",
+            "order": "الترتيب",
+            "actions": "إجراءات"
+          },
           "empty": "لا توجد مستويات.",
           "create": "إنشاء مستوى",
           "form": {
@@ -2490,9 +2976,14 @@
         }
       },
       "fees": {
+        "tabs": {
+          "annual": "الرسوم السنوية",
+          "exceptional": "الرسوم الاستثنائية"
+        },
         "table": {
           "year": "السنة",
           "level": "المستوى",
+          "category": "الفئة",
           "label": "التسمية",
           "totalAmount": "المجموع",
           "installments": "الأقساط",
@@ -2502,13 +2993,25 @@
         "create": "لائحة جديدة",
         "createHint": "المبلغ السنوي وعدد الأقساط الشهرية.",
         "confirmDelete": "حذف لائحة الأسعار هذه؟",
-        "actions": { "edit": "تعديل", "delete": "حذف" },
+        "actions": {
+          "edit": "تعديل",
+          "delete": "حذف"
+        },
         "form": {
           "year": "السنة الدراسية",
           "level": "المستوى",
+          "category": "الفئة",
+          "categories": {
+            "TUITION": "الدراسة",
+            "TRANSPORT": "النقل",
+            "CANTEEN": "المطعم",
+            "DAYCARE": "الحضانة",
+            "OTHER": "أخرى"
+          },
           "label": "التسمية",
           "totalAmount": "المبلغ السنوي",
           "installmentCount": "عدد الأقساط",
+          "installmentLocked": "الأقساط مقفلة (غير قابلة للتعديل عند التسجيل)",
           "firstDueMonth": "شهر القسط الأول",
           "create": "إنشاء",
           "creating": "جاري الإنشاء…",
@@ -2521,6 +3024,8 @@
           "subtitle": "قائمة تخفيضات قابلة للضبط (الإخوة، الأداء النقدي…)، تُختار عند قبول الملف.",
           "label": "التسمية",
           "labelPlaceholder": "الإخوة (الأصغر)",
+          "feeScope": "الرسم المعني",
+          "allFees": "كل الرسوم",
           "pct": "النسبة",
           "order": "الترتيب",
           "active": "مفعّل",
@@ -2537,32 +3042,62 @@
         }
       },
       "rooms": {
-        "table": { "code": "الرمز", "label": "التسمية", "capacity": "السعة", "equipment": "التجهيزات", "actions": "إجراءات" },
+        "table": {
+          "code": "الرمز",
+          "label": "التسمية",
+          "capacity": "السعة",
+          "equipment": "التجهيزات",
+          "actions": "إجراءات"
+        },
         "empty": "لا توجد قاعات.",
         "create": "إضافة قاعة",
         "createHint": "تستعمل في الجداول الزمنية وتنظيم الامتحانات.",
         "viewTimetable": "الإشغال",
         "confirmDelete": "هل تريد حذف هذه القاعة؟",
-        "actions": { "edit": "تعديل", "delete": "حذف" },
+        "actions": {
+          "edit": "تعديل",
+          "delete": "حذف"
+        },
         "form": {
-          "code": "الرمز", "label": "التسمية", "capacity": "السعة", "equipment": "التجهيزات",
+          "code": "الرمز",
+          "label": "التسمية",
+          "capacity": "السعة",
+          "equipment": "التجهيزات",
           "equipmentHint": "قائمة مفصولة بفواصل.",
-          "create": "إنشاء", "creating": "جاري الإنشاء…",
-          "save": "حفظ", "saving": "جاري الحفظ…", "cancel": "إلغاء"
+          "create": "إنشاء",
+          "creating": "جاري الإنشاء…",
+          "save": "حفظ",
+          "saving": "جاري الحفظ…",
+          "cancel": "إلغاء"
         }
       },
       "users": {
-        "table": { "email": "البريد", "name": "الاسم", "roles": "الأدوار", "lastLogin": "آخر اتصال", "actions": "إجراءات" },
+        "table": {
+          "email": "البريد",
+          "name": "الاسم",
+          "roles": "الأدوار",
+          "lastLogin": "آخر اتصال",
+          "actions": "إجراءات"
+        },
         "you": "أنت",
         "invite": "دعوة مستخدم",
         "inviteHint": "ينشئ حسابًا بكلمة مرور مؤقتة تُعطى للمستخدم.",
-        "actions": { "disable": "تعطيل", "enable": "تفعيل", "confirmDisable": "هل تريد تعطيل هذا المستخدم؟", "delete": "حذف", "confirmDelete": "حذف هذا الحساب غير المستعمل نهائيًا؟ يبقى الشخص المرتبط محفوظًا." },
+        "actions": {
+          "disable": "تعطيل",
+          "enable": "تفعيل",
+          "confirmDisable": "هل تريد تعطيل هذا المستخدم؟",
+          "delete": "حذف",
+          "confirmDelete": "حذف هذا الحساب غير المستعمل نهائيًا؟ يبقى الشخص المرتبط محفوظًا."
+        },
         "form": {
           "email": "البريد الإلكتروني",
           "firstName": "الاسم",
           "lastName": "اللقب",
           "personType": "نوع الشخص",
-          "personTypes": { "TEACHER": "أستاذ", "STAFF": "موظف" },
+          "personTypes": {
+            "TEACHER": "أستاذ",
+            "STAFF": "موظف"
+          },
           "personRole": "نوع الموظف (الوظيفة)",
           "personRoleNone": "— لا شيء —",
           "role": "الدور (الصلاحيات)",
@@ -2576,9 +3111,22 @@
       "audit": {
         "title": "سجل التدقيق",
         "subtitle": "{total} سجلًا (كل التعديلات متتبعة).",
-        "table": { "when": "التاريخ", "who": "المؤلف", "action": "العملية", "entity": "الكيان", "entityId": "المعرّف", "diff": "قبل / بعد" },
+        "table": {
+          "when": "التاريخ",
+          "who": "المؤلف",
+          "action": "العملية",
+          "entity": "الكيان",
+          "entityId": "المعرّف",
+          "diff": "قبل / بعد"
+        },
         "empty": "لا توجد سجلات للمعايير المحددة.",
-        "filter": { "entity": "الكيان", "action": "العملية", "all": "الكل", "apply": "تصفية", "clear": "مسح" },
+        "filter": {
+          "entity": "الكيان",
+          "action": "العملية",
+          "all": "الكل",
+          "apply": "تصفية",
+          "clear": "مسح"
+        },
         "actions": {
           "create": "إنشاء",
           "update": "تعديل",
@@ -2640,6 +3188,524 @@
         },
         "pagination": "الصفحة {page} / {total}"
       }
+    },
+    "teacherKpis": {
+      "title": "الأساتذة",
+      "teacherCount": "{count} أستاذ(ة)",
+      "na": "غير متوفر",
+      "presence": {
+        "title": "الحضور والمناداة",
+        "rate": "نسبة الحضور",
+        "absent": "غيابات غير مبررة",
+        "late": "نسبة التأخر",
+        "notDone": "مناداة غير منجزة",
+        "table": {
+          "teacher": "الأستاذ",
+          "presence": "الحضور",
+          "absent": "غياب غ.م.",
+          "late": "تأخرات",
+          "notDone": "مناداة غير منجزة"
+        }
+      },
+      "pedagogy": {
+        "title": "البيداغوجيا",
+        "progression": "تطور كل أستاذ (مقارنة بالفصل السابق)",
+        "progressionSeries": "التطور",
+        "noPrev": "لا يوجد فصل سابق للمقارنة.",
+        "table": {
+          "teacher": "الأستاذ",
+          "avg": "المعدل (مقابل المستوى)",
+          "level": "معدل المستوى",
+          "success": "النجاح",
+          "difficulty": "في صعوبة"
+        }
+      },
+      "load": {
+        "title": "العبء الزمني",
+        "hoursTitle": "الساعات المُدرَّسة مقابل المقررة",
+        "planned": "المقرر (العقد)",
+        "realized": "المُنجز",
+        "overtimeTotal": "الساعات الإضافية (المجموع)",
+        "classesTitle": "الساعات والأقسام لكل أستاذ",
+        "hoursWeek": "ساعات/أسبوع",
+        "classes": "عدد الأقسام"
+      }
+    },
+    "group": {
+      "title": "عرض المجموعة — مُجمّع",
+      "subtitle": "{count} مؤسسة",
+      "site": "المؤسسة",
+      "students": "التلاميذ",
+      "teachers": "الأساتذة",
+      "classes": "الأقسام",
+      "average": "المعدل",
+      "attendance": "المواظبة",
+      "collection": "التحصيل",
+      "remaining": "المتبقي للتحصيل",
+      "total": "المجموع",
+      "note": "المعدل والمواظبة محسوبان على الفصل الحالي لكل مؤسسة (غير مجموعة)."
+    },
+    "transport": {
+      "title": "النقل المدرسي",
+      "subtitle": "الخطوط، الحافلات، المحطات والمناطق التعريفية.",
+      "add": "إضافة",
+      "save": "حفظ",
+      "inactive": "غير مفعّل",
+      "lines": {
+        "title": "خطوط الحافلات",
+        "name": "اسم الخط",
+        "districts": "الأحياء المخدومة",
+        "bus": "الحافلة",
+        "driver": "السائق",
+        "attendant": "المرافِقة",
+        "stops": "المحطات",
+        "capacity": "السعة",
+        "active": "خط مفعّل",
+        "edit": "تعديل الخط",
+        "empty": "لا يوجد خط.",
+        "morningDep": "انطلاق صباحًا",
+        "morningArr": "وصول صباحًا",
+        "eveningDep": "انطلاق مساءً",
+        "eveningArr": "وصول مساءً"
+      },
+      "zones": {
+        "title": "المناطق التعريفية",
+        "name": "المنطقة",
+        "amount": "التعرفة/سنة",
+        "empty": "لا توجد منطقة."
+      },
+      "buses": {
+        "title": "الحافلات",
+        "number": "الرقم",
+        "plate": "اللوحة",
+        "capacity": "السعة",
+        "empty": "لا توجد حافلة.",
+        "status": {
+          "EN_SERVICE": "في الخدمة",
+          "PANNE": "معطلة",
+          "REMPLACEMENT": "بديلة"
+        }
+      },
+      "stops": {
+        "title": "المحطات",
+        "name": "اسم المحطة",
+        "address": "العنوان / المعلم",
+        "order": "الترتيب",
+        "time": "الوقت المتوقع",
+        "zone": "المنطقة",
+        "add": "إضافة المحطة",
+        "empty": "لا توجد محطة."
+      },
+      "days": {
+        "MON": "الإثنين",
+        "TUE": "الثلاثاء",
+        "WED": "الأربعاء",
+        "THU": "الخميس",
+        "FRI": "الجمعة",
+        "SAT": "السبت"
+      },
+      "students": {
+        "title": "التلاميذ المسجّلون",
+        "capacity": "{used} / {total} مقعد",
+        "student": "التلميذ",
+        "stop": "المحطة",
+        "zone": "المنطقة",
+        "billingCount": "الأقساط",
+        "days": "الأيام",
+        "assign": "تسجيل التلميذ",
+        "security": "الأمان",
+        "exitAlone": "مرخّص له بالعودة وحده",
+        "authorized": "الأشخاص المرخّص لهم",
+        "authorizedHint": "واحد في كل سطر: الاسم ؛ ر.و",
+        "notes": "ملاحظات أمنية",
+        "empty": "لا يوجد تلميذ مسجّل.",
+        "unassignConfirm": "سحب التلميذ من النقل؟ ستُلغى الأقساط غير المؤداة."
+      },
+      "appel": {
+        "cta": "📋 إجراء النداء",
+        "title": "نداء النقل",
+        "date": "التاريخ",
+        "direction": "الرحلة",
+        "morning": "صباحًا",
+        "evening": "مساءً",
+        "load": "تحميل",
+        "pickLine": "اختر خطًا لإجراء النداء.",
+        "noStudents": "لا يوجد تلميذ في هذا الخط.",
+        "save": "حفظ النداء",
+        "saved": "تم حفظ النداء ✓",
+        "nothing": "لم يُسجَّل أي نداء.",
+        "progress": "{done} / {total} مسجّل",
+        "notePlaceholder": "وصف الحادث…",
+        "status": {
+          "PRESENT": "حاضر",
+          "ABSENT": "غائب",
+          "LATE": "متأخر",
+          "NOT_PICKED_UP": "لم يُؤخذ",
+          "BOARDED": "صعد",
+          "DROPPED": "نزل",
+          "INCIDENT": "حادث"
+        },
+        "busApproaching": "الحافلة تقترب",
+        "busDelay": "الإبلاغ عن تأخير",
+        "minutesPrompt": "خلال كم دقيقة؟",
+        "eventSent": "تم إشعار {n} ولي(اء)",
+        "logLink": "سجل الإشعارات"
+      },
+      "kpi": {
+        "presence": "نسبة الحضور",
+        "late": "التأخرات",
+        "notPicked": "غير المأخوذين",
+        "incidents": "الحوادث"
+      },
+      "board": {
+        "title": "نداء اليوم"
+      },
+      "notifications": {
+        "title": "سجل الإشعارات",
+        "driverHint": "وضع التطوير: تُسجَّل الرسائل (محرك «log»). سيُربط مزود واتساب/SMS لاحقًا.",
+        "when": "التاريخ",
+        "recipient": "المرسل إليه",
+        "message": "الرسالة",
+        "channel": "القناة",
+        "status": "الحالة",
+        "empty": "لا توجد إشعارات.",
+        "statusLabel": {
+          "SENT": "أُرسل",
+          "PENDING": "في الانتظار",
+          "SKIPPED": "تم تجاهله",
+          "FAILED": "فشل"
+        },
+        "driverActive": "المزود النشط: {driver}. تُرسل الرسائل فعليًا.",
+        "processQueue": "إرسال القائمة ({n})",
+        "processed": "{sent} مُرسَل، {failed} فشل",
+        "retry": "إعادة الإرسال"
+      },
+      "incidents": {
+        "title": "حوادث النقل",
+        "when": "التاريخ",
+        "note": "الوصف",
+        "empty": "لا حادث مُبلَّغ عنه.",
+        "banner": "{n} حادث مُبلَّغ عنه اليوم في النقل.",
+        "view": "عرض"
+      }
+    },
+    "leave": {
+      "title": "العطل والغيابات",
+      "subtitle": "الطلبات والمصادقة وأرصدة الموظفين.",
+      "noTypes": "لا يوجد نوع عطلة مُعدّ.",
+      "seedTypes": "إنشاء الأنواع الافتراضية",
+      "newRequest": "طلب جديد",
+      "employee": "الموظف",
+      "type": "النوع",
+      "start": "البداية",
+      "end": "النهاية",
+      "reason": "السبب",
+      "submit": "إرسال",
+      "requests": "الطلبات",
+      "period": "الفترة",
+      "days": "الأيام",
+      "status": "الحالة",
+      "empty": "لا توجد طلبات.",
+      "approve": "مصادقة",
+      "reject": "رفض",
+      "cancel": "إلغاء",
+      "rejectComment": "سبب الرفض (اختياري):",
+      "cancelConfirm": "إلغاء طلب العطلة هذا؟",
+      "balances": "الأرصدة (العطلة السنوية)",
+      "balanceHint": "تُكتسب {rate} يوم/شهر منذ التوظيف، ناقص العطل المصادق عليها.",
+      "daysUnit": "ي",
+      "statusLabel": {
+        "PENDING": "قيد الانتظار",
+        "APPROVED": "مصادق",
+        "REJECTED": "مرفوض",
+        "CANCELLED": "ملغى"
+      },
+      "subs": {
+        "link": "النيابات",
+        "title": "النيابات",
+        "notTeacher": "هذا الموظف ليس مدرّسًا — لا حصص للتعويض.",
+        "noSessions": "لا توجد حصص في فترة العطلة.",
+        "date": "التاريخ",
+        "slot": "الحصة",
+        "class": "القسم",
+        "subject": "المادة",
+        "substitute": "النائب",
+        "unassigned": "— غير مُؤمَّن",
+        "cancelled": "حصة ملغاة",
+        "legend": "★ = مدرّس مؤهل للمادة. تُقترح فقط الأساتذة المتفرغون في الحصة وغير المعطلين."
+      }
+    },
+    "overtime": {
+      "title": "الساعات الإضافية",
+      "subtitle": "التصريح، المصادقة الموارد البشرية→الإدارة→المحاسبة، تصدير للأجور.",
+      "manual": "إدخال يدوي",
+      "generate": "توليد من النيابات",
+      "generated": "تم توليد {n} ساعة إضافية",
+      "employee": "الموظف",
+      "sourceLabel": "المصدر",
+      "hours": "الساعات",
+      "note": "ملاحظة",
+      "add": "إضافة",
+      "date": "التاريخ",
+      "entries": "الساعات المصرّح بها",
+      "status": "الحالة",
+      "empty": "لا توجد ساعات إضافية.",
+      "validateRh": "مصادقة (م.ب)",
+      "approveDir": "موافقة (الإدارة)",
+      "processAcc": "معالجة (المحاسبة)",
+      "reject": "رفض",
+      "exportCsv": "تصدير CSV",
+      "overQuota": "تجاوز الحصة",
+      "overQuotaHint": "ساعات الجدول المبرمجة فوق الحجم التعاقدي الأسبوعي (إرشادي).",
+      "overQuotaEmpty": "لا تجاوز.",
+      "source": {
+        "TEACHING_OVER_QUOTA": "تجاوز الحصة",
+        "SUBSTITUTION": "نيابة",
+        "PARASCOLAIRE": "أنشطة موازية",
+        "AFTER_HOURS": "بعد السادسة مساءً",
+        "EXAM_SUPERVISION": "حراسة امتحان",
+        "SPECIAL_EVENT": "حدث خاص"
+      },
+      "statusLabel": {
+        "DECLARED": "مصرّح",
+        "RH_VALIDATED": "مصادق (م.ب)",
+        "DIRECTION_APPROVED": "موافَق (الإدارة)",
+        "PROCESSED": "معالَج",
+        "REJECTED": "مرفوض"
+      }
+    },
+    "payroll": {
+      "title": "الأجور",
+      "subtitle": "الإعدادات القانونية وملفات أجور الموظفين.",
+      "configTitle": "المعايير القانونية (المغرب)",
+      "effectiveFrom": "سارية منذ",
+      "referenceWarning": "قيم مرجعية يجب التحقق منها مع محاسبكم (CNSS، AMO، جدول IR 2025، حسابات CGNC). كل شيء قابل للتعديل.",
+      "noConfig": "لا توجد إعدادات أجور.",
+      "seedConfig": "إنشاء الإعدادات الافتراضية",
+      "saved": "تم الحفظ ✓",
+      "save": "حفظ",
+      "edit": "تعديل",
+      "employees": "ملفات الأجور",
+      "employee": "الموظف",
+      "cfg": {
+        "cnssEmployee": "CNSS الأجير (النسبة)",
+        "cnssCeiling": "سقف CNSS",
+        "amoEmployee": "AMO الأجير",
+        "cnssEmployer": "CNSS المشغل",
+        "familyAllowance": "التعويضات العائلية",
+        "amoEmployer": "AMO المشغل",
+        "trainingTax": "ضريبة التكوين",
+        "proRate": "المصاريف المهنية (النسبة)",
+        "proCeiling": "المصاريف المهنية (السقف/شهر)",
+        "familyDeduction": "خصم/شخص مكفول",
+        "maxDependents": "أقصى عدد مكفولين",
+        "irBrackets": "جدول IR الشهري (JSON)"
+      },
+      "p": {
+        "baseSalary": "الأجر الأساسي",
+        "transport": "تعويض النقل",
+        "housing": "تعويض السكن",
+        "benefits": "مزايا عينية",
+        "cnssNumber": "رقم CNSS",
+        "dependents": "المكفولون",
+        "cimr": "CIMR",
+        "cimrRate": "نسبة CIMR",
+        "allowances": "التعويضات"
+      },
+      "run": {
+        "cta": "📅 دورات شهرية",
+        "title": "دورات الأجور",
+        "generateTitle": "حساب شهر",
+        "generate": "حساب",
+        "period": "الفترة",
+        "payslips": "أوراق الأجور",
+        "netTotal": "الصافي الإجمالي",
+        "costTotal": "التكلفة الإجمالية",
+        "status": "الحالة",
+        "actions": "إجراءات",
+        "empty": "لا توجد دورة أجور.",
+        "validateRh": "مصادقة (م.ب)",
+        "approveDir": "موافقة (الإدارة)",
+        "close": "إقفال",
+        "reopen": "إعادة فتح",
+        "deleteConfirm": "حذف دورة الأجور هذه؟",
+        "brut": "الإجمالي",
+        "ir": "IR",
+        "netImposable": "الصافي الخاضع",
+        "netPayable": "الصافي المستحق",
+        "employerCost": "تكلفة المشغل",
+        "total": "المجموع",
+        "noPayslips": "لا أوراق — أعد حساب الشهر.",
+        "massHint": "الكتلة الأجرية المحملة (التكلفة الإجمالية للمشغل): {mass}.",
+        "months": {
+          "1": "يناير",
+          "2": "فبراير",
+          "3": "مارس",
+          "4": "أبريل",
+          "5": "ماي",
+          "6": "يونيو",
+          "7": "يوليوز",
+          "8": "غشت",
+          "9": "شتنبر",
+          "10": "أكتوبر",
+          "11": "نونبر",
+          "12": "دجنبر"
+        },
+        "statusLabel": {
+          "DRAFT": "مسودة",
+          "CALCULATED": "محسوب",
+          "RH_VALIDATED": "مصادق م.ب",
+          "DIRECTION_APPROVED": "موافَق الإدارة",
+          "CLOSED": "مُقفل"
+        },
+        "payslip": "الورقة",
+        "journalTitle": "يومية الأجور",
+        "exportJournal": "تصدير اليومية (CSV)",
+        "account": "الحساب",
+        "label": "البيان",
+        "debit": "مدين",
+        "credit": "دائن",
+        "byDept": "التكلفة حسب القسم",
+        "kpiMass": "الكتلة الأجرية (إجمالي)",
+        "kpiCharges": "تكاليف المشغل",
+        "kpiNet": "الصافي الإجمالي",
+        "kpiCost": "التكلفة الإجمالية"
+      }
+    },
+    "bourse": {
+      "title": "سوق الكتب",
+      "subtitle": "الكتب المستعملة: الكتالوج، الحملات والإعدادات.",
+      "configTitle": "الإعدادات",
+      "noConfig": "لا توجد إعدادات.",
+      "seedConfig": "إنشاء الإعدادات الافتراضية",
+      "saved": "تم الحفظ ✓",
+      "save": "حفظ",
+      "commissionMode": "العمولة",
+      "percent": "نسبة مئوية",
+      "fixed": "مبلغ ثابت",
+      "commissionValue": "القيمة",
+      "labelPrefix": "بادئة الملصق",
+      "pricingTitle": "سعر السوق = سعر الجديد × معامل (حسب الحالة)",
+      "pricingHint": "معامل بين 0 و1 يُطبَّق على سعر الجديد حسب حالة الكتاب.",
+      "condition": {
+        "NEW": "جديد",
+        "VERY_GOOD": "جيد جدًا",
+        "GOOD": "جيد",
+        "FAIR": "متوسط"
+      },
+      "catalogTitle": "الكتالوج",
+      "bookTitle": "العنوان",
+      "level": "المستوى",
+      "subject": "المادة",
+      "editor": "الناشر",
+      "editionYear": "السنة",
+      "priceNew": "سعر الجديد",
+      "addBook": "إضافة العنوان",
+      "copies": "نسخ",
+      "noBooks": "لا توجد عناوين.",
+      "deleteBookConfirm": "حذف هذا العنوان؟",
+      "campaigns": "الحملات",
+      "campaignLabel": "التسمية (مثلاً الدخول)",
+      "noCampaigns": "لا توجد حملة.",
+      "close": "إقفال",
+      "reopen": "إعادة فتح",
+      "status": {
+        "OPEN": "مفتوحة",
+        "CLOSED": "مقفلة"
+      },
+      "depot": {
+        "cta": "📥 إيداع",
+        "title": "إيداع الكتب",
+        "seller": "التلميذ المودِع",
+        "load": "تحميل",
+        "addTitle": "إضافة نسخة",
+        "selectBook": "اختر الكتاب…",
+        "price": "السعر",
+        "addCopy": "إيداع النسخة",
+        "copies": "النسخ المودعة",
+        "code": "الرمز",
+        "state": "الحالة",
+        "statusCol": "الوضع",
+        "label": "الملصق",
+        "receipt": "وصل الإيداع",
+        "removeConfirm": "سحب هذه النسخة؟",
+        "empty": "لا توجد نسخة.",
+        "total": "القيمة المقدّرة",
+        "pick": "اختر حملة وتلميذًا مودِعًا."
+      },
+      "bookRequired": "اختر كتابًا.",
+      "selectBook": "اختر الكتاب…",
+      "price": "السعر",
+      "copyStatus": {
+        "DEPOSITED": "مودع",
+        "FOR_SALE": "للبيع",
+        "RESERVED": "محجوز",
+        "SOLD": "مُباع",
+        "WITHDRAWN": "مسحوب",
+        "REFUNDED": "مُسترجَع"
+      },
+      "vente": {
+        "cta": "🛒 بيع",
+        "title": "بيع الكتب",
+        "allLevels": "كل المستويات",
+        "search": "بحث",
+        "searchHint": "الرمز أو العنوان…",
+        "searchBtn": "بحث",
+        "buyer": "المشتري",
+        "anonymous": "مجهول",
+        "action": "إجراء",
+        "sell": "بيع",
+        "empty": "لا توجد نسخة للبيع.",
+        "recent": "المبيعات الأخيرة",
+        "receipt": "وصل",
+        "method": {
+          "CASH": "نقدًا",
+          "CHEQUE": "شيك",
+          "TRANSFER": "تحويل",
+          "CMI": "بطاقة"
+        }
+      },
+      "refund": {
+        "cta": "💸 الإرجاعات",
+        "title": "الإرجاعات والسحب",
+        "load": "تحميل",
+        "sellersTitle": "إرجاع للبائعين",
+        "seller": "البائع",
+        "sold": "المباعة",
+        "due": "للإرجاع",
+        "action": "إجراء",
+        "refund": "إرجاع",
+        "cash": "نقدًا",
+        "credit": "خصم من الرسوم",
+        "pickInstallment": "القسط…",
+        "noneToRefund": "لا بائع للإرجاع.",
+        "withdrawTitle": "سحب غير المباع",
+        "unsold": "{n} غير مباع في المخزون.",
+        "scanCode": "مسح / إدخال الرمز",
+        "withdraw": "سحب",
+        "refundedTitle": "تم إرجاعها",
+        "receipt": "وصل"
+      },
+      "finance": {
+        "cta": "📊 المالية",
+        "title": "المالية والمؤشرات",
+        "load": "تحميل",
+        "export": "تصدير اليومية (CSV)",
+        "deposited": "المودعة",
+        "sold": "المباعة",
+        "sellRate": "نسبة البيع",
+        "totalSold": "مبلغ المبيعات",
+        "refunded": "المُرجَع",
+        "commission": "عمولة المدرسة",
+        "cashTitle": "يومية الصندوق",
+        "inflow": "المداخيل (مبيعات)",
+        "outflowCash": "إرجاعات نقدية",
+        "credits": "أرصدة (الرسوم)",
+        "balance": "رصيد الصندوق",
+        "topTitle": "الأكثر طلبًا",
+        "flopTitle": "الأقل طلبًا",
+        "noFlop": "كل العناوين بيعت."
+      }
     }
   },
   "superAdmin": {
@@ -2668,9 +3734,27 @@
     "carnetTitle": "دفتر مراسلتي",
     "nav": {
       "home": "الرئيسية",
+      "timetable": "الجدول الزمني",
       "notes": "نقاطي",
       "bulletins": "كشوف النقاط",
-      "carnet": "دفتري"
+      "carnet": "دفتري",
+      "cahier": "دفتر النصوص",
+      "account": "حسابي",
+      "announcements": "الإعلانات"
+    },
+    "timetable": {
+      "title": "جدولي الزمني",
+      "hour": "الساعة",
+      "empty": "لا يوجد جدول زمني متاح.",
+      "noClass": "لا يوجد قسم للسنة الحالية.",
+      "days": {
+        "MON": "الإثنين",
+        "TUE": "الثلاثاء",
+        "WED": "الأربعاء",
+        "THU": "الخميس",
+        "FRI": "الجمعة",
+        "SAT": "السبت"
+      }
     },
     "bulletins": {
       "title": "كشوف نقاطي",
@@ -2680,6 +3764,7 @@
     "home": {
       "hello": "مرحبًا {name}",
       "noClass": "لا يوجد قسم",
+      "progress": "تقدّمي",
       "generalAverage": "المعدل العام",
       "attendanceRate": "نسبة الحضور",
       "carnet": "الدفتر",
@@ -2723,6 +3808,47 @@
         "EXCUSED": "إعفاء",
         "ABSENT": "غياب"
       }
+    },
+    "cahier": {
+      "title": "دفتر النصوص",
+      "tabContent": "المحتوى والموارد",
+      "tabHomework": "العمل المطلوب",
+      "since": "ابتداءً من",
+      "noClass": "لا يوجد قسم للسنة الحالية.",
+      "theme": "الموضوع",
+      "resources": "الموارد",
+      "noLesson": "لا يوجد درس منشور لهذه الفترة.",
+      "noHomework": "لا يوجد عمل مطلوب لهذه الفترة.",
+      "due": "يُسلَّم في",
+      "homeworkTypes": {
+        "EXERCICE": "تمرين",
+        "LECTURE": "قراءة",
+        "REVISION": "مراجعة",
+        "PROJET": "مشروع",
+        "AUTRE": "أخرى"
+      }
+    },
+    "account": {
+      "title": "حسابي",
+      "changePassword": "تغيير كلمة المرور",
+      "current": "كلمة المرور الحالية",
+      "new": "كلمة المرور الجديدة",
+      "confirm": "تأكيد كلمة المرور الجديدة",
+      "save": "حفظ",
+      "saving": "جارٍ الحفظ…",
+      "done": "تم تحديث كلمة المرور."
+    },
+    "announcements": {
+      "title": "الإعلانات",
+      "empty": "لا توجد إعلانات حاليًا.",
+      "audiences": {
+        "ALL": "الجميع",
+        "PARENTS": "أولياء الأمور",
+        "TEACHERS": "الأساتذة",
+        "STAFF": "الموظفون",
+        "CLASS": "القسم",
+        "LEVEL": "المستوى"
+      }
     }
   },
   "parent": {
@@ -2730,11 +3856,20 @@
     "nav": {
       "home": "الرئيسية",
       "children": "أبنائي",
+      "general": "عام",
       "cahier": "دفتر النصوص",
       "announcements": "الإعلانات",
       "messages": "الرسائل",
       "surveys": "الاستبيانات",
-      "account": "حسابي"
+      "account": "حسابي",
+      "sections": {
+        "cahier": "دفتر النصوص",
+        "notes": "النقاط",
+        "vie-scolaire": "الحياة المدرسية",
+        "scolarite": "رسوم الدراسة",
+        "documents": "الوثائق الرسمية",
+        "bourse": "سوق الكتب"
+      }
     },
     "cahier": {
       "title": "دفتر النصوص",
@@ -2802,14 +3937,66 @@
       "carnetUnread": "{count} غير مقروء",
       "latestAnnouncements": "آخر الإعلانات",
       "seeAll": "عرض الكل",
-      "noAnnouncement": "لا توجد إعلانات حاليًا."
+      "noAnnouncement": "لا توجد إعلانات حاليًا.",
+      "period": "الفترة",
+      "retards": "التأخرات",
+      "latestNotes": "آخر النقاط"
     },
     "child": {
       "breadcrumbHome": "الرئيسية",
       "noClass": "لا يوجد قسم للسنة الحالية.",
       "year": "السنة",
       "viewYear": "عرض",
+      "since": "ابتداءً من",
       "documentsTitle": "الوثائق الرسمية",
+      "cahier": {
+        "tabContent": "المحتوى والموارد",
+        "tabHomework": "العمل المطلوب",
+        "theme": "الموضوع",
+        "resources": "الموارد",
+        "noLesson": "لا يوجد درس منشور لهذه الفترة.",
+        "noHomework": "لا يوجد عمل مطلوب لهذه الفترة.",
+        "due": "يُسلَّم في",
+        "homeworkTypes": {
+          "EXERCICE": "تمرين",
+          "LECTURE": "قراءة",
+          "REVISION": "مراجعة",
+          "PROJET": "مشروع",
+          "AUTRE": "أخرى"
+        }
+      },
+      "classBulletin": {
+        "subject": "المادة",
+        "childAvg": "معدل التلميذ",
+        "rank": "الرتبة",
+        "classAvg": "معدل القسم",
+        "min": "الأدنى",
+        "max": "الأعلى",
+        "note": "معدلات القسم مجهولة — لا تُعرض النقاط الفردية للتلاميذ الآخرين."
+      },
+      "vieScolaire": {
+        "tabEdt": "الجدول الزمني",
+        "tabCarnet": "دفتر المراسلة",
+        "tabTeam": "الطاقم التربوي"
+      },
+      "edt": {
+        "hour": "الساعة",
+        "empty": "لا يوجد جدول زمني متاح.",
+        "days": {
+          "MON": "الإثنين",
+          "TUE": "الثلاثاء",
+          "WED": "الأربعاء",
+          "THU": "الخميس",
+          "FRI": "الجمعة",
+          "SAT": "السبت"
+        }
+      },
+      "equipe": {
+        "mainTeacher": "الأستاذ الرئيسي",
+        "subject": "المادة",
+        "teacher": "الأستاذ",
+        "empty": "لا يوجد طاقم تربوي محدد."
+      },
       "bulletins": {
         "title": "كشوف النقاط",
         "empty": "لا يوجد كشف متاح.",
@@ -2821,7 +4008,12 @@
         "evaluation": "التقييم",
         "period": "الفترة",
         "mark": "النقطة",
-        "classAvg": "معدل القسم"
+        "classAvg": "معدل القسم",
+        "tabNotes": "النقاط",
+        "tabStudentBulletin": "كشف نقاط التلميذ",
+        "tabClassBulletin": "كشف نقاط القسم",
+        "download": "تحميل PDF",
+        "bulletinEmpty": "لا يوجد كشف متاح."
       },
       "carnet": {
         "title": "دفتر المراسلة",
@@ -2829,6 +4021,12 @@
         "unread": "{count} غير مقروء",
         "new": "جديد",
         "seenOn": "اطُّلع عليه في {date}",
+        "acknowledge": "أقرّ بالاطّلاع",
+        "toJustifyTitle": "بحاجة إلى تبرير",
+        "status": {
+          "ABSENT": "غياب",
+          "LATE": "تأخر"
+        },
         "type": {
           "OBSERVATION": "ملاحظة",
           "ENCOURAGEMENT": "تشجيع",
@@ -2841,6 +4039,14 @@
           "ABSENCE": "غياب",
           "RETARD": "تأخر",
           "EXCLUSION": "طرد"
+        },
+        "subAbsence": "الغيابات",
+        "subRetard": "التأخرات",
+        "subAutres": "أخرى",
+        "justif": {
+          "PENDING": "قيد الانتظار",
+          "APPROVED": "مبرر",
+          "REJECTED": "مرفوض"
         }
       },
       "attendance": {
@@ -2882,6 +4088,12 @@
           "reasonRequired": "اختر سببًا."
         }
       },
+      "exceptionalFees": {
+        "title": "رسوم بانتظار التأكيد",
+        "subtitle": "أنشطة اختيارية تقترحها المؤسسة.",
+        "accept": "قبول",
+        "refuse": "رفض"
+      },
       "finance": {
         "title": "الرسوم الدراسية",
         "empty": "لا توجد أقساط حاليًا.",
@@ -2890,6 +4102,7 @@
         "amount": "المبلغ",
         "remaining": "المتبقّي",
         "status": "الحالة",
+        "receipt": "الوصل",
         "paidOf": "{paid} / {due} درهم مدفوعة",
         "totalRemaining": "إجمالي المتبقّي",
         "payOnline": "الدفع عبر الإنترنت",
@@ -2900,6 +4113,23 @@
           "PARTIAL": "جزئي",
           "PAID": "مدفوع"
         }
+      },
+      "bourse": {
+        "available": "الكتب المتاحة",
+        "allLevels": "كل المستويات",
+        "filter": "تصفية",
+        "book": "الكتاب",
+        "state": "الحالة",
+        "action": "إجراء",
+        "reserve": "حجز",
+        "cancel": "إلغاء",
+        "reservedByYou": "محجوز من طرفكم",
+        "noneAvailable": "لا يوجد كتاب متاح.",
+        "reserveHint": "الحجز يحتفظ بالكتاب باسمكم؛ أتمّوا الشراء بالمدرسة.",
+        "myDeposits": "إيداعاتي",
+        "myPurchases": "مشترياتي",
+        "noDeposit": "لا إيداع.",
+        "noPurchase": "لا شراء."
       }
     },
     "announcements": {
@@ -2920,10 +4150,10 @@
     "nav": {
       "home": "لوحة القيادة",
       "timetable": "الجدول الزمني",
-      "appel": "المناداة",
+      "appel": "أوراق المناداة",
       "cahier": "دفتر النصوص",
       "notes": "النقاط",
-      "carnet": "الدفتر",
+      "carnet": "دفتر المراسلة",
       "classes": "أقسامي",
       "messages": "الرسائل",
       "account": "حسابي"
@@ -2993,7 +4223,7 @@
       "noTeacher": "لا يوجد أستاذ مرتبط بحسابك. يرجى الاتصال بالمؤسسة."
     },
     "appel": {
-      "title": "المناداة",
+      "title": "أوراق المناداة",
       "subtitle": "انقر على حصة لإجراء المناداة.",
       "prevWeek": "الأسبوع السابق",
       "thisWeek": "هذا الأسبوع",
@@ -3027,7 +4257,14 @@
       "reopen": "إلغاء القفل",
       "reopening": "جارٍ إلغاء القفل…",
       "lockedHint": "تم تأكيد المناداة.",
-      "savedAt": "تم الحفظ في {time}"
+      "savedAt": "تم الحفظ في {time}",
+      "summary": {
+        "present": "حاضرون",
+        "absent": "غائبون",
+        "lateJustified": "تأخرات مبررة",
+        "lateUnjustified": "تأخرات غير مبررة",
+        "excluded": "مطرودون"
+      }
     },
     "cahier": {
       "title": "دفتر النصوص",
@@ -3055,6 +4292,8 @@
         "activities": "الأنشطة المنجزة",
         "competencies": "الكفايات المستهدفة",
         "competenciesHint": "اختياري — مفيد لمسار",
+        "theme": "الموضوع",
+        "themeHint": "الفصل / موضوع الدرس",
         "homeworkDescription": "وصف الواجب",
         "dueDate": "يُسلَّم في",
         "type": "النوع",
@@ -3066,6 +4305,7 @@
       },
       "resources": {
         "saveFirst": "احفظ الدفتر أولاً لتتمكّن من إرفاق ملفات أو روابط.",
+        "stageHint": "أرفق مستنداتك وروابطك: ستُحفظ مع الدفتر.",
         "addFile": "إرفاق ملف",
         "uploading": "جارٍ الإرسال…",
         "fileHint": "PDF، صور، Word… (بحد أقصى 10 ميغا)",
@@ -3081,7 +4321,11 @@
         "PROJET": "مشروع",
         "AUTRE": "أخرى"
       },
-      "difficulties": { "FACILE": "سهل", "MOYEN": "متوسط", "DIFFICILE": "صعب" },
+      "difficulties": {
+        "FACILE": "سهل",
+        "MOYEN": "متوسط",
+        "DIFFICILE": "صعب"
+      },
       "addHomework": "إضافة واجب",
       "noHomework": "لا يوجد واجب لهذه الحصة.",
       "remove": "إزالة",

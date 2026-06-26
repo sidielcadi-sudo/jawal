@@ -1,8 +1,14 @@
 import type { DefaultSession } from 'next-auth';
 
+type Site = { tenantId: string; name: string };
+
 declare module 'next-auth' {
   interface User {
     tenantId: string;
+    /** Tenant « home » du compte (ne change pas au switch de site). */
+    homeTenantId: string;
+    /** Sites accessibles (home + appartenances UserTenant). */
+    sites: Site[];
     isSuperAdmin: boolean;
     /** Compte rattaché au portail parent (rôle `parent`). */
     isParent: boolean;
@@ -14,11 +20,14 @@ declare module 'next-auth' {
   interface Session {
     user: {
       id: string;
+      /** Site actif (peut changer via le sélecteur de site multi-établissements). */
       tenantId: string;
+      homeTenantId: string;
+      sites: Site[];
       isSuperAdmin: boolean;
       isParent: boolean;
       isTeacher: boolean;
-    isStudent: boolean;
+      isStudent: boolean;
     } & DefaultSession['user'];
   }
 }
@@ -29,6 +38,8 @@ declare module 'next-auth' {
 declare module '@auth/core/types' {
   interface User {
     tenantId: string;
+    homeTenantId: string;
+    sites: Site[];
     isSuperAdmin: boolean;
     isParent: boolean;
     isTeacher: boolean;
@@ -40,6 +51,8 @@ declare module 'next-auth/jwt' {
   interface JWT {
     uid: string;
     tenantId: string;
+    homeTenantId: string;
+    sites: Site[];
     isSuperAdmin: boolean;
     isParent: boolean;
     isTeacher: boolean;
@@ -51,6 +64,8 @@ declare module '@auth/core/jwt' {
   interface JWT {
     uid: string;
     tenantId: string;
+    homeTenantId: string;
+    sites: Site[];
     isSuperAdmin: boolean;
     isParent: boolean;
     isTeacher: boolean;

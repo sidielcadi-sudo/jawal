@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import type { Prisma } from '@/lib/db';
+import { Pagination } from '@/components/pagination';
 
 const PAGE_SIZE = 20;
 const VALID_TYPES = ['STUDENT', 'TEACHER', 'STAFF', 'PARENT'] as const;
@@ -292,11 +293,11 @@ export default async function PersonsListPage({
   const newLabel = t(`actions.${newKey}` as never);
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div className="px-3 py-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{title}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t('count', { count: total })}</p>
+          <h1 className="text-base font-bold text-slate-900">{title}</h1>
+          <p className="mt-0.5 text-sm text-slate-600">{t('count', { count: total })}</p>
         </div>
         <div className="flex gap-2">
           <Link
@@ -564,31 +565,7 @@ export default async function PersonsListPage({
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <nav className="mt-4 flex items-center justify-between text-sm">
-          <span className="text-slate-500">
-            {t('pagination.page', { page, total: totalPages })}
-          </span>
-          <div className="flex gap-2">
-            {page > 1 && (
-              <Link
-                href={qs({ page: String(page - 1) })}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50"
-              >
-                {t('pagination.prev')}
-              </Link>
-            )}
-            {page < totalPages && (
-              <Link
-                href={qs({ page: String(page + 1) })}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 hover:bg-slate-50"
-              >
-                {t('pagination.next')}
-              </Link>
-            )}
-          </div>
-        </nav>
-      )}
+      <Pagination page={page} totalPages={totalPages} hrefFor={(p) => qs({ page: String(p) })} />
     </div>
   );
 }

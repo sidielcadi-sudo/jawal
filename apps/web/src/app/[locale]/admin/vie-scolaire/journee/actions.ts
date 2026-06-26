@@ -7,6 +7,7 @@ import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant, prismaAdmin } from '@/lib/db';
 import { safeSendEmail } from '@/lib/email';
+import { dowOf, parseDateUTC } from '@/lib/lesson-book';
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -130,6 +131,27 @@ export async function notifyAppelAction(input: {
         entityId: conv.id,
         after: { reason: 'appel-non-fait', classId, periodLabel, date },
       });
+
+      // Trace la relance (table AppelReminder) pour qu'elle soit comptabilisée
+      // dans le KPI « Relances reçues » du prof — même clé que le cron, donc
+      // idempotent par (séance, jour). Best-effort : si la case d'EDT est
+      // introuvable, la notification part quand même.
+      const [startTime, endTime] = periodLabel.split('-');
+      const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
+      if (year && startTime && endTime) {
+        const entry = await tx.timetableEntry.findFirst({
+          where: { academicYearId: year.id, classId, dayOfWeek: dowOf(date), slot: { startTime, endTime } },
+          select: { id: true },
+        });
+        if (entry) {
+          await tx.appelReminder.upsert({
+            where: { entryId_date: { entryId: entry.id, date: parseDateUTC(date) } },
+            create: { tenantId, entryId: entry.id, date: parseDateUTC(date) },
+            update: {},
+          });
+        }
+      }
+
       return { email: teacher.email, subject, body, conversationId: conv.id };
     });
 

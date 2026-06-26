@@ -33,6 +33,8 @@ export type DocumentData = {
   levelLabel: string | null;
   attendance?: { present: number; total: number; rate: number | null; periodLabel: string };
   finance?: { totalDue: number; totalPaid: number; balance: number };
+  /** Échéancier détaillé (attestation de paiement). */
+  schedule?: { label: string; dueDate: Date; amount: number; paid: number; status: string }[];
   result?: {
     periodLabel: string;
     generalAverage: number | null;
@@ -138,13 +140,25 @@ export async function loadDocumentData(
       const installments = await tx.installment.findMany({
         where: { studentId: opts.studentId, status: { not: 'CANCELLED' } },
         include: { payments: { select: { amount: true } } },
+        orderBy: { dueDate: 'asc' },
       });
       const totalDue = installments.reduce((s, i) => s + Number(i.amount), 0);
       const totalPaid = installments.reduce(
         (s, i) => s + i.payments.reduce((ps, p) => ps + Number(p.amount), 0),
         0,
       );
-      return { ...base, finance: { totalDue, totalPaid, balance: Math.max(0, totalDue - totalPaid) } };
+      const schedule = installments.map((i) => ({
+        label: i.label,
+        dueDate: i.dueDate,
+        amount: Number(i.amount),
+        paid: i.payments.reduce((ps, p) => ps + Number(p.amount), 0),
+        status: i.status,
+      }));
+      return {
+        ...base,
+        finance: { totalDue, totalPaid, balance: Math.max(0, totalDue - totalPaid) },
+        schedule,
+      };
     }
 
     case 'ATTESTATION_REUSSITE': {

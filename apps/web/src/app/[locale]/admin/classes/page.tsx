@@ -51,11 +51,11 @@ export default async function ClassesListPage({
   const baseHref = `/${locale}/admin/classes`;
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+    <div className="px-3 py-3">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t('count', { count: classes.length })}</p>
+          <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+          <p className="mt-0.5 text-sm text-slate-600">{t('count', { count: classes.length })}</p>
         </div>
         <Link
           href={`${baseHref}/new`}

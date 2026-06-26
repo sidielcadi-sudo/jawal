@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import type { Prisma } from '@/lib/db';
+import { Pagination } from '@/components/pagination';
 
 const PAGE_SIZE = 50;
 
@@ -166,29 +167,7 @@ export default async function AuditLogPage({
         </table>
       </div>
 
-      {totalPages > 1 && (
-        <nav className="mt-3 flex items-center justify-between text-sm">
-          <span className="text-xs text-slate-500">{t('pagination', { page, total: totalPages })}</span>
-          <div className="flex gap-2">
-            {page > 1 && (
-              <Link
-                href={qs({ page: String(page - 1) })}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs hover:bg-slate-50"
-              >
-                ←
-              </Link>
-            )}
-            {page < totalPages && (
-              <Link
-                href={qs({ page: String(page + 1) })}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs hover:bg-slate-50"
-              >
-                →
-              </Link>
-            )}
-          </div>
-        </nav>
-      )}
+      <Pagination page={page} totalPages={totalPages} hrefFor={(p) => qs({ page: String(p) })} />
     </div>
   );
 }

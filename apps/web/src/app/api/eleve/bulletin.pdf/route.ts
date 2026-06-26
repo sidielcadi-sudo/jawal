@@ -6,6 +6,7 @@ import { loadBulletinData } from '@/lib/bulletin-data';
 import { renderBulletinDocument } from '@/lib/bulletin-html';
 import { htmlToPdf } from '@/lib/pdf';
 import { pdfFilename } from '@/lib/pdf-filename';
+import { getTenantLogoDataUri } from '@/lib/tenant-logo';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -52,6 +53,7 @@ export async function GET(req: Request) {
   const t = await getTranslations({ locale, namespace: 'admin.bulletin' });
   const html = renderBulletinDocument(data, {
     tenantName: tenant.name,
+    logoDataUri: await getTenantLogoDataUri(tenantId),
     locale,
     dir: locale === 'ar' ? 'rtl' : 'ltr',
     t,

@@ -28,3 +28,30 @@ export async function markCarnetReadAction(childId: string): Promise<Result> {
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
   }
 }
+
+/**
+ * Accusé de lecture d'UNE observation/encouragement par le parent
+ * (« J'en ai pris connaissance »). Pose `parentReadAt` sur cette entrée.
+ */
+export async function acknowledgeCarnetEntryAction(entryId: string): Promise<Result> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  const tenantId = session.user.tenantId;
+  try {
+    await withTenant(tenantId, async (tx) => {
+      const entry = await tx.carnetEntry.findUnique({
+        where: { id: entryId },
+        select: { studentId: true, parentReadAt: true },
+      });
+      if (!entry) throw new Error('Entrée introuvable.');
+      if (!(await parentCanAccessChild(tx, session.user.id, entry.studentId)))
+        throw new Error('Accès refusé.');
+      if (!entry.parentReadAt) {
+        await tx.carnetEntry.update({ where: { id: entryId }, data: { parentReadAt: new Date() } });
+      }
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
+  }
+}

@@ -50,18 +50,13 @@ function formatValue(kpi: Kpi): string {
   }
 }
 
-export async function PilotageSection() {
+export async function PilotageSection({ periodId }: { periodId: string | null }) {
   const session = (await auth())!;
   const t = await getTranslations('admin.pilotage');
 
-  const kpis = await withTenant(session.user.tenantId, async (tx) => {
-    const activeYear = await tx.academicYear.findFirst({
-      where: { active: true },
-      include: { periods: { orderBy: { startDate: 'asc' } } },
-    });
-    const selectedPeriodId = activeYear?.periods[0]?.id ?? null;
-    return computePilotage(tx, selectedPeriodId);
-  });
+  const kpis = await withTenant(session.user.tenantId, (tx) =>
+    computePilotage(tx, periodId),
+  );
 
   const cards: Array<{ kpi: Kpi; thresholdKey: keyof typeof THRESHOLDS | null }> = [
     { kpi: kpis.successRate, thresholdKey: 'successRate' },

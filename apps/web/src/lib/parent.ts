@@ -97,6 +97,58 @@ export async function parentCanAccessChild(
   return children.some((c) => c.id === childId);
 }
 
+export type ParentChildContext = {
+  child: { id: string; firstName: string; lastName: string };
+  classId: string | null;
+  className: string | null;
+  cycleLabel: string | null;
+  year: { id: string; label: string } | null;
+  periods: { id: string; label: string }[];
+};
+
+/**
+ * Contexte partagé d'une page enfant du portail parent : valide l'accès, résout
+ * l'enfant + sa classe de l'année active + les périodes (trimestres/semestres).
+ * Renvoie `null` si le parent n'a pas accès à cet enfant.
+ */
+export async function loadParentChildContext(
+  tx: Tx,
+  userId: string,
+  childId: string,
+): Promise<ParentChildContext | null> {
+  if (!(await parentCanAccessChild(tx, userId, childId))) return null;
+  const child = await tx.person.findUnique({
+    where: { id: childId },
+    select: { id: true, firstName: true, lastName: true },
+  });
+  if (!child) return null;
+
+  const year = await tx.academicYear.findFirst({
+    where: { active: true },
+    select: { id: true, label: true, periods: { orderBy: { startDate: 'asc' }, select: { id: true, label: true } } },
+  });
+
+  const sc = year
+    ? await tx.studentClass.findFirst({
+        where: { studentId: childId, unenrolledAt: null, class: { academicYearId: year.id } },
+        select: {
+          class: {
+            select: { id: true, name: true, level: { select: { cycle: { select: { label: true } } } } },
+          },
+        },
+      })
+    : null;
+
+  return {
+    child,
+    classId: sc?.class.id ?? null,
+    className: sc?.class.name ?? null,
+    cycleLabel: sc?.class.level.cycle.label ?? null,
+    year: year ? { id: year.id, label: year.label } : null,
+    periods: year?.periods ?? [],
+  };
+}
+
 /**
  * Annonces publiées visibles par un parent : audience ALL ou PARENTS, plus
  * les annonces ciblant la classe ou le niveau d'un de ses enfants.

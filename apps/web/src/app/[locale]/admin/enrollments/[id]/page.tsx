@@ -4,8 +4,11 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { withdrawEnrollmentFormAction } from '../form-actions';
+import { applicableAnnualFees, type FeeCategory } from '@/lib/fees';
 import { AdmissionPanel } from './admission-panel';
 import { EcheancierTable } from './echeancier-table';
+import { RegimeEdit } from './regime-edit';
+import { SettleDebtsButton } from './settle-debts';
 
 export default async function EnrollmentDetailPage({
   params,
@@ -42,20 +45,30 @@ export default async function EnrollmentDetailPage({
 
     const fees = await tx.feeScheduleItem.findMany({
       where: { academicYearId: enrollment.academicYearId },
-      select: { id: true },
+      select: { id: true, label: true, category: true },
     });
     const feeIds = fees.map((f) => f.id);
+    const feeMetaById = new Map(fees.map((f) => [f.id, { label: f.label, category: f.category }]));
 
-    // Grille du niveau (#4) : aperçu prévisionnel tant qu'aucune échéance générée.
-    const feeGrid = await tx.feeScheduleItem.findMany({
-      where: { academicYearId: enrollment.academicYearId, levelId: enrollment.levelId },
+    // Frais annuels du (niveau × année) avec leurs réductions (rattachées ou globales).
+    const annualFeesRaw = await tx.feeScheduleItem.findMany({
+      where: {
+        academicYearId: enrollment.academicYearId,
+        levelId: enrollment.levelId,
+        kind: 'ANNUAL',
+      },
       orderBy: { label: 'asc' },
-      select: { label: true, totalAmount: true, installmentCount: true },
+      include: {
+        discountRules: {
+          where: { active: true },
+          orderBy: [{ order: 'asc' }, { label: 'asc' }],
+          select: { id: true, label: true, pct: true },
+        },
+      },
     });
-
-    // Catalogue de réductions actives (#5).
-    const discountRules = await tx.discountRule.findMany({
-      where: { active: true },
+    // Réductions globales (feeScheduleItemId null) applicables à n'importe quel frais.
+    const globalDiscounts = await tx.discountRule.findMany({
+      where: { active: true, feeScheduleItemId: null },
       orderBy: [{ order: 'asc' }, { label: 'asc' }],
       select: { id: true, label: true, pct: true },
     });
@@ -79,29 +92,72 @@ export default async function EnrollmentDetailPage({
       orderBy: { createdAt: 'desc' },
     });
 
-    // Créances antérieures non soldées (échéances impayées dues avant le début
-    // de l'année du dossier) — à signaler à l'ouverture.
+    // Créances de la FAMILLE (tous les enfants des parents de l'élève) non soldées
+    // et dues avant le début de l'année du dossier → à solder à l'inscription.
+    const parentRels = await tx.personRelation.findMany({
+      where: { childId: enrollment.studentId },
+      select: { parentId: true },
+    });
+    let familyStudentIds = [enrollment.studentId];
+    if (parentRels.length > 0) {
+      const kids = await tx.personRelation.findMany({
+        where: { parentId: { in: parentRels.map((r) => r.parentId) } },
+        distinct: ['childId'],
+        select: { childId: true },
+      });
+      familyStudentIds = [...new Set([enrollment.studentId, ...kids.map((k) => k.childId)])];
+    }
     const previousDue = await tx.installment.findMany({
       where: {
-        studentId: enrollment.studentId,
+        studentId: { in: familyStudentIds },
         status: { in: ['PENDING', 'PARTIAL'] },
         dueDate: { lt: enrollment.academicYear.startDate },
       },
-      include: { payments: true },
+      include: { payments: true, student: { select: { firstName: true, lastName: true } } },
       orderBy: { dueDate: 'asc' },
     });
+
+    // Rang fratrie (affiché même avant acceptation) : nb de frères/sœurs déjà
+    // inscrits cette année + 1. 1 = aîné.
+    const childRels = await tx.personRelation.findMany({
+      where: { childId: enrollment.studentId },
+      select: { parentId: true },
+    });
+    let siblingRank = 1;
+    if (childRels.length > 0) {
+      const sibs = await tx.personRelation.findMany({
+        where: {
+          parentId: { in: childRels.map((r) => r.parentId) },
+          childId: { not: enrollment.studentId },
+        },
+        distinct: ['childId'],
+        select: { childId: true },
+      });
+      if (sibs.length > 0) {
+        const enrolledSiblings = await tx.enrollment.count({
+          where: {
+            studentId: { in: sibs.map((s) => s.childId) },
+            academicYearId: enrollment.academicYearId,
+            status: { in: ['ACTIVE', 'AFFECTE', 'INSCRIPTION_VALIDEE', 'ACCEPTE'] },
+          },
+        });
+        siblingRank = enrolledSiblings + 1;
+      }
+    }
 
     const tenant = await tx.tenant.findFirstOrThrow();
     return {
       enrollment,
+      siblingRank,
       compatibleClasses,
       installments,
       tenant,
       requiredDocs,
       enrollmentDocs,
       previousDue,
-      feeGrid,
-      discountRules,
+      annualFeesRaw,
+      globalDiscounts: globalDiscounts.map((d) => ({ id: d.id, label: d.label, pct: Number(d.pct) })),
+      feeMeta: Array.from(feeMetaById.entries()),
     };
   });
 
@@ -109,15 +165,40 @@ export default async function EnrollmentDetailPage({
 
   const {
     enrollment,
+    siblingRank,
     compatibleClasses,
     installments,
     tenant,
     requiredDocs,
     enrollmentDocs,
     previousDue,
-    feeGrid,
-    discountRules,
+    annualFeesRaw,
+    globalDiscounts,
+    feeMeta,
   } = data;
+  const feeMetaById = new Map(feeMeta);
+
+  // Frais annuels applicables à l'élève (selon transport / régime) → lignes du
+  // Dossier d'admission + aperçu prévisionnel (#4 + table éditable).
+  const feeCategoryLabels = await getTranslations('admin.settings.fees.form.categories');
+  const tPForm = await getTranslations('admin.persons.form');
+  const applicable = applicableAnnualFees(
+    annualFeesRaw.map((f) => ({ ...f, category: f.category as FeeCategory })),
+    { usesTransport: enrollment.student.usesTransport, regime: enrollment.student.regime },
+  );
+  const feeLines = applicable.map((f) => ({
+    feeId: f.id,
+    category: f.category as FeeCategory,
+    categoryLabel: feeCategoryLabels(f.category),
+    feeLabel: f.label,
+    amount: Number(f.totalAmount),
+    installmentCount: f.installmentCount,
+    installmentLocked: f.installmentLocked,
+    discounts: [
+      ...f.discountRules.map((d) => ({ id: d.id, label: d.label, pct: Number(d.pct) })),
+      ...globalDiscounts,
+    ],
+  }));
 
   const docByReq = new Map<string, (typeof enrollmentDocs)[number]>();
   for (const d of enrollmentDocs) {
@@ -128,6 +209,10 @@ export default async function EnrollmentDetailPage({
     return {
       id: i.id,
       label: i.label,
+      feeType: (() => {
+        const meta = i.feeScheduleItemId ? feeMetaById.get(i.feeScheduleItemId) : null;
+        return meta ? feeCategoryLabels(meta.category) : i.label;
+      })(),
       dueDate: i.dueDate.toISOString(),
       amount: Number(i.amount),
       status: i.status as 'PENDING' | 'PARTIAL' | 'PAID' | 'CANCELLED',
@@ -179,6 +264,29 @@ export default async function EnrollmentDetailPage({
   );
   const cancelledCount = installments.filter((i) => i.status === 'CANCELLED').length;
 
+  // Frais éditables (re-répartition du nb d'échéances) : ceux déjà générés.
+  // Verrouillés si une échéance est (partiellement) payée ou si le frais est figé.
+  const instByFee = new Map<string, typeof installments>();
+  for (const i of installments) {
+    if (!i.feeScheduleItemId) continue;
+    const arr = instByFee.get(i.feeScheduleItemId) ?? [];
+    arr.push(i);
+    instByFee.set(i.feeScheduleItemId, arr);
+  }
+  const editableFees = feeLines
+    .map((f) => {
+      const insts = (instByFee.get(f.feeId) ?? []).filter((i) => i.status !== 'CANCELLED');
+      if (insts.length === 0) return null;
+      const hasPaid = insts.some((i) => i.payments.reduce((s, p) => s + Number(p.amount), 0) > 0);
+      return {
+        feeId: f.feeId,
+        label: `${f.categoryLabel} — ${f.feeLabel}`,
+        currentCount: insts.length,
+        locked: hasPaid || f.installmentLocked,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
       <nav className="mb-3 text-xs text-slate-500">
@@ -216,8 +324,28 @@ export default async function EnrollmentDetailPage({
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
-          <h2 className="text-sm font-semibold text-slate-700">{t('detail.summary')}</h2>
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-slate-700">{t('detail.summary')}</h2>
+            <RegimeEdit
+              enrollmentId={enrollment.id}
+              regime={enrollment.student.regime}
+              usesTransport={enrollment.student.usesTransport}
+              fees={editableFees}
+            />
+          </div>
           <dl className="mt-3 space-y-2 text-sm">
+            <Row
+              label={tPForm('regime.label')}
+              value={
+                enrollment.student.regime
+                  ? tPForm(`regime.${enrollment.student.regime}` as never)
+                  : '—'
+              }
+            />
+            <Row
+              label={tPForm('usesTransport')}
+              value={enrollment.student.usesTransport ? tPForm('usesTransportYes') : tPForm('usesTransportNo')}
+            />
             <Row label={t('detail.enrolledAt')} value={new Date(enrollment.enrolledAt).toLocaleString(locale)} />
             {enrollment.validatedAt && (
               <Row label={t('detail.validatedAt')} value={new Date(enrollment.validatedAt).toLocaleString(locale)} />
@@ -225,15 +353,13 @@ export default async function EnrollmentDetailPage({
             {enrollment.withdrawnAt && (
               <Row label={t('detail.withdrawnAt')} value={new Date(enrollment.withdrawnAt).toLocaleString(locale)} />
             )}
-            <Row label={t('detail.siblingRank')} value={enrollment.siblingRank ? `#${enrollment.siblingRank}` : t('detail.notComputed')} />
             <Row
-              label={t('detail.discount')}
-              value={
-                enrollment.discountPct !== null
-                  ? `−${Number(enrollment.discountPct)}%`
-                  : t('detail.noDiscount')
-              }
+              label={t('detail.siblingRank')}
+              value={`#${enrollment.siblingRank ?? siblingRank}`}
             />
+            {enrollment.discountPct !== null && (
+              <Row label={t('detail.discount')} value={`−${Number(enrollment.discountPct)}%`} />
+            )}
             {enrollment.discountReason && (
               <Row label={t('detail.discountReason')} value={enrollment.discountReason} />
             )}
@@ -249,23 +375,23 @@ export default async function EnrollmentDetailPage({
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="text-sm font-semibold text-slate-700">{t('detail.fees')}</h2>
           {installments.length === 0 ? (
-            feeGrid.length > 0 ? (
+            feeLines.length > 0 ? (
               <div className="mt-3">
                 <p className="text-xs text-slate-500">{t('detail.feesPreviewHint')}</p>
                 <dl className="mt-2 space-y-2 text-sm">
-                  {feeGrid.map((f) => (
+                  {feeLines.map((f) => (
                     <Row
-                      key={f.label}
-                      label={f.label}
-                      value={`${Number(f.totalAmount).toFixed(2)} ${tenant.currency} · ${f.installmentCount}× ${(
-                        Number(f.totalAmount) / f.installmentCount
+                      key={f.feeId}
+                      label={`${f.categoryLabel} — ${f.feeLabel}`}
+                      value={`${f.amount.toFixed(2)} ${tenant.currency} · ${f.installmentCount}× ${(
+                        f.amount / f.installmentCount
                       ).toFixed(2)}`}
                     />
                   ))}
                   <Row
                     label={t('detail.feesPreviewTotal')}
-                    value={`${feeGrid
-                      .reduce((s, f) => s + Number(f.totalAmount), 0)
+                    value={`${feeLines
+                      .reduce((s, f) => s + f.amount, 0)
                       .toFixed(2)} ${tenant.currency}`}
                   />
                 </dl>
@@ -326,11 +452,19 @@ export default async function EnrollmentDetailPage({
                 key={i.id}
                 className="rounded border border-amber-200 bg-white px-1.5 py-0.5 text-[11px] text-amber-800"
               >
-                {i.label} · {new Date(i.dueDate).toLocaleDateString(locale)} ·{' '}
-                {Number(i.amount).toFixed(0)} {tenant.currency}
+                <strong>{i.student.lastName} {i.student.firstName}</strong> · {i.label} ·{' '}
+                {new Date(i.dueDate).toLocaleDateString(locale)} · {Number(i.amount).toFixed(0)}{' '}
+                {tenant.currency}
               </li>
             ))}
           </ul>
+          <SettleDebtsButton
+            installmentIds={previousDue
+              .filter((i) => Number(i.amount) - i.payments.reduce((s, p) => s + Number(p.amount), 0) > 0)
+              .map((i) => i.id)}
+            total={previousDueTotal}
+            currency={tenant.currency}
+          />
         </section>
       )}
 
@@ -340,7 +474,8 @@ export default async function EnrollmentDetailPage({
         status={enrollment.status}
         docs={docRows}
         classes={classOptions}
-        discountRules={discountRules.map((d) => ({ id: d.id, label: d.label, pct: Number(d.pct) }))}
+        feeLines={feeLines}
+        currency={tenant.currency}
         otherDocs={otherDocs}
       />
 

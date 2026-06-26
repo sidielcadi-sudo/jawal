@@ -27,14 +27,14 @@ export default async function ParentSurveysPage({
   );
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
-        <p className="mt-1 text-sm text-slate-500">{t('subtitle')}</p>
-      </header>
+    <div className="px-3 py-3">
+      <section className="mb-4 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+        <p className="mt-1 text-sm text-slate-600">{t('subtitle')}</p>
+      </section>
 
       {surveys.length === 0 ? (
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+        <div className="rounded-2xl border border-slate-100 bg-white p-8 text-center text-sm text-slate-500 shadow-sm">
           {t('empty')}
         </div>
       ) : (
@@ -42,7 +42,7 @@ export default async function ParentSurveysPage({
           {surveys.map((s) => {
             const answered = s.responses.length > 0;
             return (
-              <section key={s.id} className="rounded-2xl border border-slate-200 bg-white p-6">
+              <section key={s.id} className="rounded-2xl border border-slate-100 bg-white p-6 shadow-sm">
                 <h2 className="text-lg font-semibold text-slate-900">{s.title}</h2>
                 {s.description && <p className="mt-1 text-sm text-slate-600">{s.description}</p>}
 

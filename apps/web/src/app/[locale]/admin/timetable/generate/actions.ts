@@ -344,9 +344,11 @@ export async function generateMultiTimetableAction(
     );
 
     // Affectation des SALLES (le solveur ne les place pas toujours — FET notamment).
+    // Modèle « salle du prof » : un enseignant garde SA salle attitrée d'un cours
+    // à l'autre (il ne donne qu'un cours à la fois → jamais de conflit avec lui-même).
     // Règle : matière spécialisée → salle du type requis (Labo PC/SVT, Info, Gymnase) ;
-    // sinon → salle attitrée de la classe. Allocation conflit-free par (jour, créneau).
-    void teacherHomeRoom; // (modèle « salle de la classe » : on n'utilise pas la salle du prof)
+    // sinon → salle attitrée du prof ; repli salle de la classe / 1re salle libre.
+    // Allocation conflit-free par (jour, créneau).
     const roomsByType = new Map<string, string[]>();
     for (const r of payload.rooms) {
       const ty = r.room_type ?? 'STD';
@@ -360,18 +362,37 @@ export async function generateMultiTimetableAction(
       const explicit = classRoomInfo[cid]?.homeRoomId ?? null;
       classHomeRoom.set(cid, explicit ?? (stdRooms.length ? (stdRooms[i % stdRooms.length] ?? null) : null));
     });
+    // Salle attitrée effective par prof : explicite (fiche) sinon dérivée
+    // (round-robin) → salle STABLE par prof pour minimiser ses changements.
+    const teacherEffectiveRoom = new Map<string, string | null>();
+    Object.keys(teacherHomeRoom)
+      .sort()
+      .forEach((tid, i) => {
+        const explicit = teacherHomeRoom[tid] ?? null;
+        teacherEffectiveRoom.set(
+          tid,
+          explicit ?? (stdRooms.length ? (stdRooms[i % stdRooms.length] ?? null) : null),
+        );
+      });
     const usedByCell = new Map<string, Set<string>>();
     const allocRoom = (
-      data: { classId: string; requiredRoomType: string | null },
+      data: { classId: string; teacherId: string; requiredRoomType: string | null },
       day: string,
       slotId: string,
     ): string | null => {
       const key = `${day}|${slotId}`;
       const used = usedByCell.get(key) ?? new Set<string>();
       let chosen: string | null = null;
+      // 1) Matière spécialisée → salle du type requis (labo/sport/info).
       if (data.requiredRoomType && data.requiredRoomType !== 'STD') {
         chosen = (roomsByType.get(data.requiredRoomType) ?? []).find((r) => !used.has(r)) ?? null;
       }
+      // 2) Salle attitrée du prof (stabilité prof — peu/pas de changement de salle).
+      if (!chosen) {
+        const teacherRoom = teacherEffectiveRoom.get(data.teacherId) ?? null;
+        if (teacherRoom && !used.has(teacherRoom)) chosen = teacherRoom;
+      }
+      // 3) Repli : salle de la classe, sinon 1re salle standard libre.
       if (!chosen) {
         const home = classHomeRoom.get(data.classId) ?? null;
         chosen = home && !used.has(home) ? home : (stdRooms.find((r) => !used.has(r)) ?? null);

@@ -19,7 +19,9 @@ export const currentUserPermissions = cache(async (): Promise<string[]> => {
   // prismaAdmin volontaire : on doit lire les rôles côté serveur avant
   // d'avoir un contexte tenant établi (le user vient juste de s'authentifier).
   const userRoles = await prismaAdmin.userRole.findMany({
-    where: { userId: session.user.id },
+    // Scopé au site actif : un compte multi-sites a les permissions de la
+    // session courante, pas l'union de tous ses établissements.
+    where: { userId: session.user.id, tenantId: session.user.tenantId },
     include: { role: { select: { permissions: true } } },
   });
 
@@ -41,7 +43,7 @@ export const currentUserRoleCodes = cache(async (): Promise<string[]> => {
   if (session.user.isSuperAdmin) return ['tenant_admin'];
 
   const userRoles = await prismaAdmin.userRole.findMany({
-    where: { userId: session.user.id },
+    where: { userId: session.user.id, tenantId: session.user.tenantId },
     include: { role: { select: { code: true } } },
   });
   return userRoles.map((ur) => ur.role.code);

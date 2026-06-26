@@ -16,11 +16,13 @@ export const authConfig = {
   },
   providers: [], // overridé dans `./index.ts`
   callbacks: {
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger, session }) {
       if (user) {
         const u = user as {
           id?: string;
           tenantId: string;
+          homeTenantId: string;
+          sites: { tenantId: string; name: string }[];
           isSuperAdmin: boolean;
           isParent: boolean;
           isTeacher: boolean;
@@ -28,10 +30,21 @@ export const authConfig = {
         };
         token.uid = u.id!;
         token.tenantId = u.tenantId;
+        token.homeTenantId = u.homeTenantId;
+        token.sites = u.sites;
         token.isSuperAdmin = u.isSuperAdmin;
         token.isParent = u.isParent;
         token.isTeacher = u.isTeacher;
         token.isStudent = u.isStudent;
+      }
+      // Bascule de site (multi-établissements) : on n'autorise qu'un site dont
+      // le compte est membre (token.sites = source de vérité).
+      if (trigger === 'update') {
+        const next = (session as { activeTenantId?: string } | undefined)?.activeTenantId;
+        const sites = (token.sites ?? []) as { tenantId: string; name: string }[];
+        if (next && sites.some((s) => s.tenantId === next)) {
+          token.tenantId = next;
+        }
       }
       return token;
     },
@@ -39,6 +52,8 @@ export const authConfig = {
       if (token) {
         session.user.id = String(token.uid);
         session.user.tenantId = String(token.tenantId);
+        session.user.homeTenantId = String(token.homeTenantId ?? token.tenantId);
+        session.user.sites = (token.sites ?? []) as { tenantId: string; name: string }[];
         session.user.isSuperAdmin = Boolean(token.isSuperAdmin);
         session.user.isParent = Boolean(token.isParent);
         session.user.isTeacher = Boolean(token.isTeacher);

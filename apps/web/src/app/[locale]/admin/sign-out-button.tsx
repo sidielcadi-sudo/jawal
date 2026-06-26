@@ -1,15 +1,20 @@
-'use client';
+import { signOutAction } from '@/lib/sign-out-action';
 
-import { signOut } from 'next-auth/react';
-
-export function SignOutButton({ label, locale }: { label: string; locale: string }) {
+export function SignOutButton({
+  label,
+  locale,
+  className = 'rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50',
+}: {
+  label: string;
+  locale: string;
+  className?: string;
+}) {
   return (
-    <button
-      type="button"
-      onClick={() => signOut({ callbackUrl: `/${locale}/login` })}
-      className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-    >
-      {label}
-    </button>
+    <form action={signOutAction}>
+      <input type="hidden" name="locale" value={locale} />
+      <button type="submit" className={className}>
+        {label}
+      </button>
+    </form>
   );
 }

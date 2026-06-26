@@ -59,7 +59,7 @@ export function LoginForm({ error: initialError, callbackUrl, locale }: Props) {
             required={!isSuperAdminMode}
             defaultValue="demo"
             placeholder="demo"
-            className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
+            className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-1"
           />
         </div>
       )}
@@ -74,7 +74,7 @@ export function LoginForm({ error: initialError, callbackUrl, locale }: Props) {
           type="email"
           required
           autoComplete="email"
-          className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
+          className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-1"
         />
       </div>
 
@@ -88,7 +88,7 @@ export function LoginForm({ error: initialError, callbackUrl, locale }: Props) {
           type="password"
           required
           autoComplete="current-password"
-          className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
+          className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm focus:outline-none focus:ring-1"
         />
       </div>
 
@@ -101,14 +101,14 @@ export function LoginForm({ error: initialError, callbackUrl, locale }: Props) {
       <button
         type="submit"
         disabled={isPending}
-        className="bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-500 w-full rounded-lg px-4 py-2.5 text-sm font-medium text-white shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50"
+        className="w-full rounded-lg bg-gradient-to-r from-[#1A56DB] to-[#123a8f] px-4 py-2.5 text-sm font-medium text-white shadow transition-colors hover:from-[#143fa6] hover:to-[#0e2f73] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1A56DB] focus-visible:ring-offset-2 disabled:opacity-50"
       >
         {isPending ? t('actions.signingIn') : t('actions.signIn')}
       </button>
 
       {!isSuperAdminMode && (
         <Link
-          href="/forgot-password"
+          href={`/${locale}/forgot-password`}
           className="text-brand-600 hover:text-brand-700 block text-center text-xs"
         >
           {t('forgotPassword')}

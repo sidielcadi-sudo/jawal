@@ -70,10 +70,10 @@ export default async function MessagesPage({
   });
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
-        <p className="mt-1 text-sm text-slate-500">{t('count', { count: conversations.length })}</p>
+    <div className="px-3 py-3">
+      <header className="mb-4 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+        <p className="mt-0.5 text-sm text-slate-600">{t('count', { count: conversations.length })}</p>
       </header>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

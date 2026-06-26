@@ -6,12 +6,9 @@ import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
 import type { Prisma } from '@/lib/db';
-import {
-  applyDiscount,
-  computeSiblingDiscount,
-  readSiblingDiscountPct,
-} from '@/lib/enrollment-discount';
+import { computeSiblingDiscount } from '@/lib/enrollment-discount';
 import { addressesMatch } from '@/lib/address';
+import { buildInstallments, type FeeCategory } from '@/lib/fees';
 import { sendEnrollmentActivationEmails } from '@/lib/enrollment-activation-email';
 
 type Result = { ok: true } | { ok: false; error: string };
@@ -162,10 +159,11 @@ export async function validateDocumentAction(
  * Accepte un dossier (décision admin) : vérifie le quota du niveau × année,
  * génère l'échéance « frais d'inscription » et passe le dossier en ACCEPTE.
  */
+export type FeeLineInput = { feeId: string; discountRuleId: string | null; count: number };
+
 export async function acceptEnrollmentAction(
   enrollmentId: string,
-  discountPctOverride?: number,
-  discountReason?: string,
+  feeLines: FeeLineInput[] = [],
 ): Promise<Result> {
   const session = await auth();
   if (!session?.user) return { ok: false, error: 'Non authentifié' };
@@ -263,36 +261,80 @@ export async function acceptEnrollmentAction(
             where: { studentId: { in: ids }, academicYearId: enr.academicYearId, status: 'ACTIVE' },
           });
       }
-      const tenant = await tx.tenant.findUnique({ where: { id: tenantId } });
-      const auto = computeSiblingDiscount(siblingsActive, readSiblingDiscountPct(tenant?.settings));
-      const finalPct =
-        discountPctOverride !== undefined && discountPctOverride >= 0 ? discountPctOverride : auto.pct;
+      const auto = computeSiblingDiscount(siblingsActive, 0); // rang fratrie (info)
 
-      // Échéancier complet depuis la grille (cycle/niveau), réduction appliquée.
-      if (!enr.feesGenerated) {
+      // Échéancier : une ligne de frais par entrée, réduction + nb d'échéances
+      // choisis à l'admission (verrou respecté). Frais annuels du niveau × année.
+      let summaryPct: number | null = null;
+      const summaryParts: string[] = [];
+      if (!enr.feesGenerated && feeLines.length > 0) {
+        const feeIdSet = feeLines.map((l) => l.feeId);
         const fees = await tx.feeScheduleItem.findMany({
-          where: { academicYearId: enr.academicYearId, levelId: enr.levelId },
+          where: {
+            id: { in: feeIdSet },
+            academicYearId: enr.academicYearId,
+            levelId: enr.levelId,
+            kind: 'ANNUAL',
+          },
         });
+        const feeById = new Map(fees.map((f) => [f.id, f]));
         const yearStart = (
           await tx.academicYear.findUniqueOrThrow({ where: { id: enr.academicYearId } })
         ).startDate;
-        for (const fee of fees) {
-          const discounted = applyDiscount(Number(fee.totalAmount), finalPct);
-          const per = Math.round((discounted / fee.installmentCount) * 100) / 100;
-          for (let i = 0; i < fee.installmentCount; i++) {
-            const m = (fee.firstDueMonth - 1 + i) % 12;
-            const yo = Math.floor((fee.firstDueMonth - 1 + i) / 12);
+
+        for (const line of feeLines) {
+          const fee = feeById.get(line.feeId);
+          if (!fee) throw new Error('Frais inconnu pour ce niveau.');
+
+          // Réduction : validée (active + rattachée à ce frais ou globale).
+          let pct = 0;
+          let discountLabel = '';
+          if (line.discountRuleId) {
+            const rule = await tx.discountRule.findFirst({
+              where: {
+                id: line.discountRuleId,
+                active: true,
+                OR: [{ feeScheduleItemId: fee.id }, { feeScheduleItemId: null }],
+              },
+            });
+            if (!rule) throw new Error('Réduction invalide pour ce frais.');
+            pct = Number(rule.pct);
+            discountLabel = rule.label;
+          }
+
+          // Nb d'échéances : figé si verrouillé dans le paramétrage.
+          const count = fee.installmentLocked
+            ? fee.installmentCount
+            : Math.min(24, Math.max(1, Math.floor(line.count || fee.installmentCount)));
+
+          const installments = buildInstallments(
+            {
+              id: fee.id,
+              label: fee.label,
+              category: fee.category as FeeCategory,
+              totalAmount: Number(fee.totalAmount),
+              installmentCount: fee.installmentCount,
+              installmentLocked: fee.installmentLocked,
+              firstDueMonth: fee.firstDueMonth,
+            },
+            { pct, count, yearStart },
+          );
+          for (const inst of installments) {
             await tx.installment.create({
               data: {
                 tenantId,
                 studentId: enr.studentId,
-                feeScheduleItemId: fee.id,
-                label: `${fee.label} (${i + 1}/${fee.installmentCount})`,
-                amount: per,
-                dueDate: new Date(Date.UTC(yearStart.getUTCFullYear() + yo, m, 5)),
+                feeScheduleItemId: inst.feeScheduleItemId,
+                label: inst.label,
+                amount: inst.amount,
+                dueDate: inst.dueDate,
                 status: 'PENDING',
               },
             });
+          }
+          if (pct > 0) {
+            summaryParts.push(`${fee.label} −${pct}%${discountLabel ? ` (${discountLabel})` : ''}`);
+            if (fee.category === 'TUITION') summaryPct = pct;
           }
         }
       }
@@ -303,8 +345,8 @@ export async function acceptEnrollmentAction(
           status: 'ACCEPTE',
           decidedAt: new Date(),
           decidedByUserId: session.user.id,
-          discountPct: finalPct > 0 ? finalPct : null,
-          discountReason: discountReason ?? null,
+          discountPct: summaryPct,
+          discountReason: summaryParts.length > 0 ? summaryParts.join(' · ') : null,
           siblingRank: auto.rank,
           feesGenerated: true,
         },
@@ -315,7 +357,7 @@ export async function acceptEnrollmentAction(
         action: 'acceptEnrollment',
         entityType: 'Enrollment',
         entityId: enrollmentId,
-        after: { discountPct: finalPct },
+        after: { discounts: summaryParts },
       });
     });
     revalidate(enrollmentId);
@@ -382,6 +424,79 @@ export async function recordInstallmentPaymentAction(
         after: { amount: remaining, method },
       });
       return enrollmentId;
+    });
+    if (enrollmentId) revalidate(enrollmentId);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
+  }
+}
+
+/**
+ * Encaisse en une fois toutes les échéances d'une même date d'exigibilité
+ * (le « Total » de l'échéancier). Crée un Payment par échéance non soldée.
+ */
+export async function recordGroupPaymentAction(
+  installmentIds: string[],
+  method: 'CASH' | 'CHEQUE' | 'TRANSFER' | 'CMI' | 'STRIPE' | 'OTHER',
+  reference?: string,
+): Promise<Result> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requirePermission('tenants.manage');
+  if (installmentIds.length === 0) return { ok: false, error: 'Aucune échéance.' };
+  const tenantId = session.user.tenantId;
+  try {
+    const enrollmentId = await withTenant(tenantId, async (tx) => {
+      let advanced: string | null = null;
+      for (const installmentId of installmentIds) {
+        const inst = await tx.installment.findUnique({
+          where: { id: installmentId },
+          include: { payments: true },
+        });
+        if (!inst) continue;
+        const already = inst.payments.reduce((s, p) => s + Number(p.amount), 0);
+        const remaining = Math.max(0, Number(inst.amount) - already);
+        if (remaining <= 0) continue;
+        await tx.payment.create({
+          data: {
+            tenantId,
+            installmentId,
+            amount: remaining,
+            method,
+            reference: reference ?? null,
+            recordedByUserId: session.user.id,
+          },
+        });
+        await tx.installment.update({ where: { id: installmentId }, data: { status: 'PAID' } });
+        if (/inscription/i.test(inst.label)) {
+          const enr = await tx.enrollment.findFirst({
+            where: { studentId: inst.studentId, status: 'ACCEPTE' },
+          });
+          if (enr) {
+            await tx.enrollment.update({
+              where: { id: enr.id },
+              data: { status: 'INSCRIPTION_VALIDEE' },
+            });
+            advanced = enr.id;
+          }
+        } else if (!advanced) {
+          const enr = await tx.enrollment.findFirst({
+            where: { studentId: inst.studentId },
+            select: { id: true },
+          });
+          advanced = enr?.id ?? null;
+        }
+        await logAudit(tx, {
+          tenantId,
+          userId: session.user.id,
+          action: 'recordPayment',
+          entityType: 'Installment',
+          entityId: installmentId,
+          after: { amount: remaining, method, group: true },
+        });
+      }
+      return advanced;
     });
     if (enrollmentId) revalidate(enrollmentId);
     return { ok: true };

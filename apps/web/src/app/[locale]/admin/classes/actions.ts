@@ -235,6 +235,17 @@ export async function enrollStudentAction(
         });
       }
 
+      // Synchronise la classe du dossier d'inscription de l'année (source du
+      // bloc « Inscrit · classe » sur la fiche élève).
+      await tx.enrollment.updateMany({
+        where: {
+          studentId,
+          academicYearId: cls.academicYearId,
+          status: { notIn: ['WITHDRAWN', 'GRADUATED', 'REFUSE'] },
+        },
+        data: { classId },
+      });
+
       await logAudit(tx, {
         tenantId,
         userId: session.user.id,
@@ -274,6 +285,13 @@ export async function unenrollStudentAction(
       data: { unenrolledAt: new Date() },
     });
 
+    // Si le dossier d'inscription pointait sur cette classe, on le détache
+    // (la fiche élève n'affichera plus l'ancienne classe).
+    await tx.enrollment.updateMany({
+      where: { studentId, classId },
+      data: { classId: null },
+    });
+
     await logAudit(tx, {
       tenantId,
       userId: session.user.id,
@@ -286,5 +304,45 @@ export async function unenrollStudentAction(
 
   revalidatePath(`/admin/classes/${classId}`);
   revalidatePath(`/admin/persons/${studentId}`);
+  return { ok: true };
+}
+
+/**
+ * Définit (ou retire) le délégué d'une classe — un élève inscrit à cette classe.
+ * Choisi lors de la constitution de la classe ; affiché en lecture seule dans la
+ * Gestion des absences.
+ */
+export async function setClassDelegateAction(
+  classId: string,
+  studentId: string | null,
+): Promise<ActionResult> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requirePermission('classes.write');
+  const tenantId = session.user.tenantId;
+  try {
+    await withTenant(tenantId, async (tx) => {
+      if (studentId) {
+        const sc = await tx.studentClass.findFirst({
+          where: { classId, studentId, unenrolledAt: null },
+          select: { id: true },
+        });
+        if (!sc) throw new Error("L'élève n'appartient pas à cette classe.");
+      }
+      await tx.class.update({ where: { id: classId }, data: { delegateId: studentId } });
+      await logAudit(tx, {
+        tenantId,
+        userId: session.user.id,
+        action: 'setDelegate',
+        entityType: 'Class',
+        entityId: classId,
+        after: { delegateId: studentId },
+      });
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
+  }
+  revalidatePath(`/admin/classes/${classId}`);
+  revalidatePath('/admin/attendance/management');
   return { ok: true };
 }

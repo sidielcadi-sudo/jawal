@@ -6,6 +6,8 @@ import { withTenant } from '@/lib/db';
 import { PersonActions } from './person-actions';
 import { ParentAccess } from './parent-access';
 import { TeacherAccess } from './teacher-access';
+import { StudentAccess } from './student-access';
+import { HealthSection, type Health } from './health-section';
 import { DocumentsPanel } from '@/components/documents-panel';
 import { computeContractStatus, contractStatusBadgeClass } from '@/lib/contract-status';
 import {
@@ -35,6 +37,7 @@ export default async function PersonDetailPage({
       where: { id },
       include: {
         role: true,
+        serviceRef: { select: { labelFr: true, labelAr: true } },
         contractFile: true,
         studentClasses: {
           include: {
@@ -136,17 +139,30 @@ export default async function PersonDetailPage({
         },
         orderBy: { academicYear: { startDate: 'desc' } },
       });
-      return rows.map((r) => ({
-        id: r.id,
-        yearLabel: r.academicYear.label,
-        levelLabel: r.level.label,
-        className: r.class?.name ?? null,
-        classId: r.class?.id ?? null,
-        status: r.status as 'DRAFT' | 'ACTIVE' | 'WITHDRAWN' | 'GRADUATED',
-        siblingRank: r.siblingRank,
-        discountPct: r.discountPct !== null ? Number(r.discountPct) : null,
-        enrolledAt: r.enrolledAt,
-      }));
+      // Classe réelle courante = StudentClass active (unenrolledAt null) de l'année.
+      const activeClasses = await tx.studentClass.findMany({
+        where: { studentId: id, unenrolledAt: null },
+        select: { class: { select: { id: true, name: true, academicYearId: true } } },
+      });
+      const classByYear = new Map(
+        activeClasses.map((sc) => [sc.class.academicYearId, sc.class]),
+      );
+      return rows.map((r) => {
+        // Classe courante = StudentClass active de l'année. Pas de repli sur
+        // Enrollment.classId (qui peut être obsolète après une désinscription).
+        const liveClass = classByYear.get(r.academicYearId) ?? null;
+        return {
+          id: r.id,
+          yearLabel: r.academicYear.label,
+          levelLabel: r.level.label,
+          className: liveClass?.name ?? null,
+          classId: liveClass?.id ?? null,
+          status: r.status as 'DRAFT' | 'ACTIVE' | 'WITHDRAWN' | 'GRADUATED',
+          siblingRank: r.siblingRank,
+          discountPct: r.discountPct !== null ? Number(r.discountPct) : null,
+          enrolledAt: r.enrolledAt,
+        };
+      });
     });
   }
 
@@ -309,6 +325,18 @@ export default async function PersonDetailPage({
     });
   }
 
+  // Accès portail élève : email du compte rattaché s'il existe déjà.
+  let studentUserEmail: string | null = null;
+  if (person.type === 'STUDENT') {
+    studentUserEmail = await withTenant(tenantId, async (tx) => {
+      const up = await tx.userPerson.findFirst({
+        where: { personId: id },
+        include: { user: { select: { email: true } } },
+      });
+      return up?.user.email ?? null;
+    });
+  }
+
   // Fratrie déduite : autres élèves ayant au moins un parent en commun.
   let siblings: { id: string; firstName: string; lastName: string }[] = [];
   if (person.type === 'STUDENT' && person.relationsAsChild.length > 0) {
@@ -363,6 +391,23 @@ export default async function PersonDetailPage({
     postalCode?: string;
     country?: string;
   };
+  // Champs élève additionnels stockés en metadata.
+  const meta = (person.metadata ?? {}) as {
+    cne?: string;
+    codeMassar?: string;
+    imageRights?: boolean;
+    exitRights?: number;
+    dietInfo?: string;
+    originSchool?: string;
+    repeating?: boolean;
+    health?: Health;
+    cnssNumber?: string;
+    amoNumber?: string;
+    employmentStatus?: string;
+    cinScanFileId?: string;
+    cnssAttestationFileId?: string;
+  };
+  const health: Health = meta.health ?? {};
 
   // Breadcrumb dynamique : renvoie vers la liste filtrée selon le type.
   const backHref = `/${locale}/admin/persons?type=${person.type}`;
@@ -374,8 +419,15 @@ export default async function PersonDetailPage({
       : person.role.labelFr
     : null;
 
-  const serviceLabel =
-    person.type === 'STAFF' && person.service ? tForm(`services.${person.service}` as never) : null;
+  // Service : on privilégie le lien serviceRef (déduit du rôle) ; repli sur le
+  // champ texte historique `service` si présent.
+  const serviceLabel = person.serviceRef
+    ? locale === 'ar'
+      ? person.serviceRef.labelAr
+      : person.serviceRef.labelFr
+    : person.service
+      ? tForm(`services.${person.service}` as never)
+      : null;
 
   const isEmployee = person.type === 'TEACHER' || person.type === 'STAFF';
   const contract = isEmployee
@@ -386,8 +438,9 @@ export default async function PersonDetailPage({
     : null;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
-      <nav className="mb-4 text-xs text-slate-500">
+    <div className="px-3 py-3">
+      <div className="mb-6 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-3">
+      <nav className="mb-2 text-xs text-slate-500">
         <Link href={backHref} className="hover:text-brand-700">
           {backLabel}
         </Link>
@@ -397,7 +450,7 @@ export default async function PersonDetailPage({
         </span>
       </nav>
 
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-start gap-4">
           {person.photoFileId ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -475,9 +528,12 @@ export default async function PersonDetailPage({
           <PersonActions personId={person.id} isArchived={!!person.deletedAt} locale={locale} />
         </div>
       </header>
+      </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5 md:col-span-2">
+      <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-3">
+        {/* Colonne gauche (large) : un seul conteneur pour que l'aside se cale en haut */}
+        <div className="space-y-6 md:col-span-2">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="text-sm font-semibold text-slate-700">{tDetail('contact')}</h2>
           <dl className="mt-3 space-y-2 text-sm">
             <Row label="Email" value={contacts.email} />
@@ -493,14 +549,121 @@ export default async function PersonDetailPage({
             />
             <Row label={tDetail('cin')} value={person.cin ?? undefined} />
             <Row label={tDetail('nationality')} value={person.nationality ?? undefined} />
-            {person.type === 'STUDENT' && (
+          </dl>
+        </section>
+
+        {/* Informations employeur — enseignant / personnel (remplit la colonne) */}
+        {isEmployee && (
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 md:col-span-2">
+            <h2 className="text-sm font-semibold text-slate-700">{tDetail('employerInfo')}</h2>
+            <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
+              <Row
+                label={tForm('employmentStatus.label')}
+                value={meta.employmentStatus ? tForm(`employmentStatus.${meta.employmentStatus}` as never) : undefined}
+              />
+              <Row label={tForm('cnssNumber')} value={meta.cnssNumber || undefined} />
+              <Row label={tForm('amoNumber')} value={meta.amoNumber || undefined} />
+              <Row
+                label={tForm('cinScan')}
+                value={meta.cinScanFileId ? tDetail('view') : undefined}
+                href={meta.cinScanFileId ? `/api/admin/persons/${person.id}/document/cinScan/download` : undefined}
+              />
+              <Row
+                label={tForm('cnssAttestation')}
+                value={meta.cnssAttestationFileId ? tDetail('view') : undefined}
+                href={meta.cnssAttestationFileId ? `/api/admin/persons/${person.id}/document/cnssAttestation/download` : undefined}
+              />
+            </dl>
+          </section>
+        )}
+
+        {/* Identité & autorisations — élève */}
+        {person.type === 'STUDENT' && (
+          <section className="rounded-2xl border border-slate-200 bg-white p-5 md:col-span-2">
+            <h2 className="text-sm font-semibold text-slate-700">{tForm('studentIdentity')}</h2>
+            <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
+              <Row label={tForm('cne')} value={meta.cne || undefined} />
+              <Row label={tForm('codeMassar')} value={meta.codeMassar || undefined} />
               <Row
                 label={tForm('regime.label')}
                 value={person.regime ? tForm(`regime.${person.regime}` as never) : undefined}
               />
+              <Row
+                label={tForm('usesTransport')}
+                value={person.usesTransport ? tForm('usesTransportYes') : tForm('usesTransportNo')}
+              />
+              <Row
+                label={tForm('imageRights')}
+                value={meta.imageRights === undefined ? undefined : meta.imageRights ? tForm('usesTransportYes') : tForm('usesTransportNo')}
+              />
+              <Row
+                label={tForm('exitRights')}
+                value={meta.exitRights !== undefined ? String(meta.exitRights) : undefined}
+              />
+              <Row label={tForm('originSchool')} value={meta.originSchool || undefined} />
+              <Row
+                label={tForm('repeating')}
+                value={meta.repeating === undefined ? undefined : meta.repeating ? tForm('usesTransportYes') : tForm('usesTransportNo')}
+              />
+            </dl>
+            {meta.dietInfo && (
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                <div className="text-xs font-medium text-slate-500">{tForm('dietInfo')}</div>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-slate-700">{meta.dietInfo}</p>
+              </div>
             )}
-          </dl>
-        </section>
+          </section>
+        )}
+
+        {/* Parents / Fratrie — sous Identité (colonne gauche) */}
+        {person.type === 'STUDENT' && (
+          <div
+            className={`grid gap-6 md:col-span-2 ${siblings.length > 0 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}
+          >
+            <section className="rounded-2xl border border-slate-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-slate-700">{tDetail('parents')}</h2>
+              {person.relationsAsChild.length === 0 ? (
+                <p className="mt-2 text-xs text-slate-500">{tDetail('noParent')}</p>
+              ) : (
+                <ul className="mt-2 space-y-1.5 text-sm">
+                  {person.relationsAsChild.map((r) => (
+                    <li key={r.id} className="rounded-lg border border-slate-100 px-3 py-1.5">
+                      <Link
+                        href={`/${locale}/admin/persons/${r.parent.id}`}
+                        className="hover:text-brand-700 font-medium text-slate-900"
+                      >
+                        {r.parent.lastName} {r.parent.firstName}
+                      </Link>
+                      <span className="ms-1.5 text-xs text-slate-500">
+                        ({tDetail(`relations.${r.type}` as never)})
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            {siblings.length > 0 && (
+              <section className="rounded-2xl border border-slate-200 bg-white p-5">
+                <h2 className="text-sm font-semibold text-slate-700">{tDetail('siblings')}</h2>
+                <ul className="mt-2 space-y-1.5 text-sm">
+                  {siblings.map((s) => (
+                    <li key={s.id} className="rounded-lg border border-slate-100 px-3 py-1.5">
+                      <Link
+                        href={`/${locale}/admin/persons/${s.id}`}
+                        className="hover:text-brand-700 font-medium text-slate-900"
+                      >
+                        {s.lastName} {s.firstName}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                <p className="mt-2 text-[10px] text-slate-400">{tDetail('siblingsHint')}</p>
+              </section>
+            )}
+          </div>
+        )}
+        </div>
 
         <aside className="space-y-4">
           {person.type === 'STUDENT' && (
@@ -532,12 +695,7 @@ export default async function PersonDetailPage({
               <h2 className="text-sm font-semibold text-slate-700">{tDetail('contract')}</h2>
               <dl className="mt-3 space-y-2 text-sm">
                 {person.type === 'STAFF' && (
-                  <Row
-                    label={tForm('service')}
-                    value={
-                      person.service ? tForm(`services.${person.service}` as never) : undefined
-                    }
-                  />
+                  <Row label={tForm('service')} value={serviceLabel ?? undefined} />
                 )}
                 <Row
                   label={tDetail('contractType')}
@@ -968,47 +1126,18 @@ export default async function PersonDetailPage({
             </section>
           )}
 
+          {person.type === 'STUDENT' && <HealthSection studentId={person.id} health={health} />}
+
           {person.type === 'STUDENT' && (
             <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-700">{tDetail('parents')}</h2>
-              {person.relationsAsChild.length === 0 ? (
-                <p className="mt-2 text-xs text-slate-500">{tDetail('noParent')}</p>
-              ) : (
-                <ul className="mt-2 space-y-1.5 text-sm">
-                  {person.relationsAsChild.map((r) => (
-                    <li key={r.id} className="rounded-lg border border-slate-100 px-3 py-1.5">
-                      <Link
-                        href={`/${locale}/admin/persons/${r.parent.id}`}
-                        className="hover:text-brand-700 font-medium text-slate-900"
-                      >
-                        {r.parent.lastName} {r.parent.firstName}
-                      </Link>
-                      <span className="ms-1.5 text-xs text-slate-500">
-                        ({tDetail(`relations.${r.type}` as never)})
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          )}
-
-          {person.type === 'STUDENT' && siblings.length > 0 && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-700">{tDetail('siblings')}</h2>
-              <ul className="mt-2 space-y-1.5 text-sm">
-                {siblings.map((s) => (
-                  <li key={s.id} className="rounded-lg border border-slate-100 px-3 py-1.5">
-                    <Link
-                      href={`/${locale}/admin/persons/${s.id}`}
-                      className="hover:text-brand-700 font-medium text-slate-900"
-                    >
-                      {s.lastName} {s.firstName}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-              <p className="mt-2 text-[10px] text-slate-400">{tDetail('siblingsHint')}</p>
+              <h2 className="mb-3 text-sm font-semibold text-slate-700">
+                {tDetail('portalAccessStudent')}
+              </h2>
+              <StudentAccess
+                personId={person.id}
+                defaultEmail={contacts.email ?? ''}
+                existingEmail={studentUserEmail}
+              />
             </section>
           )}
 
@@ -1140,12 +1269,20 @@ export default async function PersonDetailPage({
   );
 }
 
-function Row({ label, value, mono }: { label: string; value?: string; mono?: boolean }) {
+function Row({ label, value, mono, href }: { label: string; value?: string; mono?: boolean; href?: string }) {
   return (
     <div className="flex gap-3">
       <dt className="w-32 shrink-0 text-slate-500">{label}</dt>
       <dd className={`flex-1 ${mono ? 'font-mono text-xs' : ''} text-slate-900`}>
-        {value ?? <span className="text-slate-400">—</span>}
+        {value ? (
+          href ? (
+            <a href={href} target="_blank" className="text-brand-600 hover:underline">{value}</a>
+          ) : (
+            value
+          )
+        ) : (
+          <span className="text-slate-400">—</span>
+        )}
       </dd>
     </div>
   );

@@ -9,6 +9,8 @@ export type BulletinRenderOptions = {
   tenantName: string;
   locale: string;
   dir: 'ltr' | 'rtl';
+  /** Logo de l'établissement en data URI (base64), optionnel. */
+  logoDataUri?: string | null;
   /** Traducteur du namespace `admin.bulletin`. */
   t: Translator;
 };
@@ -101,7 +103,11 @@ function renderStudentBulletin(
   <section class="bulletin">
     <header class="head">
       <div class="head-row">
-        <div class="tenant">${esc(opts.tenantName)}</div>
+        <div class="tenant">${
+          opts.logoDataUri
+            ? `<img src="${opts.logoDataUri}" alt="" class="logo" />`
+            : ''
+        }${esc(opts.tenantName)}</div>
         <div class="year">${esc(cls.academicYear.label)}</div>
       </div>
       <h1>${esc(t('bulletinOf', { period: period.label, year: cls.academicYear.label }))}</h1>
@@ -162,7 +168,8 @@ const STYLES = `
   .bulletin:last-child { page-break-after: auto; }
   .head { border-bottom: 1px solid #cbd5e1; padding-bottom: 12px; }
   .head-row { display: flex; justify-content: space-between; align-items: flex-start; }
-  .tenant { font-size: 18px; font-weight: 700; text-transform: uppercase; }
+  .tenant { font-size: 18px; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 10px; }
+  .tenant .logo { height: 36px; width: auto; object-fit: contain; }
   .year { font-size: 11px; color: #64748b; font-family: monospace; }
   h1 { margin: 14px 0 0; text-align: center; font-size: 18px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; }
   .info { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 24px; padding: 12px 0; border-bottom: 1px solid #cbd5e1; }

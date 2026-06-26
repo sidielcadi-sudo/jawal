@@ -24,7 +24,10 @@ export default async function StudentLayout({
 
   const tenantId = session.user.tenantId;
   const [tenant, header] = await Promise.all([
-    prismaAdmin.tenant.findUnique({ where: { id: tenantId }, select: { name: true } }),
+    prismaAdmin.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true, logoFileId: true, updatedAt: true },
+    }),
     withTenant(tenantId, async (tx) => {
       const studentId = await getStudentPersonId(tx, session.user.id);
       if (!studentId) return null;
@@ -43,24 +46,34 @@ export default async function StudentLayout({
   const t = await getTranslations('eleve');
 
   return (
-    <div className="flex min-h-screen bg-slate-50 print:block print:min-h-0 print:bg-white">
+    <div className="flex h-screen overflow-hidden bg-[#eef0f7] print:block print:h-auto print:overflow-visible print:bg-white">
       <div className="print:hidden">
         <StudentSidebar
           locale={locale}
           tenantName={tenant?.name ?? ''}
           studentName={header?.name ?? session.user.email ?? ''}
           className={header?.className ?? null}
+          logoUrl={tenant?.logoFileId ? `/api/tenant/logo?v=${tenant.updatedAt.getTime()}` : null}
         />
       </div>
 
-      <div className="flex flex-1 flex-col">
-        <header className="sticky top-0 z-10 border-b border-slate-200 bg-white print:hidden">
-          <div className="flex items-center justify-end gap-3 px-6 py-3">
-            <span className="text-sm text-slate-600">{session.user.email}</span>
-            <SignOutButton label={t('signOut')} locale={locale} />
-          </div>
+      <div className="flex flex-1 flex-col overflow-hidden p-3 ps-0 print:overflow-visible print:p-0">
+        <header className="relative mb-1 flex items-center justify-end gap-3 rounded-3xl bg-white px-5 py-2.5 shadow-sm print:hidden">
+          {tenant?.name && (
+            <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap bg-gradient-to-r from-[#1A56DB] to-[#123a8f] bg-clip-text text-lg font-bold text-transparent">
+              {tenant.name}
+            </span>
+          )}
+          <span className="text-[13px] text-slate-600">{session.user.email}</span>
+          <SignOutButton
+            label={t('signOut')}
+            locale={locale}
+            className="rounded-lg bg-[#1A56DB] px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#143fa6]"
+          />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/jawal-logo.png" alt="Jawal" className="h-9 w-9 object-contain" />
         </header>
-        <main className="flex-1">{children}</main>
+        <main className="flex-1 overflow-y-auto print:overflow-visible">{children}</main>
       </div>
     </div>
   );

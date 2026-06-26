@@ -23,9 +23,9 @@ export default async function StudentNotesPage({ params }: { params: Promise<{ l
   if (!notes) return <div className="mx-auto max-w-4xl px-6 py-8 text-sm text-slate-500">{t('empty')}</div>;
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
-      <header className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
+    <div className="px-3 py-3">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
         {notes.generalAverage !== null && (
           <span className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm">
             {t('general')} :{' '}

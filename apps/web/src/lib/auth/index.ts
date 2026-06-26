@@ -17,7 +17,7 @@ const loginSchema = z.object({
     .optional(),
 });
 
-export const { auth, handlers, signIn, signOut } = NextAuth({
+export const { auth, handlers, signIn, signOut, unstable_update } = NextAuth({
   ...authConfig,
   providers: [
     Credentials({
@@ -72,10 +72,29 @@ export const { auth, handlers, signIn, signOut } = NextAuth({
           data: { lastLoginAt: new Date() },
         });
 
+        // Sites accessibles (multi-établissements) : home + appartenances UserTenant.
+        // Concerne surtout les comptes de groupe ; les autres ont sites = [home].
+        const homeTenant = await prismaAdmin.tenant.findUnique({
+          where: { id: user.tenantId },
+          select: { name: true },
+        });
+        const memberships = user.isSuperAdmin
+          ? []
+          : await prismaAdmin.userTenant.findMany({
+              where: { userId: user.id },
+              include: { tenant: { select: { id: true, name: true } } },
+            });
+        const sitesMap = new Map<string, { tenantId: string; name: string }>();
+        sitesMap.set(user.tenantId, { tenantId: user.tenantId, name: homeTenant?.name ?? '' });
+        for (const m of memberships)
+          sitesMap.set(m.tenant.id, { tenantId: m.tenant.id, name: m.tenant.name });
+
         return {
           id: user.id,
           email: user.email,
           tenantId: user.tenantId,
+          homeTenantId: user.tenantId,
+          sites: [...sitesMap.values()],
           isSuperAdmin: user.isSuperAdmin,
           isParent,
           isTeacher,

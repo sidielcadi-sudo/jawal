@@ -13,9 +13,11 @@ export default async function TeacherAccountPage({
   const t = await getTranslations('enseignant.account');
 
   return (
-    <div className="mx-auto max-w-2xl px-6 py-8">
-      <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
-      <p className="mt-1 text-sm text-slate-500">{session.user.email}</p>
+    <div className="px-3 py-3">
+      <header className="mb-4 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+        <p className="mt-0.5 text-sm text-slate-600">{session.user.email}</p>
+      </header>
       <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
         <h2 className="text-sm font-semibold text-slate-700">{t('changePassword')}</h2>
         <div className="mt-3">

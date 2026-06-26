@@ -76,11 +76,13 @@ export default async function FillLessonPage({
         locale={locale}
         entryId={entryId}
         date={date}
+        hasLesson={!!lesson}
         initial={{
           title: lesson?.title ?? '',
           summary: lesson?.summary ?? '',
           activities: lesson?.activities ?? '',
           competencies: lesson?.competencies ?? '',
+          theme: lesson?.theme ?? '',
           visibleToStudents: lesson?.visibleToStudents ?? true,
           visibleToParents: lesson?.visibleToParents ?? true,
           publishAt: lesson?.publishAt ? lesson.publishAt.toISOString().slice(0, 16) : '',
@@ -93,8 +95,9 @@ export default async function FillLessonPage({
         }}
       />
 
-      {/* Bloc 4 — Ressources : disponible une fois le cahier enregistré. */}
-      {lesson ? (
+      {/* Bloc 4 — Ressources d'une séance déjà enregistrée (gérer/supprimer).
+          À la création, le dépôt se fait directement dans le formulaire ci-dessus. */}
+      {lesson && (
         <div className="mt-6 border-t border-slate-200 pt-6">
           <ResourcesPanel
             lessonEntryId={lesson.id}
@@ -108,10 +111,6 @@ export default async function FillLessonPage({
             }))}
           />
         </div>
-      ) : (
-        <p className="mt-6 border-t border-slate-200 pt-6 text-xs text-slate-400">
-          {t('resources.saveFirst')}
-        </p>
       )}
     </CahierFrame>
   );

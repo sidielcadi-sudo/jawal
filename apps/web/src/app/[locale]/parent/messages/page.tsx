@@ -20,12 +20,14 @@ export default async function ParentMessagesPage({
   );
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
-      <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
+    <div className="px-3 py-3">
+      <section className="mb-4 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+      </section>
 
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <section className="lg:col-span-2">
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
             <ul className="divide-y divide-slate-100">
               {conversations.map((c) => (
                 <li key={c.id}>
@@ -56,7 +58,7 @@ export default async function ParentMessagesPage({
         </section>
 
         <aside>
-          <div className="rounded-2xl border border-slate-200 bg-white p-5">
+          <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
             <h2 className="text-base font-semibold text-slate-900">{t('newTitle')}</h2>
             <p className="mt-1 text-xs text-slate-500">{t('newHint')}</p>
             <div className="mt-4">

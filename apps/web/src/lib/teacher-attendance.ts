@@ -22,6 +22,82 @@ export type AppelWeekSession = {
 
 const periodLabelOf = (start: string, end: string) => `${start}-${end}`;
 
+/** Délai de grâce (min) après le début du cours avant de compter l'appel manquant. */
+const APPEL_GRACE_MIN = 10;
+const hhmmToMin = (hhmm: string): number => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+};
+
+/** Jour + minute courante dans le fuseau du tenant (pour le filtre « déjà commencé »). */
+function tenantDayNow(tz: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date());
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+  const dateStr = `${get('year')}-${get('month')}-${get('day')}`;
+  const nowMin = Number(get('hour')) * 60 + Number(get('minute'));
+  return { dateStr, nowMin, dow: dowOf(dateStr) };
+}
+
+/**
+ * Nombre d'appels « non faits » **aujourd'hui** : séances d'EDT dont le début
+ * (+ délai de grâce) est passé et sans AttendanceSession finalisée. Calé sur
+ * l'heure locale du tenant (les cours à venir ne sont pas comptés). Avec
+ * `teacherId` → périmètre d'un prof (badge sidebar enseignant) ; sans → tout le
+ * tenant (badge Vie scolaire). Un appel = un couple classe×créneau.
+ */
+export async function countMissingAppels(
+  tx: Tx,
+  tz: string,
+  opts: { teacherId?: string } = {},
+): Promise<number> {
+  const { dateStr, nowMin, dow } = tenantDayNow(tz);
+
+  const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
+  if (!year) return 0;
+
+  const entries = await tx.timetableEntry.findMany({
+    where: {
+      academicYearId: year.id,
+      dayOfWeek: dow,
+      slot: { isBreak: false },
+      ...(opts.teacherId ? { teacherId: opts.teacherId } : {}),
+    },
+    select: { classId: true, slot: { select: { startTime: true, endTime: true } } },
+  });
+  // Séances déjà commencées (début + grâce dépassé) — on ignore les cours à venir.
+  // Dédupliquées par classe×créneau (un seul appel même si co-animé).
+  const startedKeys = new Set<string>();
+  for (const e of entries) {
+    if (nowMin >= hhmmToMin(e.slot.startTime) + APPEL_GRACE_MIN) {
+      startedKeys.add(`${e.classId}|${periodLabelOf(e.slot.startTime, e.slot.endTime)}`);
+    }
+  }
+  if (startedKeys.size === 0) return 0;
+
+  const classIds = [...new Set([...startedKeys].map((k) => k.split('|')[0]!))];
+  const finalized = await tx.attendanceSession.findMany({
+    where: { classId: { in: classIds }, date: parseDateUTC(dateStr), finalizedAt: { not: null } },
+    select: { classId: true, periodLabel: true },
+  });
+  const doneSet = new Set(finalized.map((s) => `${s.classId}|${s.periodLabel ?? ''}`));
+
+  let count = 0;
+  for (const key of startedKeys) if (!doneSet.has(key)) count++;
+  return count;
+}
+
+/** Appels non faits aujourd'hui pour un enseignant (badge sidebar enseignant). */
+export const countTeacherMissingAppels = (tx: Tx, teacherId: string, tz: string): Promise<number> =>
+  countMissingAppels(tx, tz, { teacherId });
+
 /**
  * Séances datées d'un enseignant pour une semaine (lun→sam), enrichies de
  * l'état d'appel : `done` = une AttendanceSession finalisée existe pour la case.

@@ -60,12 +60,25 @@ type PersonInitial = {
   nationality?: string;
   cin?: string;
   regime?: 'EXTERNE' | 'DEMI_PENSIONNAIRE' | 'INTERNE';
+  usesTransport?: boolean;
+  cne?: string;
+  codeMassar?: string;
+  imageRights?: boolean;
+  exitRights?: number;
+  dietInfo?: string;
+  originSchool?: string;
+  repeating?: boolean;
   contacts?: { email?: string; phone?: string; whatsapp?: string };
   address?: { line1?: string; city?: string; postalCode?: string; country?: string };
   parents?: ParentLink[];
   hireDate?: string;
   contractEndDate?: string;
   contractType?: ContractType;
+  cnssNumber?: string;
+  amoNumber?: string;
+  employmentStatus?: string;
+  cinScanFileId?: string | null;
+  cnssAttestationFileId?: string | null;
   contractualHoursPerWeek?: number;
   homeRoomId?: string | null;
   photoFileId?: string | null;
@@ -123,6 +136,7 @@ export function PersonForm({
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [type, setType] = useState<PersonType>(initial?.type ?? 'STUDENT');
+  const [regime, setRegime] = useState<string>(initial?.regime ?? '');
   const [parents, setParents] = useState<ParentLink[]>(initial?.parents ?? []);
   const [address, setAddress] = useState({
     line1: initial?.address?.line1 ?? '',
@@ -246,6 +260,24 @@ export function PersonForm({
               ))}
             </select>
           </Field>
+          <Field label={t('originSchool')}>
+            <input
+              type="text"
+              name="originSchool"
+              defaultValue={initial?.originSchool ?? ''}
+              placeholder={t('originSchoolHint')}
+              className={inputCls}
+            />
+          </Field>
+          <label className="flex items-center gap-2 self-end pb-2 text-sm text-slate-700">
+            <input
+              type="checkbox"
+              name="repeating"
+              defaultChecked={initial?.repeating ?? false}
+              className="h-4 w-4 rounded border-slate-300"
+            />
+            {t('repeating')}
+          </label>
           <div className="sm:col-span-2">
             <label className="block text-xs font-medium text-slate-700">{t('admissionNotes')}</label>
             <textarea name="admissionNotes" rows={2} className={inputCls} />
@@ -346,15 +378,92 @@ export function PersonForm({
               className={inputCls}
             />
           </Field>
+          {showContractField && mode === 'edit' && initial?.id && (
+            <div className="sm:col-span-2">
+              <DocUpload personId={initial.id} kind="cinScan" hasFile={!!initial.cinScanFileId} label={t('cinScan')} />
+            </div>
+          )}
+          {type === 'STUDENT' && (
+            <Field label={t('cne')}>
+              <input type="text" name="cne" defaultValue={initial?.cne ?? ''} placeholder="CNE" className={inputCls} />
+            </Field>
+          )}
+          {type === 'STUDENT' && (
+            <Field label={t('codeMassar')}>
+              <input type="text" name="codeMassar" defaultValue={initial?.codeMassar ?? ''} placeholder="Massar" className={inputCls} />
+            </Field>
+          )}
           {type === 'STUDENT' && (
             <Field label={t('regime.label')}>
-              <select name="regime" defaultValue={initial?.regime ?? ''} className={inputCls}>
+              <select
+                name="regime"
+                value={regime}
+                onChange={(e) => setRegime(e.target.value)}
+                disabled={mode === 'edit'}
+                className={`${inputCls} disabled:cursor-not-allowed disabled:bg-slate-100 disabled:opacity-70`}
+              >
                 <option value="">{t('regime.none')}</option>
                 <option value="EXTERNE">{t('regime.EXTERNE')}</option>
                 <option value="DEMI_PENSIONNAIRE">{t('regime.DEMI_PENSIONNAIRE')}</option>
                 <option value="INTERNE">{t('regime.INTERNE')}</option>
               </select>
+              {mode === 'edit' && (
+                <p className="mt-1 text-[11px] text-amber-600">{t('lockedViaEnrollment')}</p>
+              )}
             </Field>
+          )}
+          {type === 'STUDENT' && (
+            <Field label={t('exitRights')}>
+              <input
+                type="number"
+                name="exitRights"
+                min={0}
+                max={9}
+                defaultValue={initial?.exitRights ?? ''}
+                className={inputCls}
+              />
+            </Field>
+          )}
+          {type === 'STUDENT' && (
+            <label className="flex items-center gap-2 self-end pb-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                name="imageRights"
+                defaultChecked={initial?.imageRights ?? false}
+                className="h-4 w-4 rounded border-slate-300"
+              />
+              {t('imageRights')}
+            </label>
+          )}
+          {type === 'STUDENT' && (
+            <label
+              className={`flex items-center gap-2 self-end pb-2 text-sm ${
+                mode === 'edit' ? 'text-slate-400' : 'text-slate-700'
+              }`}
+              title={mode === 'edit' ? t('lockedViaEnrollment') : undefined}
+            >
+              <input
+                type="checkbox"
+                name="usesTransport"
+                defaultChecked={initial?.usesTransport ?? false}
+                disabled={mode === 'edit'}
+                className="h-4 w-4 rounded border-slate-300 disabled:cursor-not-allowed"
+              />
+              {t('usesTransport')}
+              {mode === 'edit' && <span className="text-[11px] text-amber-600">🔒</span>}
+            </label>
+          )}
+          {type === 'STUDENT' && (regime === 'DEMI_PENSIONNAIRE' || regime === 'INTERNE') && (
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-medium text-slate-700">{t('dietInfo')}</label>
+              <textarea
+                name="dietInfo"
+                rows={2}
+                defaultValue={initial?.dietInfo ?? ''}
+                placeholder={t('dietInfoHint')}
+                className={inputCls}
+              />
+            </div>
           )}
           </div>
           <PhotoBox
@@ -558,6 +667,20 @@ export function PersonForm({
                 className={inputCls}
               />
             </Field>
+            <Field label={t('employmentStatus.label')}>
+              <select name="employmentStatus" defaultValue={initial?.employmentStatus ?? 'ACTIVE'} className={inputCls}>
+                <option value="ACTIVE">{t('employmentStatus.ACTIVE')}</option>
+                <option value="SUSPENDED">{t('employmentStatus.SUSPENDED')}</option>
+                <option value="RESIGNED">{t('employmentStatus.RESIGNED')}</option>
+                <option value="CONTRACT_END">{t('employmentStatus.CONTRACT_END')}</option>
+              </select>
+            </Field>
+            <Field label={t('cnssNumber')}>
+              <input type="text" name="cnssNumber" defaultValue={initial?.cnssNumber ?? ''} placeholder="N° CNSS" className={inputCls} />
+            </Field>
+            <Field label={t('amoNumber')}>
+              <input type="text" name="amoNumber" defaultValue={initial?.amoNumber ?? ''} placeholder="N° AMO" className={inputCls} />
+            </Field>
             {type === 'TEACHER' && (
               <Field label={t('contractualHoursPerWeek')}>
                 <input
@@ -592,6 +715,11 @@ export function PersonForm({
           </div>
           {mode === 'edit' && initial?.id && (
             <ContractUpload personId={initial.id} current={initial.contractFile ?? null} />
+          )}
+          {mode === 'edit' && initial?.id && (
+            <div className="mt-3">
+              <DocUpload personId={initial.id} kind="cnssAttestation" hasFile={!!initial.cnssAttestationFileId} label={t('cnssAttestation')} />
+            </div>
           )}
           {mode === 'create' && (
             <p className="mt-2 text-xs text-slate-500">{t('contractUploadAfterCreate')}</p>
@@ -858,6 +986,54 @@ function PhotoBox({
         />
       </label>
       {err && <p className="text-center text-[11px] text-red-600">{err}</p>}
+    </div>
+  );
+}
+
+function DocUpload({ personId, kind, hasFile, label }: { personId: string; kind: string; hasFile: boolean; label: string }) {
+  const t = useTranslations('admin.persons.form');
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const endpoint = `/api/admin/persons/${personId}/document/${kind}`;
+
+  async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setErr('');
+    if (file.size > 10 * 1024 * 1024) { setErr(t('contractFileTooLarge')); return; }
+    setBusy(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    const r = await fetch(endpoint, { method: 'POST', body: fd });
+    setBusy(false);
+    if (!r.ok) { setErr(await r.text()); return; }
+    router.refresh();
+  }
+  async function onDelete() {
+    if (!confirm(t('contractFileConfirmDelete'))) return;
+    setBusy(true);
+    await fetch(endpoint, { method: 'DELETE' });
+    setBusy(false);
+    router.refresh();
+  }
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div className="text-xs font-medium text-slate-700">{label}</div>
+      {hasFile ? (
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+          <a href={`${endpoint}/download`} target="_blank" rel="noopener" className="rounded-lg border border-brand-300 bg-white px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50">📄 {t('view')}</a>
+          <button type="button" onClick={onDelete} disabled={busy} className="text-xs text-red-600 hover:text-red-800 disabled:opacity-50">{t('contractFileDelete')}</button>
+          <label className="ms-auto cursor-pointer text-xs text-slate-600 hover:text-brand-700">{t('contractFileReplace')}<input type="file" accept="application/pdf,image/*" onChange={onUpload} disabled={busy} className="hidden" /></label>
+        </div>
+      ) : (
+        <label className="mt-2 inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
+          ⬆ {t('docUpload')}
+          <input type="file" accept="application/pdf,image/*" onChange={onUpload} disabled={busy} className="hidden" />
+        </label>
+      )}
+      {err && <p className="mt-1 text-xs text-red-700">{err}</p>}
     </div>
   );
 }

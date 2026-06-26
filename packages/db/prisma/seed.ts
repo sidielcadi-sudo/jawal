@@ -97,14 +97,14 @@ const CORE_MODULES = ['core', 'admissions', 'scolarite', 'edt', 'presences', 'no
 // Motifs d'absence / appel (paramétrage > Motifs). Liste complète.
 const ATTENDANCE_REASONS = [
   { label: 'CONVOCATION ADMINISTRATIVE', color: 'cyan', order: 1 },
-  { label: 'DIVERS', color: 'slate', order: 2 },
+  { label: 'DIVERS', color: 'slate', order: 2, forJustification: true },
   { label: 'EXCLUSION TEMPORAIRE', color: 'red', order: 3 },
   { label: 'INFIRMERIE', color: 'cyan', order: 4 },
-  { label: 'MALADIE AVEC CERTIFICAT', color: 'green', order: 5 },
-  { label: 'MALADIE SANS CERTIFICAT', color: 'blue', order: 6 },
+  { label: 'MALADIE AVEC CERTIFICAT', color: 'green', order: 5, forJustification: true },
+  { label: 'MALADIE SANS CERTIFICAT', color: 'blue', order: 6, forJustification: true },
   { label: 'PROBLEME DE REVEIL', color: 'blue', order: 7 },
-  { label: 'PROBLEME DE TRANSPORT', color: 'amber', order: 8 },
-  { label: 'RAISON FAMILIALE', color: 'green', order: 9 },
+  { label: 'PROBLEME DE TRANSPORT', color: 'amber', order: 8, forJustification: true },
+  { label: 'RAISON FAMILIALE', color: 'green', order: 9, forJustification: true },
   { label: 'RDV ASSISTANTE SOCIALE', color: 'purple', order: 10 },
   { label: 'RDV MEDICAL EXTERIEUR', color: 'rose', order: 11 },
   { label: 'RDV PSYCHOLOGUE', color: 'purple', order: 12 },
@@ -167,6 +167,43 @@ const LEVELS = [
   { code: '3ac', label: '3ème année collège', order: 3 },
 ];
 const CLASS_LETTERS = ['A', 'B', 'C', 'D', 'E'];
+
+// Grilles tarifaires par niveau (les échéances sont GÉNÉRÉES depuis ces grilles,
+// jamais en ad hoc). Cadence déduite du nb d'échéances : 3 = trimestriel,
+// 9 = mensuel, 1 = annuel.
+const FEES = [
+  { label: "Frais d'inscription", category: 'TUITION', count: 1, firstDueMonth: 9, byLevel: { '1ac': 1000, '2ac': 1500, '3ac': 2000 } },
+  { label: 'Scolarité', category: 'TUITION', count: 3, firstDueMonth: 9, byLevel: { '1ac': 9000, '2ac': 12000, '3ac': 15000 } },
+  { label: 'Cantine', category: 'CANTEEN', count: 9, firstDueMonth: 9, byLevel: { '1ac': 2000, '2ac': 2500, '3ac': 3000 } },
+  { label: 'Transport', category: 'TRANSPORT', count: 9, firstDueMonth: 9, byLevel: { '1ac': 2000, '2ac': 2500, '3ac': 3000 } },
+] as const;
+
+function stepMonths(count: number): number {
+  return Math.max(1, Math.round(9 / Math.max(1, count)));
+}
+
+/** Échéances d'une grille : montant réparti sur `count`, espacé selon la cadence. */
+function buildInstallments(
+  fee: { label: string; totalAmount: number; installmentCount: number; firstDueMonth: number },
+  yearStart: Date,
+): { label: string; amount: number; dueDate: Date }[] {
+  const count = Math.max(1, Math.floor(fee.installmentCount));
+  const step = stepMonths(count);
+  const per = Math.round((fee.totalAmount / count) * 100) / 100;
+  const out: { label: string; amount: number; dueDate: Date }[] = [];
+  for (let i = 0; i < count; i++) {
+    const offset = fee.firstDueMonth - 1 + i * step;
+    const m = offset % 12;
+    const yo = Math.floor(offset / 12);
+    const amount = i === count - 1 ? Math.round((fee.totalAmount - per * (count - 1)) * 100) / 100 : per;
+    out.push({
+      label: `${fee.label} (${i + 1}/${count})`,
+      amount,
+      dueDate: new Date(Date.UTC(yearStart.getUTCFullYear() + yo, m, 5)),
+    });
+  }
+  return out;
+}
 
 const FIRST_M = ['Adam', 'Omar', 'Mehdi', 'Anas', 'Bilal', 'Ayoub', 'Hamza', 'Youssef', 'Zakaria', 'Ilyas', 'Rayan', 'Amine', 'Soufiane', 'Nabil', 'Walid'];
 const FIRST_F = ['Lina', 'Nour', 'Hiba', 'Imane', 'Sara', 'Aya', 'Maryam', 'Ghita', 'Rim', 'Doha', 'Hind', 'Kenza', 'Asma', 'Salma', 'Wiam'];
@@ -308,6 +345,33 @@ async function main() {
     levelByCode.set(l.code, lvl.id);
   }
 
+  // 8b. Grilles tarifaires par niveau (source des échéances)
+  type Grille = { id: string; label: string; category: string; totalAmount: number; installmentCount: number; firstDueMonth: number };
+  const grillesByLevelId = new Map<string, Grille[]>();
+  for (const l of LEVELS) {
+    const levelId = levelByCode.get(l.code)!;
+    const arr: Grille[] = [];
+    for (const f of FEES) {
+      const totalAmount = f.byLevel[l.code as keyof typeof f.byLevel];
+      const g = await prisma.feeScheduleItem.create({
+        data: {
+          tenantId: tenant.id,
+          academicYearId: year.id,
+          levelId,
+          label: f.label,
+          kind: 'ANNUAL',
+          category: f.category as never,
+          totalAmount,
+          installmentCount: f.count,
+          firstDueMonth: f.firstDueMonth,
+        },
+      });
+      arr.push({ id: g.id, label: f.label, category: f.category, totalAmount, installmentCount: f.count, firstDueMonth: f.firstDueMonth });
+    }
+    grillesByLevelId.set(levelId, arr);
+  }
+  console.log(`  ✓ Grilles tarifaires (${FEES.length} × ${LEVELS.length} niveaux)`);
+
   // 9. Matières + programme par niveau
   const subjectByCode = new Map<string, string>();
   for (const s of SUBJECTS) {
@@ -398,6 +462,7 @@ async function main() {
   let classIdx = 0;
   const allClasses: { id: string; name: string; levelCode: string; studentIds: string[] }[] = [];
   const studentRegime = new Map<string, 'EXTERNE' | 'DEMI_PENSIONNAIRE' | 'INTERNE'>();
+  const studentTransport = new Map<string, boolean>();
   const regimeOf = (firstName: string): 'EXTERNE' | 'DEMI_PENSIONNAIRE' | 'INTERNE' => {
     if (firstName === 'Yassine') return 'DEMI_PENSIONNAIRE'; // élève démo
     const r = rand();
@@ -431,10 +496,12 @@ async function main() {
       }
       for (const r of roster) {
         const regime = regimeOf(r.firstName);
+        const usesTransport = rand() < 0.25;
         const st = await prisma.person.create({
-          data: { tenantId: tenant.id, type: PersonType.STUDENT, firstName: r.firstName, lastName: r.lastName, gender: r.gender, birthDate: new Date('2012-03-15'), regime },
+          data: { tenantId: tenant.id, type: PersonType.STUDENT, firstName: r.firstName, lastName: r.lastName, gender: r.gender, birthDate: new Date('2012-03-15'), regime, usesTransport },
         });
         studentRegime.set(st.id, regime);
+        studentTransport.set(st.id, usesTransport);
         await prisma.studentClass.create({ data: { tenantId: tenant.id, studentId: st.id, classId: klass.id } });
         await prisma.enrollment.create({
           data: { tenantId: tenant.id, studentId: st.id, academicYearId: year.id, levelId: levelByCode.get(lvl.code)!, classId: klass.id, status: 'ACTIVE', siblingRank: 1, feesGenerated: true, validatedAt: new Date() },
@@ -451,7 +518,7 @@ async function main() {
 
       // EDT hebdo : séquence pondérée des matières répartie sur la semaine.
       const seq: string[] = [];
-      const remaining = new Map(SUBJECTS.map((s) => [s.code, s.hours]));
+      const remaining = new Map<string, number>(SUBJECTS.map((s) => [s.code, s.hours]));
       let total = SUBJECTS.reduce((a, s) => a + s.hours, 0);
       while (total > 0) {
         for (const s of SUBJECTS) {
@@ -615,20 +682,26 @@ async function main() {
   }
   console.log('  ✓ Carnet de correspondance (3 entrées démo pour Yassine)');
 
-  // 19. Finance — échéances trimestrielles + paiements (suivi & recouvrement)
+  // 19. Finance — échéances GÉNÉRÉES DEPUIS LES GRILLES + paiements
+  // Applicabilité : Scolarité & Frais d'inscription toujours ; Cantine si
+  // demi-pension/interne ; Transport si l'élève utilise le transport.
   const PAYMENT_METHODS = ['CASH', 'CHEQUE', 'TRANSFER'] as const;
   const todayFin = new Date();
   todayFin.setUTCHours(0, 0, 0, 0);
+  const yearStartFin = new Date(year.startDate);
   let instCount = 0;
   let payCount = 0;
   for (const klass of allClasses) {
+    const levelId = levelByCode.get(klass.levelCode)!;
+    const levelGrilles = grillesByLevelId.get(levelId) ?? [];
     for (const sid of klass.studentIds) {
-      const demiPension = studentRegime.get(sid) !== 'EXTERNE';
-      for (const tri of periods) {
-        const items = [{ label: `Scolarité — ${tri.label}`, amount: 3000 }];
-        if (demiPension) items.push({ label: `Cantine — ${tri.label}`, amount: 1500 });
-        for (const it of items) {
-          const overdue = tri.start < todayFin;
+      const eats = studentRegime.get(sid) !== 'EXTERNE';
+      const uses = studentTransport.get(sid) ?? false;
+      for (const g of levelGrilles) {
+        if (g.category === 'CANTEEN' && !eats) continue;
+        if (g.category === 'TRANSPORT' && !uses) continue;
+        for (const it of buildInstallments(g, yearStartFin)) {
+          const overdue = it.dueDate < todayFin;
           let status: 'PENDING' | 'PARTIAL' | 'PAID' = 'PENDING';
           let payAmount = 0;
           if (overdue) {
@@ -638,11 +711,19 @@ async function main() {
               payAmount = it.amount;
             } else if (roll < 0.8) {
               status = 'PARTIAL';
-              payAmount = Math.round(it.amount * 0.5);
+              payAmount = Math.round(it.amount * 0.5 * 100) / 100;
             }
           }
           const inst = await prisma.installment.create({
-            data: { tenantId: tenant.id, studentId: sid, label: it.label, amount: it.amount, dueDate: tri.start, status },
+            data: {
+              tenantId: tenant.id,
+              studentId: sid,
+              feeScheduleItemId: g.id,
+              label: it.label,
+              amount: it.amount,
+              dueDate: it.dueDate,
+              status,
+            },
           });
           instCount += 1;
           if (payAmount > 0) {
@@ -652,7 +733,7 @@ async function main() {
                 installmentId: inst.id,
                 amount: payAmount,
                 method: pick(PAYMENT_METHODS),
-                paidAt: new Date(tri.start.getTime() + 5 * 86400000),
+                paidAt: new Date(it.dueDate.getTime() + 5 * 86400000),
               },
             });
             payCount += 1;
@@ -661,7 +742,7 @@ async function main() {
       }
     }
   }
-  console.log(`  ✓ Finance : ${instCount} échéances, ${payCount} paiements (scolarité + cantine demi-pension)`);
+  console.log(`  ✓ Finance : ${instCount} échéances générées DEPUIS les grilles, ${payCount} paiements`);
 
   console.log('\n✅ Seed terminé.\n');
   console.log('────────────── Comptes de démonstration (slug: demo) ──────────────');

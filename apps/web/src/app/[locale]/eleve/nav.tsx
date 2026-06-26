@@ -9,11 +9,13 @@ export function StudentSidebar({
   tenantName,
   studentName,
   className,
+  logoUrl,
 }: {
   locale: string;
   tenantName: string;
   studentName: string;
   className: string | null;
+  logoUrl?: string | null;
 }) {
   const pathname = usePathname();
   const t = useTranslations('eleve.nav');
@@ -21,32 +23,35 @@ export function StudentSidebar({
 
   const items = [
     { key: 'home', href: prefix, exact: true },
+    { key: 'timetable', href: `${prefix}/timetable` },
+    { key: 'cahier', href: `${prefix}/cahier` },
     { key: 'notes', href: `${prefix}/notes` },
     { key: 'bulletins', href: `${prefix}/bulletins` },
     { key: 'carnet', href: `${prefix}/carnet` },
+    { key: 'announcements', href: `${prefix}/announcements` },
+    { key: 'account', href: `${prefix}/account` },
   ];
 
   const linkCls = (active: boolean) =>
     [
-      'flex items-center rounded-lg border-s-[3px] px-3 py-2 text-sm transition-colors',
+      'flex items-center rounded-xl px-3 py-2.5 text-sm transition-colors',
       active
-        ? 'border-brand-600 bg-brand-50 font-semibold text-brand-600'
-        : 'border-transparent text-slate-700 hover:bg-slate-100',
+        ? 'bg-white font-semibold text-[#143fa6] shadow'
+        : 'text-white/75 hover:bg-white/10',
     ].join(' ');
 
   return (
-    <aside className="w-60 shrink-0 border-e border-slate-200 bg-white">
-      <div className="border-b border-slate-200 px-5 py-4">
+    <aside className="m-3 flex h-[calc(100vh-1.5rem)] w-60 shrink-0 flex-col rounded-3xl bg-gradient-to-b from-[#1A56DB] to-[#123a8f] p-4 text-white">
+      <div className="flex justify-center px-1.5 pb-4 pt-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/sesame-logo.png" alt="Sesame" className="h-7 w-auto" />
-        <div className="mt-1.5 truncate text-xs text-slate-500">{tenantName}</div>
+        <img src={logoUrl ?? '/sesame-logo.png'} alt={tenantName || 'Logo'} className="h-14 w-auto object-contain" />
       </div>
-      <div className="border-b border-slate-100 px-5 py-3">
-        <div className="truncate text-sm font-semibold text-slate-800">{studentName}</div>
-        {className && <div className="truncate text-xs text-slate-400">{className}</div>}
+      <div className="mb-2 rounded-2xl bg-white/10 px-3 py-2.5">
+        <div className="truncate text-sm font-semibold text-white">{studentName}</div>
+        {className && <div className="truncate text-xs text-white/60">{className}</div>}
       </div>
-      <nav className="px-2 py-3">
-        <ul className="space-y-0.5">
+      <nav className="sidebar-scroll -me-1 flex-1 overflow-y-auto pe-1 py-1">
+        <ul className="space-y-1">
           {items.map((it) => (
             <li key={it.key}>
               <Link

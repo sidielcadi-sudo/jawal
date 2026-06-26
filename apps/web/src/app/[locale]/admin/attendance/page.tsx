@@ -103,11 +103,11 @@ export default async function AdminAttendancePage({
   });
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className="px-3 py-3">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-4 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
-          <p className="mt-1 text-sm text-slate-500 first-letter:uppercase">
+          <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+          <p className="mt-0.5 text-sm text-slate-600 first-letter:uppercase">
             {dayLocale} {year ? `· ${year}` : ''}
           </p>
         </div>

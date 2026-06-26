@@ -76,7 +76,7 @@ export function JustifyButton({
           onClick={() => !pending && setOpen(false)}
         >
           <div
-            className="w-full max-w-sm overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+            className="w-full max-w-sm overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="relative px-5 pt-5 text-center">

@@ -93,6 +93,7 @@
     "dashboard": {
       "title": "Pilotage",
       "welcome": "Bienvenue, {name}",
+      "period": "Période",
       "kpi": {
         "students": "Élèves",
         "teachers": "Enseignants",
@@ -165,6 +166,13 @@
         "triggering": "Envoi…",
         "triggerOk": "Envoyé à {recipients} destinataire(s) · {alerts} alerte(s)",
         "triggerFailed": "Échec de l'envoi des alertes."
+      },
+      "cat": {
+        "overview": "Vue d'ensemble",
+        "success": "Réussite scolaire",
+        "vieScolaire": "Vie scolaire & assiduité",
+        "effectifs": "Effectifs & structure",
+        "rh": "RH / Enseignants"
       }
     },
     "signOut": "Se déconnecter",
@@ -189,13 +197,23 @@
       "messages": "Messages",
       "finance": "Finances",
       "import": "Importer CSV",
-      "settings": "Paramètres"
+      "settings": "Paramètres",
+      "group": "Vue groupe",
+      "transport": "Transport",
+      "leave": "Congés & absences",
+      "overtime": "Heures supplémentaires",
+      "payroll": "Paie",
+      "bourse": "Bourse aux livres"
     },
     "surveys": {
       "title": "Enquêtes de satisfaction",
       "subtitle": "Créez des enquêtes, diffusez-les et suivez les résultats. Les notes alimentent le KPI satisfaction du Pilotage.",
       "empty": "Aucune enquête pour le moment.",
-      "status": { "DRAFT": "Brouillon", "OPEN": "Ouverte", "CLOSED": "Clôturée" },
+      "status": {
+        "DRAFT": "Brouillon",
+        "OPEN": "Ouverte",
+        "CLOSED": "Clôturée"
+      },
       "confirmDelete": "Supprimer définitivement cette enquête et toutes ses réponses ?",
       "actions": {
         "new": "Nouvelle enquête",
@@ -302,10 +320,30 @@
         "student": "Élève",
         "class": "Classe",
         "date": "Date",
+        "session": "Séance",
+        "subject": "Matière / Prof",
         "category": "Catégorie",
+        "observation": "Observation du prof",
+        "delegate": "Délégué",
+        "parentJustif": "Justification parent",
         "status": "Statut",
         "actions": "Actions"
       },
+      "delegatePlaceholder": "— Délégué —",
+      "obsType": {
+        "OBSERVATION": "Obs.",
+        "ENCOURAGEMENT": "Encour."
+      },
+      "justifStatus": {
+        "PENDING": "À examiner",
+        "APPROVED": "Acceptée",
+        "REJECTED": "Refusée"
+      },
+      "justifFile": "Justificatif",
+      "justifReviewNote": "Motif",
+      "justifAccept": "Accepter",
+      "justifReject": "Refuser",
+      "justifRejectPrompt": "Motif du refus de la justification :",
       "actions": {
         "confirm": "Confirmer",
         "justify": "Justifier",
@@ -444,7 +482,10 @@
         "distribution": "Distribution des notes",
         "below10": "< 10",
         "mid": "10–14",
-        "above14": "> 14"
+        "above14": "> 14",
+        "progression": "Progression",
+        "progressionNone": "—",
+        "distributionVariation": "Variation de la distribution"
       },
       "attendance": {
         "title": "Présence & discipline",
@@ -466,6 +507,23 @@
         "feedback": "Feedback parents / élèves",
         "unread": "Messages non lus",
         "noAccount": "Pas de compte de connexion."
+      },
+      "appel": {
+        "title": "Suivi des appels",
+        "onTime": "Appels faits à temps",
+        "onTimeHint": "{done}/{total} séances",
+        "late": "Appels en retard",
+        "notDone": "Appels non faits",
+        "reminders": "Relances reçues"
+      },
+      "classAvg": {
+        "title": "Moyenne des classes",
+        "empty": "Aucune note sur la période."
+      },
+      "progressionTable": {
+        "title": "Progression trimestrielle des élèves",
+        "empty": "Aucune note pour cette classe.",
+        "student": "Élève"
       }
     },
     "attendanceIndex": {
@@ -584,10 +642,23 @@
         "discountReason": "Motif réduction",
         "discountNone": "Aucune réduction",
         "otherDoc": "Pièce déposée",
+        "feeTable": {
+          "title": "Frais & échéances",
+          "empty": "Aucun frais annuel applicable (vérifiez la grille du niveau et les options de l'élève).",
+          "type": "Type de frais",
+          "amount": "Montant",
+          "discount": "Réduction",
+          "installments": "Échéances",
+          "perInstallment": "Par échéance",
+          "total": "Total après réduction",
+          "locked": "Nombre d'échéances verrouillé dans le paramétrage"
+        },
         "echeancier": {
           "title": "Détail de l'échéancier",
           "n": "N°",
           "due": "Date limite",
+          "feeType": "Type de frais",
+          "dueTotal": "Total dû le {date}",
           "amount": "Montant",
           "method": "Mode",
           "status": "Statut",
@@ -596,6 +667,8 @@
           "pending": "En attente",
           "cancelled": "Annulé",
           "record": "Enregistrer",
+          "recordAll": "Enregistrer",
+          "confirmAll": "Encaisser {count} échéance(s)",
           "confirm": "Encaisser",
           "reference": "Référence (virement, reçu…)",
           "chequeRef": "N° de chèque",
@@ -684,7 +757,30 @@
         "cancelledCount": "Échéances annulées",
         "viewFinance": "Voir dans Finance",
         "previousDueTitle": "Créance antérieure non soldée",
-        "previousDueHint": "Cet élève a un solde impayé d'années précédentes : {amount} {currency}."
+        "previousDueHint": "Cet élève a un solde impayé d'années précédentes : {amount} {currency}.",
+        "regimeEdit": {
+          "button": "Modifier régime / transport",
+          "title": "Régime & transport",
+          "warning": "⚠ Modifier ces champs recalcule l’échéancier (Cantine / Transport). Les échéances déjà payées sont conservées et signalées.",
+          "close": "Fermer",
+          "save": "Valider et recalculer",
+          "feesTitle": "Nombre d’échéances par frais",
+          "installments": "éch.",
+          "feeLocked": "Frais déjà payé ou verrouillé — non modifiable",
+          "feesHint": "Re-répartit le montant restant sur le nouveau nombre d’échéances. Les frais déjà payés sont verrouillés."
+        },
+        "familyDebts": {
+          "method": "Mode",
+          "reference": "Référence (n° chèque…)",
+          "settleAll": "Solder les créances ({amount} {currency})",
+          "methods": {
+            "CASH": "Espèces",
+            "CHEQUE": "Chèque",
+            "TRANSFER": "Virement",
+            "CMI": "Carte (CMI)",
+            "OTHER": "Autre"
+          }
+        }
       },
       "actions": {
         "validate": "Valider l'inscription",
@@ -739,6 +835,11 @@
           "decision": "Décision",
           "targetLevel": "Niveau cible"
         }
+      },
+      "pagination": {
+        "page": "Page {page} / {total}",
+        "prev": "Précédent",
+        "next": "Suivant"
       }
     },
     "staffAttendance": {
@@ -752,6 +853,40 @@
       "noStaff": "Aucun membre du personnel à pointer.",
       "totalDeduction": "Retenues totales calculées",
       "formulaHint": "Retenue ABSENT = brut ÷ 26 jours · Retenue LATE = (min−15) × tarif horaire (brut ÷ 26 ÷ 8).",
+      "kpi": {
+        "presenceRate": "Taux de présence",
+        "presenceRateHint": "{attended} présents sur {recorded} pointés",
+        "notRecorded": "Non pointés",
+        "notRecordedHint": "sur {headcount} au total",
+        "lateMinutes": "Retard cumulé",
+        "lateMinutesHint": "{count} retard(s)",
+        "deduction": "Retenue du jour"
+      },
+      "syntheseLink": "Synthèse mensuelle",
+      "synthese": {
+        "title": "Synthèse mensuelle du personnel",
+        "subtitle": "{headcount} membre(s) du personnel",
+        "backToDaily": "← Pointage du jour",
+        "absenteeism": "Taux d'absentéisme",
+        "absenteeismHint": "{absent} absences sur {records} jours pointés",
+        "punctuality": "Taux de ponctualité",
+        "punctualityHint": "{late} retard(s) sur le mois",
+        "deductionMass": "Masse des retenues",
+        "deductionMassHint": "total des retenues du mois",
+        "leaveDays": "Jours de congé",
+        "leaveDaysHint": "cumul du mois",
+        "topLate": "Top retardataires",
+        "topAbsent": "Top absences",
+        "topEmpty": "Aucun cas sur ce mois.",
+        "lateMinutesCol": "Minutes",
+        "absentCol": "Absences",
+        "lateCount": "{count} retard(s)",
+        "absentDays": "{count} jour(s)",
+        "contractAlerts": "Contrats à échéance",
+        "contractAlertsEmpty": "Aucun contrat à renouveler prochainement.",
+        "expired": "Expiré",
+        "daysToEnd": "J−{count}"
+      },
       "viewMonthlyHint": "Pour le récap mensuel par personne :",
       "viewMonthlyLink": "ouvrir une fiche enseignant ou personnel",
       "lateMinutesPlaceholder": "min",
@@ -889,7 +1024,15 @@
         "noSpecialty": "Profs sans spécialité (matières maîtrisées)",
         "sharedRoom": "Profs partageant une salle principale",
         "uncoveredSlots": "Créneaux sans aucun prof dispo",
-        "daysShort": { "MON": "Lun", "TUE": "Mar", "WED": "Mer", "THU": "Jeu", "FRI": "Ven", "SAT": "Sam", "SUN": "Dim" },
+        "daysShort": {
+          "MON": "Lun",
+          "TUE": "Mar",
+          "WED": "Mer",
+          "THU": "Jeu",
+          "FRI": "Ven",
+          "SAT": "Sam",
+          "SUN": "Dim"
+        },
         "avg": "Profs dispos en moyenne par créneau"
       },
       "conflicts": {
@@ -1122,8 +1265,13 @@
       "reset": "Réinitialiser tout",
       "confirmReset": "Supprimer toutes les contraintes spécifiques à cette classe ?",
       "days": {
-        "MON": "Lun", "TUE": "Mar", "WED": "Mer", "THU": "Jeu",
-        "FRI": "Ven", "SAT": "Sam", "SUN": "Dim"
+        "MON": "Lun",
+        "TUE": "Mar",
+        "WED": "Mer",
+        "THU": "Jeu",
+        "FRI": "Ven",
+        "SAT": "Sam",
+        "SUN": "Dim"
       },
       "hours": {
         "title": "Volume horaire quotidien",
@@ -1304,14 +1452,235 @@
         "download": "Télécharger"
       }
     },
+    "exceptionalFees": {
+      "title": "Frais exceptionnels",
+      "subtitle": "Frais ponctuels et ciblés (sorties, voyages, livres…).",
+      "backToFinance": "Retour aux finances",
+      "backToList": "Retour à la liste",
+      "create": "Nouveau frais",
+      "createHint": "Créez le frais, puis affectez-le et publiez-le pour notifier les parents.",
+      "empty": "Aucun frais exceptionnel.",
+      "mandatoryBadge": "Obligatoire",
+      "optionalBadge": "Optionnel",
+      "publish": "Publier",
+      "close": "Clore",
+      "delete": "Supprimer",
+      "confirmDelete": "Supprimer ce frais ?",
+      "statuses": {
+        "DRAFT": "Brouillon",
+        "PUBLISHED": "Publié",
+        "CLOSED": "Clos"
+      },
+      "consents": {
+        "PENDING": "En attente",
+        "ACCEPTED": "Accepté",
+        "REFUSED": "Refusé"
+      },
+      "table": {
+        "label": "Frais",
+        "amount": "Montant",
+        "status": "Statut",
+        "consent": "Accepté / En attente / Refusé",
+        "actions": "Actions"
+      },
+      "form": {
+        "label": "Intitulé",
+        "labelPh": "Ex. Sortie au Musée",
+        "year": "Année",
+        "type": "Type",
+        "amount": "Montant",
+        "activityDate": "Date d'activité",
+        "dueDate": "Échéance de paiement",
+        "description": "Description",
+        "mandatory": "Frais obligatoire (sans choix parent)",
+        "mandatoryHint": "Si obligatoire, le frais est facturé immédiatement. Sinon, le parent accepte ou refuse.",
+        "target": "Classe(s) concernée(s)",
+        "targetHint": "Cochez les classes (toute la classe) et/ou des élèves précis.",
+        "create": "Créer le frais"
+      },
+      "types": {
+        "title": "Types de frais",
+        "subtitle": "Catalogue des types (Sortie, Voyage, Livres…).",
+        "labelFr": "Libellé (FR)",
+        "labelAr": "Libellé (AR)",
+        "order": "Ordre",
+        "active": "Actif",
+        "add": "Ajouter",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "confirmDelete": "Supprimer ce type ?",
+        "empty": "Aucun type."
+      },
+      "assign": {
+        "title": "Affecter & publier",
+        "subtitle": "Ciblez des classes entières et/ou des élèves précis.",
+        "hint": "Cochez les classes (toute la classe) et/ou des élèves précis.",
+        "pickStudents": "Choisir des élèves",
+        "hideStudents": "Masquer",
+        "noClass": "Aucune classe.",
+        "publish": "Affecter et publier",
+        "publishHint": "Les parents seront notifiés et pourront accepter ou refuser.",
+        "publishHintMandatory": "Frais obligatoire : publier facture immédiatement les élèves concernés (passe en « À payer »).",
+        "publishHintOptional": "Publier notifie les parents, qui pourront accepter ou refuser.",
+        "publishedNote": "Frais publié.",
+        "closedNote": "Frais clos."
+      },
+      "pay": {
+        "record": "Enregistrer un paiement",
+        "amount": "Montant",
+        "reference": "Référence",
+        "confirm": "Valider",
+        "cancel": "Annuler",
+        "methods": {
+          "CASH": "Espèces",
+          "CHEQUE": "Chèque",
+          "TRANSFER": "Virement",
+          "OTHER": "Autre"
+        }
+      },
+      "suivi": {
+        "student": "Élève",
+        "class": "Classe",
+        "consent": "Consentement",
+        "payment": "Paiement",
+        "receipt": "Reçu",
+        "paid": "Payé",
+        "remaining": "Reste",
+        "notBilled": "Non facturé",
+        "cancelled": "Annulé",
+        "refunded": "remboursé",
+        "credited": "imputé",
+        "empty": "Aucune affectation pour l'instant."
+      },
+      "cancelFee": {
+        "action": "Annuler",
+        "confirmUnpaid": "Annuler ce frais pour cet élève (non payé) ?",
+        "credit": "Imputer sur une échéance",
+        "refund": "Remboursement effectué (joindre un justificatif)",
+        "confirm": "Valider l'annulation",
+        "cancel": "Annuler"
+      }
+    },
     "finance": {
       "title": "Finances",
       "subtitle": "Vue d'ensemble des encaissements et des impayés.",
+      "exceptionalLink": "Frais exceptionnels",
+      "expensesLink": "Dépenses",
+      "year": "Année",
+      "apply": "Appliquer",
+      "histo": {
+        "sectionTitle": "Répartition cadence",
+        "tabGlobal": "Vue globale",
+        "tabMonthly": "Mensuelle",
+        "tabQuarterly": "Trimestrielle",
+        "tabSemestrial": "Semestrielle",
+        "tabAnnual": "Annuelle",
+        "monthlyTitle": "Répartition mensuelle (échéances mensuelles)",
+        "due": "Dû",
+        "collected": "Encaissé",
+        "unpaid": "Impayé",
+        "cumul": "Cumul",
+        "total": "Total"
+      },
       "kpi": {
         "totalDue": "Total dû",
         "totalPaid": "Encaissé",
         "totalRemaining": "Reste à recouvrer",
         "collectionRate": "Taux de recouvrement"
+      },
+      "periods": {
+        "monthly": "Mensuel",
+        "quarterly": "Trimestriel",
+        "biannual": "Semestriel",
+        "annual": "Annuel"
+      },
+      "periodKpi": {
+        "revenue": "Revenus encaissés",
+        "expectedVsCollected": "Prévu vs encaissé",
+        "unpaid": "Impayés totaux",
+        "treasury": "Solde de trésorerie",
+        "families": "{count} familles concernées",
+        "vsPrev": "vs période préc.",
+        "thisPeriod": "sur la période",
+        "netFlow": "flux net {value}"
+      },
+      "expenses": {
+        "title": "Dépenses",
+        "subtitle": "Sorties de caisse de l'établissement (alimente le solde de trésorerie).",
+        "backToFinance": "Retour aux finances",
+        "total": "Total des dépenses",
+        "create": "Nouvelle dépense",
+        "createHint": "Enregistrez une dépense ; elle est déduite du solde de trésorerie.",
+        "empty": "Aucune dépense enregistrée.",
+        "delete": "Supprimer",
+        "confirmDelete": "Supprimer cette dépense ?",
+        "table": {
+          "date": "Date",
+          "label": "Libellé",
+          "category": "Catégorie",
+          "amount": "Montant",
+          "actions": "Actions"
+        },
+        "form": {
+          "label": "Libellé",
+          "labelPh": "Ex. Loyer septembre",
+          "category": "Catégorie",
+          "amount": "Montant",
+          "date": "Date",
+          "method": "Moyen",
+          "note": "Note",
+          "create": "Enregistrer la dépense"
+        },
+        "categories": {
+          "SALARY": "Salaires",
+          "RENT": "Loyer",
+          "UTILITIES": "Eau / Électricité / Internet",
+          "SUPPLIES": "Fournitures",
+          "MAINTENANCE": "Entretien",
+          "TRANSPORT": "Transport",
+          "TAXES": "Impôts / Taxes",
+          "OTHER": "Autre"
+        },
+        "methods": {
+          "CASH": "Espèces",
+          "CHEQUE": "Chèque",
+          "TRANSFER": "Virement",
+          "OTHER": "Autre"
+        }
+      },
+      "unpaid": {
+        "familiesKpi": "Familles en impayé",
+        "manageLink": "Gestion des impayés",
+        "manageTitle": "Gestion des impayés",
+        "manageSubtitle": "{count} élève(s) en impayé · {amount} au total",
+        "backToFinance": "Retour aux finances",
+        "topTitle": "Top familles en retard",
+        "seeAll": "Voir tous les impayés",
+        "family": "Famille",
+        "student": "Élève",
+        "amount": "Montant",
+        "impaye": "Impayé",
+        "echeances": "Échéances",
+        "daysLate": "Durée du retard",
+        "days": "{count} j",
+        "action": "Action",
+        "empty": "Aucun impayé. Toutes les familles sont à jour.",
+        "searchPlaceholder": "Famille ou élève…",
+        "search": "Rechercher",
+        "noResult": "Aucun résultat pour cette recherche.",
+        "relance": "Relance",
+        "relanceTitle": "Relances",
+        "relanceEmpty": "Aucune relance pour l'instant.",
+        "relancePlaceholder": "Descriptif de la relance (appel, e-mail, courrier…)",
+        "relanceSave": "Enregistrer la relance",
+        "cancel": "Annuler",
+        "pagination": {
+          "page": "Page {page} / {total}",
+          "prev": "Précédent",
+          "next": "Suivant"
+        }
       },
       "topUnpaid": "Élèves avec impayés",
       "noUnpaid": "Aucun impayé. Tous les élèves sont à jour.",
@@ -1633,7 +2002,10 @@
         },
         "portalAccess": "Accès portail parent",
         "portalAccessTeacher": "Accès portail enseignant",
-        "documents": "Documents officiels"
+        "documents": "Documents officiels",
+        "portalAccessStudent": "Accès portail élève",
+        "employerInfo": "Informations employeur",
+        "view": "Consulter"
       },
       "parentAccess": {
         "active": "Actif",
@@ -1805,7 +2177,11 @@
           "AUTRE": "Autre"
         },
         "gender": "Sexe",
-        "genders": { "M": "Masculin", "F": "Féminin", "X": "Autre" },
+        "genders": {
+          "M": "Masculin",
+          "F": "Féminin",
+          "X": "Autre"
+        },
         "lastName": "Nom",
         "firstName": "Prénom",
         "birthDate": "Date de naissance",
@@ -1818,6 +2194,9 @@
           "DEMI_PENSIONNAIRE": "Demi-pensionnaire",
           "INTERNE": "Interne"
         },
+        "usesTransport": "Transport scolaire",
+        "usesTransportYes": "Oui",
+        "usesTransportNo": "Non",
         "contactEmail": "Email",
         "contactPhone": "Téléphone",
         "contactWhatsapp": "WhatsApp",
@@ -1866,7 +2245,61 @@
           "save": "Enregistrer",
           "saving": "Enregistrement…",
           "cancel": "Annuler"
-        }
+        },
+        "cne": "CNE (code national d examen)",
+        "codeMassar": "Code Massar",
+        "imageRights": "Droit à l image",
+        "exitRights": "Droit de sortie (0–9)",
+        "dietInfo": "Régime alimentaire / allergies",
+        "dietInfoHint": "Régime, allergies alimentaires, type de repas (normal, végétarien, autre)…",
+        "originSchool": "Établissement d origine",
+        "originSchoolHint": "Si l élève change d établissement",
+        "repeating": "Redoublement",
+        "studentIdentity": "Identité & autorisations",
+        "lockedViaEnrollment": "Modifiable uniquement via l’inscription (impacte la facturation).",
+        "cnssNumber": "N° CNSS",
+        "amoNumber": "N° AMO",
+        "cinScan": "Scan CIN",
+        "cnssAttestation": "Attestation CNSS",
+        "employmentStatus": {
+          "label": "Statut",
+          "ACTIVE": "En poste",
+          "SUSPENDED": "Suspendu",
+          "RESIGNED": "Démission",
+          "CONTRACT_END": "Fin de contrat"
+        },
+        "view": "Consulter",
+        "docUpload": "Téléverser (PDF/image)"
+      },
+      "studentAccess": {
+        "active": "Actif",
+        "description": "Crée un compte de connexion au portail élève pour cet élève.",
+        "emailPlaceholder": "Email de connexion",
+        "create": "Créer l accès",
+        "creating": "Création…",
+        "tempPasswordHint": "Mot de passe temporaire à communiquer à l élève (affiché une seule fois) :"
+      },
+      "health": {
+        "title": "Santé & sécurité",
+        "edit": "Modifier",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "yes": "Oui",
+        "empty": "Aucune information renseignée.",
+        "allergies": "Allergies",
+        "chronicConditions": "Maladies chroniques",
+        "treatments": "Traitements médicaux",
+        "pai": "PAI (Projet d’Accueil Individualisé)",
+        "paiNote": "Détail PAI",
+        "vaccinations": "Vaccinations",
+        "doctor": "Médecin traitant",
+        "doctorName": "Médecin traitant",
+        "doctorPhone": "Tél. médecin",
+        "emergencyContact": "Contact d’urgence",
+        "emergencyContactName": "Contact d’urgence",
+        "emergencyContactPhone": "Tél. urgence",
+        "medAuthorization": "Autorisation de prise de médicaments",
+        "outingAuthorization": "Autorisation de sortie scolaire"
       }
     },
     "classes": {
@@ -1911,7 +2344,8 @@
           "save": "Enregistrer",
           "saving": "Enregistrement…",
           "cancel": "Annuler"
-        }
+        },
+        "sectionTitle": "Informations de la classe"
       },
       "detail": {
         "mainTeacher": "Enseignant principal",
@@ -1929,6 +2363,10 @@
         "enrollButton": "Inscrire",
         "enrolling": "Inscription…",
         "noAvailable": "Aucun élève disponible. Créez d'abord des élèves.",
+        "delegate": "Délégué de classe",
+        "delegateHint": "Choisi parmi les élèves de la classe. Affiché en Gestion des absences.",
+        "delegateNone": "— Aucun délégué —",
+        "delegateNoStudents": "Inscrivez d'abord des élèves.",
         "cannotEnroll": "Inscription désactivée (classe archivée ou pleine).",
         "capacityReached": "Capacité atteinte — augmentez la capacité ou retirez un élève.",
         "utilization": "Taux d'occupation",
@@ -2013,7 +2451,20 @@
       "delivered": "Délivré le {date} pour servir et valoir ce que de droit.",
       "signature": "Le Chef d'établissement",
       "footer": "Document généré par {school} · Réf {ref}",
-      "needPeriod": "Sélectionnez une période."
+      "needPeriod": "Sélectionnez une période.",
+      "schedule": {
+        "title": "Détail de l’échéancier",
+        "label": "Libellé",
+        "due": "Échéance",
+        "amount": "Montant",
+        "paid": "Réglé",
+        "status": "Statut",
+        "statusLabels": {
+          "PENDING": "À payer",
+          "PARTIAL": "Partiel",
+          "PAID": "Payé"
+        }
+      }
     },
     "bulletin": {
       "classes": "Classes",
@@ -2225,10 +2676,21 @@
         "slug": "Identifiant de connexion (slug)",
         "slugHint": "Utilisé à la connexion. Non modifiable ici (contacter le support).",
         "localeDefault": "Langue par défaut",
-        "locales": { "fr": "Français", "ar": "Arabe" },
+        "locales": {
+          "fr": "Français",
+          "ar": "Arabe"
+        },
         "currency": "Devise",
         "timezone": "Fuseau horaire",
-        "logoSoon": "Logo de l'établissement : bientôt disponible (téléversement à venir).",
+        "logo": {
+          "title": "Logo de l'établissement",
+          "hint": "Affiché dans les portails (administration, parents, enseignants, élèves).",
+          "formats": "JPG, PNG, WEBP ou SVG — max 2 Mo.",
+          "upload": "Téléverser",
+          "uploading": "Envoi…",
+          "remove": "Supprimer",
+          "error": "Échec du téléversement."
+        },
         "save": "Enregistrer",
         "saving": "Enregistrement…",
         "saved": "Modifications enregistrées."
@@ -2340,12 +2802,21 @@
         }
       },
       "curriculum": {
-        "actions": { "edit": "Modifier", "delete": "Supprimer" },
+        "actions": {
+          "edit": "Modifier",
+          "delete": "Supprimer"
+        },
         "confirmDelete": "Supprimer cet élément ? Cette action est irréversible.",
         "cycles": {
           "title": "Cycles",
           "subtitle": "Primaire, collège, lycée, licence, master… Ordonnés via le champ « ordre ».",
-          "table": { "code": "Code", "label": "Libellé", "periods": "Périodes", "order": "Ordre", "actions": "Actions" },
+          "table": {
+            "code": "Code",
+            "label": "Libellé",
+            "periods": "Périodes",
+            "order": "Ordre",
+            "actions": "Actions"
+          },
           "empty": "Aucun cycle.",
           "create": "Créer un cycle",
           "form": {
@@ -2370,7 +2841,13 @@
           "title": "Niveaux",
           "subtitle": "Niveaux à l'intérieur de chaque cycle (1AP, 6AP, 1AC, etc.).",
           "openProgramme": "Programme par niveau",
-          "table": { "cycle": "Cycle", "code": "Code", "label": "Libellé", "order": "Ordre", "actions": "Actions" },
+          "table": {
+            "cycle": "Cycle",
+            "code": "Code",
+            "label": "Libellé",
+            "order": "Ordre",
+            "actions": "Actions"
+          },
           "empty": "Aucun niveau.",
           "create": "Créer un niveau",
           "form": {
@@ -2498,9 +2975,14 @@
         }
       },
       "fees": {
+        "tabs": {
+          "annual": "Frais annuels",
+          "exceptional": "Frais exceptionnels"
+        },
         "table": {
           "year": "Année",
           "level": "Niveau",
+          "category": "Catégorie",
           "label": "Libellé",
           "totalAmount": "Total",
           "installments": "Échéances",
@@ -2517,9 +2999,18 @@
         "form": {
           "year": "Année scolaire",
           "level": "Niveau",
+          "category": "Catégorie",
+          "categories": {
+            "TUITION": "Scolarité",
+            "TRANSPORT": "Transport",
+            "CANTEEN": "Cantine",
+            "DAYCARE": "Garderie",
+            "OTHER": "Autre"
+          },
           "label": "Libellé",
           "totalAmount": "Total annuel",
           "installmentCount": "Nombre d'échéances",
+          "installmentLocked": "Échéances verrouillées (non modifiables à l'inscription)",
           "firstDueMonth": "Mois de la 1ère échéance",
           "create": "Créer",
           "creating": "Création…",
@@ -2532,6 +3023,8 @@
           "subtitle": "Catalogue de réductions paramétrables (fratrie, paiement comptant…), sélectionnables à l'acceptation d'un dossier.",
           "label": "Libellé",
           "labelPlaceholder": "Fratrie (cadet)",
+          "feeScope": "Frais concerné",
+          "allFees": "Tous les frais",
           "pct": "Taux",
           "order": "Ordre",
           "active": "Actif",
@@ -2600,7 +3093,10 @@
           "firstName": "Prénom",
           "lastName": "Nom",
           "personType": "Type de personne",
-          "personTypes": { "TEACHER": "Enseignant", "STAFF": "Personnel" },
+          "personTypes": {
+            "TEACHER": "Enseignant",
+            "STAFF": "Personnel"
+          },
           "personRole": "Type de personnel (fonction)",
           "personRoleNone": "— Aucun —",
           "role": "Rôle (accès)",
@@ -2691,6 +3187,524 @@
         },
         "pagination": "Page {page} / {total}"
       }
+    },
+    "teacherKpis": {
+      "title": "Enseignants",
+      "teacherCount": "{count} enseignant(s)",
+      "na": "N/A",
+      "presence": {
+        "title": "Présence & appels",
+        "rate": "Taux de présence",
+        "absent": "Absences injustifiées",
+        "late": "Taux de retards",
+        "notDone": "Appels non faits",
+        "table": {
+          "teacher": "Enseignant",
+          "presence": "Présence",
+          "absent": "Abs. injust.",
+          "late": "Retards",
+          "notDone": "Appels non faits"
+        }
+      },
+      "pedagogy": {
+        "title": "Pédagogie",
+        "progression": "Progression par prof (vs trimestre précédent)",
+        "progressionSeries": "Progression",
+        "noPrev": "Pas de trimestre précédent pour comparer.",
+        "table": {
+          "teacher": "Enseignant",
+          "avg": "Moyenne (vs niveau)",
+          "level": "Moy. niveau",
+          "success": "Réussite",
+          "difficulty": "En difficulté"
+        }
+      },
+      "load": {
+        "title": "Charge horaire",
+        "hoursTitle": "Heures enseignées vs prévues",
+        "planned": "Prévu (contrat)",
+        "realized": "Réalisé",
+        "overtimeTotal": "Heures supplémentaires (total)",
+        "classesTitle": "Heures & classes par prof",
+        "hoursWeek": "Heures/sem.",
+        "classes": "Nb classes"
+      }
+    },
+    "group": {
+      "title": "Vue groupe — consolidé",
+      "subtitle": "{count} établissement(s)",
+      "site": "Établissement",
+      "students": "Élèves",
+      "teachers": "Enseignants",
+      "classes": "Classes",
+      "average": "Moyenne",
+      "attendance": "Assiduité",
+      "collection": "Recouvrement",
+      "remaining": "Reste à recouvrer",
+      "total": "Total",
+      "note": "Moyenne et assiduité calculées sur le trimestre courant de chaque établissement (non additionnées)."
+    },
+    "transport": {
+      "title": "Transport scolaire",
+      "subtitle": "Lignes, bus, arrêts et zones tarifaires.",
+      "add": "Ajouter",
+      "save": "Enregistrer",
+      "inactive": "Inactive",
+      "lines": {
+        "title": "Lignes de bus",
+        "name": "Nom de la ligne",
+        "districts": "Quartiers desservis",
+        "bus": "Bus",
+        "driver": "Chauffeur",
+        "attendant": "Accompagnatrice",
+        "stops": "Arrêts",
+        "capacity": "Capacité",
+        "active": "Ligne active",
+        "edit": "Modifier la ligne",
+        "empty": "Aucune ligne.",
+        "morningDep": "Départ matin",
+        "morningArr": "Arrivée matin",
+        "eveningDep": "Départ soir",
+        "eveningArr": "Arrivée soir"
+      },
+      "zones": {
+        "title": "Zones tarifaires",
+        "name": "Zone",
+        "amount": "Tarif/an",
+        "empty": "Aucune zone."
+      },
+      "buses": {
+        "title": "Bus",
+        "number": "Numéro",
+        "plate": "Matricule",
+        "capacity": "Capacité",
+        "empty": "Aucun bus.",
+        "status": {
+          "EN_SERVICE": "En service",
+          "PANNE": "En panne",
+          "REMPLACEMENT": "Remplacement"
+        }
+      },
+      "stops": {
+        "title": "Arrêts",
+        "name": "Nom de l’arrêt",
+        "address": "Adresse / repère",
+        "order": "Ordre",
+        "time": "Heure prévue",
+        "zone": "Zone",
+        "add": "Ajouter l’arrêt",
+        "empty": "Aucun arrêt."
+      },
+      "days": {
+        "MON": "Lun",
+        "TUE": "Mar",
+        "WED": "Mer",
+        "THU": "Jeu",
+        "FRI": "Ven",
+        "SAT": "Sam"
+      },
+      "students": {
+        "title": "Élèves affectés",
+        "capacity": "{used} / {total} places",
+        "student": "Élève",
+        "stop": "Arrêt",
+        "zone": "Zone",
+        "billingCount": "Échéances",
+        "days": "Jours",
+        "assign": "Affecter l’élève",
+        "security": "Sécurité",
+        "exitAlone": "Autorisé à rentrer seul",
+        "authorized": "Personnes autorisées",
+        "authorizedHint": "Une par ligne : Nom ; CIN",
+        "notes": "Remarques de sécurité",
+        "empty": "Aucun élève affecté.",
+        "unassignConfirm": "Retirer cet élève du transport ? Les échéances impayées seront annulées."
+      },
+      "appel": {
+        "cta": "📋 Faire l’appel",
+        "title": "Appel transport",
+        "date": "Date",
+        "direction": "Trajet",
+        "morning": "Matin",
+        "evening": "Soir",
+        "load": "Charger",
+        "pickLine": "Choisissez une ligne pour faire l’appel.",
+        "noStudents": "Aucun élève affecté à cette ligne.",
+        "save": "Enregistrer l’appel",
+        "saved": "Appel enregistré ✓",
+        "nothing": "Aucun pointage saisi.",
+        "progress": "{done} / {total} pointés",
+        "notePlaceholder": "Décrire l’incident…",
+        "status": {
+          "PRESENT": "Présent",
+          "ABSENT": "Absent",
+          "LATE": "Retard",
+          "NOT_PICKED_UP": "Non récupéré",
+          "BOARDED": "Monté",
+          "DROPPED": "Déposé",
+          "INCIDENT": "Incident"
+        },
+        "busApproaching": "Bus en approche",
+        "busDelay": "Signaler un retard",
+        "minutesPrompt": "Dans combien de minutes ?",
+        "eventSent": "{n} parent(s) notifié(s)",
+        "logLink": "Journal des notifications"
+      },
+      "kpi": {
+        "presence": "Taux de présence",
+        "late": "Retards",
+        "notPicked": "Non récupérés",
+        "incidents": "Incidents"
+      },
+      "board": {
+        "title": "Appel du jour"
+      },
+      "notifications": {
+        "title": "Journal des notifications",
+        "driverHint": "Mode développement : les messages sont journalisés (driver « log »). Le fournisseur WhatsApp/SMS sera branché ultérieurement.",
+        "when": "Date",
+        "recipient": "Destinataire",
+        "message": "Message",
+        "channel": "Canal",
+        "status": "Statut",
+        "empty": "Aucune notification.",
+        "statusLabel": {
+          "SENT": "Envoyé",
+          "PENDING": "En file",
+          "SKIPPED": "Ignoré",
+          "FAILED": "Échec"
+        },
+        "driverActive": "Fournisseur actif : {driver}. Les messages sont envoyés réellement.",
+        "processQueue": "Envoyer la file ({n})",
+        "processed": "{sent} envoyé(s), {failed} échec(s)",
+        "retry": "Renvoyer"
+      },
+      "incidents": {
+        "title": "Incidents transport",
+        "when": "Date",
+        "note": "Description",
+        "empty": "Aucun incident signalé.",
+        "banner": "{n} incident(s) signalé(s) aujourd’hui dans le transport.",
+        "view": "Voir"
+      }
+    },
+    "leave": {
+      "title": "Congés & absences",
+      "subtitle": "Demandes, validation et soldes du personnel.",
+      "noTypes": "Aucun type de congé configuré.",
+      "seedTypes": "Créer les types par défaut",
+      "newRequest": "Nouvelle demande",
+      "employee": "Employé",
+      "type": "Type",
+      "start": "Début",
+      "end": "Fin",
+      "reason": "Motif",
+      "submit": "Soumettre",
+      "requests": "Demandes",
+      "period": "Période",
+      "days": "Jours",
+      "status": "Statut",
+      "empty": "Aucune demande.",
+      "approve": "Approuver",
+      "reject": "Refuser",
+      "cancel": "Annuler",
+      "rejectComment": "Motif du refus (optionnel) :",
+      "cancelConfirm": "Annuler cette demande de congé ?",
+      "balances": "Soldes (congé annuel)",
+      "balanceHint": "Acquis {rate} j/mois depuis l’embauche, moins les congés approuvés.",
+      "daysUnit": "j",
+      "statusLabel": {
+        "PENDING": "En attente",
+        "APPROVED": "Approuvé",
+        "REJECTED": "Refusé",
+        "CANCELLED": "Annulé"
+      },
+      "subs": {
+        "link": "Remplacements",
+        "title": "Remplacements",
+        "notTeacher": "Cet employé n’est pas enseignant — aucune séance à remplacer.",
+        "noSessions": "Aucune séance d’EDT sur la période du congé.",
+        "date": "Date",
+        "slot": "Créneau",
+        "class": "Classe",
+        "subject": "Matière",
+        "substitute": "Remplaçant",
+        "unassigned": "— Non pourvu",
+        "cancelled": "Cours annulé",
+        "legend": "★ = enseignant qualifié pour la matière. Seuls les profs libres sur le créneau et non en congé sont proposés."
+      }
+    },
+    "overtime": {
+      "title": "Heures supplémentaires",
+      "subtitle": "Déclaration, validation RH→Direction→Compta, export paie.",
+      "manual": "Saisie manuelle",
+      "generate": "Générer depuis les remplacements",
+      "generated": "{n} heure(s) sup générée(s)",
+      "employee": "Employé",
+      "sourceLabel": "Source",
+      "hours": "Heures",
+      "note": "Note",
+      "add": "Ajouter",
+      "date": "Date",
+      "entries": "Heures déclarées",
+      "status": "Statut",
+      "empty": "Aucune heure supplémentaire.",
+      "validateRh": "Valider (RH)",
+      "approveDir": "Approuver (Direction)",
+      "processAcc": "Traiter (Compta)",
+      "reject": "Rejeter",
+      "exportCsv": "Export CSV",
+      "overQuota": "Dépassement de quota",
+      "overQuotaHint": "Heures d’EDT planifiées au-delà du volume contractuel hebdomadaire (indicatif).",
+      "overQuotaEmpty": "Aucun dépassement.",
+      "source": {
+        "TEACHING_OVER_QUOTA": "Dépassement quota",
+        "SUBSTITUTION": "Remplacement",
+        "PARASCOLAIRE": "Parascolaire",
+        "AFTER_HOURS": "Après 18h",
+        "EXAM_SUPERVISION": "Surveillance examen",
+        "SPECIAL_EVENT": "Événement spécial"
+      },
+      "statusLabel": {
+        "DECLARED": "Déclarée",
+        "RH_VALIDATED": "Validée RH",
+        "DIRECTION_APPROVED": "Approuvée Direction",
+        "PROCESSED": "Traitée",
+        "REJECTED": "Rejetée"
+      }
+    },
+    "payroll": {
+      "title": "Paie",
+      "subtitle": "Paramétrage légal et profils de paie du personnel.",
+      "configTitle": "Paramètres légaux (Maroc)",
+      "effectiveFrom": "en vigueur depuis le",
+      "referenceWarning": "Valeurs de référence à VÉRIFIER avec votre comptable (CNSS, AMO, barème IR 2025, comptes CGNC). Tout est paramétrable.",
+      "noConfig": "Aucun paramétrage de paie.",
+      "seedConfig": "Créer le paramétrage par défaut",
+      "saved": "Enregistré ✓",
+      "save": "Enregistrer",
+      "edit": "Éditer",
+      "employees": "Profils de paie",
+      "employee": "Employé",
+      "cfg": {
+        "cnssEmployee": "CNSS salarié (taux)",
+        "cnssCeiling": "Plafond CNSS",
+        "amoEmployee": "AMO salarié",
+        "cnssEmployer": "CNSS patronal",
+        "familyAllowance": "Alloc. familiales",
+        "amoEmployer": "AMO patronal",
+        "trainingTax": "Taxe formation",
+        "proRate": "Frais pro (taux)",
+        "proCeiling": "Frais pro (plafond/mois)",
+        "familyDeduction": "Déduction/personne à charge",
+        "maxDependents": "Max personnes à charge",
+        "irBrackets": "Barème IR mensuel (JSON)"
+      },
+      "p": {
+        "baseSalary": "Salaire de base",
+        "transport": "Ind. transport",
+        "housing": "Ind. logement",
+        "benefits": "Avantages nature",
+        "cnssNumber": "N° CNSS",
+        "dependents": "Pers. à charge",
+        "cimr": "CIMR",
+        "cimrRate": "Taux CIMR",
+        "allowances": "Indemnités"
+      },
+      "run": {
+        "cta": "📅 Runs mensuels",
+        "title": "Runs de paie",
+        "generateTitle": "Calculer un mois",
+        "generate": "Calculer",
+        "period": "Période",
+        "payslips": "Bulletins",
+        "netTotal": "Net total",
+        "costTotal": "Coût total",
+        "status": "Statut",
+        "actions": "Actions",
+        "empty": "Aucun run de paie.",
+        "validateRh": "Valider (RH)",
+        "approveDir": "Approuver (Direction)",
+        "close": "Clôturer",
+        "reopen": "Rouvrir",
+        "deleteConfirm": "Supprimer ce run de paie ?",
+        "brut": "Brut",
+        "ir": "IR",
+        "netImposable": "Net imposable",
+        "netPayable": "Net à payer",
+        "employerCost": "Coût employeur",
+        "total": "TOTAL",
+        "noPayslips": "Aucun bulletin — recalculez le mois.",
+        "massHint": "Masse salariale chargée (coût employeur total) : {mass}.",
+        "months": {
+          "1": "Janvier",
+          "2": "Février",
+          "3": "Mars",
+          "4": "Avril",
+          "5": "Mai",
+          "6": "Juin",
+          "7": "Juillet",
+          "8": "Août",
+          "9": "Septembre",
+          "10": "Octobre",
+          "11": "Novembre",
+          "12": "Décembre"
+        },
+        "statusLabel": {
+          "DRAFT": "Brouillon",
+          "CALCULATED": "Calculé",
+          "RH_VALIDATED": "Validé RH",
+          "DIRECTION_APPROVED": "Approuvé Direction",
+          "CLOSED": "Clôturé"
+        },
+        "payslip": "Bulletin",
+        "journalTitle": "Journal de paie",
+        "exportJournal": "Export journal (CSV)",
+        "account": "Compte",
+        "label": "Libellé",
+        "debit": "Débit",
+        "credit": "Crédit",
+        "byDept": "Coût par département",
+        "kpiMass": "Masse salariale (brut)",
+        "kpiCharges": "Charges patronales",
+        "kpiNet": "Net total",
+        "kpiCost": "Coût total"
+      }
+    },
+    "bourse": {
+      "title": "Bourse aux livres",
+      "subtitle": "Manuels d’occasion : catalogue, campagnes et paramétrage.",
+      "configTitle": "Paramétrage",
+      "noConfig": "Aucun paramétrage.",
+      "seedConfig": "Créer le paramétrage par défaut",
+      "saved": "Enregistré ✓",
+      "save": "Enregistrer",
+      "commissionMode": "Commission",
+      "percent": "Pourcentage",
+      "fixed": "Montant fixe",
+      "commissionValue": "Valeur",
+      "labelPrefix": "Préfixe étiquette",
+      "pricingTitle": "Prix bourse = prix neuf × facteur (par état)",
+      "pricingHint": "Facteur entre 0 et 1 appliqué au prix neuf selon l’état du livre.",
+      "condition": {
+        "NEW": "Neuf",
+        "VERY_GOOD": "Très bon",
+        "GOOD": "Bon",
+        "FAIR": "Moyen"
+      },
+      "catalogTitle": "Catalogue",
+      "bookTitle": "Titre",
+      "level": "Niveau",
+      "subject": "Matière",
+      "editor": "Éditeur",
+      "editionYear": "Année",
+      "priceNew": "Prix neuf",
+      "addBook": "Ajouter le titre",
+      "copies": "Exempl.",
+      "noBooks": "Aucun titre.",
+      "deleteBookConfirm": "Supprimer ce titre ?",
+      "campaigns": "Campagnes",
+      "campaignLabel": "Libellé (ex. Rentrée)",
+      "noCampaigns": "Aucune campagne.",
+      "close": "Clôturer",
+      "reopen": "Rouvrir",
+      "status": {
+        "OPEN": "Ouverte",
+        "CLOSED": "Clôturée"
+      },
+      "depot": {
+        "cta": "📥 Dépôt",
+        "title": "Dépôt de livres",
+        "seller": "Élève déposant",
+        "load": "Charger",
+        "addTitle": "Ajouter un exemplaire",
+        "selectBook": "Choisir le livre…",
+        "price": "Prix",
+        "addCopy": "Déposer l’exemplaire",
+        "copies": "Exemplaires déposés",
+        "code": "Code",
+        "state": "État",
+        "statusCol": "Statut",
+        "label": "Étiquette",
+        "receipt": "Reçu de dépôt",
+        "removeConfirm": "Retirer cet exemplaire ?",
+        "empty": "Aucun exemplaire.",
+        "total": "Valeur estimée",
+        "pick": "Choisissez une campagne et un élève déposant."
+      },
+      "bookRequired": "Choisir un livre.",
+      "selectBook": "Choisir le livre…",
+      "price": "Prix",
+      "copyStatus": {
+        "DEPOSITED": "Déposé",
+        "FOR_SALE": "En vente",
+        "RESERVED": "Réservé",
+        "SOLD": "Vendu",
+        "WITHDRAWN": "Retiré",
+        "REFUNDED": "Remboursé"
+      },
+      "vente": {
+        "cta": "🛒 Vente",
+        "title": "Vente de livres",
+        "allLevels": "Tous niveaux",
+        "search": "Recherche",
+        "searchHint": "Code ou titre…",
+        "searchBtn": "Rechercher",
+        "buyer": "Acheteur",
+        "anonymous": "Anonyme",
+        "action": "Action",
+        "sell": "Vendre",
+        "empty": "Aucun exemplaire en vente.",
+        "recent": "Ventes récentes",
+        "receipt": "Reçu",
+        "method": {
+          "CASH": "Espèces",
+          "CHEQUE": "Chèque",
+          "TRANSFER": "Virement",
+          "CMI": "Carte"
+        }
+      },
+      "refund": {
+        "cta": "💸 Remboursements",
+        "title": "Remboursements & retraits",
+        "load": "Charger",
+        "sellersTitle": "Remboursements vendeurs",
+        "seller": "Vendeur",
+        "sold": "Vendus",
+        "due": "À rembourser",
+        "action": "Action",
+        "refund": "Rembourser",
+        "cash": "Espèces",
+        "credit": "Avoir scolarité",
+        "pickInstallment": "Échéance…",
+        "noneToRefund": "Aucun vendeur à rembourser.",
+        "withdrawTitle": "Retrait des invendus",
+        "unsold": "{n} invendu(s) en stock.",
+        "scanCode": "Scanner / saisir le code",
+        "withdraw": "Retirer",
+        "refundedTitle": "Déjà remboursés",
+        "receipt": "Reçu"
+      },
+      "finance": {
+        "cta": "📊 Finance",
+        "title": "Finance & KPI",
+        "load": "Charger",
+        "export": "Export journal (CSV)",
+        "deposited": "Déposés",
+        "sold": "Vendus",
+        "sellRate": "Taux de vente",
+        "totalSold": "Montant vendu",
+        "refunded": "Remboursé",
+        "commission": "Commission école",
+        "cashTitle": "Journal de caisse",
+        "inflow": "Encaissements (ventes)",
+        "outflowCash": "Remboursements espèces",
+        "credits": "Avoirs (scolarité)",
+        "balance": "Solde caisse",
+        "topTitle": "Titres les plus demandés",
+        "flopTitle": "Titres les moins demandés",
+        "noFlop": "Tous les titres ont vendu."
+      }
     }
   },
   "superAdmin": {
@@ -2719,9 +3733,27 @@
     "carnetTitle": "Mon carnet de correspondance",
     "nav": {
       "home": "Accueil",
+      "timetable": "Emploi du temps",
       "notes": "Mes notes",
       "bulletins": "Bulletins",
-      "carnet": "Mon carnet"
+      "carnet": "Mon carnet",
+      "cahier": "Cahier de texte",
+      "account": "Mon compte",
+      "announcements": "Annonces"
+    },
+    "timetable": {
+      "title": "Mon emploi du temps",
+      "hour": "Heure",
+      "empty": "Aucun emploi du temps disponible.",
+      "noClass": "Aucune classe pour l'année active.",
+      "days": {
+        "MON": "Lundi",
+        "TUE": "Mardi",
+        "WED": "Mercredi",
+        "THU": "Jeudi",
+        "FRI": "Vendredi",
+        "SAT": "Samedi"
+      }
     },
     "bulletins": {
       "title": "Mes bulletins",
@@ -2731,6 +3763,7 @@
     "home": {
       "hello": "Bonjour {name}",
       "noClass": "Aucune classe",
+      "progress": "Ma progression",
       "generalAverage": "Moyenne générale",
       "attendanceRate": "Taux de présence",
       "carnet": "Carnet",
@@ -2774,6 +3807,47 @@
         "EXCUSED": "Dispense",
         "ABSENT": "Absence"
       }
+    },
+    "cahier": {
+      "title": "Cahier de texte",
+      "tabContent": "Contenu et ressources",
+      "tabHomework": "Travail à faire",
+      "since": "Depuis le",
+      "noClass": "Aucune classe pour l année active.",
+      "theme": "Thème",
+      "resources": "Ressources",
+      "noLesson": "Aucune leçon publiée pour cette période.",
+      "noHomework": "Aucun travail à faire pour cette période.",
+      "due": "à rendre le",
+      "homeworkTypes": {
+        "EXERCICE": "Exercice",
+        "LECTURE": "Lecture",
+        "REVISION": "Révision",
+        "PROJET": "Projet",
+        "AUTRE": "Autre"
+      }
+    },
+    "account": {
+      "title": "Mon compte",
+      "changePassword": "Changer le mot de passe",
+      "current": "Mot de passe actuel",
+      "new": "Nouveau mot de passe",
+      "confirm": "Confirmer le nouveau mot de passe",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "done": "Mot de passe mis à jour."
+    },
+    "announcements": {
+      "title": "Annonces",
+      "empty": "Aucune annonce pour le moment.",
+      "audiences": {
+        "ALL": "Tous",
+        "PARENTS": "Parents",
+        "TEACHERS": "Enseignants",
+        "STAFF": "Personnel",
+        "CLASS": "Classe",
+        "LEVEL": "Niveau"
+      }
     }
   },
   "parent": {
@@ -2781,11 +3855,20 @@
     "nav": {
       "home": "Accueil",
       "children": "Mes enfants",
+      "general": "Général",
       "cahier": "Cahier de texte",
       "announcements": "Annonces",
       "messages": "Messages",
       "surveys": "Enquêtes",
-      "account": "Mon compte"
+      "account": "Mon compte",
+      "sections": {
+        "cahier": "Cahier de texte",
+        "notes": "Notes",
+        "vie-scolaire": "Vie scolaire",
+        "scolarite": "Frais scolarité",
+        "documents": "Documents officiels",
+        "bourse": "Bourse aux livres"
+      }
     },
     "cahier": {
       "title": "Cahier de texte",
@@ -2853,14 +3936,66 @@
       "carnetUnread": "{count} non lu(s)",
       "latestAnnouncements": "Dernières annonces",
       "seeAll": "Tout voir",
-      "noAnnouncement": "Aucune annonce pour le moment."
+      "noAnnouncement": "Aucune annonce pour le moment.",
+      "period": "Période",
+      "retards": "Retards",
+      "latestNotes": "Dernières notes"
     },
     "child": {
       "breadcrumbHome": "Accueil",
       "noClass": "Aucune classe pour l'année active.",
       "year": "Année",
       "viewYear": "Voir",
+      "since": "Depuis le",
       "documentsTitle": "Documents officiels",
+      "cahier": {
+        "tabContent": "Contenu et ressources",
+        "tabHomework": "Travail à faire",
+        "theme": "Thème",
+        "resources": "Ressources",
+        "noLesson": "Aucune leçon publiée pour cette période.",
+        "noHomework": "Aucun travail à faire pour cette période.",
+        "due": "à rendre le",
+        "homeworkTypes": {
+          "EXERCICE": "Exercice",
+          "LECTURE": "Lecture",
+          "REVISION": "Révision",
+          "PROJET": "Projet",
+          "AUTRE": "Autre"
+        }
+      },
+      "classBulletin": {
+        "subject": "Matière",
+        "childAvg": "Moy. élève",
+        "rank": "Rang",
+        "classAvg": "Moy. classe",
+        "min": "Min",
+        "max": "Max",
+        "note": "Moyennes anonymes de la classe — les notes individuelles des autres élèves ne sont pas affichées."
+      },
+      "vieScolaire": {
+        "tabEdt": "Emploi du temps",
+        "tabCarnet": "Carnet",
+        "tabTeam": "Équipe pédagogique"
+      },
+      "edt": {
+        "hour": "Heure",
+        "empty": "Aucun emploi du temps disponible.",
+        "days": {
+          "MON": "Lundi",
+          "TUE": "Mardi",
+          "WED": "Mercredi",
+          "THU": "Jeudi",
+          "FRI": "Vendredi",
+          "SAT": "Samedi"
+        }
+      },
+      "equipe": {
+        "mainTeacher": "Professeur principal",
+        "subject": "Matière",
+        "teacher": "Enseignant",
+        "empty": "Aucune équipe pédagogique renseignée."
+      },
       "bulletins": {
         "title": "Bulletins",
         "empty": "Aucun bulletin disponible.",
@@ -2872,7 +4007,12 @@
         "evaluation": "Évaluation",
         "period": "Période",
         "mark": "Note",
-        "classAvg": "Moy. classe"
+        "classAvg": "Moy. classe",
+        "tabNotes": "Notes",
+        "tabStudentBulletin": "Bulletin de l'élève",
+        "tabClassBulletin": "Bulletin de la classe",
+        "download": "Télécharger PDF",
+        "bulletinEmpty": "Aucun bulletin disponible."
       },
       "carnet": {
         "title": "Carnet de correspondance",
@@ -2880,6 +4020,12 @@
         "unread": "{count} non lu(s)",
         "new": "Nouveau",
         "seenOn": "Vu le {date}",
+        "acknowledge": "J'en ai pris connaissance",
+        "toJustifyTitle": "À justifier",
+        "status": {
+          "ABSENT": "Absence",
+          "LATE": "Retard"
+        },
         "type": {
           "OBSERVATION": "Observation",
           "ENCOURAGEMENT": "Encouragement",
@@ -2892,6 +4038,14 @@
           "ABSENCE": "Absence",
           "RETARD": "Retard",
           "EXCLUSION": "Exclusion"
+        },
+        "subAbsence": "Absences",
+        "subRetard": "Retards",
+        "subAutres": "Autres",
+        "justif": {
+          "PENDING": "En attente",
+          "APPROVED": "Justifié",
+          "REJECTED": "Refusé"
         }
       },
       "attendance": {
@@ -2933,6 +4087,12 @@
           "reasonRequired": "Choisissez une raison."
         }
       },
+      "exceptionalFees": {
+        "title": "Frais à confirmer",
+        "subtitle": "Activités optionnelles proposées par l'établissement.",
+        "accept": "Accepter",
+        "refuse": "Refuser"
+      },
       "finance": {
         "title": "Scolarité",
         "empty": "Aucune échéance pour le moment.",
@@ -2941,6 +4101,7 @@
         "amount": "Montant",
         "remaining": "Reste",
         "status": "Statut",
+        "receipt": "Reçu",
         "paidOf": "{paid} / {due} MAD payés",
         "totalRemaining": "Total restant dû",
         "payOnline": "Payer en ligne",
@@ -2951,6 +4112,23 @@
           "PARTIAL": "Partiel",
           "PAID": "Payé"
         }
+      },
+      "bourse": {
+        "available": "Livres disponibles",
+        "allLevels": "Tous niveaux",
+        "filter": "Filtrer",
+        "book": "Livre",
+        "state": "État",
+        "action": "Action",
+        "reserve": "Réserver",
+        "cancel": "Annuler",
+        "reservedByYou": "Réservé par vous",
+        "noneAvailable": "Aucun livre disponible.",
+        "reserveHint": "La réservation maintient le livre à votre nom ; finalisez l’achat à l’école.",
+        "myDeposits": "Mes dépôts",
+        "myPurchases": "Mes achats",
+        "noDeposit": "Aucun dépôt.",
+        "noPurchase": "Aucun achat."
       }
     },
     "announcements": {
@@ -2971,10 +4149,10 @@
     "nav": {
       "home": "Tableau de bord",
       "timetable": "Emploi du temps",
-      "appel": "Appel",
+      "appel": "Feuilles d'appel",
       "cahier": "Cahier de texte",
       "notes": "Notes",
-      "carnet": "Carnet",
+      "carnet": "Carnet de correspondance",
       "classes": "Mes classes",
       "messages": "Messages",
       "account": "Mon compte"
@@ -3044,7 +4222,7 @@
       "noTeacher": "Aucun enseignant rattaché à votre compte. Contactez l'établissement."
     },
     "appel": {
-      "title": "Appel",
+      "title": "Feuilles d'appel",
       "subtitle": "Cliquez sur une séance pour faire l'appel.",
       "prevWeek": "Semaine préc.",
       "thisWeek": "Cette semaine",
@@ -3078,7 +4256,14 @@
       "reopen": "Déverrouiller",
       "reopening": "Déverrouillage…",
       "lockedHint": "Appel validé.",
-      "savedAt": "Enregistré à {time}"
+      "savedAt": "Enregistré à {time}",
+      "summary": {
+        "present": "Présents",
+        "absent": "Absents",
+        "lateJustified": "Retards justifiés",
+        "lateUnjustified": "Retards non justifiés",
+        "excluded": "Exclus"
+      }
     },
     "cahier": {
       "title": "Cahier de texte",
@@ -3106,6 +4291,8 @@
         "activities": "Activités réalisées",
         "competencies": "Compétences travaillées",
         "competenciesHint": "Optionnel — utile pour Massar",
+        "theme": "Thème",
+        "themeHint": "Chapitre / thème du cours",
         "homeworkDescription": "Description du devoir",
         "dueDate": "À rendre le",
         "type": "Type",
@@ -3117,6 +4304,7 @@
       },
       "resources": {
         "saveFirst": "Enregistrez d'abord le cahier pour pouvoir joindre des fichiers ou des liens.",
+        "stageHint": "Joignez vos documents et liens : ils seront enregistrés avec le cahier.",
         "addFile": "Joindre un fichier",
         "uploading": "Envoi…",
         "fileHint": "PDF, images, Word… (max 10 Mo)",
@@ -3132,7 +4320,11 @@
         "PROJET": "Projet",
         "AUTRE": "Autre"
       },
-      "difficulties": { "FACILE": "Facile", "MOYEN": "Moyen", "DIFFICILE": "Difficile" },
+      "difficulties": {
+        "FACILE": "Facile",
+        "MOYEN": "Moyen",
+        "DIFFICILE": "Difficile"
+      },
       "addHomework": "Ajouter un devoir",
       "noHomework": "Aucun devoir pour cette séance.",
       "remove": "Retirer",

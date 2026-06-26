@@ -14,13 +14,18 @@ import { contractStatusBadgeClass } from '@/lib/contract-status';
 import { isDirection } from '@/lib/auth/rbac';
 import { ContractAlertsActions } from './contract-alerts-actions';
 import { PilotageSection } from './pilotage-section';
+import { PeriodSelect } from './period-select';
+import { TeacherKpisSection } from './teacher-kpis-section';
 
 export default async function AdminDashboard({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ period?: string }>;
 }) {
   const { locale } = await params;
+  const sp = await searchParams;
   setRequestLocale(locale);
 
   const session = (await auth())!;
@@ -32,7 +37,16 @@ export default async function AdminDashboard({
       where: { active: true },
       include: { periods: { orderBy: { startDate: 'asc' } } },
     });
-    const periodId = activeYear?.periods[0]?.id ?? null;
+    const periods = activeYear?.periods ?? [];
+
+    // Période sélectionnée : ?period=… si valide, sinon le trimestre courant
+    // (par date du jour), sinon le premier trimestre.
+    const now = new Date();
+    const currentPeriod = periods.find((p) => p.startDate <= now && now <= p.endDate);
+    const requested = sp.period && periods.some((p) => p.id === sp.period) ? sp.period : null;
+    const selectedPeriod =
+      periods.find((p) => p.id === requested) ?? currentPeriod ?? periods[0] ?? null;
+    const periodId = selectedPeriod?.id ?? null;
 
     const [headcount, academic, attendance, atRisk] = await Promise.all([
       computeHeadcount(tx),
@@ -75,7 +89,9 @@ export default async function AdminDashboard({
     const tenant = await tx.tenant.findFirst();
     return {
       yearLabel: activeYear?.label ?? '—',
-      periodLabel: activeYear?.periods[0]?.label ?? '—',
+      periodLabel: selectedPeriod?.label ?? '—',
+      periods: periods.map((p) => ({ id: p.id, label: p.label })),
+      selectedPeriodId: periodId,
       headcount,
       academic,
       attendance,
@@ -91,16 +107,22 @@ export default async function AdminDashboard({
   const showPilotage = await isDirection();
 
   return (
-    <div className="mx-auto max-w-7xl px-6 pb-8 pt-4">
-      <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          {data.yearLabel} · {data.periodLabel}
-        </p>
+    <div className="px-3 py-3">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
+        <div>
+          <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+          <p className="mt-0.5 text-sm text-slate-600">
+            {data.yearLabel} · {data.periodLabel}
+          </p>
+        </div>
+        {data.periods.length > 0 && (
+          <PeriodSelect periods={data.periods} selectedPeriodId={data.selectedPeriodId} />
+        )}
       </header>
 
-      {/* 4 KPI principaux */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      {/* Vue d'ensemble */}
+      <Category label={t('cat.overview')}>
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Kpi
           tone="violet"
           icon={<Icon path={ICON_USERS} />}
@@ -148,13 +170,15 @@ export default async function AdminDashboard({
           })}
           color={getCollectionColor(data.finance.totalPaid, data.finance.totalDue)}
         />
-      </div>
+        </div>
+      </Category>
 
       {/* Pilotage (direction uniquement) — fusionné depuis l'ancien menu Pilotage */}
-      {showPilotage && <PilotageSection />}
+      {showPilotage && <PilotageSection periodId={data.selectedPeriodId} />}
 
-      {/* 2 colonnes */}
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Réussite scolaire */}
+      <Category label={t('cat.success')}>
+        <div className="grid grid-cols-1 gap-6">
         {/* Top/bottom classes */}
         <section>
           <h2 className="mb-3 text-base font-semibold text-slate-900">{t('academic.title')}</h2>
@@ -212,10 +236,13 @@ export default async function AdminDashboard({
             )}
           </div>
         </section>
+        </div>
+      </Category>
 
-        {/* Attendance breakdown + headcount */}
-        <section>
-          <h2 className="mb-3 text-base font-semibold text-slate-900">{t('attendance.title')}</h2>
+      {/* Vie scolaire & assiduité */}
+      <Category label={t('cat.vieScolaire')}>
+      <section>
+        <h2 className="mb-3 text-base font-semibold text-slate-900">{t('attendance.title')}</h2>
           <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5">
             {data.attendance.totalRecords === 0 ? (
               <p className="text-sm text-slate-500">{t('attendance.empty')}</p>
@@ -248,8 +275,13 @@ export default async function AdminDashboard({
               </div>
             )}
           </div>
+      </section>
+      </Category>
 
-          <h2 className="mb-3 mt-6 text-base font-semibold text-slate-900">
+      {/* Effectifs & structure */}
+      <Category label={t('cat.effectifs')}>
+      <section>
+          <h2 className="mb-3 text-base font-semibold text-slate-900">
             {t('headcount.title')}
           </h2>
           <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5 text-sm">
@@ -263,7 +295,7 @@ export default async function AdminDashboard({
             <Row label={t('headcount.parents')} value={String(data.headcount.parents)} />
           </div>
         </section>
-      </div>
+      </Category>
 
       {/* Élèves à risque */}
       <section className="mt-6">
@@ -353,8 +385,12 @@ export default async function AdminDashboard({
         </div>
       </section>
 
+      {/* RH / Enseignants */}
+      <Category label={t('cat.rh')}>
+      <TeacherKpisSection periodId={data.selectedPeriodId} />
+
       {contractAlerts.length > 0 && (
-        <section className="mt-8">
+        <section className="mt-6">
           <h2 className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-900">
             {tAlerts('title')}{' '}
             <span className="rounded bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">
@@ -412,6 +448,7 @@ export default async function AdminDashboard({
           </div>
         </section>
       )}
+      </Category>
 
       <section className="mt-6 flex flex-wrap gap-3">
         <Link
@@ -422,6 +459,40 @@ export default async function AdminDashboard({
         </Link>
       </section>
     </div>
+  );
+}
+
+/** Catégorie pliable/dépliable (dépliée par défaut) — `<details>` natif. */
+function Category({
+  label,
+  children,
+  defaultOpen = true,
+}: {
+  label: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
+}) {
+  return (
+    <details open={defaultOpen} className="group mt-8 first:mt-0">
+      <summary className="mb-3 flex cursor-pointer list-none items-center gap-2 border-s-4 border-brand-500 ps-3 text-lg font-bold text-slate-900 [&::-webkit-details-marker]:hidden">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          className="text-slate-400 transition-transform group-open:rotate-90"
+          aria-hidden="true"
+        >
+          <path d="m9 18 6-6-6-6" />
+        </svg>
+        {label}
+      </summary>
+      {children}
+    </details>
   );
 }
 

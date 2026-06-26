@@ -4,6 +4,7 @@ import { withTenant } from '@/lib/db';
 import { can } from '@/lib/auth/rbac';
 import { loadStudentCarnet } from '@/lib/carnet';
 import { CarnetView } from '@/components/carnet/carnet-view';
+import { CarnetFilters } from '@/components/carnet/carnet-filters';
 
 const ALL_TYPES = ['OBSERVATION', 'ENCOURAGEMENT', 'DEFAUT_CARNET', 'REMARQUE_DISCIPLINAIRE'];
 
@@ -50,28 +51,17 @@ export default async function AdminCarnetPage({
   const { classList, students, classId, studentId, carnet } = data;
 
   return (
-    <div>
-      <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
+    <div className="px-3 py-3">
+      <header className="mb-4 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+      </header>
 
-      <form method="get" className="mt-4 flex flex-wrap items-center gap-3">
-        <select name="class" defaultValue={classId ?? ''} className="rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm">
-          {classList.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select name="student" defaultValue={studentId ?? ''} className="min-w-[14rem] rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm">
-          {students.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        <button type="submit" className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50">
-          {t('apply')}
-        </button>
-      </form>
+      <CarnetFilters
+        classes={classList}
+        students={students}
+        classId={classId}
+        studentId={studentId}
+      />
 
       <div className="mt-6">
         {studentId && carnet ? (

@@ -3,9 +3,11 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { currentUserRoleCodes } from '@/lib/auth/rbac';
-import { prismaAdmin } from '@/lib/db';
+import { prismaAdmin, withTenant } from '@/lib/db';
+import { countMissingAppels } from '@/lib/teacher-attendance';
 import { AdminSidebar } from './nav';
 import { SignOutButton } from './sign-out-button';
+import { SiteSwitcher } from './site-switcher';
 
 export default async function AdminLayout({
   children,
@@ -26,34 +28,57 @@ export default async function AdminLayout({
   const [tenant, roleCodes] = await Promise.all([
     prismaAdmin.tenant.findUnique({
       where: { id: session.user.tenantId },
-      select: { id: true, name: true, profile: true },
+      select: { id: true, name: true, profile: true, logoFileId: true, updatedAt: true, timezone: true },
     }),
     currentUserRoleCodes(),
   ]);
 
+  // Badge « appels non faits » du jour — seul le rôle CPE voit l'entrée Vie scolaire.
+  const vieScolaireBadge = roleCodes.includes('cpe')
+    ? await withTenant(session.user.tenantId, (tx) =>
+        countMissingAppels(tx, tenant?.timezone || 'Africa/Casablanca'),
+      )
+    : 0;
+
   const tAdmin = await getTranslations('admin');
 
-  const initial = (session.user.email ?? '?').charAt(0).toUpperCase();
-
   return (
-    <div className="flex h-screen overflow-hidden bg-[#F8F9FB] print:block print:h-auto print:overflow-visible print:bg-white">
+    <div className="flex h-screen overflow-hidden bg-[#eef0f7] print:block print:h-auto print:overflow-visible print:bg-white">
       <div className="print:hidden">
-        <AdminSidebar locale={locale} tenantName={tenant?.name ?? ''} roleCodes={roleCodes} />
+        <AdminSidebar
+          locale={locale}
+          tenantName={tenant?.name ?? ''}
+          roleCodes={roleCodes}
+          logoUrl={tenant?.logoFileId ? `/api/tenant/logo?v=${tenant.updatedAt.getTime()}` : null}
+          vieScolaireBadge={vieScolaireBadge}
+          multiSite={session.user.sites.length > 1}
+        />
       </div>
 
-      <div className="flex flex-1 flex-col overflow-hidden print:overflow-visible">
-        <header className="z-10 shrink-0 border-b border-[#E5E7EB] bg-white print:hidden">
-          <div className="flex items-center justify-end gap-3 px-6 py-3">
-            <div className="flex items-center gap-2.5">
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-brand-600 text-sm font-semibold text-white">
-                {initial}
-              </span>
-              <span className="text-sm text-slate-600">{session.user.email}</span>
-            </div>
-            <SignOutButton label={tAdmin('signOut')} locale={locale} />
+      <div className="flex flex-1 flex-col overflow-hidden p-3 ps-0 print:overflow-visible print:p-0">
+        <header className="relative z-10 mb-1 flex shrink-0 items-center justify-between gap-3 rounded-3xl bg-white px-5 py-2.5 shadow-sm print:hidden">
+          {tenant?.name && (
+            <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap bg-gradient-to-r from-[#1A56DB] to-[#123a8f] bg-clip-text text-lg font-bold text-transparent">
+              {tenant.name}
+            </span>
+          )}
+          {/* Gauche : sélecteur d'établissement (multi-sites) */}
+          <div className="flex items-center">
+            <SiteSwitcher sites={session.user.sites} activeTenantId={session.user.tenantId} />
+          </div>
+          {/* Droite : compte */}
+          <div className="flex items-center gap-3">
+            <span className="text-[13px] text-slate-600">{session.user.email}</span>
+            <SignOutButton
+              label={tAdmin('signOut')}
+              locale={locale}
+              className="rounded-lg bg-[#1A56DB] px-3 py-1.5 text-[13px] font-medium text-white hover:bg-[#143fa6]"
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/jawal-logo.png" alt="Jawal" className="h-9 w-9 object-contain" />
           </div>
         </header>
-        <main className="flex-1 overflow-y-auto bg-[#F8F9FB] print:overflow-visible">{children}</main>
+        <main className="flex-1 overflow-y-auto print:overflow-visible">{children}</main>
       </div>
     </div>
   );

@@ -2,13 +2,16 @@ import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
+import { Pagination } from '@/components/pagination';
+
+const PAGE_SIZE = 20;
 
 export default async function EnrollmentsListPage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ status?: string; year?: string }>;
+  searchParams: Promise<{ status?: string; year?: string; page?: string }>;
 }) {
   const { locale } = await params;
   const sp = await searchParams;
@@ -23,6 +26,7 @@ export default async function EnrollmentsListPage({
     | 'ACTIVE'
     | 'WITHDRAWN'
     | 'GRADUATED';
+  const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
 
   const { years, currentYearId, items, counts } = await withTenant(
     session.user.tenantId,
@@ -46,6 +50,8 @@ export default async function EnrollmentsListPage({
               class: { select: { id: true, name: true } },
             },
             orderBy: [{ status: 'asc' }, { enrolledAt: 'desc' }],
+            skip: (page - 1) * PAGE_SIZE,
+            take: PAGE_SIZE,
           })
         : [];
 
@@ -70,12 +76,20 @@ export default async function EnrollmentsListPage({
     },
   );
 
+  const total =
+    filterStatus === 'ALL'
+      ? counts.DRAFT + counts.ACTIVE + counts.WITHDRAWN + counts.GRADUATED
+      : counts[filterStatus];
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const pageHref = (p: number) =>
+    `/${locale}/admin/enrollments?year=${currentYearId ?? ''}&status=${filterStatus}&page=${p}`;
+
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8">
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div className="px-3 py-3">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t('subtitle')}</p>
+          <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+          <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <form className="flex items-center gap-2">
@@ -228,6 +242,8 @@ export default async function EnrollmentsListPage({
           </table>
         </div>
       )}
+
+      <Pagination page={page} totalPages={totalPages} hrefFor={pageHref} />
     </div>
   );
 }

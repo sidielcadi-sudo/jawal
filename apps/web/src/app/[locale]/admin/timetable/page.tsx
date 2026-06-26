@@ -49,11 +49,11 @@ export default async function TimetableDashboardPage({
   });
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-6">
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+    <div className="px-3 py-3">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
-          <p className="mt-1 text-sm text-slate-500">{t('subtitle')}</p>
+          <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+          <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <form className="flex items-center gap-2">

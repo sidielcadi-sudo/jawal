@@ -15,6 +15,42 @@ export async function getStudentPersonId(tx: Tx, userId: string): Promise<string
   return link?.personId ?? null;
 }
 
+/** Classe (et niveau) de l'élève sur l'année active. */
+export async function getStudentClassRef(
+  tx: Tx,
+  studentId: string,
+): Promise<{ classId: string; levelId: string | null } | null> {
+  const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
+  if (!year) return null;
+  const sc = await tx.studentClass.findFirst({
+    where: { studentId, unenrolledAt: null, class: { academicYearId: year.id } },
+    select: { class: { select: { id: true, levelId: true } } },
+  });
+  return sc ? { classId: sc.class.id, levelId: sc.class.levelId ?? null } : null;
+}
+
+/** Annonces visibles par un élève : ALL + sa classe (CLASS) + son niveau (LEVEL). */
+export async function getStudentAnnouncements(
+  tx: Tx,
+  classId: string | null,
+  levelId: string | null,
+  limit = 100,
+) {
+  return tx.announcement.findMany({
+    where: {
+      publishedAt: { not: null, lte: new Date() },
+      OR: [
+        { audience: 'ALL' as const },
+        ...(classId ? [{ audience: 'CLASS' as const, classId }] : []),
+        ...(levelId ? [{ audience: 'LEVEL' as const, levelId }] : []),
+      ],
+    },
+    orderBy: { publishedAt: 'desc' },
+    take: limit,
+    select: { id: true, title: true, body: true, audience: true, publishedAt: true },
+  });
+}
+
 type Ctx = {
   yearId: string;
   startDate: Date;
@@ -103,6 +139,7 @@ export type StudentDashboard = {
   attendanceRate: number | null;
   counts: Record<AttendanceCategory, number>;
   generalAverage: number | null;
+  subjects: { label: string; avg: number | null }[];
   carnetUnread: number;
   recentCarnet: { id: string; type: string; content: string; occurredAt: string; authorName: string }[];
   recentAbsences: { id: string; date: string; cat: AttendanceCategory; className: string }[];
@@ -142,7 +179,7 @@ export async function loadStudentDashboard(tx: Tx, studentId: string): Promise<S
   const avgs =
     ctx?.classId && ctx.periods.length
       ? await subjectAverages(tx, studentId, ctx.classId, ctx.periods.map((p) => p.id))
-      : { general: null };
+      : { bySubject: [] as { subjectId: string; label: string; avg: number | null }[], general: null };
 
   const carnet = await loadStudentCarnet(tx, studentId, { forParents: true });
   const recentCarnet = carnet.entries.slice(0, 5).map((e) => ({
@@ -161,6 +198,7 @@ export async function loadStudentDashboard(tx: Tx, studentId: string): Promise<S
     attendanceRate: att.rate,
     counts: att.counts,
     generalAverage: avgs.general,
+    subjects: avgs.bySubject.map((s) => ({ label: s.label, avg: s.avg })),
     carnetUnread,
     recentCarnet,
     recentAbsences,

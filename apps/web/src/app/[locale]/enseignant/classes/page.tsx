@@ -74,8 +74,10 @@ export default async function TeacherClassesPage({
   });
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
-      <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
+    <div className="px-3 py-3">
+      <header className="mb-4 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+      </header>
 
       {rows.length === 0 ? (
         <p className="mt-6 text-sm text-slate-500">{t('empty')}</p>

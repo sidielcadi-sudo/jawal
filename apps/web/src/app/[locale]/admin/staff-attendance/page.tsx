@@ -58,21 +58,44 @@ export default async function StaffAttendancePage({
 
       const totals = rows.reduce(
         (acc, r) => {
-          if (!r.hasExisting) return acc;
+          acc.headcount += 1;
+          if (!r.hasExisting) {
+            acc.notRecorded += 1;
+            return acc;
+          }
+          acc.recorded += 1;
           if (r.status === 'PRESENT') acc.present += 1;
           if (r.status === 'ABSENT') acc.absent += 1;
           if (r.status === 'LATE') acc.late += 1;
           if (r.status === 'EXCUSED') acc.excused += 1;
           if (r.status === 'LEAVE') acc.leave += 1;
+          // Un retard compte comme présent (arrivée tardive) pour le taux de présence.
+          if (r.status === 'PRESENT' || r.status === 'LATE') acc.attended += 1;
+          acc.lateMinutes += r.lateMinutes ?? 0;
           acc.deduction += r.deductionAmount;
           return acc;
         },
-        { present: 0, absent: 0, late: 0, excused: 0, leave: 0, deduction: 0 },
+        {
+          present: 0,
+          absent: 0,
+          late: 0,
+          excused: 0,
+          leave: 0,
+          deduction: 0,
+          headcount: 0,
+          recorded: 0,
+          notRecorded: 0,
+          attended: 0,
+          lateMinutes: 0,
+        },
       );
 
       return { rows, totals };
     },
   );
+
+  const presenceRate =
+    totals.recorded > 0 ? Math.round((totals.attended / totals.recorded) * 100) : null;
 
   const dayLocale = new Date(dateStr).toLocaleDateString(locale, {
     weekday: 'long',
@@ -82,44 +105,80 @@ export default async function StaffAttendancePage({
   });
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+    <div className="px-3 py-3">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-4 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
-          <p className="mt-1 text-sm text-slate-500 first-letter:uppercase">{dayLocale}</p>
+          <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+          <p className="mt-0.5 text-sm text-slate-600 first-letter:uppercase">{dayLocale}</p>
         </div>
-        <form className="flex items-center gap-2">
-          <label className="text-sm text-slate-600">{t('date')}</label>
-          <input
-            type="date"
-            name="date"
-            defaultValue={dateStr}
-            className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
-          />
-          <button
-            type="submit"
-            className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+        <div className="flex items-center gap-3">
+          <form className="flex items-center gap-2">
+            <label className="text-sm text-slate-600">{t('date')}</label>
+            <input
+              type="date"
+              name="date"
+              defaultValue={dateStr}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+            />
+            <button
+              type="submit"
+              className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
+            >
+              {t('apply')}
+            </button>
+          </form>
+          <Link
+            href={`/${locale}/admin/staff-attendance/synthese`}
+            className="rounded-lg border border-brand-200 bg-white px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
           >
-            {t('apply')}
-          </button>
-        </form>
+            {t('syntheseLink')}
+          </Link>
+        </div>
       </header>
 
-      {/* KPIs jour */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      {/* KPIs synthèse jour */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Kpi
+          label={t('kpi.presenceRate')}
+          value={presenceRate !== null ? `${presenceRate}%` : '—'}
+          hint={t('kpi.presenceRateHint', { attended: totals.attended, recorded: totals.recorded })}
+          color={
+            presenceRate === null
+              ? 'slate'
+              : presenceRate >= 90
+                ? 'emerald'
+                : presenceRate >= 75
+                  ? 'amber'
+                  : 'red'
+          }
+        />
+        <Kpi
+          label={t('kpi.notRecorded')}
+          value={String(totals.notRecorded)}
+          hint={t('kpi.notRecordedHint', { headcount: totals.headcount })}
+          color={totals.notRecorded > 0 ? 'amber' : 'emerald'}
+        />
+        <Kpi
+          label={t('kpi.lateMinutes')}
+          value={`${totals.lateMinutes} min`}
+          hint={t('kpi.lateMinutesHint', { count: totals.late })}
+          color={totals.lateMinutes > 0 ? 'amber' : 'slate'}
+        />
+        <Kpi
+          label={t('kpi.deduction')}
+          value={`${totals.deduction.toFixed(2)} MAD`}
+          hint={t('formulaHint')}
+          color={totals.deduction > 0 ? 'red' : 'slate'}
+        />
+      </div>
+
+      {/* KPIs détail par statut */}
+      <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Counter label={t('counter.present')} value={totals.present} color="emerald" />
         <Counter label={t('counter.absent')} value={totals.absent} color="red" />
         <Counter label={t('counter.late')} value={totals.late} color="amber" />
         <Counter label={t('counter.excused')} value={totals.excused} color="blue" />
         <Counter label={t('counter.leave')} value={totals.leave} color="slate" />
-      </div>
-
-      <div className="mt-3 rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm">
-        <span className="text-slate-500">{t('totalDeduction')} :</span>{' '}
-        <span className="font-semibold tabular-nums text-red-700">
-          {totals.deduction.toFixed(2)} MAD
-        </span>
-        <p className="mt-1 text-xs text-slate-500">{t('formulaHint')}</p>
       </div>
 
       <section className="mt-6">
@@ -140,6 +199,33 @@ export default async function StaffAttendancePage({
           {t('viewMonthlyLink')}
         </Link>
       </p>
+    </div>
+  );
+}
+
+function Kpi({
+  label,
+  value,
+  hint,
+  color,
+}: {
+  label: string;
+  value: string;
+  hint?: string;
+  color: 'emerald' | 'red' | 'amber' | 'blue' | 'slate';
+}) {
+  const colors: Record<string, string> = {
+    emerald: 'text-emerald-700',
+    red: 'text-red-700',
+    amber: 'text-amber-700',
+    blue: 'text-blue-700',
+    slate: 'text-slate-600',
+  };
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+      <div className="text-xs text-slate-500">{label}</div>
+      <div className={`mt-1 text-2xl font-semibold tabular-nums ${colors[color]}`}>{value}</div>
+      {hint && <div className="mt-0.5 text-[11px] text-slate-400">{hint}</div>}
     </div>
   );
 }

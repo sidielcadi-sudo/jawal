@@ -2,8 +2,17 @@ import 'server-only';
 import type { Prisma } from '@/lib/db';
 import type { KpiStatus } from '@/lib/kpi-pilotage';
 import { listConversationsForParticipant } from '@/lib/messaging';
+import { dowOf, toDateStr, addDays } from '@/lib/lesson-book';
 
 type Tx = Prisma.TransactionClient;
+
+export type PeriodStat = {
+  id: string;
+  label: string;
+  average: number | null; // /20
+  belowPct: number | null; // % d'élèves < 10
+  abovePct: number | null; // % d'élèves > 14
+};
 
 export type TeacherDashboard = {
   classes: string[];
@@ -12,6 +21,20 @@ export type TeacherDashboard = {
   subjectAverage: number | null; // /20
   averageStatus: KpiStatus;
   distribution: { below10: number; mid: number; above14: number; total: number };
+  // Progression & variation : stats de toutes les périodes + période sélectionnée
+  periodStats: PeriodStat[];
+  selectedPeriodId: string | null;
+  // Moyenne générale par classe du prof (période sélectionnée), triée croissante
+  classAverages: { className: string; average: number }[];
+  // Suivi des appels (séances d'EDT du prof sur la période)
+  appel: {
+    expected: number;
+    onTime: number;
+    late: number;
+    notDone: number;
+    onTimePct: number | null;
+    reminders: number;
+  };
   // Présence & discipline (classes du prof, sur la période)
   attendanceRate: number | null; // %
   attendanceStatus: KpiStatus;
@@ -30,6 +53,200 @@ export type TeacherDashboard = {
   chaptersRemaining: number | null;
 };
 
+/** Délai de grâce (min) après le début du cours avant de compter l'appel « en retard ». */
+const APPEL_GRACE_MIN = 10;
+const hhmmToMin = (hhmm: string): number => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return (h ?? 0) * 60 + (m ?? 0);
+};
+
+/** Jour (YYYY-MM-DD) + minutes locales d'un instant dans le fuseau du tenant. */
+function localDayMinutes(d: Date, tz: string): { dateStr: string; minutes: number } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? '';
+  return {
+    dateStr: `${get('year')}-${get('month')}-${get('day')}`,
+    minutes: Number(get('hour')) * 60 + Number(get('minute')),
+  };
+}
+
+type NotesStats = {
+  average: number | null;
+  distribution: { below10: number; mid: number; above14: number; total: number };
+  /** Moyennes /20 des élèves regroupées par classe. */
+  byClass: Map<string, number[]>;
+};
+
+/**
+ * Moyenne (/20) + distribution + moyennes par classe pour les matières du prof
+ * sur une période. Moyenne pondérée par (élève, matière), normalisée /20.
+ */
+async function computeNotesStats(
+  tx: Tx,
+  classIds: string[],
+  subjectIds: string[],
+  periodId: string,
+): Promise<NotesStats> {
+  const empty: NotesStats = {
+    average: null,
+    distribution: { below10: 0, mid: 0, above14: 0, total: 0 },
+    byClass: new Map(),
+  };
+  if (!classIds.length || !subjectIds.length) return empty;
+
+  const grades = await tx.grade.findMany({
+    where: {
+      value: { not: null },
+      evaluation: { periodId, classId: { in: classIds }, subjectId: { in: subjectIds } },
+    },
+    select: {
+      studentId: true,
+      value: true,
+      evaluation: {
+        select: {
+          weight: true,
+          maxValue: true,
+          subjectId: true,
+          classId: true,
+          subject: { select: { scale: true } },
+        },
+      },
+    },
+  });
+
+  const agg = new Map<string, { weighted: number; weights: number; scale: number; classId: string }>();
+  for (const g of grades) {
+    const key = `${g.studentId}:${g.evaluation.subjectId}`;
+    let a = agg.get(key);
+    if (!a) {
+      a = { weighted: 0, weights: 0, scale: g.evaluation.subject.scale, classId: g.evaluation.classId };
+      agg.set(key, a);
+    }
+    const norm = (g.value ?? 0) * (a.scale / g.evaluation.maxValue);
+    a.weighted += norm * g.evaluation.weight;
+    a.weights += g.evaluation.weight;
+  }
+
+  const studentAverages: number[] = [];
+  const byClass = new Map<string, number[]>();
+  for (const [, a] of agg) {
+    if (a.weights === 0) continue;
+    const v = (a.weighted / a.weights) * (20 / a.scale);
+    studentAverages.push(v);
+    const arr = byClass.get(a.classId) ?? [];
+    arr.push(v);
+    byClass.set(a.classId, arr);
+  }
+  if (studentAverages.length === 0) return empty;
+
+  const distribution = { below10: 0, mid: 0, above14: 0, total: studentAverages.length };
+  for (const v of studentAverages) {
+    if (v < 10) distribution.below10++;
+    else if (v < 14) distribution.mid++;
+    else distribution.above14++;
+  }
+  const average = studentAverages.reduce((s, v) => s + v, 0) / studentAverages.length;
+  return { average, distribution, byClass };
+}
+
+export type ClassProgression = {
+  periods: { id: string; label: string }[];
+  rows: { studentId: string; name: string; byPeriod: (number | null)[] }[];
+};
+
+/**
+ * Moyenne /20 par élève et par période (trimestre/semestre) pour les matières
+ * que le prof enseigne dans une classe. Alimente le tableau « Progression
+ * trimestrielle des élèves ». À appeler dans un `withTenant`.
+ */
+export async function computeClassProgression(
+  tx: Tx,
+  teacherId: string,
+  classId: string,
+): Promise<ClassProgression> {
+  const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
+  if (!year) return { periods: [], rows: [] };
+
+  const periods = await tx.period.findMany({
+    where: { academicYearId: year.id },
+    orderBy: { startDate: 'asc' },
+    select: { id: true, label: true },
+  });
+  const assigns = await tx.teacherAssignment.findMany({
+    where: { teacherId, classId, academicYearId: year.id },
+    select: { subjectId: true },
+  });
+  const subjectIds = [...new Set(assigns.map((a) => a.subjectId))];
+  const scs = await tx.studentClass.findMany({
+    where: { classId, unenrolledAt: null },
+    select: { student: { select: { id: true, firstName: true, lastName: true } } },
+    orderBy: { student: { lastName: 'asc' } },
+  });
+  const students = scs.map((s) => s.student);
+  if (periods.length === 0 || subjectIds.length === 0 || students.length === 0) {
+    return { periods: periods.map((p) => ({ id: p.id, label: p.label })), rows: [] };
+  }
+
+  const grades = await tx.grade.findMany({
+    where: {
+      value: { not: null },
+      studentId: { in: students.map((s) => s.id) },
+      evaluation: { classId, subjectId: { in: subjectIds }, periodId: { in: periods.map((p) => p.id) } },
+    },
+    select: {
+      studentId: true,
+      value: true,
+      evaluation: {
+        select: { periodId: true, subjectId: true, weight: true, maxValue: true, subject: { select: { scale: true } } },
+      },
+    },
+  });
+
+  // Agrégat pondéré par (élève, période, matière).
+  const agg = new Map<string, { weighted: number; weights: number; scale: number }>();
+  for (const g of grades) {
+    const ev = g.evaluation;
+    const key = `${g.studentId}|${ev.periodId}|${ev.subjectId}`;
+    let a = agg.get(key);
+    if (!a) {
+      a = { weighted: 0, weights: 0, scale: ev.subject.scale };
+      agg.set(key, a);
+    }
+    a.weighted += (g.value ?? 0) * (a.scale / ev.maxValue) * ev.weight;
+    a.weights += ev.weight;
+  }
+  // Moyenne par (élève, période) = moyenne des moyennes/matière.
+  const subjAvgs = new Map<string, number[]>(); // `${studentId}|${periodId}` -> [avg matière]
+  for (const [key, a] of agg) {
+    if (a.weights === 0) continue;
+    const [sid, pid] = key.split('|');
+    const v = (a.weighted / a.weights) * (20 / a.scale);
+    const k = `${sid}|${pid}`;
+    const arr = subjAvgs.get(k) ?? [];
+    arr.push(v);
+    subjAvgs.set(k, arr);
+  }
+
+  const rows = students.map((st) => ({
+    studentId: st.id,
+    name: `${st.lastName} ${st.firstName}`,
+    byPeriod: periods.map((p) => {
+      const arr = subjAvgs.get(`${st.id}|${p.id}`);
+      return arr && arr.length ? arr.reduce((s, v) => s + v, 0) / arr.length : null;
+    }),
+  }));
+
+  return { periods: periods.map((p) => ({ id: p.id, label: p.label })), rows };
+}
+
 const statusAverage = (v: number | null): KpiStatus =>
   v === null ? 'na' : v > 12 ? 'green' : v >= 10 ? 'orange' : 'red';
 const statusAttendance = (v: number | null): KpiStatus =>
@@ -44,8 +261,9 @@ const statusQuota = (v: number | null): KpiStatus =>
  */
 export async function computeTeacherDashboard(
   tx: Tx,
-  opts: { teacherId: string; periodId: string | null },
+  opts: { teacherId: string; periodId: string | null; tz?: string },
 ): Promise<TeacherDashboard> {
+  const tz = opts.tz || 'Africa/Casablanca';
   const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
 
   const assignments = year
@@ -86,55 +304,46 @@ export async function computeTeacherDashboard(
   const contractualHours = teacher?.contractualHoursPerWeek ?? null;
   const quotaPct = contractualHours && contractualHours > 0 ? (weeklyHours / contractualHours) * 100 : null;
 
-  // ── Notes : moyenne + distribution (matière(s) du prof, sur la période) ──
-  let subjectAverage: number | null = null;
-  let distribution = { below10: 0, mid: 0, above14: 0, total: 0 };
-  if (opts.periodId && classIds.length && subjectIds.length) {
-    const grades = await tx.grade.findMany({
-      where: {
-        value: { not: null },
-        evaluation: {
-          periodId: opts.periodId,
-          classId: { in: classIds },
-          subjectId: { in: subjectIds },
-        },
-      },
-      select: {
-        studentId: true,
-        value: true,
-        evaluation: {
-          select: { weight: true, maxValue: true, subjectId: true, subject: { select: { scale: true } } },
-        },
-      },
-    });
-    // Moyenne pondérée par (élève, matière), normalisée /20.
-    const agg = new Map<string, { weighted: number; weights: number; scale: number }>();
-    for (const g of grades) {
-      const key = `${g.studentId}:${g.evaluation.subjectId}`;
-      let a = agg.get(key);
-      if (!a) {
-        a = { weighted: 0, weights: 0, scale: g.evaluation.subject.scale };
-        agg.set(key, a);
-      }
-      const norm = (g.value ?? 0) * (a.scale / g.evaluation.maxValue);
-      a.weighted += norm * g.evaluation.weight;
-      a.weights += g.evaluation.weight;
-    }
-    const studentAverages: number[] = [];
-    for (const [, a] of agg) {
-      if (a.weights === 0) continue;
-      studentAverages.push((a.weighted / a.weights) * (20 / a.scale));
-    }
-    if (studentAverages.length > 0) {
-      subjectAverage = studentAverages.reduce((s, v) => s + v, 0) / studentAverages.length;
-      for (const v of studentAverages) {
-        if (v < 10) distribution.below10++;
-        else if (v < 14) distribution.mid++;
-        else distribution.above14++;
-      }
-      distribution.total = studentAverages.length;
-    }
+  // ── Notes : moyenne + distribution (matière(s) du prof), par période ─────
+  const periodList = year
+    ? await tx.period.findMany({
+        where: { academicYearId: year.id },
+        orderBy: { startDate: 'asc' },
+        select: { id: true, label: true },
+      })
+    : [];
+
+  const statsByPeriod = new Map<string, NotesStats>();
+  for (const p of periodList) {
+    statsByPeriod.set(p.id, await computeNotesStats(tx, classIds, subjectIds, p.id));
   }
+
+  const periodStats: PeriodStat[] = periodList.map((p) => {
+    const s = statsByPeriod.get(p.id)!;
+    const total = s.distribution.total;
+    return {
+      id: p.id,
+      label: p.label,
+      average: s.average,
+      belowPct: total > 0 ? (s.distribution.below10 / total) * 100 : null,
+      abovePct: total > 0 ? (s.distribution.above14 / total) * 100 : null,
+    };
+  });
+
+  const selected = opts.periodId ? statsByPeriod.get(opts.periodId) : undefined;
+  const subjectAverage = selected?.average ?? null;
+  const distribution = selected?.distribution ?? { below10: 0, mid: 0, above14: 0, total: 0 };
+
+  // Moyenne générale par classe (période sélectionnée), triée croissante.
+  const classNameById = new Map(assignments.map((a) => [a.classId, a.class.name]));
+  const classAverages = selected
+    ? [...selected.byClass.entries()]
+        .map(([cid, vals]) => ({
+          className: classNameById.get(cid) ?? cid,
+          average: vals.reduce((s, v) => s + v, 0) / vals.length,
+        }))
+        .sort((a, b) => a.average - b.average)
+    : [];
 
   // ── Présence + retards (sessions finalisées des classes du prof) ─────────
   let attendanceRate: number | null = null;
@@ -166,6 +375,77 @@ export async function computeTeacherDashboard(
     }
   }
 
+  // ── Suivi des appels (séances d'EDT du prof sur la période) ──────────────
+  const appel = { expected: 0, onTime: 0, late: 0, notDone: 0, onTimePct: null as number | null, reminders: 0 };
+  if (opts.periodId && year) {
+    const period = await tx.period.findUnique({
+      where: { id: opts.periodId },
+      select: { startDate: true, endDate: true },
+    });
+    const entries = await tx.timetableEntry.findMany({
+      where: { teacherId: opts.teacherId, academicYearId: year.id, slot: { isBreak: false } },
+      select: { id: true, classId: true, dayOfWeek: true, slot: { select: { startTime: true, endTime: true } } },
+    });
+    if (period && entries.length) {
+      // Bornes en chaînes de date (la fenêtre n'inclut pas le futur).
+      const todayStr = toDateStr(new Date());
+      const startStr = toDateStr(period.startDate);
+      let endStr = toDateStr(period.endDate);
+      if (endStr > todayStr) endStr = todayStr;
+
+      // Séances attendues = occurrences de chaque case d'EDT dans la fenêtre.
+      type Exp = { entryId: string; classId: string; periodLabel: string; startMin: number; dateStr: string };
+      const expected: Exp[] = [];
+      for (let d = startStr; d <= endStr; d = addDays(d, 1)) {
+        const dow = dowOf(d);
+        for (const e of entries) {
+          if (e.dayOfWeek !== dow) continue;
+          expected.push({
+            entryId: e.id,
+            classId: e.classId,
+            periodLabel: `${e.slot.startTime}-${e.slot.endTime}`,
+            startMin: hhmmToMin(e.slot.startTime),
+            dateStr: d,
+          });
+        }
+      }
+      appel.expected = expected.length;
+
+      if (expected.length) {
+        const classIdsEdt = [...new Set(expected.map((e) => e.classId))];
+        const sessions = await tx.attendanceSession.findMany({
+          where: {
+            classId: { in: classIdsEdt },
+            finalizedAt: { not: null },
+            date: { gte: period.startDate, lte: period.endDate },
+          },
+          select: { classId: true, date: true, periodLabel: true, finalizedAt: true },
+        });
+        const finByKey = new Map<string, Date>();
+        for (const s of sessions) {
+          finByKey.set(`${s.classId}|${toDateStr(s.date)}|${s.periodLabel ?? ''}`, s.finalizedAt!);
+        }
+        for (const e of expected) {
+          const fin = finByKey.get(`${e.classId}|${e.dateStr}|${e.periodLabel}`);
+          if (!fin) {
+            appel.notDone++;
+            continue;
+          }
+          // Heure locale (tenant) de finalisation comparée au début + grâce.
+          const loc = localDayMinutes(fin, tz);
+          const onTime = loc.dateStr === e.dateStr && loc.minutes <= e.startMin + APPEL_GRACE_MIN;
+          if (onTime) appel.onTime++;
+          else appel.late++;
+        }
+        appel.onTimePct = appel.expected > 0 ? (appel.onTime / appel.expected) * 100 : null;
+      }
+
+      appel.reminders = await tx.appelReminder.count({
+        where: { entryId: { in: entries.map((e) => e.id) }, date: { gte: period.startDate, lte: period.endDate } },
+      });
+    }
+  }
+
   // ── Messages non lus (si le prof a un compte utilisateur) ────────────────
   let unreadMessages: number | null = null;
   const link = await tx.userPerson.findFirst({
@@ -183,6 +463,10 @@ export async function computeTeacherDashboard(
     subjectAverage,
     averageStatus: statusAverage(subjectAverage),
     distribution,
+    periodStats,
+    selectedPeriodId: opts.periodId,
+    classAverages,
+    appel,
     attendanceRate,
     attendanceStatus: statusAttendance(attendanceRate),
     lateCount,

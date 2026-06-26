@@ -27,10 +27,15 @@ type IntlMessages = {
       parents: string;
       classes: string;
       enrollments: string;
+      transport: string;
       timetable: string;
       attendance: string;
       justifications: string;
       staffAttendance: string;
+      leave: string;
+      overtime: string;
+      payroll: string;
+      bourse: string;
       announcements: string;
       surveys: string;
       messages: string;
@@ -104,17 +109,23 @@ function buildItems(locale: string): NavItem[] {
       match: (p, _s) => p.startsWith(`${prefix}/enrollments`),
     },
     {
+      href: `${prefix}/bourse`,
+      labelKey: 'bourse',
+      match: (p, _s) => p.startsWith(`${prefix}/bourse`),
+      roles: ['tenant_admin', 'direction', 'cpe'],
+    },
+    {
+      href: `${prefix}/transport`,
+      labelKey: 'transport',
+      match: (p, _s) => p.startsWith(`${prefix}/transport`),
+      roles: ['tenant_admin', 'direction', 'cpe'],
+    },
+    {
       href: `${prefix}/timetable`,
       labelKey: 'timetable',
       match: (p, _s) => p === `${prefix}/timetable` || p.startsWith(`${prefix}/timetable`),
     },
-    {
-      href: `${prefix}/attendance`,
-      labelKey: 'attendance',
-      match: (p, _s) =>
-        p === `${prefix}/attendance` ||
-        (p.startsWith(`${prefix}/attendance`) && !p.includes('/justifications')),
-    },
+    // Lien « Présences » masqué (la page reste accessible par URL directe).
     {
       href: `${prefix}/attendance/justifications`,
       labelKey: 'justifications',
@@ -125,6 +136,24 @@ function buildItems(locale: string): NavItem[] {
       labelKey: 'staffAttendance',
       match: (p, _s) => p.startsWith(`${prefix}/staff-attendance`),
       roles: ['tenant_admin', 'direction'],
+    },
+    {
+      href: `${prefix}/leave`,
+      labelKey: 'leave',
+      match: (p, _s) => p.startsWith(`${prefix}/leave`),
+      roles: ['tenant_admin', 'direction'],
+    },
+    {
+      href: `${prefix}/overtime`,
+      labelKey: 'overtime',
+      match: (p, _s) => p.startsWith(`${prefix}/overtime`),
+      roles: ['tenant_admin', 'direction', 'comptable'],
+    },
+    {
+      href: `${prefix}/payroll`,
+      labelKey: 'payroll',
+      match: (p, _s) => p.startsWith(`${prefix}/payroll`),
+      roles: ['tenant_admin', 'direction', 'comptable'],
     },
     {
       href: `${prefix}/announcements`,
@@ -166,10 +195,16 @@ export function AdminSidebar({
   locale,
   tenantName,
   roleCodes,
+  logoUrl,
+  vieScolaireBadge = 0,
+  multiSite = false,
 }: {
   locale: string;
   tenantName: string;
   roleCodes: string[];
+  logoUrl?: string | null;
+  vieScolaireBadge?: number;
+  multiSite?: boolean;
 }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -179,28 +214,48 @@ export function AdminSidebar({
   );
 
   return (
-    <aside className="flex h-screen w-60 shrink-0 flex-col border-e border-[#E5E7EB] bg-white text-slate-900">
-      <div className="border-b border-[#E5E7EB] px-4 py-5">
+    <aside className="m-3 flex h-[calc(100vh-1.5rem)] w-60 shrink-0 flex-col rounded-3xl bg-gradient-to-b from-[#1A56DB] to-[#123a8f] p-4 text-white">
+      <div className="flex justify-center px-1.5 pb-4 pt-1">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/sesame-logo.png" alt="Sesame" className="h-8 w-auto" />
-        <div className="mt-2 truncate px-1 text-xs font-medium text-slate-500">{tenantName}</div>
+        <img src={logoUrl ?? '/sesame-logo.png'} alt={tenantName || 'Logo'} className="h-14 w-auto object-contain" />
       </div>
-      <nav className="sidebar-scroll flex-1 overflow-y-auto px-3 pb-4">
+      <nav className="sidebar-scroll -me-1 flex-1 overflow-y-auto pe-1">
         <ul className="space-y-1">
+          {multiSite && (
+            <li>
+              <Link
+                href={`/${locale}/admin/group`}
+                className={[
+                  'flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm transition-colors',
+                  pathname.startsWith(`/${locale}/admin/group`)
+                    ? 'bg-white font-semibold text-[#143fa6] shadow'
+                    : 'text-white/75 hover:bg-white/10',
+                ].join(' ')}
+              >
+                🏫 {t('group')}
+              </Link>
+            </li>
+          )}
           {items.map((item) => {
             const active = item.match(pathname, searchParams);
+            const badge = item.labelKey === 'vieScolaire' ? vieScolaireBadge : 0;
             return (
               <li key={item.href}>
                 <Link
                   href={item.href}
                   className={[
-                    'flex items-center rounded-lg border-s-[3px] px-3 py-2 text-sm transition-colors',
+                    'flex items-center justify-between gap-1.5 rounded-xl px-3 py-2 text-sm transition-colors',
                     active
-                      ? 'border-brand-600 bg-brand-50 font-semibold text-brand-600'
-                      : 'border-transparent text-slate-700 hover:bg-slate-100',
+                      ? 'bg-white font-semibold text-[#143fa6] shadow'
+                      : 'text-white/75 hover:bg-white/10',
                   ].join(' ')}
                 >
                   {t(item.labelKey)}
+                  {badge > 0 && (
+                    <span className="inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
+                      {badge}
+                    </span>
+                  )}
                 </Link>
               </li>
             );

@@ -131,10 +131,19 @@ function formToInput(formData: FormData) {
     nationality: get('nationality'),
     cin: get('cin'),
     regime: get('regime'),
+    usesTransport: formData.get('usesTransport') === 'on' || formData.get('usesTransport') === 'true',
+    cne: get('cne'),
+    codeMassar: get('codeMassar'),
+    imageRights: formData.get('imageRights') === 'on' || formData.get('imageRights') === 'true',
+    exitRights: get('exitRights'),
+    dietInfo: get('dietInfo'),
+    originSchool: get('originSchool'),
+    repeating: formData.get('repeating') === 'on' || formData.get('repeating') === 'true',
     contacts: {
       email: get('contactEmail'),
       phone: get('contactPhone'),
-      whatsapp: get('contactWhatsapp'),
+      // Par défaut, le WhatsApp reprend le numéro de téléphone s'il n'est pas saisi.
+      whatsapp: get('contactWhatsapp') ?? get('contactPhone'),
     },
     address: {
       line1: get('addressLine1'),
@@ -146,6 +155,9 @@ function formToInput(formData: FormData) {
     hireDate: get('hireDate'),
     contractEndDate: get('contractEndDate'),
     contractType: get('contractType'),
+    cnssNumber: get('cnssNumber'),
+    amoNumber: get('amoNumber'),
+    employmentStatus: get('employmentStatus'),
     contractualHoursPerWeek: get('contractualHoursPerWeek'),
     specialtySubjectIds,
     cycleIds,
@@ -161,6 +173,44 @@ function formToInput(formData: FormData) {
     benefits,
     deductions,
   };
+}
+
+/** Champs élève additionnels rangés en metadata (clés définies uniquement). */
+function buildStudentMeta(
+  d: Partial<{
+    cne: string;
+    codeMassar: string;
+    imageRights: boolean;
+    exitRights: number;
+    dietInfo: string;
+    originSchool: string;
+    repeating: boolean;
+  }>,
+  isStudent: boolean,
+): Record<string, unknown> {
+  if (!isStudent) return {};
+  const m: Record<string, unknown> = {};
+  if (d.cne !== undefined) m.cne = d.cne;
+  if (d.codeMassar !== undefined) m.codeMassar = d.codeMassar;
+  if (d.imageRights !== undefined) m.imageRights = d.imageRights;
+  if (d.exitRights !== undefined) m.exitRights = d.exitRights;
+  if (d.dietInfo !== undefined) m.dietInfo = d.dietInfo;
+  if (d.originSchool !== undefined) m.originSchool = d.originSchool;
+  if (d.repeating !== undefined) m.repeating = d.repeating;
+  return m;
+}
+
+/** Champs RH employeur (TEACHER/STAFF) rangés en metadata. */
+function buildEmployeeMeta(
+  d: Partial<{ cnssNumber: string; amoNumber: string; employmentStatus: string }>,
+  isEmployee: boolean,
+): Record<string, unknown> {
+  if (!isEmployee) return {};
+  const m: Record<string, unknown> = {};
+  if (d.cnssNumber !== undefined) m.cnssNumber = d.cnssNumber;
+  if (d.amoNumber !== undefined) m.amoNumber = d.amoNumber;
+  if (d.employmentStatus !== undefined) m.employmentStatus = d.employmentStatus;
+  return m;
 }
 
 export async function createPersonAction(
@@ -187,8 +237,9 @@ export async function createPersonAction(
   const contractEndDate = isEmployee ? (parsed.data.contractEndDate ?? null) : null;
   const contractType = isEmployee ? (parsed.data.contractType ?? null) : null;
   const contractualHoursPerWeek = isTeacher ? (parsed.data.contractualHoursPerWeek ?? null) : null;
-  // Régime : pertinent uniquement pour un élève.
+  // Régime + transport : pertinents uniquement pour un élève.
   const regime = parsed.data.type === 'STUDENT' ? (parsed.data.regime ?? null) : null;
+  const usesTransport = parsed.data.type === 'STUDENT' ? (parsed.data.usesTransport ?? false) : false;
   const homeRoomRaw = formData.get('homeRoomId');
   const homeRoomId =
     isTeacher && typeof homeRoomRaw === 'string' && homeRoomRaw ? homeRoomRaw : null;
@@ -202,7 +253,11 @@ export async function createPersonAction(
         roleId,
         service,
         serviceId,
-        metadata: homeRoomId ? { homeRoomId } : {},
+        metadata: {
+          ...(homeRoomId ? { homeRoomId } : {}),
+          ...buildStudentMeta(parsed.data, parsed.data.type === 'STUDENT'),
+          ...buildEmployeeMeta(parsed.data, isEmployee),
+        },
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,
         birthDate: parsed.data.birthDate,
@@ -210,6 +265,7 @@ export async function createPersonAction(
         nationality: parsed.data.nationality,
         cin: parsed.data.cin,
         regime,
+        usesTransport,
         contacts: parsed.data.contacts ?? {},
         address: parsed.data.address ?? {},
         hireDate,
@@ -329,13 +385,19 @@ export async function updatePersonAction(id: string, formData: FormData): Promis
     const contractualHoursPerWeek = isTeacher
       ? (parsed.data.contractualHoursPerWeek ?? null)
       : null;
-    const regime = before.type === 'STUDENT' ? (parsed.data.regime ?? null) : null;
+    // Régime & transport : VERROUILLÉS en édition (ils impactent la facturation).
+    // On conserve toujours les valeurs existantes ; leur modification passe par
+    // l'Inscription. Le formulaire les affiche désactivés.
+    const regime = before.type === 'STUDENT' ? before.regime : null;
+    const usesTransport = before.type === 'STUDENT' ? before.usesTransport : false;
     const serviceId = await deriveServiceId(tx, tenantId, before.type, roleId);
 
     const homeRoomRaw = formData.get('homeRoomId');
     const metadata = { ...(before.metadata as Record<string, unknown>) };
     if (isTeacher && typeof homeRoomRaw === 'string' && homeRoomRaw) metadata.homeRoomId = homeRoomRaw;
     else delete metadata.homeRoomId;
+    Object.assign(metadata, buildStudentMeta(parsed.data, before.type === 'STUDENT'));
+    Object.assign(metadata, buildEmployeeMeta(parsed.data, before.type === 'TEACHER' || before.type === 'STAFF'));
 
     const updated = await tx.person.update({
       where: { id },
@@ -351,6 +413,7 @@ export async function updatePersonAction(id: string, formData: FormData): Promis
         nationality: parsed.data.nationality,
         cin: parsed.data.cin,
         regime,
+        usesTransport,
         contacts: parsed.data.contacts ?? before.contacts ?? undefined,
         address: parsed.data.address ?? before.address ?? undefined,
         hireDate,

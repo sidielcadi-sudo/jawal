@@ -192,6 +192,7 @@ export async function upsertLesson(
     summary: input.summary ?? null,
     activities: input.activities ?? null,
     competencies: input.competencies ?? null,
+    theme: input.theme ?? null,
     visibleToStudents: input.visibleToStudents,
     visibleToParents: input.visibleToParents,
     publishAt: input.publishAt ? new Date(input.publishAt) : null,
@@ -244,8 +245,15 @@ function parentVisibleWhere(): Prisma.LessonEntryWhereInput {
  * Cahier de texte visible par les parents pour une classe : séances récentes
  * (par défaut 30 derniers jours) avec leurs devoirs et ressources publiées.
  */
-export async function getClassLessonBook(tx: Tx, classId: string, sinceDays = 30) {
-  const since = parseDateUTC(addDays(toDateStr(new Date()), -sinceDays));
+export async function getClassLessonBook(
+  tx: Tx,
+  classId: string,
+  sinceDays = 30,
+  sinceDateStr?: string,
+) {
+  const since = sinceDateStr
+    ? parseDateUTC(sinceDateStr)
+    : parseDateUTC(addDays(toDateStr(new Date()), -sinceDays));
   return tx.lessonEntry.findMany({
     where: { classId, date: { gte: since }, ...parentVisibleWhere() },
     orderBy: { date: 'desc' },
@@ -264,11 +272,11 @@ export async function getClassLessonBook(tx: Tx, classId: string, sinceDays = 30
   });
 }
 
-/** Devoirs à venir (date de rendu ≥ aujourd'hui) visibles parents pour une classe. */
-export async function getClassUpcomingHomeworks(tx: Tx, classId: string) {
-  const today = parseDateUTC(toDateStr(new Date()));
+/** Devoirs à venir (date de rendu ≥ depuis) visibles parents pour une classe. */
+export async function getClassUpcomingHomeworks(tx: Tx, classId: string, sinceDateStr?: string) {
+  const since = sinceDateStr ? parseDateUTC(sinceDateStr) : parseDateUTC(toDateStr(new Date()));
   return tx.homework.findMany({
-    where: { dueDate: { gte: today }, lessonEntry: { classId, ...parentVisibleWhere() } },
+    where: { dueDate: { gte: since }, lessonEntry: { classId, ...parentVisibleWhere() } },
     orderBy: { dueDate: 'asc' },
     take: 50,
     include: {

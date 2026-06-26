@@ -82,7 +82,7 @@ export function RespondForm({ surveyId, questions }: { surveyId: string; questio
                     className={`grid h-9 w-9 place-items-center rounded-lg border text-lg transition-colors ${
                       active
                         ? 'border-brand-400 bg-brand-50 text-brand-600'
-                        : 'border-slate-200 text-slate-300 hover:border-slate-300'
+                        : 'border-slate-100 text-slate-300 hover:border-slate-300'
                     }`}
                   >
                     ★

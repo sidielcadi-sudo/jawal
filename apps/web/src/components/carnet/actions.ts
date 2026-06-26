@@ -24,7 +24,7 @@ const TYPES = [
 ] as const;
 
 /** Types qu'un enseignant peut saisir (le reste est réservé à la vie scolaire). */
-const PEDAGOGICAL = new Set(['OBSERVATION', 'ENCOURAGEMENT', 'FELICITATION']);
+const TEACHER_ALLOWED = new Set(['OBSERVATION', 'ENCOURAGEMENT', 'FELICITATION', 'DEFAUT_CARNET']);
 
 const schema = z.object({
   studentId: z.string().uuid(),
@@ -54,8 +54,8 @@ export async function addCarnetEntryAction(formData: FormData): Promise<Result> 
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalide' };
 
   const hasDiscipline = await can('discipline.write');
-  const isPed = PEDAGOGICAL.has(parsed.data.type);
-  if (!isPed && !hasDiscipline)
+  const isTeacherAllowed = TEACHER_ALLOWED.has(parsed.data.type);
+  if (!isTeacherAllowed && !hasDiscipline)
     return { ok: false, error: 'Type réservé à la vie scolaire / direction.' };
 
   const roleCodes = await currentUserRoleCodes();

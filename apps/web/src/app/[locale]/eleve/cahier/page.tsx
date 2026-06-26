@@ -1,0 +1,168 @@
+import Link from 'next/link';
+import { setRequestLocale, getTranslations } from 'next-intl/server';
+import { auth } from '@/lib/auth';
+import { withTenant } from '@/lib/db';
+import { getStudentPersonId } from '@/lib/student';
+import { getClassLessonBook, getClassUpcomingHomeworks } from '@/lib/lesson-book';
+import { SinceFilter } from './since-filter';
+
+const HW_BADGE: Record<string, string> = {
+  EXERCICE: 'bg-blue-50 text-blue-700',
+  LECTURE: 'bg-violet-50 text-violet-700',
+  REVISION: 'bg-amber-50 text-amber-700',
+  PROJET: 'bg-emerald-50 text-emerald-700',
+  AUTRE: 'bg-slate-100 text-slate-600',
+};
+
+export default async function StudentCahierPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ locale: string }>;
+  searchParams: Promise<{ tab?: string; since?: string }>;
+}) {
+  const { locale } = await params;
+  const sp = await searchParams;
+  setRequestLocale(locale);
+  const session = (await auth())!;
+  const t = await getTranslations('eleve.cahier');
+  const tab = sp.tab === 'travail' ? 'travail' : 'contenu';
+
+  // Par défaut, on remonte à 1 mois avant aujourd'hui.
+  const defaultSince = new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10);
+  const since = sp.since ?? defaultSince;
+
+  const data = await withTenant(session.user.tenantId, async (tx) => {
+    const studentId = await getStudentPersonId(tx, session.user.id);
+    const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
+    const sc =
+      studentId && year
+        ? await tx.studentClass.findFirst({
+            where: { studentId, unenrolledAt: null, class: { academicYearId: year.id } },
+            select: { class: { select: { id: true } } },
+          })
+        : null;
+    const classId = sc?.class.id ?? null;
+    if (!classId) return { classId: null, lessons: [], homeworks: [] };
+    const lessons = tab === 'contenu' ? await getClassLessonBook(tx, classId, 30, since) : [];
+    const homeworks = tab === 'travail' ? await getClassUpcomingHomeworks(tx, classId, since) : [];
+    return { classId, lessons, homeworks };
+  });
+
+  const base = `/${locale}/eleve/cahier`;
+  const q = `&since=${since}`;
+  const fmt = (d: Date | string) =>
+    new Date(typeof d === 'string' ? `${d}T00:00:00.000Z` : d).toLocaleDateString(locale, {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'UTC',
+    });
+
+  const tabCls = (active: boolean) =>
+    `rounded-full px-4 py-1.5 text-sm font-medium ${
+      active ? 'bg-brand-600 text-white' : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+    }`;
+
+  return (
+    <div className="px-3 py-3">
+      <header className="mb-4 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+      </header>
+
+      <div className="mb-4 flex flex-wrap gap-2">
+        <Link href={`${base}?tab=contenu${q}`} className={tabCls(tab === 'contenu')}>
+          {t('tabContent')}
+        </Link>
+        <Link href={`${base}?tab=travail${q}`} className={tabCls(tab === 'travail')}>
+          {t('tabHomework')}
+        </Link>
+      </div>
+
+      <SinceFilter label={t('since')} value={since} basePath={base} tab={tab} />
+
+      {!data.classId ? (
+        <p className="mt-4 rounded-2xl border border-slate-100 bg-white p-8 text-center text-sm text-slate-500">
+          {t('noClass')}
+        </p>
+      ) : tab === 'contenu' ? (
+        <section className="mt-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+          {data.lessons.length === 0 ? (
+            <p className="text-sm text-slate-400">{t('noLesson')}</p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {data.lessons.map((l) => (
+                <li key={l.id} className="py-3 first:pt-0 last:pb-0">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-slate-900">
+                      {l.entry.subject?.label ?? '—'} — {l.title}
+                    </span>
+                    <span className="text-xs capitalize text-slate-400">{fmt(l.date)}</span>
+                  </div>
+                  {l.theme && (
+                    <p className="mt-1 text-xs font-medium text-brand-700">
+                      {t('theme')} : {l.theme}
+                    </p>
+                  )}
+                  {l.summary && (
+                    <p className="mt-1.5 whitespace-pre-line text-sm text-slate-600">{l.summary}</p>
+                  )}
+                  {l.resources.length > 0 && (
+                    <div className="mt-2 border-t border-slate-100 pt-2">
+                      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
+                        {t('resources')}
+                      </p>
+                      <ul className="mt-1 flex flex-wrap gap-2">
+                        {l.resources.map((r) => (
+                          <li key={r.id}>
+                            <a
+                              href={r.kind === 'FILE' ? `/api/cahier/resource/${r.id}` : (r.url ?? '#')}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 rounded-lg border border-slate-100 bg-slate-50 px-2 py-1 text-xs text-brand-700 hover:bg-slate-100"
+                            >
+                              {r.kind === 'FILE' ? '📎' : '🔗'} {r.label}
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      ) : (
+        <section className="mt-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+          {data.homeworks.length === 0 ? (
+            <p className="text-sm text-slate-400">{t('noHomework')}</p>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {data.homeworks.map((h) => (
+                <li key={h.id} className="py-3 text-sm first:pt-0 last:pb-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium text-slate-800">
+                      {h.lessonEntry.entry.subject?.label ?? '—'}
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${HW_BADGE[h.type]}`}>
+                        {t(`homeworkTypes.${h.type}`)}
+                      </span>
+                      {h.dueDate && (
+                        <span className="text-xs font-medium capitalize text-brand-700">
+                          {t('due')} {fmt(h.dueDate)}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <p className="mt-1 whitespace-pre-line text-slate-600">{h.description}</p>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+    </div>
+  );
+}

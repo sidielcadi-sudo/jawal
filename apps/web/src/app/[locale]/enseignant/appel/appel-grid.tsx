@@ -182,14 +182,27 @@ export function AppelGrid({
     });
   }
 
+  // Colonne Infirmerie masquée (les données existantes restent en base).
   const COLS: { cat: AttendanceCategory; label: string; color: keyof typeof BOX_COLOR }[] = [
     { cat: 'ABSENT', label: t('cols.absence'), color: 'red' },
     { cat: 'LATE', label: t('cols.retard'), color: 'amber' },
-    { cat: 'INFIRMARY', label: t('cols.infirmerie'), color: 'blue' },
     { cat: 'PUNISHMENT', label: t('cols.punition'), color: 'purple' },
     { cat: 'EXCLUSION', label: t('cols.exclusion'), color: 'rose' },
     { cat: 'EXCUSED', label: t('cols.dispense'), color: 'green' },
   ];
+
+  // Bande de synthèse réactive (comme l'appel Admin).
+  const summary = useMemo(() => {
+    const acc = { present: 0, absent: 0, lateJust: 0, lateUnjust: 0, excluded: 0 };
+    for (const r of rows) {
+      const cat = categoryOf(r);
+      if (cat === 'PRESENT') acc.present++;
+      else if (cat === 'ABSENT') acc.absent++;
+      else if (cat === 'EXCLUSION') acc.excluded++;
+      else if (cat === 'LATE') r.lateReasonId ? acc.lateJust++ : acc.lateUnjust++;
+    }
+    return acc;
+  }, [rows]);
 
   return (
     <div className="space-y-3">
@@ -204,6 +217,15 @@ export function AppelGrid({
         </p>
       </div>
 
+      {/* Bande de synthèse */}
+      <div className="grid grid-cols-3 gap-2 rounded-2xl border border-slate-200 bg-white p-3 text-center text-xs sm:grid-cols-5">
+        <SummaryPill label={t('summary.present')} value={summary.present} color="emerald" />
+        <SummaryPill label={t('summary.absent')} value={summary.absent} color="red" />
+        <SummaryPill label={t('summary.lateJustified')} value={summary.lateJust} color="amber" />
+        <SummaryPill label={t('summary.lateUnjustified')} value={summary.lateUnjust} color="orange" />
+        <SummaryPill label={t('summary.excluded')} value={summary.excluded} color="rose" />
+      </div>
+
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         <table className="w-full border-collapse text-xs">
           <thead>
@@ -214,11 +236,8 @@ export function AppelGrid({
                   {c.label}
                 </th>
               ))}
-              <th className="min-w-[10rem] border-s border-slate-200 px-2 py-1.5 text-center font-medium">
+              <th className="min-w-[12rem] border-s border-slate-200 px-2 py-1.5 text-center font-medium">
                 {t('cols.observation')}
-              </th>
-              <th className="min-w-[8rem] px-2 py-1.5 text-center font-medium">
-                {t('cols.encouragement')}
               </th>
             </tr>
           </thead>
@@ -272,20 +291,12 @@ export function AppelGrid({
                       label={t('addObservation')}
                     />
                   </td>
-                  <td className="px-2 py-1 align-top">
-                    <TextCellButton
-                      value={r.encouragement}
-                      disabled={locked}
-                      onClick={() => setTextCell({ studentId: r.studentId, field: 'encouragement' })}
-                      label={t('addEncouragement')}
-                    />
-                  </td>
                 </tr>
               );
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-3 py-10 text-center text-slate-500">
+                <td colSpan={COLS.length + 2} className="px-3 py-10 text-center text-slate-500">
                   {t('noStudents')}
                 </td>
               </tr>
@@ -507,8 +518,17 @@ const BOX_COLOR: Record<string, string> = {
   rose: 'border-rose-500 bg-rose-500',
   green: 'border-green-600 bg-green-600',
 };
+// Contour de la case (inactive) = même couleur que la coche.
+const BOX_BORDER: Record<string, string> = {
+  red: 'border-red-500',
+  amber: 'border-amber-500',
+  blue: 'border-blue-500',
+  purple: 'border-purple-500',
+  rose: 'border-rose-500',
+  green: 'border-green-600',
+};
 
-/** Case à cocher colorée (✓ quand active). */
+/** Case à cocher colorée (✓ quand active), contour de la couleur de la coche. */
 function Box({
   active,
   color,
@@ -526,10 +546,34 @@ function Box({
       onClick={onClick}
       disabled={disabled}
       className={`inline-flex h-5 w-5 items-center justify-center rounded border text-xs text-white transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${
-        active ? BOX_COLOR[color] : 'border-slate-300 bg-white hover:border-slate-400'
+        active ? BOX_COLOR[color] : `${BOX_BORDER[color]} bg-white hover:bg-slate-50`
       }`}
     >
       {active ? '✓' : ''}
     </button>
+  );
+}
+
+function SummaryPill({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: 'emerald' | 'red' | 'amber' | 'orange' | 'rose';
+}) {
+  const styles = {
+    emerald: 'text-emerald-700',
+    red: 'text-red-700',
+    amber: 'text-amber-700',
+    orange: 'text-orange-700',
+    rose: 'text-rose-700',
+  }[color];
+  return (
+    <div>
+      <div className={`text-2xl font-semibold tabular-nums ${styles}`}>{value}</div>
+      <div className="text-[11px] text-slate-500">{label}</div>
+    </div>
   );
 }

@@ -3,12 +3,18 @@ import { z } from 'zod';
 export const paymentMethodSchema = z.enum(['CASH', 'CHEQUE', 'TRANSFER', 'CMI', 'STRIPE', 'OTHER']);
 export type PaymentMethodInput = z.infer<typeof paymentMethodSchema>;
 
+export const feeKindSchema = z.enum(['ANNUAL', 'EXCEPTIONAL']);
+export const feeCategorySchema = z.enum(['TUITION', 'TRANSPORT', 'CANTEEN', 'DAYCARE', 'OTHER']);
+
 export const feeScheduleCreateSchema = z.object({
   academicYearId: z.string().uuid(),
   levelId: z.string().uuid(),
   label: z.string().min(1).max(120),
+  kind: feeKindSchema.default('ANNUAL'),
+  category: feeCategorySchema.default('TUITION'),
   totalAmount: z.coerce.number().positive().max(10_000_000),
   installmentCount: z.coerce.number().int().min(1).max(24).default(9),
+  installmentLocked: z.coerce.boolean().default(false),
   firstDueMonth: z.coerce.number().int().min(1).max(12).default(9),
 });
 export type FeeScheduleCreate = z.infer<typeof feeScheduleCreateSchema>;
@@ -23,6 +29,69 @@ export const generateInstallmentsSchema = z.object({
   feeScheduleItemId: z.string().uuid(),
 });
 export type GenerateInstallments = z.infer<typeof generateInstallmentsSchema>;
+
+/* ------------------------------------------------------------------ */
+/* Frais exceptionnels (ponctuels, ciblés, optionnels/obligatoires)    */
+/* ------------------------------------------------------------------ */
+
+const optionalDate = z
+  .preprocess(
+    (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+    z.coerce.date().optional(),
+  )
+  .optional();
+
+/** Type de frais exceptionnel paramétrable (catalogue tenant). */
+export const exceptionalFeeTypeSchema = z.object({
+  labelFr: z.string().min(1).max(80),
+  labelAr: z.string().min(1).max(80),
+  order: z.coerce.number().int().min(0).max(999).default(0),
+  active: z.coerce.boolean().default(true),
+});
+export type ExceptionalFeeTypeInput = z.infer<typeof exceptionalFeeTypeSchema>;
+
+/** Création / édition d'un frais exceptionnel. */
+export const exceptionalFeeCreateSchema = z.object({
+  academicYearId: z.string().uuid(),
+  typeId: z
+    .preprocess(
+      (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+      z.string().uuid().optional(),
+    )
+    .optional(),
+  label: z.string().min(1).max(160),
+  description: z
+    .preprocess(
+      (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+      z.string().max(2000).optional(),
+    )
+    .optional(),
+  amount: z.coerce.number().positive().max(10_000_000),
+  activityDate: optionalDate,
+  dueDate: optionalDate,
+  mandatory: z.coerce.boolean().default(false),
+});
+export type ExceptionalFeeCreate = z.infer<typeof exceptionalFeeCreateSchema>;
+
+/** Affectation d'un frais à des classes entières et/ou des élèves nommés. */
+export const exceptionalFeeAssignSchema = z
+  .object({
+    exceptionalFeeId: z.string().uuid(),
+    classIds: z.array(z.string().uuid()).default([]),
+    studentIds: z.array(z.string().uuid()).default([]),
+  })
+  .refine((d) => d.classIds.length > 0 || d.studentIds.length > 0, {
+    message: 'Sélectionnez au moins une classe ou un élève.',
+    path: ['studentIds'],
+  });
+export type ExceptionalFeeAssign = z.infer<typeof exceptionalFeeAssignSchema>;
+
+/** Décision de consentement du parent. */
+export const exceptionalFeeConsentSchema = z.object({
+  assignmentId: z.string().uuid(),
+  decision: z.enum(['ACCEPT', 'REFUSE']),
+});
+export type ExceptionalFeeConsent = z.infer<typeof exceptionalFeeConsentSchema>;
 
 export const recordPaymentSchema = z.object({
   installmentId: z.string().uuid(),

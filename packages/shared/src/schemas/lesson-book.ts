@@ -29,6 +29,7 @@ export const lessonEntryUpsertSchema = z.object({
   summary: z.string().max(5000).optional(),
   activities: z.string().max(5000).optional(),
   competencies: z.string().max(2000).optional(),
+  theme: z.string().max(500).optional(),
   visibleToStudents: z.boolean().default(true),
   visibleToParents: z.boolean().default(true),
   /// Visibilité programmée — ISO datetime-local (YYYY-MM-DDTHH:MM). Vide = immédiat.

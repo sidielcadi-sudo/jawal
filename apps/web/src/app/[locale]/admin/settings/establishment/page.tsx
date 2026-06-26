@@ -2,7 +2,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { prismaAdmin } from '@/lib/db';
 import { requirePermission } from '@/lib/auth/rbac';
-import { EstablishmentForm } from './client';
+import { EstablishmentForm, LogoUploader } from './client';
 
 export default async function EstablishmentPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -13,7 +13,7 @@ export default async function EstablishmentPage({ params }: { params: Promise<{ 
 
   const tenant = await prismaAdmin.tenant.findUnique({
     where: { id: session.user.tenantId },
-    select: { name: true, slug: true, localeDefault: true, currency: true, timezone: true },
+    select: { name: true, slug: true, localeDefault: true, currency: true, timezone: true, logoFileId: true },
   });
   if (!tenant) return <p className="text-sm text-slate-500">—</p>;
 
@@ -30,6 +30,7 @@ export default async function EstablishmentPage({ params }: { params: Promise<{ 
           timezone: tenant.timezone,
         }}
       />
+      <LogoUploader hasLogo={Boolean(tenant.logoFileId)} />
     </div>
   );
 }

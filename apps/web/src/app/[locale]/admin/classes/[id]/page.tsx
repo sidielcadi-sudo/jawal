@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { ClassActions } from './class-actions';
 import { EnrollmentManager } from './enrollment-manager';
+import { DelegateSelect } from './delegate-select';
 
 export default async function ClassDetailPage({
   params,
@@ -214,6 +215,22 @@ export default async function ClassDetailPage({
               {cls.students.length >= cls.capacity && !cls.deletedAt && (
                 <p className="mt-2 text-xs text-amber-700">{tDetail('capacityReached')}</p>
               )}
+            </div>
+          </section>
+
+          <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-5">
+            <h2 className="text-sm font-semibold text-slate-700">{tDetail('delegate')}</h2>
+            <p className="mt-1 text-xs text-slate-500">{tDetail('delegateHint')}</p>
+            <div className="mt-3">
+              <DelegateSelect
+                classId={cls.id}
+                delegateId={cls.delegateId}
+                students={cls.students.map((sc) => ({
+                  id: sc.student.id,
+                  label: `${sc.student.lastName} ${sc.student.firstName}`,
+                }))}
+                disabled={!!cls.deletedAt}
+              />
             </div>
           </section>
 

@@ -26,7 +26,7 @@ export default async function TeacherTimetablePage({
             include: {
               subject: { select: { label: true } },
               class: { select: { name: true } },
-              room: { select: { code: true } },
+              room: { select: { code: true, label: true } },
             },
           })
         : [];
@@ -36,9 +36,11 @@ export default async function TeacherTimetablePage({
   });
 
   return (
-    <div className="mx-auto max-w-6xl px-6 py-8">
-      <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
-      <p className="mt-1 text-sm text-slate-500">{t('weeklyHoursCount', { count: data.count })}</p>
+    <div className="px-3 py-3">
+      <header className="mb-4 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+        <p className="mt-0.5 text-sm text-slate-600">{t('weeklyHoursCount', { count: data.count })}</p>
+      </header>
 
       {data.count === 0 ? (
         <p className="mt-6 text-sm text-slate-500">{t('empty')}</p>
@@ -71,7 +73,9 @@ export default async function TeacherTimetablePage({
                           <div className="rounded-lg bg-brand-50 px-2 py-1.5">
                             <div className="font-medium text-brand-800">{e.subject?.label ?? '—'}</div>
                             <div className="text-[10px] text-slate-600">{e.class?.name ?? ''}</div>
-                            {e.room?.code && <div className="text-[10px] text-slate-400">{e.room.code}</div>}
+                            {(e.room?.label || e.room?.code) && (
+                              <div className="text-[10px] text-slate-500">📍 {e.room?.label ?? e.room?.code}</div>
+                            )}
                           </div>
                         ) : (
                           <span className="text-slate-200">·</span>

@@ -110,6 +110,10 @@ export async function saveTeacherAppelAction(formData: FormData): Promise<Result
       });
       const authorName = teacher ? `${teacher.firstName} ${teacher.lastName}` : 'Enseignant';
       for (const rec of parsed.data.records) {
+        // Une observation sur un élève absent/en retard/exclu est RETENUE :
+        // elle n'est transmise au parent qu'après traitement Vie scolaire.
+        // Hors absence/retard/exclusion → transmise selon le choix du prof.
+        const isVsEvent = !!EVENT_CATEGORY[categoryOf(rec)];
         const carnet: Array<['OBSERVATION' | 'ENCOURAGEMENT', string | null | undefined, boolean]> = [
           ['OBSERVATION', rec.observation, rec.observationVisible],
           ['ENCOURAGEMENT', rec.encouragement, rec.encouragementVisible],
@@ -120,6 +124,7 @@ export async function saveTeacherAppelAction(formData: FormData): Promise<Result
           });
           const content = (text ?? '').trim();
           if (!content || !sessRow) continue;
+          const held = isVsEvent && visible; // retenue jusqu'à la confirmation VS
           const created = await tx.carnetEntry.create({
             data: {
               tenantId,
@@ -132,10 +137,11 @@ export async function saveTeacherAppelAction(formData: FormData): Promise<Result
               authorUserId: sessionAuth.user.id,
               authorName,
               authorRole: 'teacher',
-              visibleToParents: visible,
+              visibleToParents: held ? false : visible,
+              heldForReview: held,
             },
           });
-          if (visible) carnetIds.push(created.id);
+          if (visible && !held) carnetIds.push(created.id);
         }
       }
 

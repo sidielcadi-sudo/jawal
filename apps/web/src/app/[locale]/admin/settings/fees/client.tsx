@@ -15,16 +15,21 @@ import {
 const inputCls =
   'mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
 
+const FEE_CATEGORIES = ['TUITION', 'TRANSPORT', 'CANTEEN', 'DAYCARE', 'OTHER'] as const;
+
 export function FeeCreateForm({
+  kind,
   years,
   levels,
   currency,
 }: {
+  kind: 'ANNUAL' | 'EXCEPTIONAL';
   years: { id: string; label: string; active: boolean }[];
   levels: { id: string; label: string }[];
   currency: string;
 }) {
   const t = useTranslations('admin.settings.fees.form');
+  const tc = useTranslations('admin.settings.fees.form.categories');
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState('');
@@ -47,6 +52,7 @@ export function FeeCreateForm({
 
   return (
     <form ref={ref} action={onSubmit} className="space-y-3">
+      <input type="hidden" name="kind" value={kind} />
       <div>
         <label className="block text-xs font-medium text-slate-700">{t('year')}</label>
         <select name="academicYearId" required defaultValue={defaultYearId} className={inputCls}>
@@ -67,6 +73,16 @@ export function FeeCreateForm({
           {levels.map((l) => (
             <option key={l.id} value={l.id}>
               {l.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-slate-700">{t('category')}</label>
+        <select name="category" defaultValue={kind === 'ANNUAL' ? 'TUITION' : 'OTHER'} className={inputCls}>
+          {FEE_CATEGORIES.map((c) => (
+            <option key={c} value={c}>
+              {tc(c)}
             </option>
           ))}
         </select>
@@ -111,6 +127,10 @@ export function FeeCreateForm({
           ))}
         </select>
       </div>
+      <label className="flex items-center gap-2 text-sm text-slate-700">
+        <input type="checkbox" name="installmentLocked" className="h-4 w-4 rounded border-slate-300" />
+        {t('installmentLocked')}
+      </label>
       {error && (
         <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">{error}</div>
       )}
@@ -127,8 +147,10 @@ export function FeeCreateForm({
 
 type FeeData = {
   label: string;
+  category: 'TUITION' | 'TRANSPORT' | 'CANTEEN' | 'DAYCARE' | 'OTHER';
   totalAmount: number;
   installmentCount: number;
+  installmentLocked: boolean;
   firstDueMonth: number;
 };
 
@@ -143,6 +165,7 @@ export function FeeRowActions({
 }) {
   const t = useTranslations('admin.settings.fees');
   const tForm = useTranslations('admin.settings.fees.form');
+  const tc = useTranslations('admin.settings.fees.form.categories');
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editing, setEditing] = useState(false);
@@ -203,6 +226,16 @@ export function FeeRowActions({
                 <label className="block text-xs font-medium text-slate-700">{tForm('label')}</label>
                 <input type="text" name="label" required defaultValue={initial.label} className={inputCls} />
               </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700">{tForm('category')}</label>
+                <select name="category" defaultValue={initial.category} className={inputCls}>
+                  {FEE_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>
+                      {tc(c)}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <div className="grid grid-cols-3 gap-2">
                 <div className="col-span-2">
                   <label className="block text-xs font-medium text-slate-700">
@@ -240,6 +273,15 @@ export function FeeRowActions({
                   ))}
                 </select>
               </div>
+              <label className="flex items-center gap-2 text-sm text-slate-700">
+                <input
+                  type="checkbox"
+                  name="installmentLocked"
+                  defaultChecked={initial.installmentLocked}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
+                {tForm('installmentLocked')}
+              </label>
               {error && (
                 <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">{error}</div>
               )}
@@ -269,9 +311,16 @@ export function FeeRowActions({
 
 // ─── Réductions paramétrables (#1/#5) ─────────────────────────────────────
 
-type DiscountData = { label: string; pct: number; active: boolean; order: number };
+type DiscountData = {
+  label: string;
+  pct: number;
+  active: boolean;
+  order: number;
+  feeScheduleItemId: string | null;
+};
+type FeeOption = { id: string; label: string };
 
-export function DiscountCreateForm() {
+export function DiscountCreateForm({ fees }: { fees: FeeOption[] }) {
   const t = useTranslations('admin.settings.fees.discounts');
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -296,6 +345,17 @@ export function DiscountCreateForm() {
       <div>
         <label className="block text-xs font-medium text-slate-700">{t('label')}</label>
         <input type="text" name="label" required placeholder={t('labelPlaceholder')} className={inputCls} />
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-slate-700">{t('feeScope')}</label>
+        <select name="feeScheduleItemId" defaultValue="" className={inputCls}>
+          <option value="">{t('allFees')}</option>
+          {fees.map((f) => (
+            <option key={f.id} value={f.id}>
+              {f.label}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <div>
@@ -325,7 +385,15 @@ export function DiscountCreateForm() {
   );
 }
 
-export function DiscountRowActions({ id, initial }: { id: string; initial: DiscountData }) {
+export function DiscountRowActions({
+  id,
+  initial,
+  fees,
+}: {
+  id: string;
+  initial: DiscountData;
+  fees: FeeOption[];
+}) {
   const t = useTranslations('admin.settings.fees.discounts');
   const tFees = useTranslations('admin.settings.fees');
   const router = useRouter();
@@ -380,6 +448,17 @@ export function DiscountRowActions({ id, initial }: { id: string; initial: Disco
               <div>
                 <label className="block text-xs font-medium text-slate-700">{t('label')}</label>
                 <input type="text" name="label" required defaultValue={initial.label} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-slate-700">{t('feeScope')}</label>
+                <select name="feeScheduleItemId" defaultValue={initial.feeScheduleItemId ?? ''} className={inputCls}>
+                  <option value="">{t('allFees')}</option>
+                  {fees.map((f) => (
+                    <option key={f.id} value={f.id}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
