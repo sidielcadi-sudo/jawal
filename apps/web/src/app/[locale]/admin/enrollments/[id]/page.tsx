@@ -2,10 +2,13 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
+import { can, currentUserRoleCodes } from '@/lib/auth/rbac';
 import { withTenant } from '@/lib/db';
 import { withdrawEnrollmentFormAction } from '../form-actions';
 import { applicableAnnualFees, type FeeCategory } from '@/lib/fees';
 import { AdmissionPanel } from './admission-panel';
+import { RadiationPanel } from './radiation-panel';
+import { RefundPanel } from './refund-panel';
 import { EcheancierTable } from './echeancier-table';
 import { RegimeEdit } from './regime-edit';
 import { SettleDebtsButton } from './settle-debts';
@@ -20,6 +23,10 @@ export default async function EnrollmentDetailPage({
 
   const session = (await auth())!;
   const t = await getTranslations('admin.enrollments');
+  // Cloisonnement : la Vie scolaire (rôle cpe) n'accède pas au détail financier
+  // de l'élève (échéancier, encaissements, créances). Réservé aux profils finance.
+  const canSeeFinance = await can('finance.read');
+  const roleCodes = await currentUserRoleCodes();
 
   const data = await withTenant(session.user.tenantId, async (tx) => {
     const enrollment = await tx.enrollment.findUnique({
@@ -178,6 +185,37 @@ export default async function EnrollmentDetailPage({
   } = data;
   const feeMetaById = new Map(feeMeta);
 
+  // Dernière demande de radiation (+ remboursement) + tuteurs de l'élève.
+  const { radiationRequest, radiationRefund, guardians } = await withTenant(session.user.tenantId, async (tx) => {
+    const [radiationRequest, guardians] = await Promise.all([
+      tx.radiationRequest.findFirst({
+        where: { enrollmentId: enrollment.id },
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          type: true,
+          status: true,
+          reason: true,
+          destinationSchool: true,
+          debtCleared: true,
+          noteRequested: true,
+          vieScolaireComment: true,
+          comptaComment: true,
+          directionComment: true,
+          rejectionReason: true,
+        },
+      }),
+      tx.personRelation.findMany({
+        where: { childId: enrollment.student.id },
+        include: { parent: { select: { id: true, firstName: true, lastName: true, contacts: true } } },
+      }),
+    ]);
+    const radiationRefund = radiationRequest
+      ? await tx.radiationRefund.findUnique({ where: { radiationRequestId: radiationRequest.id } })
+      : null;
+    return { radiationRequest, radiationRefund, guardians };
+  });
+
   // Frais annuels applicables à l'élève (selon transport / régime) → lignes du
   // Dossier d'admission + aperçu prévisionnel (#4 + table éditable).
   const feeCategoryLabels = await getTranslations('admin.settings.fees.form.categories');
@@ -206,15 +244,19 @@ export default async function EnrollmentDetailPage({
   }
   const installmentRows = installments.map((i) => {
     const firstPayment = i.payments[0];
+    const paid = i.payments.reduce((s, p) => s + Number(p.amount), 0);
     return {
       id: i.id,
       label: i.label,
+      // Libellé exact du frais (ex. « Frais d'inscription » vs « Scolarité »),
+      // et non sa catégorie — sinon l'inscription s'affiche comme « Scolarité ».
       feeType: (() => {
         const meta = i.feeScheduleItemId ? feeMetaById.get(i.feeScheduleItemId) : null;
-        return meta ? feeCategoryLabels(meta.category) : i.label;
+        return meta?.label || i.label;
       })(),
       dueDate: i.dueDate.toISOString(),
       amount: Number(i.amount),
+      paid,
       status: i.status as 'PENDING' | 'PARTIAL' | 'PAID' | 'CANCELLED',
       method: firstPayment?.method ?? null,
       reference: firstPayment?.reference ?? null,
@@ -287,6 +329,9 @@ export default async function EnrollmentDetailPage({
     })
     .filter((x): x is NonNullable<typeof x> => x !== null);
 
+  // Dossier archivé (« Historique ») : consultable mais non modifiable.
+  const archived = !!enrollment.archivedAt;
+
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
       <nav className="mb-3 text-xs text-slate-500">
@@ -322,16 +367,51 @@ export default async function EnrollmentDetailPage({
         <StatusBadge status={enrollment.status} t={t} />
       </header>
 
+      {archived && (
+        <div className="mb-5 rounded-2xl border border-slate-300 bg-slate-100 px-4 py-3">
+          <p className="text-sm font-semibold text-slate-700">🗄 {t('detail.archivedTitle')}</p>
+          <p className="mt-0.5 text-xs text-slate-500">{t('detail.archivedHint')}</p>
+        </div>
+      )}
+
+      {/* Tuteurs / parents de l'élève à inscrire */}
+      <section className="mb-5 rounded-2xl border border-slate-200 bg-white p-5">
+        <h2 className="mb-2 text-sm font-semibold text-slate-700">{t('detail.guardians')}</h2>
+        {guardians.length === 0 ? (
+          <p className="text-xs text-slate-500">{t('detail.noGuardian')}</p>
+        ) : (
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {guardians.map((g) => {
+              const c = (g.parent.contacts ?? {}) as { phone?: string; email?: string; whatsapp?: string };
+              return (
+                <li key={g.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
+                  <Link href={`/${locale}/admin/persons/${g.parent.id}`} className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-slate-800 hover:text-brand-700">{g.parent.lastName} {g.parent.firstName}</span>
+                    <span className="text-[11px] text-slate-500">{t(`detail.relations.${g.type}` as never)}</span>
+                  </Link>
+                  <span className="shrink-0 text-end text-xs text-slate-500">
+                    {c.phone && <span className="block">{c.phone}</span>}
+                    {c.email && <span className="block truncate text-[11px]">{c.email}</span>}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
           <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-semibold text-slate-700">{t('detail.summary')}</h2>
-            <RegimeEdit
-              enrollmentId={enrollment.id}
-              regime={enrollment.student.regime}
-              usesTransport={enrollment.student.usesTransport}
-              fees={editableFees}
-            />
+            {!archived && (
+              <RegimeEdit
+                enrollmentId={enrollment.id}
+                regime={enrollment.student.regime}
+                usesTransport={enrollment.student.usesTransport}
+                fees={editableFees}
+              />
+            )}
           </div>
           <dl className="mt-3 space-y-2 text-sm">
             <Row
@@ -372,6 +452,7 @@ export default async function EnrollmentDetailPage({
           </dl>
         </section>
 
+        {canSeeFinance && (
         <section className="rounded-2xl border border-slate-200 bg-white p-5">
           <h2 className="text-sm font-semibold text-slate-700">{t('detail.fees')}</h2>
           {installments.length === 0 ? (
@@ -432,10 +513,11 @@ export default async function EnrollmentDetailPage({
             </>
           )}
         </section>
+        )}
       </div>
 
       {/* Créance antérieure non soldée */}
-      {previousDue.length > 0 && (
+      {canSeeFinance && previousDue.length > 0 && (
         <section className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 p-4">
           <h2 className="text-sm font-semibold text-amber-900">
             ⚠ {t('detail.previousDueTitle')}
@@ -468,44 +550,57 @@ export default async function EnrollmentDetailPage({
         </section>
       )}
 
-      {/* Pipeline d'admission */}
-      <AdmissionPanel
-        enrollmentId={enrollment.id}
-        status={enrollment.status}
-        docs={docRows}
-        classes={classOptions}
-        feeLines={feeLines}
-        currency={tenant.currency}
-        otherDocs={otherDocs}
-      />
+      {/* Pipeline d'admission — masqué sur un dossier archivé */}
+      {!archived && (
+        <AdmissionPanel
+          enrollmentId={enrollment.id}
+          status={enrollment.status}
+          docs={docRows}
+          classes={classOptions}
+          feeLines={feeLines}
+          currency={tenant.currency}
+          otherDocs={otherDocs}
+        />
+      )}
 
-      {/* Échéancier (encaissement par ligne) — dès l'acceptation */}
-      {showEcheancier && <EcheancierTable rows={installmentRows} currency={tenant.currency} />}
+      {/* Échéancier (encaissement par ligne) — dès l'acceptation, profils finance uniquement */}
+      {canSeeFinance && showEcheancier && !archived && (
+        <EcheancierTable rows={installmentRows} currency={tenant.currency} />
+      )}
 
-      {/* Radiation d'un dossier actif (la validation passe par le Dossier d'admission) */}
-      {enrollment.status === 'ACTIVE' && (
-        <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
-          <h2 className="text-sm font-semibold text-slate-700">{t('actions.withdraw')}</h2>
-          <p className="mt-1 text-xs text-slate-500">{t('actions.withdrawHint')}</p>
-          <form action={withdrawEnrollmentFormAction} className="mt-3 space-y-3">
-            <input type="hidden" name="enrollmentId" value={enrollment.id} />
-            <Field label={t('actions.withdrawReason')}>
-              <input
-                type="text"
-                name="reason"
-                required
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
-                placeholder={t('actions.withdrawReasonPlaceholder')}
-              />
-            </Field>
-            <button
-              type="submit"
-              className="rounded-lg border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50"
-            >
-              ✕ {t('actions.withdrawBtn')}
-            </button>
-          </form>
-        </section>
+      {/* Radiation / transfert — workflow Vie scolaire → Compta → Direction + certificat */}
+      {(['ACTIVE', 'AFFECTE', 'INSCRIPTION_VALIDEE'].includes(enrollment.status) || radiationRequest) && (
+        <RadiationPanel
+          enrollmentId={enrollment.id}
+          request={radiationRequest}
+          roleCodes={roleCodes}
+          studentId={enrollment.studentId}
+          academicYearId={enrollment.academicYearId}
+        />
+      )}
+
+      {/* Remboursement (départ en cours d'année) — profils finance uniquement */}
+      {canSeeFinance && radiationRefund && radiationRequest && (
+        <RefundPanel
+          radiationId={radiationRequest.id}
+          roleCodes={roleCodes}
+          currency={tenant.currency}
+          refund={{
+            status: radiationRefund.status,
+            basis: radiationRefund.basis,
+            paidTotal: Number(radiationRefund.paidTotal),
+            consumedTotal: Number(radiationRefund.consumedTotal),
+            computedAmount: Number(radiationRefund.computedAmount),
+            approvedAmount: radiationRefund.approvedAmount === null ? null : Number(radiationRefund.approvedAmount),
+            method: radiationRefund.method,
+            reference: radiationRefund.reference,
+            directionComment: radiationRefund.directionComment,
+            breakdown: radiationRefund.breakdown as
+              | { category: string; paid: number; consumed: number; refundable: number }[]
+              | null,
+            paidAt: radiationRefund.paidAt ? radiationRefund.paidAt.toISOString() : null,
+          }}
+        />
       )}
     </div>
   );

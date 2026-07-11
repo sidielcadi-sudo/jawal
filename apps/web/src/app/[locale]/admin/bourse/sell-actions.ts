@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
+import { postBookSale } from '@/lib/accounting-hooks';
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -38,9 +39,10 @@ export async function sellCopyAction(copyId: string, method: string, buyerId?: s
         where: { id: copyId },
         data: { status: 'SOLD', salePrice, commission, soldAt: new Date(), buyerId: buyerId || null },
       });
-      await tx.bookTransaction.create({
+      const txn = await tx.bookTransaction.create({
         data: { tenantId, campaignId: copy.campaignId, copyId, type: 'SALE', amount: salePrice, method, recordedByUserId: session.user.id },
       });
+      await postBookSale(tx, tenantId, txn.id, salePrice, commission, method, new Date(), session.user.id);
       await logAudit(tx, { tenantId, userId: session.user.id, action: 'sell_copy', entityType: 'BookCopy', entityId: copyId, after: { salePrice, commission, method } });
     });
     revalidatePath('/admin/bourse/vente');

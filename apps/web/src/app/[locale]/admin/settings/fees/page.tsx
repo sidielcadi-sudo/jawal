@@ -2,11 +2,13 @@ import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
+import { refundableMap } from '@/lib/refund';
 import {
   FeeCreateForm,
   FeeRowActions,
   DiscountCreateForm,
   DiscountRowActions,
+  RefundableConfig,
 } from './client';
 
 export default async function FeesPage({
@@ -25,7 +27,7 @@ export default async function FeesPage({
   const tc = await getTranslations('admin.settings.fees.form.categories');
 
   const session = (await auth())!;
-  const { fees, years, levels, currency, discounts, annualFeeOptions } = await withTenant(
+  const { fees, years, levels, currency, discounts, annualFeeOptions, refundable } = await withTenant(
     session.user.tenantId,
     async (tx) => {
       const [fees, years, levels, tenant, discounts] = await Promise.all([
@@ -68,6 +70,9 @@ export default async function FeesPage({
         years,
         levels,
         currency: tenant?.currency ?? 'MAD',
+        // Passe par refundableMap pour appliquer les défauts (inscription non
+        // remboursable) → la case reflète le calcul réel.
+        refundable: refundableMap(tenant?.settings) as Record<string, boolean>,
         discounts: discounts.map((d) => ({
           id: d.id,
           label: d.label,
@@ -237,6 +242,13 @@ export default async function FeesPage({
               </div>
             </div>
           </aside>
+        </div>
+      )}
+
+      {/* Remboursabilité par catégorie (calcul remboursement radiation) */}
+      {subtab === 'annual' && (
+        <div className="max-w-md">
+          <RefundableConfig initial={refundable} />
         </div>
       )}
     </div>

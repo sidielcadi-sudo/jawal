@@ -4,7 +4,9 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { loadParentChildContext } from '@/lib/parent';
 import { loadStudentPendingFees } from '@/lib/exceptional-fees';
+import { cmiConfigured } from '@/lib/cmi';
 import { FeeConsentButtons } from '../fee-consent';
+import { PayOnline } from '../pay-online';
 
 const STATUS_TONE: Record<string, string> = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -14,13 +16,17 @@ const STATUS_TONE: Record<string, string> = {
 
 export default async function ParentChildScolaritePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string; childId: string }>;
+  searchParams: Promise<{ payment?: string }>;
 }) {
   const { locale, childId } = await params;
+  const { payment } = await searchParams;
   setRequestLocale(locale);
   const session = (await auth())!;
   const t = await getTranslations('parent.child');
+  const tp = await getTranslations('parent.child.pay');
 
   const data = await withTenant(session.user.tenantId, async (tx) => {
     const ctx = await loadParentChildContext(tx, session.user.id, childId);
@@ -50,8 +56,17 @@ export default async function ParentChildScolaritePage({
 
   const tx = await getTranslations('parent.child.exceptionalFees');
 
+  const payableFees = data.fees.filter((f) => f.remaining > 0).map((f) => ({ id: f.id, label: f.label, remaining: f.remaining }));
+
   return (
     <div className="space-y-4">
+      {payment === 'success' && (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{tp('successBanner')}</div>
+      )}
+      {payment === 'failed' && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">{tp('failedBanner')}</div>
+      )}
+
       {data.pendingFees.length > 0 && (
         <section className="rounded-2xl border border-amber-200 bg-amber-50/40 p-5">
           <h2 className="text-sm font-semibold text-amber-900">{tx('title')}</h2>
@@ -148,6 +163,10 @@ export default async function ParentChildScolaritePage({
         </>
       )}
       </section>
+
+      {payableFees.length > 0 && (
+        <PayOnline childId={childId} fees={payableFees} currency="MAD" configured={cmiConfigured()} />
+      )}
     </div>
   );
 }

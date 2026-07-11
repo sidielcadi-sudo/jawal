@@ -63,6 +63,12 @@ function safeJson<T>(
   }
 }
 
+/** Normalise la casse d'un nom : « charifi » → « Charifi », « EL AMRANI » → « El Amrani ». */
+function titleCaseName(s: string | undefined): string | undefined {
+  if (!s) return s;
+  return s.toLowerCase().replace(/(^|[\s'’-])(\p{L})/gu, (_m, sep, ch) => sep + ch.toUpperCase());
+}
+
 function formToInput(formData: FormData) {
   const get = (k: string) => {
     const v = formData.get(k);
@@ -124,8 +130,8 @@ function formToInput(formData: FormData) {
     type: get('type'),
     roleId: get('roleId'),
     service: get('service'),
-    firstName: get('firstName'),
-    lastName: get('lastName'),
+    firstName: titleCaseName(get('firstName')),
+    lastName: titleCaseName(get('lastName')),
     birthDate: get('birthDate'),
     gender: get('gender'),
     nationality: get('nationality'),
@@ -200,6 +206,32 @@ function buildStudentMeta(
   return m;
 }
 
+/** Bloc « Santé & sécurité » saisi à la création d'un élève (champs health_*). */
+function buildHealthMeta(formData: FormData, isStudent: boolean): Record<string, unknown> {
+  if (!isStudent) return {};
+  const g = (k: string) => {
+    const v = formData.get(`health_${k}`);
+    return typeof v === 'string' && v.trim() !== '' ? v.trim() : null;
+  };
+  const b = (k: string) => formData.get(`health_${k}`) === 'on';
+  const h = {
+    allergies: g('allergies'),
+    chronicConditions: g('chronicConditions'),
+    treatments: g('treatments'),
+    vaccinations: g('vaccinations'),
+    doctorName: g('doctorName'),
+    doctorPhone: g('doctorPhone'),
+    emergencyContactName: g('emergencyContactName'),
+    emergencyContactPhone: g('emergencyContactPhone'),
+    paiNote: g('paiNote'),
+    pai: b('pai'),
+    medAuthorization: b('medAuthorization'),
+    outingAuthorization: b('outingAuthorization'),
+  };
+  const hasAny = Object.values(h).some((v) => v !== null && v !== false);
+  return hasAny ? { health: h } : {};
+}
+
 /** Champs RH employeur (TEACHER/STAFF) rangés en metadata. */
 function buildEmployeeMeta(
   d: Partial<{ cnssNumber: string; amoNumber: string; employmentStatus: string }>,
@@ -257,6 +289,7 @@ export async function createPersonAction(
           ...(homeRoomId ? { homeRoomId } : {}),
           ...buildStudentMeta(parsed.data, parsed.data.type === 'STUDENT'),
           ...buildEmployeeMeta(parsed.data, isEmployee),
+          ...buildHealthMeta(formData, parsed.data.type === 'STUDENT'),
         },
         firstName: parsed.data.firstName,
         lastName: parsed.data.lastName,

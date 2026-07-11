@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
+import { postBookRefund } from '@/lib/accounting-hooks';
 
 type Result = { ok: true; message?: string } | { ok: false; error: string };
 
@@ -54,9 +55,11 @@ export async function refundSellerAction(
       await tx.bookCopy.updateMany({ where: { id: { in: copies.map((c) => c.id) } }, data: { status: 'REFUNDED', refundedAt: new Date(), refundMode: mode } });
       // Un mouvement de remboursement par exemplaire (pour le journal).
       for (const c of copies) {
-        await tx.bookTransaction.create({
-          data: { tenantId, campaignId, copyId: c.id, type: 'REFUND', amount: (c.salePrice ?? 0) - (c.commission ?? 0), method: mode === 'CASH' ? 'CASH' : 'CREDIT', recordedByUserId: s.user.id },
+        const net = Math.round(((c.salePrice ?? 0) - (c.commission ?? 0)) * 100) / 100;
+        const txn = await tx.bookTransaction.create({
+          data: { tenantId, campaignId, copyId: c.id, type: 'REFUND', amount: net, method: mode === 'CASH' ? 'CASH' : 'CREDIT', recordedByUserId: s.user.id },
         });
+        await postBookRefund(tx, tenantId, txn.id, net, mode === 'CASH' ? 'CASH' : 'CREDIT', new Date(), s.user.id);
       }
       await logAudit(tx, { tenantId, userId: s.user.id, action: 'refund_seller', entityType: 'Person', entityId: sellerId, after: { total, mode, count: copies.length } });
       revalidatePath('/admin/bourse/remboursements');

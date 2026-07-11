@@ -78,7 +78,7 @@ export default async function StudentHomePage({ params }: { params: Promise<{ lo
         {/* Colonne principale */}
         <div className="space-y-4 xl:col-span-2">
           {/* Hero */}
-          <section className="flex items-center justify-between gap-4 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] p-6">
+          <section className="flex items-center justify-between gap-4 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-100 to-brand-50 p-6">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">
                 {t('home.hello', { name: dash.firstName })}
@@ -87,7 +87,7 @@ export default async function StudentHomePage({ params }: { params: Promise<{ lo
               <div className="mt-3 flex gap-2">
                 <Link
                   href={`/${locale}/eleve/notes`}
-                  className="rounded-full bg-[#1A56DB] px-4 py-1.5 text-xs font-semibold text-white hover:bg-[#143fa6]"
+                  className="rounded-full bg-brand-600 px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
                 >
                   {t('nav.notes')}
                 </Link>
@@ -141,7 +141,7 @@ export default async function StudentHomePage({ params }: { params: Promise<{ lo
           <section className="rounded-3xl bg-white p-6 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-base font-semibold text-slate-800">{t('home.recentCarnet')}</h2>
-              <Link href={`/${locale}/eleve/carnet`} className="text-xs font-medium text-[#1A56DB] hover:underline">
+              <Link href={`/${locale}/eleve/carnet`} className="text-xs font-medium text-brand-600 hover:underline">
                 {t('home.seeAll')}
                 {dash.carnetUnread > 0 ? ` (${dash.carnetUnread})` : ''}
               </Link>

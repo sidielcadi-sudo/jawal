@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { getThread, isParticipant, resolveSenderNames } from '@/lib/messaging';
 import { ReplyForm, MarkRead } from '../client';
+import { markParentReadAction } from '../actions';
 
 export default async function ParentThreadPage({
   params,
@@ -16,6 +17,10 @@ export default async function ParentThreadPage({
   const session = (await auth())!;
   const userId = session.user.id;
   const t = await getTranslations('parent.messages');
+
+  // Marque lu côté serveur dès l'ouverture → le compteur de l'en-tête (enveloppe)
+  // se met à jour à la navigation.
+  await markParentReadAction(id).catch(() => null);
 
   const data = await withTenant(session.user.tenantId, async (tx) => {
     if (!(await isParticipant(tx, id, userId))) return null;

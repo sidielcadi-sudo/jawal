@@ -236,7 +236,7 @@ export default async function FinanceDashboardPage({
 
   return (
     <div className="px-3 py-3">
-      <header className="relative mb-4 flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
+      <header className="relative mb-4 flex flex-wrap items-center justify-between gap-3 rounded-3xl bg-gradient-to-r from-brand-100 to-brand-50 px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
           <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>
@@ -259,7 +259,7 @@ export default async function FinanceDashboardPage({
           </Link>
           <Link
             href={`/${locale}/admin/finance/exceptional`}
-            className="rounded-lg bg-[#1A56DB] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#143fa6]"
+            className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-700"
           >
             {t('exceptionalLink')}
           </Link>
@@ -268,6 +268,12 @@ export default async function FinanceDashboardPage({
             className="rounded-lg bg-red-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-red-700"
           >
             {t('unpaid.manageLink')}
+          </Link>
+          <Link
+            href={`/${locale}/admin/finance/creances-annulees`}
+            className="rounded-lg bg-amber-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-amber-600"
+          >
+            {t('waivedLink')}
           </Link>
         </div>
       </header>

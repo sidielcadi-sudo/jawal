@@ -10,6 +10,7 @@ import {
   affectEnrollmentAction,
   activateEnrollmentAction,
   validateDocumentAction,
+  reenrollRefusedEnrollmentAction,
 } from '../admission-actions';
 
 export type DocRow = {
@@ -131,6 +132,20 @@ export function AdmissionPanel({
           </li>
         )}
       </ol>
+
+      {status === 'REFUSE' && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2">
+          <span className="text-sm text-amber-800">{t('reenrollHint')}</span>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => run(() => reenrollRefusedEnrollmentAction(enrollmentId))}
+            className="rounded-lg bg-brand-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          >
+            {t('reenroll')}
+          </button>
+        </div>
+      )}
 
       {err && <p className="mt-3 text-sm text-red-700">{err}</p>}
 

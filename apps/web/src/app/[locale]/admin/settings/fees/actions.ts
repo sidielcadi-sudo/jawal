@@ -28,6 +28,33 @@ function input(formData: FormData) {
   };
 }
 
+const REFUND_CATS = ['TUITION', 'INSCRIPTION', 'TRANSPORT', 'CANTEEN', 'DAYCARE', 'OTHER'] as const;
+
+/**
+ * Enregistre la remboursabilité par catégorie de frais (utilisée pour le calcul
+ * du remboursement lors d'une radiation en cours d'année). Stocké dans
+ * `tenant.settings.refundableCategories`.
+ */
+export async function saveRefundableCategoriesAction(map: Record<string, boolean>): Promise<Result> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requirePermission('finance.write');
+  const tenantId = session.user.tenantId;
+  try {
+    await withTenant(tenantId, async (tx) => {
+      const tenant = await tx.tenant.findFirstOrThrow({ select: { id: true, settings: true } });
+      const refundableCategories = Object.fromEntries(REFUND_CATS.map((c) => [c, map[c] !== false]));
+      const settings = { ...((tenant.settings as Record<string, unknown>) ?? {}), refundableCategories };
+      await tx.tenant.update({ where: { id: tenant.id }, data: { settings } });
+      await logAudit(tx, { tenantId, userId: session.user.id, action: 'update', entityType: 'Tenant', entityId: tenant.id, after: { refundableCategories } });
+    });
+    revalidatePath('/admin/settings/fees');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
+  }
+}
+
 export async function createFeeScheduleAction(formData: FormData): Promise<Result> {
   const session = await auth();
   if (!session?.user) return { ok: false, error: 'Non authentifié' };

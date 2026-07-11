@@ -127,7 +127,7 @@ export default function StyleDemoPage() {
                 <p className="mt-1 max-w-xs text-sm text-slate-600">
                   Vous avez 3 nouvelles tâches aujourd’hui. Beaucoup de travail — c’est parti !
                 </p>
-                <button className="mt-3 text-sm font-semibold text-[#3b5bff] underline-offset-2 hover:underline">
+                <button className="mt-3 text-sm font-semibold text-brand-500 underline-offset-2 hover:underline">
                   consulter
                 </button>
               </div>
@@ -156,7 +156,7 @@ export default function StyleDemoPage() {
                       <span className="text-[11px] font-medium text-slate-500">{b.value}</span>
                       <div className="flex h-32 w-full items-end justify-center">
                         <div
-                          className="w-3.5 rounded-full bg-gradient-to-t from-[#3b5bff] to-[#8aa0ff]"
+                          className="w-3.5 rounded-full bg-gradient-to-t from-brand-500 to-[#8aa0ff]"
                           style={{ height: `${(b.value / maxBar) * 100}%` }}
                         />
                       </div>
@@ -183,7 +183,7 @@ export default function StyleDemoPage() {
             <section className="rounded-3xl bg-white p-6 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-base font-semibold text-slate-800">Enseignants liés</h2>
-                <span className="text-xs font-medium text-[#3b5bff]">Tout voir</span>
+                <span className="text-xs font-medium text-brand-500">Tout voir</span>
               </div>
               <div className="space-y-2">
                 {TEACHERS.map((t) => (
@@ -222,7 +222,7 @@ export default function StyleDemoPage() {
                     <span className="w-10 pt-1 text-xs text-slate-400">{a.time}</span>
                     <div
                       className={`flex-1 rounded-2xl px-4 py-3 ${
-                        a.active ? 'bg-[#3b5bff] text-white' : 'bg-slate-50 text-slate-700'
+                        a.active ? 'bg-brand-500 text-white' : 'bg-slate-50 text-slate-700'
                       }`}
                     >
                       <div className="text-sm font-semibold">{a.title}</div>
@@ -239,7 +239,7 @@ export default function StyleDemoPage() {
             <section className="rounded-3xl bg-white p-6 shadow-sm">
               <div className="mb-3 flex items-center justify-between">
                 <h2 className="text-base font-semibold text-slate-800">Événements à venir</h2>
-                <span className="text-xs font-medium text-[#3b5bff]">Tout voir</span>
+                <span className="text-xs font-medium text-brand-500">Tout voir</span>
               </div>
               <div className="space-y-3">
                 {EVENTS.map((e) => (
@@ -264,7 +264,7 @@ export default function StyleDemoPage() {
 
         <p className="mt-6 text-center text-xs text-slate-400">
           Aperçu de style — données fictives.{' '}
-          <Link href="./" className="text-[#3b5bff] hover:underline">
+          <Link href="./" className="text-brand-500 hover:underline">
             retour
           </Link>
         </p>

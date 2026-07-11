@@ -8,6 +8,7 @@ import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant, prismaAdmin } from '@/lib/db';
 import { safeSendEmail } from '@/lib/email';
+import { pushToTenant, pushToUsers } from '@/lib/push';
 
 type Result<T = void> =
   | { ok: true; data?: T }
@@ -135,6 +136,9 @@ async function notifyAudience(
   tenantId: string,
   announcement: { title: string; body: string; audience: string; classId: string | null; levelId: string | null },
 ): Promise<void> {
+  // Push mobile aux parents concernés (best-effort, en plus de l'email).
+  await pushAnnouncement(tenantId, announcement);
+
   // On utilise prismaAdmin pour aller chercher les personnes — best-effort,
   // l'isolation est garantie par le filtre tenantId.
   let recipients: { firstName: string; lastName: string; contacts: unknown }[] = [];
@@ -202,4 +206,69 @@ async function notifyAudience(
       });
     }),
   );
+}
+
+/** Notification push aux parents concernés par une annonce (best-effort). */
+async function pushAnnouncement(
+  tenantId: string,
+  announcement: { title: string; body: string; audience: string; classId: string | null; levelId: string | null },
+): Promise<void> {
+  const payload = {
+    title: announcement.title,
+    body: announcement.body.length > 140 ? `${announcement.body.slice(0, 137)}…` : announcement.body,
+    data: { type: 'announcement' as const },
+  };
+  try {
+    switch (announcement.audience) {
+      // App parent → tous les appareils du tenant sont des parents.
+      case 'ALL':
+      case 'PARENTS':
+        await pushToTenant(tenantId, payload);
+        break;
+      case 'CLASS': {
+        if (!announcement.classId) return;
+        const scs = await prismaAdmin.studentClass.findMany({
+          where: { tenantId, classId: announcement.classId, unenrolledAt: null },
+          select: { studentId: true },
+        });
+        await pushToParentsOfStudents(tenantId, scs.map((s) => s.studentId), payload);
+        break;
+      }
+      case 'LEVEL': {
+        if (!announcement.levelId) return;
+        const classes = await prismaAdmin.class.findMany({
+          where: { tenantId, levelId: announcement.levelId, deletedAt: null },
+          select: { id: true },
+        });
+        const scs = await prismaAdmin.studentClass.findMany({
+          where: { tenantId, classId: { in: classes.map((c) => c.id) }, unenrolledAt: null },
+          select: { studentId: true },
+        });
+        await pushToParentsOfStudents(tenantId, scs.map((s) => s.studentId), payload);
+        break;
+      }
+      // TEACHERS / STAFF : pas concernés par l'app parent.
+    }
+  } catch (e) {
+    console.error('[push] annonce échouée', e);
+  }
+}
+
+async function pushToParentsOfStudents(
+  tenantId: string,
+  studentIds: string[],
+  payload: { title: string; body: string; data?: Record<string, unknown> },
+): Promise<void> {
+  if (studentIds.length === 0) return;
+  const rels = await prismaAdmin.personRelation.findMany({
+    where: { childId: { in: studentIds } },
+    select: { parentId: true },
+  });
+  const parentIds = [...new Set(rels.map((r) => r.parentId))];
+  if (parentIds.length === 0) return;
+  const ups = await prismaAdmin.userPerson.findMany({
+    where: { personId: { in: parentIds } },
+    select: { userId: true },
+  });
+  await pushToUsers(tenantId, ups.map((u) => u.userId), payload);
 }

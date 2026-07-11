@@ -25,7 +25,8 @@ export default async function EnrollmentsListPage({
     | 'DRAFT'
     | 'ACTIVE'
     | 'WITHDRAWN'
-    | 'GRADUATED';
+    | 'GRADUATED'
+    | 'REFUSE';
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
 
   const { years, currentYearId, items, counts } = await withTenant(
@@ -49,7 +50,7 @@ export default async function EnrollmentsListPage({
               level: { select: { label: true } },
               class: { select: { id: true, name: true } },
             },
-            orderBy: [{ status: 'asc' }, { enrolledAt: 'desc' }],
+            orderBy: [{ student: { lastName: 'asc' } }, { student: { firstName: 'asc' } }],
             skip: (page - 1) * PAGE_SIZE,
             take: PAGE_SIZE,
           })
@@ -69,8 +70,11 @@ export default async function EnrollmentsListPage({
             GRADUATED: await tx.enrollment.count({
               where: { academicYearId: currentYearId, status: 'GRADUATED' },
             }),
+            REFUSE: await tx.enrollment.count({
+              where: { academicYearId: currentYearId, status: 'REFUSE' },
+            }),
           }
-        : { DRAFT: 0, ACTIVE: 0, WITHDRAWN: 0, GRADUATED: 0 };
+        : { DRAFT: 0, ACTIVE: 0, WITHDRAWN: 0, GRADUATED: 0, REFUSE: 0 };
 
       return { years, currentYearId, items, counts };
     },
@@ -78,7 +82,7 @@ export default async function EnrollmentsListPage({
 
   const total =
     filterStatus === 'ALL'
-      ? counts.DRAFT + counts.ACTIVE + counts.WITHDRAWN + counts.GRADUATED
+      ? counts.DRAFT + counts.ACTIVE + counts.WITHDRAWN + counts.GRADUATED + counts.REFUSE
       : counts[filterStatus];
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const pageHref = (p: number) =>
@@ -86,7 +90,7 @@ export default async function EnrollmentsListPage({
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-100 to-brand-50 px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
           <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>
@@ -141,7 +145,7 @@ export default async function EnrollmentsListPage({
           href={`/${locale}/admin/enrollments?year=${currentYearId ?? ''}&status=ALL`}
           active={filterStatus === 'ALL'}
           label={t('filter.all')}
-          count={counts.DRAFT + counts.ACTIVE + counts.WITHDRAWN + counts.GRADUATED}
+          count={counts.DRAFT + counts.ACTIVE + counts.WITHDRAWN + counts.GRADUATED + counts.REFUSE}
         />
         <FilterPill
           href={`/${locale}/admin/enrollments?year=${currentYearId ?? ''}&status=DRAFT`}
@@ -170,6 +174,13 @@ export default async function EnrollmentsListPage({
           label={t('filter.graduated')}
           count={counts.GRADUATED}
           color="blue"
+        />
+        <FilterPill
+          href={`/${locale}/admin/enrollments?year=${currentYearId ?? ''}&status=REFUSE`}
+          active={filterStatus === 'REFUSE'}
+          label={t('filter.refused')}
+          count={counts.REFUSE}
+          color="red"
         />
       </div>
 

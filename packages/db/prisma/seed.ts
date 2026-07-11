@@ -32,7 +32,7 @@ const SYSTEM_ROLES = [
   { code: 'scolarite', label: 'Scolarité', permissions: ['students.*', 'classes.*', 'admissions.*'] },
   { code: 'comptable', label: 'Comptabilité', permissions: ['finance.*'] },
   { code: 'enseignant', label: 'Enseignant', permissions: ['attendance.write', 'grades.write', 'lms.write'] },
-  { code: 'cpe', label: 'CPE / Vie scolaire', permissions: ['attendance.*', 'discipline.*'] },
+  { code: 'cpe', label: 'CPE / Vie scolaire', permissions: ['attendance.*', 'discipline.*', 'communication.*'] },
   { code: 'parent', label: 'Parent', permissions: ['self.read'] },
   { code: 'eleve', label: 'Élève', permissions: ['self.read'] },
 ] as const;

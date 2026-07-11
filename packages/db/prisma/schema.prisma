@@ -25,10 +25,10 @@ enum TenantStatus {
 }
 
 enum TenantProfile {
-  K12              // Primaire/secondaire
-  SUPERIEUR        // Enseignement supérieur
-  FORMATION_PRO    // Formation professionnelle
-  MIXED            // Établissement multi-segments
+  K12 // Primaire/secondaire
+  SUPERIEUR // Enseignement supérieur
+  FORMATION_PRO // Formation professionnelle
+  MIXED // Établissement multi-segments
 }
 
 enum PersonType {
@@ -46,10 +46,10 @@ enum RelationType {
 }
 
 enum ContractType {
-  CDI          // Contrat à durée indéterminée
-  CDD          // Contrat à durée déterminée
-  VACATAIRE    // Vacataire / Heures supp.
-  STAGIAIRE    // Stage
+  CDI // Contrat à durée indéterminée
+  CDD // Contrat à durée déterminée
+  VACATAIRE // Vacataire / Heures supp.
+  STAGIAIRE // Stage
   AUTRE
 }
 
@@ -102,7 +102,7 @@ enum AttendanceStatus {
 /// Mode d'un devoir facultatif (cf. Evaluation.optionalMode).
 enum EvaluationOptionalMode {
   BONUS // points au-dessus de 10/20 ajoutés directement à la moyenne
-  NOTE  // comptée seulement si elle améliore la moyenne
+  NOTE // comptée seulement si elle améliore la moyenne
 }
 
 /// Catégorie d'un événement de vie scolaire (module Gestion des absences).
@@ -114,7 +114,7 @@ enum AttendanceEventCategory {
 
 /// Statut de traitement par la Vie Scolaire d'un événement d'absence.
 enum AttendanceEventStatus {
-  PENDING   // signalé par le prof, à traiter
+  PENDING // signalé par le prof, à traiter
   CONFIRMED // confirmé officiel (→ carnet + notif)
   JUSTIFIED // justifié
   CANCELLED // annulé (erreur de saisie côté prof)
@@ -128,7 +128,7 @@ enum StaffAttendanceStatus {
   ABSENT
   LATE
   EXCUSED
-  LEAVE     // Congé / RTT planifié
+  LEAVE // Congé / RTT planifié
 }
 
 enum JustificationStatus {
@@ -138,10 +138,10 @@ enum JustificationStatus {
 }
 
 enum InstallmentStatus {
-  PENDING    // due, non payé
-  PARTIAL    // partiellement payé
-  PAID       // intégralement payé
-  CANCELLED  // annulé (ex: élève parti)
+  PENDING // due, non payé
+  PARTIAL // partiellement payé
+  PAID // intégralement payé
+  CANCELLED // annulé (ex: élève parti)
 }
 
 /// Cycle de vie d'une inscription. DRAFT = préinscription en attente de
@@ -238,32 +238,32 @@ enum TimetableConstraintKind {
 }
 
 enum PaymentMethod {
-  CASH       // espèces (caisse)
+  CASH // espèces (caisse)
   CHEQUE
-  TRANSFER   // virement
-  CMI        // CMI sandbox/prod
+  TRANSFER // virement
+  CMI // CMI sandbox/prod
   STRIPE
   OTHER
 }
 
 enum AnnouncementAudience {
-  ALL              // tout l'établissement
-  PARENTS          // tous les parents
-  TEACHERS         // tous les enseignants
-  STAFF            // personnel
-  CLASS            // une classe spécifique (classId requis)
-  LEVEL            // un niveau (levelId requis)
+  ALL // tout l'établissement
+  PARENTS // tous les parents
+  TEACHERS // tous les enseignants
+  STAFF // personnel
+  CLASS // une classe spécifique (classId requis)
+  LEVEL // un niveau (levelId requis)
 }
 
 enum CouncilDecision {
-  FELICITATIONS         // Mention spéciale pour excellents résultats
-  ENCOURAGEMENTS        // Encouragements pour effort
-  COMPLIMENTS           // Compliments simples
+  FELICITATIONS // Mention spéciale pour excellents résultats
+  ENCOURAGEMENTS // Encouragements pour effort
+  COMPLIMENTS // Compliments simples
   AVERTISSEMENT_TRAVAIL // Avertissement travail insuffisant
-  AVERTISSEMENT_COMP    // Avertissement comportement
-  PASSAGE               // Passage en classe supérieure
-  REDOUBLEMENT          // Redoublement
-  ORIENTATION           // Réorientation conseillée
+  AVERTISSEMENT_COMP // Avertissement comportement
+  PASSAGE // Passage en classe supérieure
+  REDOUBLEMENT // Redoublement
+  ORIENTATION // Réorientation conseillée
 }
 
 enum HomeworkType {
@@ -294,14 +294,14 @@ enum SurveyAudience {
 }
 
 enum SurveyStatus {
-  DRAFT   // en préparation, non diffusée
-  OPEN    // ouverte aux réponses
-  CLOSED  // clôturée (résultats figés)
+  DRAFT // en préparation, non diffusée
+  OPEN // ouverte aux réponses
+  CLOSED // clôturée (résultats figés)
 }
 
 enum SurveyQuestionType {
   RATING_5 // note 1 à 5 (alimente le KPI satisfaction)
-  TEXT     // réponse libre
+  TEXT // réponse libre
 }
 
 // ─── Tenants & modules ─────────────────────────────────────
@@ -339,75 +339,75 @@ model Tenant {
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
-  group          TenantGroup?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
-  userTenants    UserTenant[]
-  modules        TenantModule[]
-  users          User[]
-  persons        Person[]
-  roles          Role[]
-  academicYears  AcademicYear[]
-  cycles         Cycle[]
-  levels         Level[]
-  classes        Class[]
-  rooms          Room[]
-  periods        Period[]
-  auditLogs      AuditLog[]
-  attendanceSessions AttendanceSession[]
-  attendanceRecords  AttendanceRecord[]
-  attendanceReasons  AttendanceReason[]
-  attendanceEvents   AttendanceEvent[]
-  carnetEntries      CarnetEntry[]
-  absenceJustifications AbsenceJustification[]
-  subjects       Subject[]
-  evaluations    Evaluation[]
-  grades         Grade[]
-  subjectAppreciations SubjectAppreciation[]
-  councilEntries CouncilEntry[]
-  announcements  Announcement[]
-  conversations  Conversation[]
-  messages       Message[]
-  conversationParticipants ConversationParticipant[]
-  feeSchedules   FeeScheduleItem[]
-  discountRules  DiscountRule[]
-  appelReminders AppelReminder[]
-  installments   Installment[]
-  payments       Payment[]
-  files          FileObject[]
-  personRoles    PersonRole[]
-  services       Service[]
-  personRelations PersonRelation[]
-  teacherAssignments TeacherAssignment[]
-  curriculumSubjects CurriculumSubject[]
-  teacherSpecialties TeacherSpecialty[]
-  teacherCycles      TeacherCycle[]
-  teacherPriorityClasses TeacherPriorityClass[]
-  diplomas           Diploma[]
-  staffAttendance    StaffAttendance[]
-  enrollments        Enrollment[]
-  admissionQuotas    AdmissionQuota[]
-  requiredDocuments  RequiredDocument[]
-  enrollmentDocuments EnrollmentDocument[]
-  timetableSlots     TimetableSlot[]
-  timetableEntries   TimetableEntry[]
-  timetableOverrides TimetableOverride[]
-  timetableConstraints TimetableConstraint[]
-  surveys            Survey[]
-  surveyQuestions    SurveyQuestion[]
-  surveyResponses    SurveyResponse[]
-  surveyAnswers      SurveyAnswer[]
-  lessonEntries      LessonEntry[]
-  homeworks          Homework[]
-  lessonResources    LessonResource[]
-  exceptionalFeeTypes       ExceptionalFeeType[]
-  exceptionalFees           ExceptionalFee[]
-  exceptionalFeeAssignments ExceptionalFeeAssignment[]
-  expenses                  Expense[]
-  paymentReminders          PaymentReminder[]
-  transportZones            TransportZone[]
-  buses                     Bus[]
-  transportLines            TransportLine[]
-  transportStops            TransportStop[]
-  studentTransports         StudentTransport[]
+  group                       TenantGroup?                 @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  userTenants                 UserTenant[]
+  modules                     TenantModule[]
+  users                       User[]
+  persons                     Person[]
+  roles                       Role[]
+  academicYears               AcademicYear[]
+  cycles                      Cycle[]
+  levels                      Level[]
+  classes                     Class[]
+  rooms                       Room[]
+  periods                     Period[]
+  auditLogs                   AuditLog[]
+  attendanceSessions          AttendanceSession[]
+  attendanceRecords           AttendanceRecord[]
+  attendanceReasons           AttendanceReason[]
+  attendanceEvents            AttendanceEvent[]
+  carnetEntries               CarnetEntry[]
+  absenceJustifications       AbsenceJustification[]
+  subjects                    Subject[]
+  evaluations                 Evaluation[]
+  grades                      Grade[]
+  subjectAppreciations        SubjectAppreciation[]
+  councilEntries              CouncilEntry[]
+  announcements               Announcement[]
+  conversations               Conversation[]
+  messages                    Message[]
+  conversationParticipants    ConversationParticipant[]
+  feeSchedules                FeeScheduleItem[]
+  discountRules               DiscountRule[]
+  appelReminders              AppelReminder[]
+  installments                Installment[]
+  payments                    Payment[]
+  files                       FileObject[]
+  personRoles                 PersonRole[]
+  services                    Service[]
+  personRelations             PersonRelation[]
+  teacherAssignments          TeacherAssignment[]
+  curriculumSubjects          CurriculumSubject[]
+  teacherSpecialties          TeacherSpecialty[]
+  teacherCycles               TeacherCycle[]
+  teacherPriorityClasses      TeacherPriorityClass[]
+  diplomas                    Diploma[]
+  staffAttendance             StaffAttendance[]
+  enrollments                 Enrollment[]
+  admissionQuotas             AdmissionQuota[]
+  requiredDocuments           RequiredDocument[]
+  enrollmentDocuments         EnrollmentDocument[]
+  timetableSlots              TimetableSlot[]
+  timetableEntries            TimetableEntry[]
+  timetableOverrides          TimetableOverride[]
+  timetableConstraints        TimetableConstraint[]
+  surveys                     Survey[]
+  surveyQuestions             SurveyQuestion[]
+  surveyResponses             SurveyResponse[]
+  surveyAnswers               SurveyAnswer[]
+  lessonEntries               LessonEntry[]
+  homeworks                   Homework[]
+  lessonResources             LessonResource[]
+  exceptionalFeeTypes         ExceptionalFeeType[]
+  exceptionalFees             ExceptionalFee[]
+  exceptionalFeeAssignments   ExceptionalFeeAssignment[]
+  expenses                    Expense[]
+  paymentReminders            PaymentReminder[]
+  transportZones              TransportZone[]
+  buses                       Bus[]
+  transportLines              TransportLine[]
+  transportStops              TransportStop[]
+  studentTransports           StudentTransport[]
   transportAttendanceSessions TransportAttendanceSession[]
   transportAttendanceRecords  TransportAttendanceRecord[]
   notificationLogs            NotificationLog[]
@@ -423,6 +423,16 @@ model Tenant {
   books                       Book[]
   bookCopies                  BookCopy[]
   bookTransactions            BookTransaction[]
+  fiscalYears                 FiscalYear[]
+  accounts                    Account[]
+  journalEntries              JournalEntry[]
+  journalLines                JournalLine[]
+  suppliers                   Supplier[]
+  supplierInvoices            SupplierInvoice[]
+  supplierPayments            SupplierPayment[]
+  radiationRequests           RadiationRequest[]
+  radiationRefunds            RadiationRefund[]
+  staffAlerts                 StaffAlert[]
 
   @@map("tenants")
 }
@@ -430,7 +440,7 @@ model Tenant {
 model TenantModule {
   id        String   @id @default(uuid()) @db.Uuid
   tenantId  String   @map("tenant_id") @db.Uuid
-  code      String   // ex: "core", "admissions", "notes"
+  code      String // ex: "core", "admissions", "notes"
   enabled   Boolean  @default(true)
   config    Json     @default("{}")
   createdAt DateTime @default(now()) @map("created_at")
@@ -466,6 +476,7 @@ model User {
   auditLogs           AuditLog[]
   passwordResetTokens PasswordResetToken[]
   userTenants         UserTenant[]
+  staffAlerts         StaffAlert[]
 
   @@unique([tenantId, email])
   @@index([tenantId])
@@ -492,109 +503,111 @@ model UserTenant {
 
 /// Régime de l'élève (restauration / hébergement). Null pour non-élèves.
 enum StudentRegime {
-  EXTERNE           // externe (ne déjeune pas sur place)
+  EXTERNE // externe (ne déjeune pas sur place)
   DEMI_PENSIONNAIRE // demi-pensionnaire (déjeune à la cantine)
-  INTERNE           // interne (hébergé)
+  INTERNE // interne (hébergé)
 }
 
 model Person {
-  id          String     @id @default(uuid()) @db.Uuid
-  tenantId    String     @map("tenant_id") @db.Uuid
-  type        PersonType
+  id                      String                @id @default(uuid()) @db.Uuid
+  tenantId                String                @map("tenant_id") @db.Uuid
+  type                    PersonType
   /// Catégorie paramétrable (TEACHER ou STAFF uniquement). Null sinon.
-  roleId      String?    @map("role_id") @db.Uuid
+  roleId                  String?               @map("role_id") @db.Uuid
   /// @deprecated Ancien service figé (enum). Remplacé par serviceId → Service.
   /// Conservé en transition ; ne plus écrire dessus.
-  service     StaffService?
+  service                 StaffService?
   /// Service / département paramétrable de rattachement. Déduit du type/rôle.
-  serviceId   String?       @map("service_id") @db.Uuid
-  firstName   String     @map("first_name")
-  lastName    String     @map("last_name")
-  birthDate   DateTime?  @map("birth_date") @db.Date
-  gender      Gender?
-  nationality String?
-  cin         String?    // CIN / passeport
+  serviceId               String?               @map("service_id") @db.Uuid
+  firstName               String                @map("first_name")
+  lastName                String                @map("last_name")
+  birthDate               DateTime?             @map("birth_date") @db.Date
+  gender                  Gender?
+  nationality             String?
+  cin                     String? // CIN / passeport
   /// Régime de l'élève (externe / demi-pensionnaire / interne). Null sinon.
-  regime      StudentRegime?
+  regime                  StudentRegime?
   /// L'élève utilise-t-il le transport scolaire ? (pilote le frais Transport.)
-  usesTransport Boolean  @default(false) @map("uses_transport")
-  contacts    Json       @default("{}") // { email, phone, ... }
-  address     Json       @default("{}")
-  metadata    Json       @default("{}")
+  usesTransport           Boolean               @default(false) @map("uses_transport")
+  contacts                Json                  @default("{}") // { email, phone, ... }
+  address                 Json                  @default("{}")
+  metadata                Json                  @default("{}")
   /// Date d'entrée en fonction (TEACHER/STAFF). Null pour STUDENT/PARENT.
-  hireDate       DateTime?     @map("hire_date") @db.Date
+  hireDate                DateTime?             @map("hire_date") @db.Date
   /// Date de sortie / fin de contrat. Null = encore en poste.
-  contractEndDate DateTime?    @map("contract_end_date") @db.Date
-  contractType   ContractType? @map("contract_type")
+  contractEndDate         DateTime?             @map("contract_end_date") @db.Date
+  contractType            ContractType?         @map("contract_type")
   /// Volume horaire contractuel hebdomadaire (TEACHER uniquement).
   /// Indépendant des heures réellement enseignées (TeacherAssignment) et
   /// des disponibilités horaires (availability). Sert au KPI de couverture
   /// horaire de l'établissement (capacité totale dispo pour le solveur EDT).
-  contractualHoursPerWeek Int?   @map("contractual_hours_per_week")
+  contractualHoursPerWeek Int?                  @map("contractual_hours_per_week")
   /// PDF du contrat — stocké dans MinIO via FileObject.
-  contractFileId String?       @unique @map("contract_file_id") @db.Uuid
+  contractFileId          String?               @unique @map("contract_file_id") @db.Uuid
   /// Photo de la personne — stockée dans MinIO via FileObject.
-  photoFileId    String?       @unique @map("photo_file_id") @db.Uuid
+  photoFileId             String?               @unique @map("photo_file_id") @db.Uuid
   /// RH — uniquement TEACHER/STAFF
-  experienceYears Int?         @map("experience_years")
+  experienceYears         Int?                  @map("experience_years")
   /// JSON : grille hebdomadaire de disponibilités { MON: [{from,to}], ... }
-  availability    Json         @default("{}") @map("availability")
+  availability            Json                  @default("{}") @map("availability")
   /// Données financières — uniquement TEACHER/STAFF
-  rib             String?
-  bankName        String?      @map("bank_name")
-  payrollMethod   PayrollPaymentMethod? @map("payroll_method")
-  grossSalary     Decimal?     @map("gross_salary") @db.Decimal(12, 2)
-  netSalary       Decimal?     @map("net_salary") @db.Decimal(12, 2)
+  rib                     String?
+  bankName                String?               @map("bank_name")
+  payrollMethod           PayrollPaymentMethod? @map("payroll_method")
+  grossSalary             Decimal?              @map("gross_salary") @db.Decimal(12, 2)
+  netSalary               Decimal?              @map("net_salary") @db.Decimal(12, 2)
   /// JSON : avantages [{label, amount}]
-  benefits        Json         @default("[]")
+  benefits                Json                  @default("[]")
   /// JSON : retenues [{label, amount, date?}]
-  deductions      Json         @default("[]")
-  createdAt   DateTime   @default(now()) @map("created_at")
-  updatedAt   DateTime   @updatedAt @map("updated_at")
-  deletedAt   DateTime?  @map("deleted_at")
+  deductions              Json                  @default("[]")
+  createdAt               DateTime              @default(now()) @map("created_at")
+  updatedAt               DateTime              @updatedAt @map("updated_at")
+  deletedAt               DateTime?             @map("deleted_at")
 
-  tenant             Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  role               PersonRole?        @relation(fields: [roleId], references: [id], onDelete: SetNull)
-  serviceRef         Service?           @relation(fields: [serviceId], references: [id], onDelete: SetNull)
-  contractFile       FileObject?        @relation("ContractFile", fields: [contractFileId], references: [id], onDelete: SetNull)
-  photoFile          FileObject?        @relation("PhotoFile", fields: [photoFileId], references: [id], onDelete: SetNull)
-  userPersons        UserPerson[]
-  studentClasses     StudentClass[]
-  mainOfClass        Class[]            @relation("MainTeacher")
-  delegateOfClass    Class[]            @relation("ClassDelegate")
-  attendanceRecords  AttendanceRecord[] @relation("StudentAttendance")
-  grades             Grade[]            @relation("StudentGrades")
-  subjectAppreciations SubjectAppreciation[] @relation("StudentSubjectAppreciations")
-  councilEntries     CouncilEntry[]     @relation("StudentCouncil")
-  carnetEntries      CarnetEntry[]      @relation("StudentCarnet")
-  attendanceEvents   AttendanceEvent[]  @relation("StudentAttendanceEvents")
-  installments       Installment[]      @relation("StudentInstallments")
-  exceptionalFeeAssignments ExceptionalFeeAssignment[] @relation("StudentExceptionalFees")
-  paymentReminders   PaymentReminder[]  @relation("StudentPaymentReminders")
+  tenant                    Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  role                      PersonRole?                 @relation(fields: [roleId], references: [id], onDelete: SetNull)
+  serviceRef                Service?                    @relation(fields: [serviceId], references: [id], onDelete: SetNull)
+  contractFile              FileObject?                 @relation("ContractFile", fields: [contractFileId], references: [id], onDelete: SetNull)
+  photoFile                 FileObject?                 @relation("PhotoFile", fields: [photoFileId], references: [id], onDelete: SetNull)
+  userPersons               UserPerson[]
+  studentClasses            StudentClass[]
+  mainOfClass               Class[]                     @relation("MainTeacher")
+  delegateOfClass           Class[]                     @relation("ClassDelegate")
+  attendanceRecords         AttendanceRecord[]          @relation("StudentAttendance")
+  grades                    Grade[]                     @relation("StudentGrades")
+  subjectAppreciations      SubjectAppreciation[]       @relation("StudentSubjectAppreciations")
+  councilEntries            CouncilEntry[]              @relation("StudentCouncil")
+  carnetEntries             CarnetEntry[]               @relation("StudentCarnet")
+  attendanceEvents          AttendanceEvent[]           @relation("StudentAttendanceEvents")
+  installments              Installment[]               @relation("StudentInstallments")
+  exceptionalFeeAssignments ExceptionalFeeAssignment[]  @relation("StudentExceptionalFees")
+  paymentReminders          PaymentReminder[]           @relation("StudentPaymentReminders")
   /// Transport — lignes où la personne (STAFF) est chauffeur / accompagnatrice.
-  linesAsDriver      TransportLine[]    @relation("LineDriver")
-  linesAsAttendant   TransportLine[]    @relation("LineAttendant")
-  transportAssignment StudentTransport? @relation("StudentTransport")
-  transportAttendances TransportAttendanceRecord[] @relation("StudentTransportAttendance")
-  leaveRequests       LeaveRequest[]     @relation("PersonLeaveRequests")
-  overtimeEntries     OvertimeEntry[]    @relation("PersonOvertime")
-  payrollProfile      EmployeePayrollProfile? @relation("PersonPayrollProfile")
-  payslips            Payslip[]          @relation("PersonPayslips")
-  booksSelling        BookCopy[]         @relation("BookSeller")
-  booksBuying         BookCopy[]         @relation("BookBuyer")
-  teacherAssignments TeacherAssignment[] @relation("TeacherAssignments")
-  teacherSpecialties TeacherSpecialty[]
-  teacherCycles      TeacherCycle[]
-  teacherPriorityClasses TeacherPriorityClass[]
-  diplomas           Diploma[]
-  staffAttendance    StaffAttendance[]   @relation("StaffAttendance")
-  enrollments        Enrollment[]        @relation("StudentEnrollments")
-  timetableEntries   TimetableEntry[]    @relation("TeacherTimetable")
-  substitutionsAsTeacher TimetableOverride[] @relation("SubstituteTeacher")
+  linesAsDriver             TransportLine[]             @relation("LineDriver")
+  linesAsAttendant          TransportLine[]             @relation("LineAttendant")
+  transportAssignment       StudentTransport?           @relation("StudentTransport")
+  transportAttendances      TransportAttendanceRecord[] @relation("StudentTransportAttendance")
+  leaveRequests             LeaveRequest[]              @relation("PersonLeaveRequests")
+  overtimeEntries           OvertimeEntry[]             @relation("PersonOvertime")
+  payrollProfile            EmployeePayrollProfile?     @relation("PersonPayrollProfile")
+  payslips                  Payslip[]                   @relation("PersonPayslips")
+  booksSelling              BookCopy[]                  @relation("BookSeller")
+  booksBuying               BookCopy[]                  @relation("BookBuyer")
+  radiations                RadiationRequest[]          @relation("StudentRadiations")
+  radiationRefunds          RadiationRefund[]           @relation("StudentRefunds")
+  teacherAssignments        TeacherAssignment[]         @relation("TeacherAssignments")
+  teacherSpecialties        TeacherSpecialty[]
+  teacherCycles             TeacherCycle[]
+  teacherPriorityClasses    TeacherPriorityClass[]
+  diplomas                  Diploma[]
+  staffAttendance           StaffAttendance[]           @relation("StaffAttendance")
+  enrollments               Enrollment[]                @relation("StudentEnrollments")
+  timetableEntries          TimetableEntry[]            @relation("TeacherTimetable")
+  substitutionsAsTeacher    TimetableOverride[]         @relation("SubstituteTeacher")
   /// Liens de parenté où cette personne est l'enfant (FROM = student/PARENT-child)
-  relationsAsChild   PersonRelation[]   @relation("ChildRelations")
+  relationsAsChild          PersonRelation[]            @relation("ChildRelations")
   /// Liens où cette personne est le parent/tuteur (TO = parent/guardian)
-  relationsAsParent  PersonRelation[]   @relation("ParentRelations")
+  relationsAsParent         PersonRelation[]            @relation("ParentRelations")
 
   @@index([tenantId, type])
   @@index([tenantId, lastName, firstName])
@@ -608,10 +621,10 @@ model Person {
 /// Spécialités d'un enseignant : matières qu'il est capable d'enseigner
 /// (vs TeacherAssignment qui est ce qu'il enseigne effectivement cette année).
 model TeacherSpecialty {
-  id        String @id @default(uuid()) @db.Uuid
-  tenantId  String @map("tenant_id") @db.Uuid
-  teacherId String @map("teacher_id") @db.Uuid
-  subjectId String @map("subject_id") @db.Uuid
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  teacherId String   @map("teacher_id") @db.Uuid
+  subjectId String   @map("subject_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -666,9 +679,9 @@ model Diploma {
   id          String   @id @default(uuid()) @db.Uuid
   tenantId    String   @map("tenant_id") @db.Uuid
   personId    String   @map("person_id") @db.Uuid
-  title       String   // ex : "Licence en mathématiques"
-  institution String?  // ex : "Université Hassan II"
-  year        Int?     // ex : 2018
+  title       String // ex : "Licence en mathématiques"
+  institution String? // ex : "Université Hassan II"
+  year        Int? // ex : 2018
   order       Int      @default(0)
   createdAt   DateTime @default(now()) @map("created_at")
 
@@ -683,15 +696,15 @@ model Diploma {
 /// donnée pour une année scolaire. Sert à filtrer la saisie de notes et de
 /// base à l'emploi du temps.
 model TeacherAssignment {
-  id              String   @id @default(uuid()) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  teacherId       String   @map("teacher_id") @db.Uuid
-  subjectId       String   @map("subject_id") @db.Uuid
-  classId         String   @map("class_id") @db.Uuid
-  academicYearId  String   @map("academic_year_id") @db.Uuid
-  hoursPerWeek    Float?   @map("hours_per_week")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  teacherId      String   @map("teacher_id") @db.Uuid
+  subjectId      String   @map("subject_id") @db.Uuid
+  classId        String   @map("class_id") @db.Uuid
+  academicYearId String   @map("academic_year_id") @db.Uuid
+  hoursPerWeek   Float?   @map("hours_per_week")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   teacher      Person       @relation("TeacherAssignments", fields: [teacherId], references: [id], onDelete: Cascade)
@@ -712,7 +725,7 @@ model PersonRole {
   id        String     @id @default(uuid()) @db.Uuid
   tenantId  String     @map("tenant_id") @db.Uuid
   appliesTo PersonType @map("applies_to") // TEACHER ou STAFF
-  code      String     // identifiant stable (MAIN_TEACHER, BURSAR, ...)
+  code      String // identifiant stable (MAIN_TEACHER, BURSAR, ...)
   labelFr   String     @map("label_fr")
   labelAr   String     @map("label_ar")
   /// Service / département auquel ce type est rattaché. Pour les types
@@ -739,7 +752,7 @@ model PersonRole {
 model Service {
   id        String   @id @default(uuid()) @db.Uuid
   tenantId  String   @map("tenant_id") @db.Uuid
-  code      String   // identifiant stable (DIRECTION, ENSEIGNANTS, ...)
+  code      String // identifiant stable (DIRECTION, ENSEIGNANTS, ...)
   labelFr   String   @map("label_fr")
   labelAr   String   @map("label_ar")
   order     Int      @default(0)
@@ -781,12 +794,12 @@ model PersonRelation {
 /// Lien compte ↔ identité (un user peut représenter plusieurs persons,
 /// ex. parent rattaché à plusieurs enfants).
 model UserPerson {
-  id           String    @id @default(uuid()) @db.Uuid
-  tenantId     String    @map("tenant_id") @db.Uuid
-  userId       String    @map("user_id") @db.Uuid
-  personId     String    @map("person_id") @db.Uuid
-  relationship String?   // self, father, mother, guardian, ...
-  createdAt    DateTime  @default(now()) @map("created_at")
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  personId     String   @map("person_id") @db.Uuid
+  relationship String? // self, father, mother, guardian, ...
+  createdAt    DateTime @default(now()) @map("created_at")
 
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   person Person @relation(fields: [personId], references: [id], onDelete: Cascade)
@@ -821,7 +834,7 @@ model PasswordResetToken {
 model Role {
   id          String   @id @default(uuid()) @db.Uuid
   tenantId    String   @map("tenant_id") @db.Uuid
-  code        String   // tenant_admin, direction, scolarite, enseignant, parent, eleve, ...
+  code        String // tenant_admin, direction, scolarite, enseignant, parent, eleve, ...
   label       String
   permissions String[] // ex: ["notes.write", "bulletins.publish"]
   isSystem    Boolean  @default(false) @map("is_system")
@@ -856,34 +869,34 @@ model UserRole {
 model AcademicYear {
   id        String   @id @default(uuid()) @db.Uuid
   tenantId  String   @map("tenant_id") @db.Uuid
-  label     String   // "2025-2026"
+  label     String // "2025-2026"
   startDate DateTime @map("start_date") @db.Date
   endDate   DateTime @map("end_date") @db.Date
   active    Boolean  @default(false)
   createdAt DateTime @default(now()) @map("created_at")
 
-  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  periods Period[]
-  classes Class[]
-  feeSchedules FeeScheduleItem[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  periods            Period[]
+  classes            Class[]
+  feeSchedules       FeeScheduleItem[]
   teacherAssignments TeacherAssignment[]
-  enrollments  Enrollment[]
-  timetableEntries TimetableEntry[]
-  admissionQuotas AdmissionQuota[]
-  exceptionalFees ExceptionalFee[]
+  enrollments        Enrollment[]
+  timetableEntries   TimetableEntry[]
+  admissionQuotas    AdmissionQuota[]
+  exceptionalFees    ExceptionalFee[]
 
   @@unique([tenantId, label])
   @@map("academic_years")
 }
 
 model Period {
-  id              String       @id @default(uuid()) @db.Uuid
-  tenantId        String       @map("tenant_id") @db.Uuid
-  academicYearId  String       @map("academic_year_id") @db.Uuid
-  kind            PeriodKind
-  label           String       // "Trimestre 1", "Semestre 2"
-  startDate       DateTime     @map("start_date") @db.Date
-  endDate         DateTime     @map("end_date") @db.Date
+  id             String     @id @default(uuid()) @db.Uuid
+  tenantId       String     @map("tenant_id") @db.Uuid
+  academicYearId String     @map("academic_year_id") @db.Uuid
+  kind           PeriodKind
+  label          String // "Trimestre 1", "Semestre 2"
+  startDate      DateTime   @map("start_date") @db.Date
+  endDate        DateTime   @map("end_date") @db.Date
 
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
@@ -896,7 +909,7 @@ model Period {
 model Cycle {
   id        String   @id @default(uuid()) @db.Uuid
   tenantId  String   @map("tenant_id") @db.Uuid
-  code      String   // "primaire", "college", "lycee", "licence", "master"
+  code      String // "primaire", "college", "lycee", "licence", "master"
   label     String
   order     Int      @default(0)
   /// Réglages spécifiques au cycle (JSON). Overrides les défauts du tenant.
@@ -905,8 +918,8 @@ model Cycle {
   settings  Json     @default("{}")
   createdAt DateTime @default(now()) @map("created_at")
 
-  tenant Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  levels Level[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  levels        Level[]
   teacherCycles TeacherCycle[]
 
   @@unique([tenantId, code])
@@ -917,20 +930,20 @@ model Level {
   id        String   @id @default(uuid()) @db.Uuid
   tenantId  String   @map("tenant_id") @db.Uuid
   cycleId   String   @map("cycle_id") @db.Uuid
-  code      String   // "cp", "ce1", "6eme", "l1", ...
+  code      String // "cp", "ce1", "6eme", "l1", ...
   label     String
   order     Int      @default(0)
   createdAt DateTime @default(now()) @map("created_at")
 
-  tenant            Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  cycle             Cycle               @relation(fields: [cycleId], references: [id], onDelete: Cascade)
-  classes           Class[]
-  feeSchedules      FeeScheduleItem[]
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cycle              Cycle               @relation(fields: [cycleId], references: [id], onDelete: Cascade)
+  classes            Class[]
+  feeSchedules       FeeScheduleItem[]
   curriculumSubjects CurriculumSubject[]
-  enrollments       Enrollment[]
-  admissionQuotas   AdmissionQuota[]
-  requiredDocuments RequiredDocument[]
-  books             Book[]
+  enrollments        Enrollment[]
+  admissionQuotas    AdmissionQuota[]
+  requiredDocuments  RequiredDocument[]
+  books              Book[]
 
   @@unique([tenantId, code])
   @@map("levels")
@@ -941,15 +954,15 @@ model Level {
 /// Source de vérité pour le calcul des moyennes pondérées et la planification
 /// des heures profs (TeacherAssignment).
 model CurriculumSubject {
-  id           String   @id @default(uuid()) @db.Uuid
-  tenantId     String   @map("tenant_id") @db.Uuid
-  levelId      String   @map("level_id") @db.Uuid
-  subjectId    String   @map("subject_id") @db.Uuid
-  weeklyHours  Float    @map("weekly_hours")
-  coefficient  Float    @default(1.0)
-  order        Int      @default(0)
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  levelId     String   @map("level_id") @db.Uuid
+  subjectId   String   @map("subject_id") @db.Uuid
+  weeklyHours Float    @map("weekly_hours")
+  coefficient Float    @default(1.0)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   level   Level   @relation(fields: [levelId], references: [id], onDelete: Cascade)
@@ -962,33 +975,33 @@ model CurriculumSubject {
 }
 
 model Class {
-  id              String    @id @default(uuid()) @db.Uuid
-  tenantId        String    @map("tenant_id") @db.Uuid
-  academicYearId  String    @map("academic_year_id") @db.Uuid
-  levelId         String    @map("level_id") @db.Uuid
-  name            String    // "1AC-A", "TD-Info-1"
-  capacity        Int       @default(30)
-  mainTeacherId   String?   @map("main_teacher_id") @db.Uuid
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  academicYearId String    @map("academic_year_id") @db.Uuid
+  levelId        String    @map("level_id") @db.Uuid
+  name           String // "1AC-A", "TD-Info-1"
+  capacity       Int       @default(30)
+  mainTeacherId  String?   @map("main_teacher_id") @db.Uuid
   /// Délégué de classe (élève), choisi par la Vie scolaire.
-  delegateId      String?   @map("delegate_id") @db.Uuid
+  delegateId     String?   @map("delegate_id") @db.Uuid
   /// Métadonnées de la classe, dont contraintes EDT (E2).
   /// Structure : { "timetableConstraints": ClassTimetableConstraints }
-  metadata        Json      @default("{}")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  deletedAt       DateTime? @map("deleted_at")
+  metadata       Json      @default("{}")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  deletedAt      DateTime? @map("deleted_at")
 
-  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  academicYear AcademicYear        @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  level        Level               @relation(fields: [levelId], references: [id])
-  mainTeacher  Person?             @relation("MainTeacher", fields: [mainTeacherId], references: [id])
-  delegate     Person?             @relation("ClassDelegate", fields: [delegateId], references: [id])
-  students     StudentClass[]
-  attendanceSessions AttendanceSession[]
-  evaluations  Evaluation[]
-  teacherAssignments TeacherAssignment[]
-  enrollments  Enrollment[]
-  timetableEntries TimetableEntry[]
-  lessonEntries LessonEntry[]
+  tenant                 Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  academicYear           AcademicYear           @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  level                  Level                  @relation(fields: [levelId], references: [id])
+  mainTeacher            Person?                @relation("MainTeacher", fields: [mainTeacherId], references: [id])
+  delegate               Person?                @relation("ClassDelegate", fields: [delegateId], references: [id])
+  students               StudentClass[]
+  attendanceSessions     AttendanceSession[]
+  evaluations            Evaluation[]
+  teacherAssignments     TeacherAssignment[]
+  enrollments            Enrollment[]
+  timetableEntries       TimetableEntry[]
+  lessonEntries          LessonEntry[]
   teacherPriorityClasses TeacherPriorityClass[]
 
   @@unique([tenantId, academicYearId, name])
@@ -997,11 +1010,11 @@ model Class {
 }
 
 model StudentClass {
-  id          String    @id @default(uuid()) @db.Uuid
-  tenantId    String    @map("tenant_id") @db.Uuid
-  studentId   String    @map("student_id") @db.Uuid
-  classId     String    @map("class_id") @db.Uuid
-  enrolledAt  DateTime  @default(now()) @map("enrolled_at")
+  id           String    @id @default(uuid()) @db.Uuid
+  tenantId     String    @map("tenant_id") @db.Uuid
+  studentId    String    @map("student_id") @db.Uuid
+  classId      String    @map("class_id") @db.Uuid
+  enrolledAt   DateTime  @default(now()) @map("enrolled_at")
   unenrolledAt DateTime? @map("unenrolled_at")
 
   student Person @relation(fields: [studentId], references: [id], onDelete: Cascade)
@@ -1015,14 +1028,14 @@ model StudentClass {
 model Room {
   id        String   @id @default(uuid()) @db.Uuid
   tenantId  String   @map("tenant_id") @db.Uuid
-  code      String   // "A101", "Labo-Info-2"
+  code      String // "A101", "Labo-Info-2"
   label     String
   capacity  Int      @default(0)
   equipment String[] @default([])
   createdAt DateTime @default(now()) @map("created_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  timetableEntries TimetableEntry[]
+  tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  timetableEntries    TimetableEntry[]
   substitutionsAsRoom TimetableOverride[] @relation("SubstituteRoom")
 
   @@unique([tenantId, code])
@@ -1035,7 +1048,7 @@ model AuditLog {
   id         String   @id @default(uuid()) @db.Uuid
   tenantId   String?  @map("tenant_id") @db.Uuid
   userId     String?  @map("user_id") @db.Uuid
-  action     String   // "create", "update", "delete", "login", ...
+  action     String // "create", "update", "delete", "login", ...
   entityType String   @map("entity_type")
   entityId   String?  @map("entity_id")
   before     Json?
@@ -1053,21 +1066,21 @@ model AuditLog {
 }
 
 model FileObject {
-  id          String   @id @default(uuid()) @db.Uuid
-  tenantId    String   @map("tenant_id") @db.Uuid
-  ownerType   String   @map("owner_type") // "person.contract", "bulletin", ...
-  ownerId     String   @map("owner_id")
-  s3Key       String   @unique @map("s3_key")
-  filename    String
-  mime        String
-  sizeBytes   Int      @map("size_bytes")
-  checksum    String?
-  encrypted   Boolean  @default(false)
-  createdAt   DateTime @default(now()) @map("created_at")
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  ownerType String   @map("owner_type") // "person.contract", "bulletin", ...
+  ownerId   String   @map("owner_id")
+  s3Key     String   @unique @map("s3_key")
+  filename  String
+  mime      String
+  sizeBytes Int      @map("size_bytes")
+  checksum  String?
+  encrypted Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contractOf Person? @relation("ContractFile")
-  photoOf    Person? @relation("PhotoFile")
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contractOf    Person?             @relation("ContractFile")
+  photoOf       Person?             @relation("PhotoFile")
   enrollmentDoc EnrollmentDocument? @relation("EnrollmentDocFile")
 
   @@index([tenantId, ownerType, ownerId])
@@ -1081,23 +1094,23 @@ model FileObject {
 /// (classId, date, periodLabel) — `null` autorisé sur periodLabel pour les
 /// appels journaliers globaux (primaire par ex).
 model AttendanceSession {
-  id           String    @id @default(uuid()) @db.Uuid
-  tenantId     String    @map("tenant_id") @db.Uuid
-  classId      String    @map("class_id") @db.Uuid
-  date         DateTime  @db.Date
-  periodLabel  String?   @map("period_label") // "08h00-09h00", "Cours 1", "Matin", ...
-  finalizedAt  DateTime? @map("finalized_at") // null = brouillon, set = validé
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  classId     String    @map("class_id") @db.Uuid
+  date        DateTime  @db.Date
+  periodLabel String?   @map("period_label") // "08h00-09h00", "Cours 1", "Matin", ...
+  finalizedAt DateTime? @map("finalized_at") // null = brouillon, set = validé
   /// Verrou Vie Scolaire : posé à la confirmation d'un événement. Empêche le prof
   /// de rouvrir l'appel.
-  vsLocked     Boolean   @default(false) @map("vs_locked")
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  vsLocked    Boolean   @default(false) @map("vs_locked")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
-  tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  class   Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
-  records AttendanceRecord[]
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class         Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
+  records       AttendanceRecord[]
   carnetEntries CarnetEntry[]
-  events  AttendanceEvent[]
+  events        AttendanceEvent[]
 
   @@unique([classId, date, periodLabel])
   @@index([tenantId, date])
@@ -1124,12 +1137,12 @@ model AttendanceRecord {
   createdAt    DateTime         @default(now()) @map("created_at")
   updatedAt    DateTime         @updatedAt @map("updated_at")
 
-  tenant       Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  session      AttendanceSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  student      Person                @relation("StudentAttendance", fields: [studentId], references: [id])
-  lateReason   AttendanceReason?     @relation(fields: [lateReasonId], references: [id], onDelete: SetNull)
+  tenant        Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  session       AttendanceSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  student       Person                @relation("StudentAttendance", fields: [studentId], references: [id])
+  lateReason    AttendanceReason?     @relation(fields: [lateReasonId], references: [id], onDelete: SetNull)
   justification AbsenceJustification?
-  event        AttendanceEvent?
+  event         AttendanceEvent?
 
   @@unique([sessionId, studentId])
   @@index([tenantId, studentId])
@@ -1178,16 +1191,16 @@ model AttendanceEvent {
 /// Motif d'appel paramétrable (retard, absence…) géré par l'établissement.
 /// Affiché dans la modale de sélection côté enseignant (barre de couleur).
 model AttendanceReason {
-  id        String   @id @default(uuid()) @db.Uuid
-  tenantId  String   @map("tenant_id") @db.Uuid
-  label     String
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  label            String
   /// Token de couleur (ex. « cyan », « rose », « amber ») pour la barre latérale.
-  color     String?
-  order     Int      @default(0)
-  active    Boolean  @default(true)
+  color            String?
+  order            Int      @default(0)
+  active           Boolean  @default(true)
   /// Motif proposé aux parents pour justifier une absence/retard (popup carnet).
-  forJustification Boolean @default(false) @map("for_justification")
-  createdAt DateTime @default(now()) @map("created_at")
+  forJustification Boolean  @default(false) @map("for_justification")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   records AttendanceRecord[]
@@ -1263,21 +1276,21 @@ model AbsenceJustification {
 model Subject {
   id          String   @id @default(uuid()) @db.Uuid
   tenantId    String   @map("tenant_id") @db.Uuid
-  code        String   // "math", "fr", "ar"
+  code        String // "math", "fr", "ar"
   label       String
   scale       Float    @default(20) // /20 par défaut (peut être 10, 100, etc.)
   coefficient Float    @default(1.0)
   order       Int      @default(0)
   createdAt   DateTime @default(now()) @map("created_at")
 
-  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  evaluations Evaluation[]
-  teacherAssignments TeacherAssignment[]
-  curriculumEntries CurriculumSubject[]
-  teacherSpecialties TeacherSpecialty[]
-  timetableEntries  TimetableEntry[]
+  tenant                 Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  evaluations            Evaluation[]
+  teacherAssignments     TeacherAssignment[]
+  curriculumEntries      CurriculumSubject[]
+  teacherSpecialties     TeacherSpecialty[]
+  timetableEntries       TimetableEntry[]
   substitutionsAsSubject TimetableOverride[] @relation("SubstituteSubject")
-  books             Book[]
+  books                  Book[]
 
   @@unique([tenantId, code])
   /// Empêche deux matières d'avoir le même libellé dans un même tenant —
@@ -1289,23 +1302,23 @@ model Subject {
 /// Une évaluation d'une classe pour une matière à une date donnée.
 /// Un Grade y est attaché par élève inscrit dans la classe.
 model Evaluation {
-  id        String   @id @default(uuid()) @db.Uuid
-  tenantId  String   @map("tenant_id") @db.Uuid
-  classId   String   @map("class_id") @db.Uuid
-  subjectId String   @map("subject_id") @db.Uuid
-  periodId  String   @map("period_id") @db.Uuid
-  label     String   // "Contrôle 1", "Examen mi-trimestre"
-  date      DateTime @db.Date
-  weight    Float    @default(1.0)  // pondération de cette évaluation au sein de la matière
-  maxValue  Float    @default(20.0) @map("max_value")
+  id           String                 @id @default(uuid()) @db.Uuid
+  tenantId     String                 @map("tenant_id") @db.Uuid
+  classId      String                 @map("class_id") @db.Uuid
+  subjectId    String                 @map("subject_id") @db.Uuid
+  periodId     String                 @map("period_id") @db.Uuid
+  label        String // "Contrôle 1", "Examen mi-trimestre"
+  date         DateTime               @db.Date
+  weight       Float                  @default(1.0) // pondération de cette évaluation au sein de la matière
+  maxValue     Float                  @default(20.0) @map("max_value")
   /// Devoir facultatif : ne pénalise jamais la moyenne.
-  optional  Boolean  @default(false)
+  optional     Boolean                @default(false)
   /// Mode du devoir facultatif (ignoré si optional=false).
   /// BONUS : les points au-dessus de 10/20 s'ajoutent à la moyenne.
   /// NOTE  : la note n'est comptée que si elle améliore la moyenne.
   optionalMode EvaluationOptionalMode @default(BONUS) @map("optional_mode")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt    DateTime               @default(now()) @map("created_at")
+  updatedAt    DateTime               @updatedAt @map("updated_at")
 
   tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
@@ -1321,15 +1334,15 @@ model Evaluation {
 /// "absent à l'épreuve" (distingué via la présence d'un AttendanceRecord
 /// ce jour-là si besoin — phase 2).
 model Grade {
-  id           String   @id @default(uuid()) @db.Uuid
-  tenantId     String   @map("tenant_id") @db.Uuid
-  evaluationId String   @map("evaluation_id") @db.Uuid
-  studentId    String   @map("student_id") @db.Uuid
-  value        Float?
-  comment      String?
-  enteredByUserId String? @map("entered_by_user_id") @db.Uuid
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  evaluationId    String   @map("evaluation_id") @db.Uuid
+  studentId       String   @map("student_id") @db.Uuid
+  value           Float?
+  comment         String?
+  enteredByUserId String?  @map("entered_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
@@ -1343,15 +1356,15 @@ model Grade {
 /// Appréciation d'un élève pour une matière sur une période donnée.
 /// Une seule appréciation par triplet (student, subject, period).
 model SubjectAppreciation {
-  id              String   @id @default(uuid()) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  studentId       String   @map("student_id") @db.Uuid
-  subjectId       String   @map("subject_id") @db.Uuid
-  periodId        String   @map("period_id") @db.Uuid
-  text            String
-  authoredByUserId String? @map("authored_by_user_id") @db.Uuid
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  studentId        String   @map("student_id") @db.Uuid
+  subjectId        String   @map("subject_id") @db.Uuid
+  periodId         String   @map("period_id") @db.Uuid
+  text             String
+  authoredByUserId String?  @map("authored_by_user_id") @db.Uuid
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
 
   tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   student Person @relation("StudentSubjectAppreciations", fields: [studentId], references: [id], onDelete: Cascade)
@@ -1363,14 +1376,14 @@ model SubjectAppreciation {
 
 /// Type d'entrée du carnet de correspondance.
 enum CarnetEntryType {
-  OBSERVATION            // remarque pédagogique (enseignant)
+  OBSERVATION // remarque pédagogique (enseignant)
   ENCOURAGEMENT
   FELICITATION
   REMARQUE_DISCIPLINAIRE // vie scolaire
   DEFAUT_CARNET
   AVERTISSEMENT
   MESSAGE_DIRECTION
-  CONVOCATION            // demande d'entretien
+  CONVOCATION // demande d'entretien
   // Entrées officielles matérialisées par la Vie Scolaire (module absences).
   ABSENCE
   RETARD
@@ -1382,32 +1395,32 @@ enum CarnetEntryType {
 /// (absences/retards/exclusions) ne sont PAS stockés ici : ils sont dérivés à
 /// l'affichage depuis les AttendanceRecord finalisés (source unique de vérité).
 model CarnetEntry {
-  id               String          @id @default(uuid()) @db.Uuid
-  tenantId         String          @map("tenant_id") @db.Uuid
-  studentId        String          @map("student_id") @db.Uuid
-  type             CarnetEntryType
-  content          String
-  classId          String?         @map("class_id") @db.Uuid
-  subjectId        String?         @map("subject_id") @db.Uuid
+  id                  String          @id @default(uuid()) @db.Uuid
+  tenantId            String          @map("tenant_id") @db.Uuid
+  studentId           String          @map("student_id") @db.Uuid
+  type                CarnetEntryType
+  content             String
+  classId             String?         @map("class_id") @db.Uuid
+  subjectId           String?         @map("subject_id") @db.Uuid
   /// Lien optionnel vers la séance d'appel d'origine (obs./encour. saisis dans
   /// la feuille d'appel). Permet l'upsert idempotent par (séance, élève, type).
-  attendanceSessionId String?      @map("attendance_session_id") @db.Uuid
-  occurredAt       DateTime        @default(now()) @map("occurred_at")
-  authorUserId     String?         @map("author_user_id") @db.Uuid
+  attendanceSessionId String?         @map("attendance_session_id") @db.Uuid
+  occurredAt          DateTime        @default(now()) @map("occurred_at")
+  authorUserId        String?         @map("author_user_id") @db.Uuid
   /// Snapshot lisible de l'auteur (ex. « Mme BROWN J. »).
-  authorName       String          @map("author_name")
+  authorName          String          @map("author_name")
   /// Snapshot du rôle : 'teacher' | 'vie-scolaire' | 'direction'.
-  authorRole       String          @map("author_role")
+  authorRole          String          @map("author_role")
   /// Visibilité parents/élève (utilisé par l'incrément portail parent).
-  visibleToParents Boolean         @default(true) @map("visible_to_parents")
+  visibleToParents    Boolean         @default(true) @map("visible_to_parents")
   /// Première consultation par un parent (« Vu le »). Null = non lu.
-  parentReadAt     DateTime?       @map("parent_read_at")
+  parentReadAt        DateTime?       @map("parent_read_at")
   /// Observation/encouragement saisi à l'appel sur un élève absent/en retard :
   /// retenu jusqu'au traitement Vie scolaire (visibleToParents passe à true à ce
   /// moment). Les observations hors absence/retard ne sont jamais retenues.
-  heldForReview    Boolean         @default(false) @map("held_for_review")
-  createdAt        DateTime        @default(now()) @map("created_at")
-  updatedAt        DateTime        @updatedAt @map("updated_at")
+  heldForReview       Boolean         @default(false) @map("held_for_review")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
 
   tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   student           Person             @relation("StudentCarnet", fields: [studentId], references: [id], onDelete: Cascade)
@@ -1421,11 +1434,11 @@ model CarnetEntry {
 /// Journal des relances « appel non fait » envoyées au prof (anti-spam).
 /// 1 relance max par séance d'EDT et par jour.
 model AppelReminder {
-  id        String   @id @default(uuid()) @db.Uuid
-  tenantId  String   @map("tenant_id") @db.Uuid
-  entryId   String   @map("entry_id") @db.Uuid
-  date      DateTime @db.Date
-  sentAt    DateTime @default(now()) @map("sent_at")
+  id       String   @id @default(uuid()) @db.Uuid
+  tenantId String   @map("tenant_id") @db.Uuid
+  entryId  String   @map("entry_id") @db.Uuid
+  date     DateTime @db.Date
+  sentAt   DateTime @default(now()) @map("sent_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -1438,17 +1451,17 @@ model AppelReminder {
 /// Inclut l'appréciation générale et la décision (passage/redoublement/…).
 /// 1 seule entrée par (student, class, period).
 model CouncilEntry {
-  id                 String           @id @default(uuid()) @db.Uuid
-  tenantId           String           @map("tenant_id") @db.Uuid
-  classId            String           @map("class_id") @db.Uuid
-  periodId           String           @map("period_id") @db.Uuid
-  studentId          String           @map("student_id") @db.Uuid
-  generalAppreciation String?         @map("general_appreciation")
-  decision           CouncilDecision?
-  heldAt             DateTime?        @map("held_at")
-  authoredByUserId   String?          @map("authored_by_user_id") @db.Uuid
-  createdAt          DateTime         @default(now()) @map("created_at")
-  updatedAt          DateTime         @updatedAt @map("updated_at")
+  id                  String           @id @default(uuid()) @db.Uuid
+  tenantId            String           @map("tenant_id") @db.Uuid
+  classId             String           @map("class_id") @db.Uuid
+  periodId            String           @map("period_id") @db.Uuid
+  studentId           String           @map("student_id") @db.Uuid
+  generalAppreciation String?          @map("general_appreciation")
+  decision            CouncilDecision?
+  heldAt              DateTime?        @map("held_at")
+  authoredByUserId    String?          @map("authored_by_user_id") @db.Uuid
+  createdAt           DateTime         @default(now()) @map("created_at")
+  updatedAt           DateTime         @updatedAt @map("updated_at")
 
   tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   student Person @relation("StudentCouncil", fields: [studentId], references: [id], onDelete: Cascade)
@@ -1466,43 +1479,47 @@ model CouncilEntry {
 /// StudentClass + les Installments depuis la grille FeeScheduleItem,
 /// en appliquant la réduction fratrie si applicable.
 model Enrollment {
-  id                  String           @id @default(uuid()) @db.Uuid
-  tenantId            String           @map("tenant_id") @db.Uuid
-  studentId           String           @map("student_id") @db.Uuid
-  academicYearId      String           @map("academic_year_id") @db.Uuid
-  levelId             String           @map("level_id") @db.Uuid
-  classId             String?          @map("class_id") @db.Uuid
-  status              EnrollmentStatus @default(DRAFT)
+  id                String           @id @default(uuid()) @db.Uuid
+  tenantId          String           @map("tenant_id") @db.Uuid
+  studentId         String           @map("student_id") @db.Uuid
+  academicYearId    String           @map("academic_year_id") @db.Uuid
+  levelId           String           @map("level_id") @db.Uuid
+  classId           String?          @map("class_id") @db.Uuid
+  status            EnrollmentStatus @default(DRAFT)
   /// Rang fratrie au moment de la validation (1 = aîné).
   /// Sert à appliquer la réduction `siblingDiscountPct` du tenant.
-  siblingRank         Int?             @map("sibling_rank")
+  siblingRank       Int?             @map("sibling_rank")
   /// Réduction effectivement appliquée en pourcentage (issue du tenant
   /// settings ou écrasée manuellement par l'agent).
-  discountPct         Decimal?         @map("discount_pct") @db.Decimal(5, 2)
-  discountReason      String?          @map("discount_reason")
+  discountPct       Decimal?         @map("discount_pct") @db.Decimal(5, 2)
+  discountReason    String?          @map("discount_reason")
   /// True une fois les Installments générés. Permet d'éviter une double
   /// génération si on repasse par validate().
-  feesGenerated       Boolean          @default(false) @map("fees_generated")
-  enrolledAt          DateTime         @default(now()) @map("enrolled_at")
-  validatedAt         DateTime?        @map("validated_at")
-  withdrawnAt         DateTime?        @map("withdrawn_at")
-  withdrawalReason    String?          @map("withdrawal_reason")
-  notes               String?
-  createdByUserId     String?          @map("created_by_user_id") @db.Uuid
-  validatedByUserId   String?          @map("validated_by_user_id") @db.Uuid
+  feesGenerated     Boolean          @default(false) @map("fees_generated")
+  enrolledAt        DateTime         @default(now()) @map("enrolled_at")
+  validatedAt       DateTime?        @map("validated_at")
+  withdrawnAt       DateTime?        @map("withdrawn_at")
+  withdrawalReason  String?          @map("withdrawal_reason")
+  /// Dossier archivé (« Historique ») suite à une radiation finalisée :
+  /// consultable mais non modifiable.
+  archivedAt        DateTime?        @map("archived_at")
+  notes             String?
+  createdByUserId   String?          @map("created_by_user_id") @db.Uuid
+  validatedByUserId String?          @map("validated_by_user_id") @db.Uuid
   /// Décision d'admission (ACCEPTE / REFUSE).
-  refusalReason       String?          @map("refusal_reason")
-  decidedAt           DateTime?        @map("decided_at")
-  decidedByUserId     String?          @map("decided_by_user_id") @db.Uuid
-  createdAt           DateTime         @default(now()) @map("created_at")
-  updatedAt           DateTime         @updatedAt @map("updated_at")
+  refusalReason     String?          @map("refusal_reason")
+  decidedAt         DateTime?        @map("decided_at")
+  decidedByUserId   String?          @map("decided_by_user_id") @db.Uuid
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  student      Person       @relation("StudentEnrollments", fields: [studentId], references: [id], onDelete: Cascade)
-  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  level        Level        @relation(fields: [levelId], references: [id], onDelete: Cascade)
-  class        Class?       @relation(fields: [classId], references: [id], onDelete: SetNull)
-  documents    EnrollmentDocument[]
+  tenant            Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student           Person               @relation("StudentEnrollments", fields: [studentId], references: [id], onDelete: Cascade)
+  academicYear      AcademicYear         @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  level             Level                @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  class             Class?               @relation(fields: [classId], references: [id], onDelete: SetNull)
+  documents         EnrollmentDocument[]
+  radiationRequests RadiationRequest[]
 
   @@unique([studentId, academicYearId])
   @@index([tenantId, academicYearId, status])
@@ -1613,27 +1630,27 @@ model TimetableSlot {
 /// vol côté serveur — pas de contrainte SQL pour permettre le rattrapage
 /// (l'admin peut vouloir saisir un conflit puis le résoudre).
 model TimetableEntry {
-  id              String    @id @default(uuid()) @db.Uuid
-  tenantId        String    @map("tenant_id") @db.Uuid
-  academicYearId  String    @map("academic_year_id") @db.Uuid
-  classId         String    @map("class_id") @db.Uuid
-  slotId          String    @map("slot_id") @db.Uuid
-  dayOfWeek       DayOfWeek @map("day_of_week")
-  subjectId       String?   @map("subject_id") @db.Uuid
-  teacherId       String?   @map("teacher_id") @db.Uuid
-  roomId          String?   @map("room_id") @db.Uuid
-  note            String?
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
+  id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String    @map("tenant_id") @db.Uuid
+  academicYearId String    @map("academic_year_id") @db.Uuid
+  classId        String    @map("class_id") @db.Uuid
+  slotId         String    @map("slot_id") @db.Uuid
+  dayOfWeek      DayOfWeek @map("day_of_week")
+  subjectId      String?   @map("subject_id") @db.Uuid
+  teacherId      String?   @map("teacher_id") @db.Uuid
+  roomId         String?   @map("room_id") @db.Uuid
+  note           String?
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  academicYear AcademicYear  @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  class        Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
-  slot         TimetableSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
-  subject      Subject?      @relation(fields: [subjectId], references: [id], onDelete: SetNull)
-  teacher      Person?       @relation("TeacherTimetable", fields: [teacherId], references: [id], onDelete: SetNull)
-  room         Room?         @relation(fields: [roomId], references: [id], onDelete: SetNull)
-  overrides    TimetableOverride[]
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  academicYear  AcademicYear        @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  class         Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
+  slot          TimetableSlot       @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  subject       Subject?            @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  teacher       Person?             @relation("TeacherTimetable", fields: [teacherId], references: [id], onDelete: SetNull)
+  room          Room?               @relation(fields: [roomId], references: [id], onDelete: SetNull)
+  overrides     TimetableOverride[]
   lessonEntries LessonEntry[]
 
   @@unique([classId, academicYearId, dayOfWeek, slotId])
@@ -1649,18 +1666,18 @@ model TimetableEntry {
 ///
 /// Unique sur (entryId × date) : 1 override max par séance.
 model TimetableOverride {
-  id                String                @id @default(uuid()) @db.Uuid
-  tenantId          String                @map("tenant_id") @db.Uuid
-  entryId           String                @map("entry_id") @db.Uuid
-  date              DateTime              @db.Date
-  kind              TimetableOverrideKind
-  substituteTeacherId String?             @map("substitute_teacher_id") @db.Uuid
-  substituteRoomId    String?             @map("substitute_room_id") @db.Uuid
-  substituteSubjectId String?             @map("substitute_subject_id") @db.Uuid
-  reason            String?
-  createdByUserId   String?               @map("created_by_user_id") @db.Uuid
-  createdAt         DateTime              @default(now()) @map("created_at")
-  updatedAt         DateTime              @updatedAt @map("updated_at")
+  id                  String                @id @default(uuid()) @db.Uuid
+  tenantId            String                @map("tenant_id") @db.Uuid
+  entryId             String                @map("entry_id") @db.Uuid
+  date                DateTime              @db.Date
+  kind                TimetableOverrideKind
+  substituteTeacherId String?               @map("substitute_teacher_id") @db.Uuid
+  substituteRoomId    String?               @map("substitute_room_id") @db.Uuid
+  substituteSubjectId String?               @map("substitute_subject_id") @db.Uuid
+  reason              String?
+  createdByUserId     String?               @map("created_by_user_id") @db.Uuid
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
 
   tenant            Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   entry             TimetableEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
@@ -1682,28 +1699,28 @@ model TimetableOverride {
 /// côté parent. Les infos de séance (matière, salle, créneau, jour) sont
 /// lues via la relation `entry`.
 model LessonEntry {
-  id        String   @id @default(uuid()) @db.Uuid
-  tenantId  String   @map("tenant_id") @db.Uuid
-  entryId   String   @map("entry_id") @db.Uuid
-  classId   String   @map("class_id") @db.Uuid
-  date      DateTime @db.Date
+  id                String    @id @default(uuid()) @db.Uuid
+  tenantId          String    @map("tenant_id") @db.Uuid
+  entryId           String    @map("entry_id") @db.Uuid
+  classId           String    @map("class_id") @db.Uuid
+  date              DateTime  @db.Date
   /// Bloc « Contenu du cours »
-  title       String
-  summary     String?
-  activities  String?
-  competencies String?
+  title             String
+  summary           String?
+  activities        String?
+  competencies      String?
   /// Thème / chapitre du cours (saisi sous le contenu).
-  theme       String?
+  theme             String?
   /// Bloc « Visibilité »
-  visibleToStudents Boolean @default(true) @map("visible_to_students")
-  visibleToParents  Boolean @default(true) @map("visible_to_parents")
+  visibleToStudents Boolean   @default(true) @map("visible_to_students")
+  visibleToParents  Boolean   @default(true) @map("visible_to_parents")
   /// Visibilité programmée : si renseigné, masqué élèves/parents tant que
   /// `publishAt` n'est pas atteint (ex. cacher un contrôle jusqu'à la fin).
   /// Null = visible immédiatement (sous réserve des drapeaux ci-dessus).
-  publishAt   DateTime? @map("publish_at")
-  createdById String?  @map("created_by_id") @db.Uuid
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  publishAt         DateTime? @map("publish_at")
+  createdById       String?   @map("created_by_id") @db.Uuid
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   entry     TimetableEntry   @relation(fields: [entryId], references: [id], onDelete: Cascade)
@@ -1947,33 +1964,34 @@ enum FeeKind {
 
 /// Catégorie d'un frais — pilote l'applicabilité conditionnelle à l'inscription.
 enum FeeCategory {
-  TUITION    // scolarité (toujours applicable)
-  TRANSPORT  // transport (si l'élève utilise le transport scolaire)
-  CANTEEN    // cantine (si demi-pensionnaire ou interne)
-  DAYCARE    // garderie
-  OTHER      // autres
+  TUITION // scolarité (toujours applicable)
+  INSCRIPTION // frais d'inscription (non remboursables par défaut)
+  TRANSPORT // transport (si l'élève utilise le transport scolaire)
+  CANTEEN // cantine (si demi-pensionnaire ou interne)
+  DAYCARE // garderie
+  OTHER // autres
 }
 
 /// installmentCount = nombre d'échéances mensuelles à générer.
 model FeeScheduleItem {
-  id              String   @id @default(uuid()) @db.Uuid
-  tenantId        String   @map("tenant_id") @db.Uuid
-  academicYearId  String   @map("academic_year_id") @db.Uuid
-  levelId         String   @map("level_id") @db.Uuid
-  label           String                                 // "Frais annuels", "Cantine", etc.
-  kind            FeeKind     @default(ANNUAL)
-  category        FeeCategory @default(TUITION)
-  totalAmount     Decimal  @db.Decimal(12, 2) @map("total_amount")
-  installmentCount Int     @default(9) @map("installment_count")
+  id                String      @id @default(uuid()) @db.Uuid
+  tenantId          String      @map("tenant_id") @db.Uuid
+  academicYearId    String      @map("academic_year_id") @db.Uuid
+  levelId           String      @map("level_id") @db.Uuid
+  label             String // "Frais annuels", "Cantine", etc.
+  kind              FeeKind     @default(ANNUAL)
+  category          FeeCategory @default(TUITION)
+  totalAmount       Decimal     @map("total_amount") @db.Decimal(12, 2)
+  installmentCount  Int         @default(9) @map("installment_count")
   /// Si true, le nb d'échéances est figé et non modifiable à l'admission.
-  installmentLocked Boolean @default(false) @map("installment_locked")
-  firstDueMonth   Int      @default(9) @map("first_due_month")  // 9 = sept
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  installmentLocked Boolean     @default(false) @map("installment_locked")
+  firstDueMonth     Int         @default(9) @map("first_due_month") // 9 = sept
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
 
-  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  level        Level        @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  academicYear  AcademicYear   @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  level         Level          @relation(fields: [levelId], references: [id], onDelete: Cascade)
   discountRules DiscountRule[]
 
   @@unique([tenantId, academicYearId, levelId, label])
@@ -1985,15 +2003,15 @@ model FeeScheduleItem {
 /// Rattachée à un frais précis (feeScheduleItemId) ou globale (null).
 /// Sélectionnable manuellement à l'acceptation d'un dossier d'inscription.
 model DiscountRule {
-  id        String   @id @default(uuid()) @db.Uuid
-  tenantId  String   @map("tenant_id") @db.Uuid
-  label     String
-  pct       Decimal  @db.Decimal(5, 2)
-  active    Boolean  @default(true)
-  order     Int      @default(0)
-  feeScheduleItemId String? @map("fee_schedule_item_id") @db.Uuid
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid()) @db.Uuid
+  tenantId          String   @map("tenant_id") @db.Uuid
+  label             String
+  pct               Decimal  @db.Decimal(5, 2)
+  active            Boolean  @default(true)
+  order             Int      @default(0)
+  feeScheduleItemId String?  @map("fee_schedule_item_id") @db.Uuid
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   tenant Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   fee    FeeScheduleItem? @relation(fields: [feeScheduleItemId], references: [id], onDelete: Cascade)
@@ -2005,20 +2023,27 @@ model DiscountRule {
 /// Échéance due pour un élève. Générée à la volée depuis une FeeScheduleItem.
 /// status calculé : sumPayments == 0 → PENDING, < amount → PARTIAL, ≥ → PAID.
 model Installment {
-  id            String            @id @default(uuid()) @db.Uuid
-  tenantId      String            @map("tenant_id") @db.Uuid
-  studentId     String            @map("student_id") @db.Uuid
-  feeScheduleItemId String?       @map("fee_schedule_item_id") @db.Uuid  // null si ad hoc
-  label         String                                  // "Mensualité septembre"
-  amount        Decimal           @db.Decimal(12, 2)
-  dueDate       DateTime          @db.Date              @map("due_date")
-  status        InstallmentStatus @default(PENDING)
-  createdAt     DateTime          @default(now()) @map("created_at")
-  updatedAt     DateTime          @updatedAt @map("updated_at")
+  id                String            @id @default(uuid()) @db.Uuid
+  tenantId          String            @map("tenant_id") @db.Uuid
+  studentId         String            @map("student_id") @db.Uuid
+  feeScheduleItemId String?           @map("fee_schedule_item_id") @db.Uuid // null si ad hoc
+  label             String // "Mensualité septembre"
+  amount            Decimal           @db.Decimal(12, 2)
+  dueDate           DateTime          @map("due_date") @db.Date
+  status            InstallmentStatus @default(PENDING)
+  // Effacement de créance (remise gracieuse) : la créance passe en CANCELLED
+  // mais reste tracée (montant effacé, motif, auteur, date) pour le rapport
+  // « créances annulées » et l'écriture comptable OD (remise).
+  waivedAmount      Decimal?          @map("waived_amount") @db.Decimal(12, 2)
+  waivedReason      String?           @map("waived_reason")
+  waivedByUserId    String?           @map("waived_by_user_id") @db.Uuid
+  waivedAt          DateTime?         @map("waived_at")
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
 
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  student  Person    @relation("StudentInstallments", fields: [studentId], references: [id])
-  payments Payment[]
+  tenant                   Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student                  Person                    @relation("StudentInstallments", fields: [studentId], references: [id])
+  payments                 Payment[]
   exceptionalFeeAssignment ExceptionalFeeAssignment?
 
   @@index([tenantId, studentId, status])
@@ -2029,21 +2054,67 @@ model Installment {
 /// Paiement enregistré sur une échéance. Plusieurs paiements possibles
 /// (paiement partiel). status de l'échéance recalculé après chaque insert.
 model Payment {
-  id            String        @id @default(uuid()) @db.Uuid
-  tenantId      String        @map("tenant_id") @db.Uuid
-  installmentId String        @map("installment_id") @db.Uuid
-  amount        Decimal       @db.Decimal(12, 2)
-  method        PaymentMethod
-  reference     String?       // numéro chèque, ref virement, txn CMI, etc.
-  paidAt        DateTime      @default(now()) @map("paid_at")
-  recordedByUserId String?    @map("recorded_by_user_id") @db.Uuid
-  createdAt     DateTime      @default(now()) @map("created_at")
+  id               String        @id @default(uuid()) @db.Uuid
+  tenantId         String        @map("tenant_id") @db.Uuid
+  installmentId    String        @map("installment_id") @db.Uuid
+  amount           Decimal       @db.Decimal(12, 2)
+  method           PaymentMethod
+  reference        String? // numéro chèque, ref virement, txn CMI, etc.
+  paidAt           DateTime      @default(now()) @map("paid_at")
+  recordedByUserId String?       @map("recorded_by_user_id") @db.Uuid
+  createdAt        DateTime      @default(now()) @map("created_at")
 
   tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   installment Installment @relation(fields: [installmentId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, paidAt])
   @@map("payments")
+}
+
+/// Jeton de notification push d'un appareil (app mobile parent, Expo Push).
+/// `token` = ExponentPushToken[…]. Un user peut avoir plusieurs appareils.
+model DeviceToken {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  token     String   @unique
+  platform  String? // ios | android
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([tenantId, userId])
+  @@map("device_tokens")
+}
+
+/// Statut d'une commande de paiement en ligne (passerelle).
+enum OnlinePaymentStatus {
+  PENDING // commande créée, en attente du retour passerelle
+  PAID // confirmé (callback signé Approved)
+  FAILED // refusé / annulé
+}
+
+/// Commande de paiement en ligne (passerelle CMI). L'`id` sert d'`oid` CMI et
+/// corrèle la transaction aux échéances à solder ; la confirmation arrive via
+/// le callback serveur-à-serveur (signature vérifiée) qui enregistre alors les
+/// paiements. Aucune relation Prisma (accès par `prismaAdmin` scopé tenant côté
+/// callback, sans session) — RLS assurée par la politique tenant_id.
+model OnlinePayment {
+  id              String              @id @default(uuid()) @db.Uuid
+  tenantId        String              @map("tenant_id") @db.Uuid
+  studentId       String              @map("student_id") @db.Uuid
+  installmentIds  String[]            @map("installment_ids") @db.Uuid
+  amount          Decimal             @db.Decimal(12, 2)
+  currency        String              @default("MAD")
+  provider        String              @default("CMI")
+  status          OnlinePaymentStatus @default(PENDING)
+  providerRef     String?             @map("provider_ref") // ex. CMI transaction id (oid retour)
+  rawResult       Json?               @map("raw_result")
+  createdByUserId String?             @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime            @default(now()) @map("created_at")
+  paidAt          DateTime?           @map("paid_at")
+
+  @@index([tenantId, status])
+  @@map("online_payments")
 }
 
 /// Statut d'un frais exceptionnel.
@@ -2089,24 +2160,24 @@ model ExceptionalFeeType {
 /// jamais aux mensualités. Une fois accepté (ou obligatoire), une ligne
 /// Installment est créée pour entrer dans le flux de paiement existant.
 model ExceptionalFee {
-  id             String               @id @default(uuid()) @db.Uuid
-  tenantId       String               @map("tenant_id") @db.Uuid
-  academicYearId String               @map("academic_year_id") @db.Uuid
-  typeId         String?              @map("type_id") @db.Uuid
-  label          String                                          // "Sortie au Musée de l'Histoire"
-  description    String?
-  amount         Decimal              @db.Decimal(12, 2)
-  activityDate   DateTime?            @map("activity_date") @db.Date
-  dueDate        DateTime?            @map("due_date") @db.Date  // échéance de paiement de la ligne créée
-  mandatory      Boolean              @default(false)             // obligatoire → pas de choix parent
-  status         ExceptionalFeeStatus @default(DRAFT)
-  createdByUserId String?             @map("created_by_user_id") @db.Uuid
-  createdAt      DateTime             @default(now()) @map("created_at")
-  updatedAt      DateTime             @updatedAt @map("updated_at")
+  id              String               @id @default(uuid()) @db.Uuid
+  tenantId        String               @map("tenant_id") @db.Uuid
+  academicYearId  String               @map("academic_year_id") @db.Uuid
+  typeId          String?              @map("type_id") @db.Uuid
+  label           String // "Sortie au Musée de l'Histoire"
+  description     String?
+  amount          Decimal              @db.Decimal(12, 2)
+  activityDate    DateTime?            @map("activity_date") @db.Date
+  dueDate         DateTime?            @map("due_date") @db.Date // échéance de paiement de la ligne créée
+  mandatory       Boolean              @default(false) // obligatoire → pas de choix parent
+  status          ExceptionalFeeStatus @default(DRAFT)
+  createdByUserId String?              @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime             @default(now()) @map("created_at")
+  updatedAt       DateTime             @updatedAt @map("updated_at")
 
-  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  academicYear AcademicYear        @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
-  type         ExceptionalFeeType? @relation(fields: [typeId], references: [id], onDelete: SetNull)
+  tenant       Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear               @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  type         ExceptionalFeeType?        @relation(fields: [typeId], references: [id], onDelete: SetNull)
   assignments  ExceptionalFeeAssignment[]
 
   @@index([tenantId, status])
@@ -2117,23 +2188,23 @@ model ExceptionalFee {
 /// installmentId : ligne facturée créée à l'acceptation (ou à la publication
 /// si le frais est obligatoire). Null tant que non accepté.
 model ExceptionalFeeAssignment {
-  id              String     @id @default(uuid()) @db.Uuid
-  tenantId        String     @map("tenant_id") @db.Uuid
-  exceptionalFeeId String    @map("exceptional_fee_id") @db.Uuid
-  studentId       String     @map("student_id") @db.Uuid
-  consent         FeeConsent @default(PENDING)
-  consentAt       DateTime?  @map("consent_at")
-  consentByUserId String?    @map("consent_by_user_id") @db.Uuid
-  installmentId   String?    @unique @map("installment_id") @db.Uuid
+  id                  String      @id @default(uuid()) @db.Uuid
+  tenantId            String      @map("tenant_id") @db.Uuid
+  exceptionalFeeId    String      @map("exceptional_fee_id") @db.Uuid
+  studentId           String      @map("student_id") @db.Uuid
+  consent             FeeConsent  @default(PENDING)
+  consentAt           DateTime?   @map("consent_at")
+  consentByUserId     String?     @map("consent_by_user_id") @db.Uuid
+  installmentId       String?     @unique @map("installment_id") @db.Uuid
   /// Annulation après paiement : mode de traitement du montant déjà versé.
-  refundMode      RefundMode? @map("refund_mode")
-  refundedAt      DateTime?   @map("refunded_at")
+  refundMode          RefundMode? @map("refund_mode")
+  refundedAt          DateTime?   @map("refunded_at")
   /// Justificatif de remboursement (FileObject MinIO).
-  refundFileId    String?    @unique @map("refund_file_id") @db.Uuid
+  refundFileId        String?     @unique @map("refund_file_id") @db.Uuid
   /// Échéance sur laquelle le montant a été imputé (mode CREDITED).
-  creditInstallmentId String? @map("credit_installment_id") @db.Uuid
-  createdAt       DateTime   @default(now()) @map("created_at")
-  updatedAt       DateTime   @updatedAt @map("updated_at")
+  creditInstallmentId String?     @map("credit_installment_id") @db.Uuid
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
 
   tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   exceptionalFee ExceptionalFee @relation(fields: [exceptionalFeeId], references: [id], onDelete: Cascade)
@@ -2155,30 +2226,30 @@ enum RefundMode {
 
 /// Catégorie d'une dépense de l'établissement.
 enum ExpenseCategory {
-  SALARY      // salaires / paie
-  RENT        // loyer
-  UTILITIES   // eau / électricité / internet
-  SUPPLIES    // fournitures / matériel
+  SALARY // salaires / paie
+  RENT // loyer
+  UTILITIES // eau / électricité / internet
+  SUPPLIES // fournitures / matériel
   MAINTENANCE // entretien / réparations
-  TRANSPORT   // transport
-  TAXES       // impôts / taxes
+  TRANSPORT // transport
+  TAXES // impôts / taxes
   OTHER
 }
 
 /// Dépense de l'établissement (sortie de caisse). Alimente le solde de
 /// trésorerie réel : encaissements − dépenses.
 model Expense {
-  id              String          @id @default(uuid()) @db.Uuid
-  tenantId        String          @map("tenant_id") @db.Uuid
-  label           String
-  category        ExpenseCategory @default(OTHER)
-  amount          Decimal         @db.Decimal(12, 2)
-  date            DateTime        @db.Date
-  method          PaymentMethod?
-  note            String?
-  recordedByUserId String?        @map("recorded_by_user_id") @db.Uuid
-  createdAt       DateTime        @default(now()) @map("created_at")
-  updatedAt       DateTime        @updatedAt @map("updated_at")
+  id               String          @id @default(uuid()) @db.Uuid
+  tenantId         String          @map("tenant_id") @db.Uuid
+  label            String
+  category         ExpenseCategory @default(OTHER)
+  amount           Decimal         @db.Decimal(12, 2)
+  date             DateTime        @db.Date
+  method           PaymentMethod?
+  note             String?
+  recordedByUserId String?         @map("recorded_by_user_id") @db.Uuid
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -2216,14 +2287,14 @@ enum BusStatus {
 model TransportZone {
   id           String   @id @default(uuid()) @db.Uuid
   tenantId     String   @map("tenant_id") @db.Uuid
-  name         String   // "Zone 1", "Zone 2"…
+  name         String // "Zone 1", "Zone 2"…
   order        Int      @default(0)
   annualAmount Decimal  @default(0) @map("annual_amount") @db.Decimal(12, 2)
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  stops  TransportStop[]
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stops             TransportStop[]
   studentTransports StudentTransport[]
 
   @@index([tenantId])
@@ -2234,8 +2305,8 @@ model TransportZone {
 model Bus {
   id        String    @id @default(uuid()) @db.Uuid
   tenantId  String    @map("tenant_id") @db.Uuid
-  number    String    // numéro du bus
-  plate     String?   // matricule (immatriculation)
+  number    String // numéro du bus
+  plate     String? // matricule (immatriculation)
   capacity  Int       @default(0)
   status    BusStatus @default(EN_SERVICE)
   createdAt DateTime  @default(now()) @map("created_at")
@@ -2250,28 +2321,28 @@ model Bus {
 
 /// Ligne de bus : quartiers, bus, chauffeur, accompagnatrice, horaires, capacité.
 model TransportLine {
-  id               String  @id @default(uuid()) @db.Uuid
-  tenantId         String  @map("tenant_id") @db.Uuid
-  name             String  // "Ligne Sidi Maarouf"…
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  name             String // "Ligne Sidi Maarouf"…
   districts        String? // quartiers desservis (texte libre)
-  busId            String? @map("bus_id") @db.Uuid
-  driverId         String? @map("driver_id") @db.Uuid       // Person (STAFF)
-  attendantId      String? @map("attendant_id") @db.Uuid    // Person (STAFF) — mou3awnate
-  morningDeparture String? @map("morning_departure")        // "07:00"
-  morningArrival   String? @map("morning_arrival")
-  eveningDeparture String? @map("evening_departure")
-  eveningArrival   String? @map("evening_arrival")
-  capacity         Int     @default(0)
-  active           Boolean @default(true)
+  busId            String?  @map("bus_id") @db.Uuid
+  driverId         String?  @map("driver_id") @db.Uuid // Person (STAFF)
+  attendantId      String?  @map("attendant_id") @db.Uuid // Person (STAFF) — mou3awnate
+  morningDeparture String?  @map("morning_departure") // "07:00"
+  morningArrival   String?  @map("morning_arrival")
+  eveningDeparture String?  @map("evening_departure")
+  eveningArrival   String?  @map("evening_arrival")
+  capacity         Int      @default(0)
+  active           Boolean  @default(true)
   createdAt        DateTime @default(now()) @map("created_at")
   updatedAt        DateTime @updatedAt @map("updated_at")
 
-  tenant    Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  bus       Bus?            @relation(fields: [busId], references: [id], onDelete: SetNull)
-  driver    Person?         @relation("LineDriver", fields: [driverId], references: [id], onDelete: SetNull)
-  attendant Person?         @relation("LineAttendant", fields: [attendantId], references: [id], onDelete: SetNull)
-  stops     TransportStop[]
-  studentTransports StudentTransport[]
+  tenant             Tenant                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bus                Bus?                         @relation(fields: [busId], references: [id], onDelete: SetNull)
+  driver             Person?                      @relation("LineDriver", fields: [driverId], references: [id], onDelete: SetNull)
+  attendant          Person?                      @relation("LineAttendant", fields: [attendantId], references: [id], onDelete: SetNull)
+  stops              TransportStop[]
+  studentTransports  StudentTransport[]
   attendanceSessions TransportAttendanceSession[]
 
   @@index([tenantId])
@@ -2284,16 +2355,16 @@ model TransportStop {
   tenantId    String   @map("tenant_id") @db.Uuid
   lineId      String   @map("line_id") @db.Uuid
   zoneId      String?  @map("zone_id") @db.Uuid
-  name        String   // "Mosquée Al Qods"…
-  address     String?  // adresse + repère local
+  name        String // "Mosquée Al Qods"…
+  address     String? // adresse + repère local
   order       Int      @default(0)
   plannedTime String?  @map("planned_time") // "07:15"
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  line   TransportLine  @relation(fields: [lineId], references: [id], onDelete: Cascade)
-  zone   TransportZone? @relation(fields: [zoneId], references: [id], onDelete: SetNull)
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  line              TransportLine      @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  zone              TransportZone?     @relation(fields: [zoneId], references: [id], onDelete: SetNull)
   studentTransports StudentTransport[]
 
   @@index([tenantId, lineId])
@@ -2308,24 +2379,24 @@ enum TransportAssignStatus {
 /// Affectation d'un élève au transport : ligne, arrêt, jours, zone (facturation),
 /// + règles de sécurité (personnes autorisées, sortie seule). 1 par élève.
 model StudentTransport {
-  id            String                @id @default(uuid()) @db.Uuid
-  tenantId      String                @map("tenant_id") @db.Uuid
-  studentId     String                @unique @map("student_id") @db.Uuid
-  lineId        String                @map("line_id") @db.Uuid
-  stopId        String?               @map("stop_id") @db.Uuid
-  zoneId        String?               @map("zone_id") @db.Uuid
+  id                String                @id @default(uuid()) @db.Uuid
+  tenantId          String                @map("tenant_id") @db.Uuid
+  studentId         String                @unique @map("student_id") @db.Uuid
+  lineId            String                @map("line_id") @db.Uuid
+  stopId            String?               @map("stop_id") @db.Uuid
+  zoneId            String?               @map("zone_id") @db.Uuid
   /// Jours de transport (codes MON…SAT).
-  days          String[]              @default([])
-  pickupTime    String?               @map("pickup_time")
-  dropoffTime   String?               @map("dropoff_time")
+  days              String[]              @default([])
+  pickupTime        String?               @map("pickup_time")
+  dropoffTime       String?               @map("dropoff_time")
   /// Sécurité.
-  exitAlone     Boolean               @default(false) @map("exit_alone")
-  securityNotes String?               @map("security_notes")
+  exitAlone         Boolean               @default(false) @map("exit_alone")
+  securityNotes     String?               @map("security_notes")
   /// Personnes autorisées à récupérer l'enfant : [{ name, cin }].
-  authorizedPickups Json              @default("[]") @map("authorized_pickups")
-  status        TransportAssignStatus @default(ACTIVE)
-  createdAt     DateTime              @default(now()) @map("created_at")
-  updatedAt     DateTime              @updatedAt @map("updated_at")
+  authorizedPickups Json                  @default("[]") @map("authorized_pickups")
+  status            TransportAssignStatus @default(ACTIVE)
+  createdAt         DateTime              @default(now()) @map("created_at")
+  updatedAt         DateTime              @updatedAt @map("updated_at")
 
   tenant  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   student Person         @relation("StudentTransport", fields: [studentId], references: [id], onDelete: Cascade)
@@ -2345,13 +2416,13 @@ enum TransportDirection {
 }
 
 enum TransportAttendanceStatus {
-  PRESENT       // matin : présent à l'arrêt
-  ABSENT        // matin : absent
-  LATE          // matin : retard
+  PRESENT // matin : présent à l'arrêt
+  ABSENT // matin : absent
+  LATE // matin : retard
   NOT_PICKED_UP // non récupéré (matin : pas pris le bus ; soir : parent absent)
-  BOARDED       // soir : monté dans le bus
-  DROPPED       // soir : déposé à l'arrêt
-  INCIDENT      // incident (malade, blessure, conflit…)
+  BOARDED // soir : monté dans le bus
+  DROPPED // soir : déposé à l'arrêt
+  INCIDENT // incident (malade, blessure, conflit…)
 }
 
 /// Session d'appel d'une ligne pour une date et un sens (matin / soir).
@@ -2405,7 +2476,7 @@ enum NotificationChannel {
 
 enum NotificationStatus {
   PENDING // en file (fournisseur réel à venir)
-  SENT    // envoyé (ou journalisé par le driver « log »)
+  SENT // envoyé (ou journalisé par le driver « log »)
   FAILED
   SKIPPED // pas de destinataire / pas de consentement
 }
@@ -2416,7 +2487,7 @@ model NotificationLog {
   id            String              @id @default(uuid()) @db.Uuid
   tenantId      String              @map("tenant_id") @db.Uuid
   channel       NotificationChannel
-  recipient     String              // numéro WhatsApp / téléphone / e-mail
+  recipient     String // numéro WhatsApp / téléphone / e-mail
   recipientName String?             @map("recipient_name")
   studentId     String?             @map("student_id") @db.Uuid
   template      String
@@ -2505,11 +2576,11 @@ model LeaveRequest {
 
 enum OvertimeSource {
   TEACHING_OVER_QUOTA // heures de cours > quota hebdo
-  SUBSTITUTION        // remplacement
-  PARASCOLAIRE        // activités parascolaires
-  AFTER_HOURS         // personnel : heures après 18h
-  EXAM_SUPERVISION    // surveillance d'examens
-  SPECIAL_EVENT       // événements spéciaux
+  SUBSTITUTION // remplacement
+  PARASCOLAIRE // activités parascolaires
+  AFTER_HOURS // personnel : heures après 18h
+  EXAM_SUPERVISION // surveillance d'examens
+  SPECIAL_EVENT // événements spéciaux
 }
 
 /// Chaîne de validation : déclaré → RH → Direction → Comptabilité.
@@ -2562,17 +2633,17 @@ model PayrollConfig {
 
   // Cotisations salariales
   cnssEmployeeRate Float @map("cnss_employee_rate") // ex. 0.0448
-  cnssCeiling      Float @map("cnss_ceiling")       // ex. 6000
-  amoEmployeeRate  Float @map("amo_employee_rate")  // ex. 0.0226 (déplafonné)
+  cnssCeiling      Float @map("cnss_ceiling") // ex. 6000
+  amoEmployeeRate  Float @map("amo_employee_rate") // ex. 0.0226 (déplafonné)
 
   // Cotisations patronales
-  cnssEmployerRate    Float @map("cnss_employer_rate")    // prestations sociales
+  cnssEmployerRate    Float @map("cnss_employer_rate") // prestations sociales
   familyAllowanceRate Float @map("family_allowance_rate") // allocations familiales
   amoEmployerRate     Float @map("amo_employer_rate")
-  trainingTaxRate     Float @map("training_tax_rate")     // taxe de formation prof.
+  trainingTaxRate     Float @map("training_tax_rate") // taxe de formation prof.
 
   // Frais professionnels (abattement avant IR)
-  professionalExpenseRate           Float @map("professional_expense_rate")            // ex. 0.20
+  professionalExpenseRate           Float @map("professional_expense_rate") // ex. 0.20
   professionalExpenseCeilingMonthly Float @map("professional_expense_ceiling_monthly") // ex. 2500
 
   // Déductions pour charges de famille
@@ -2655,17 +2726,17 @@ model PayrollRun {
 
 /// Bulletin de paie d'un employé pour un run : snapshot complet du calcul.
 model Payslip {
-  id            String   @id @default(uuid()) @db.Uuid
-  tenantId      String   @map("tenant_id") @db.Uuid
-  runId         String   @map("run_id") @db.Uuid
-  personId      String   @map("person_id") @db.Uuid
-  brut          Float
-  netImposable  Float    @map("net_imposable")
-  irNet         Float    @map("ir_net")
-  netPayable    Float    @map("net_payable")
-  employerCost  Float    @map("employer_cost")
-  breakdown     Json
-  createdAt     DateTime @default(now()) @map("created_at")
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  runId        String   @map("run_id") @db.Uuid
+  personId     String   @map("person_id") @db.Uuid
+  brut         Float
+  netImposable Float    @map("net_imposable")
+  irNet        Float    @map("ir_net")
+  netPayable   Float    @map("net_payable")
+  employerCost Float    @map("employer_cost")
+  breakdown    Json
+  createdAt    DateTime @default(now()) @map("created_at")
 
   tenant Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   run    PayrollRun @relation(fields: [runId], references: [id], onDelete: Cascade)
@@ -2686,8 +2757,8 @@ enum BookCondition {
 }
 
 enum BookCopySource {
-  SCHOOL_NEW    // exemplaire neuf de l'école (pas de vendeur)
-  STUDENT_USED  // occasion déposée par un élève
+  SCHOOL_NEW // exemplaire neuf de l'école (pas de vendeur)
+  STUDENT_USED // occasion déposée par un élève
 }
 
 enum BookCopyStatus {
@@ -2710,8 +2781,8 @@ enum BookTransactionType {
 }
 
 enum BookRefundMode {
-  CASH        // remboursement en caisse
-  FEE_CREDIT  // défalcation sur une échéance à venir
+  CASH // remboursement en caisse
+  FEE_CREDIT // défalcation sur une échéance à venir
 }
 
 /// Paramétrage de la bourse (un par établissement).
@@ -2779,24 +2850,24 @@ model Book {
 
 /// Exemplaire physique : code unique (étiquette), état, vendeur, statut.
 model BookCopy {
-  id          String         @id @default(uuid()) @db.Uuid
-  tenantId    String         @map("tenant_id") @db.Uuid
-  bookId      String         @map("book_id") @db.Uuid
-  campaignId  String         @map("campaign_id") @db.Uuid
-  code        String
-  condition   BookCondition
-  source      BookCopySource @default(STUDENT_USED)
-  sellerId    String?        @map("seller_id") @db.Uuid
-  askPrice    Float          @map("ask_price")
-  status      BookCopyStatus @default(DEPOSITED)
-  buyerId     String?        @map("buyer_id") @db.Uuid
-  salePrice   Float?         @map("sale_price")
-  commission  Float?
-  soldAt      DateTime?      @map("sold_at")
-  refundedAt  DateTime?      @map("refunded_at")
-  refundMode  BookRefundMode? @map("refund_mode")
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
+  id         String          @id @default(uuid()) @db.Uuid
+  tenantId   String          @map("tenant_id") @db.Uuid
+  bookId     String          @map("book_id") @db.Uuid
+  campaignId String          @map("campaign_id") @db.Uuid
+  code       String
+  condition  BookCondition
+  source     BookCopySource  @default(STUDENT_USED)
+  sellerId   String?         @map("seller_id") @db.Uuid
+  askPrice   Float           @map("ask_price")
+  status     BookCopyStatus  @default(DEPOSITED)
+  buyerId    String?         @map("buyer_id") @db.Uuid
+  salePrice  Float?          @map("sale_price")
+  commission Float?
+  soldAt     DateTime?       @map("sold_at")
+  refundedAt DateTime?       @map("refunded_at")
+  refundMode BookRefundMode? @map("refund_mode")
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @updatedAt @map("updated_at")
 
   tenant       Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   book         Book                 @relation(fields: [bookId], references: [id], onDelete: Cascade)
@@ -2819,7 +2890,7 @@ model BookTransaction {
   copyId           String              @map("copy_id") @db.Uuid
   type             BookTransactionType
   amount           Float
-  method           String?             // CASH | CHEQUE | TRANSFER | CMI
+  method           String? // CASH | CHEQUE | TRANSFER | CMI
   note             String?
   recordedByUserId String?             @map("recorded_by_user_id") @db.Uuid
   createdAt        DateTime            @default(now()) @map("created_at")
@@ -2830,4 +2901,303 @@ model BookTransaction {
 
   @@index([tenantId, createdAt])
   @@map("book_transactions")
+}
+
+// ─── Comptabilité — grand livre central (CGNC) ─────────────────
+
+enum FiscalYearStatus {
+  OPEN
+  CLOSED
+}
+
+/// Journaux obligatoires : Ventes, Achats, Banque, Caisse, Paie, Opérations diverses.
+enum AccountingJournal {
+  VE
+  AC
+  BQ
+  CA
+  PA
+  OD
+}
+
+/// Exercice comptable.
+model FiscalYear {
+  id        String           @id @default(uuid()) @db.Uuid
+  tenantId  String           @map("tenant_id") @db.Uuid
+  label     String
+  startDate DateTime         @map("start_date") @db.Date
+  endDate   DateTime         @map("end_date") @db.Date
+  status    FiscalYearStatus @default(OPEN)
+  createdAt DateTime         @default(now()) @map("created_at")
+  updatedAt DateTime         @updatedAt @map("updated_at")
+
+  tenant  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entries JournalEntry[]
+
+  @@index([tenantId])
+  @@map("fiscal_years")
+}
+
+/// Compte du plan comptable (CGNC), configurable par l'établissement.
+model Account {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  code         String
+  name         String
+  /// Compte de tiers lettrable (clients 342x, fournisseurs 441x).
+  reconcilable Boolean  @default(false)
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  lines  JournalLine[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId])
+  @@map("accounts")
+}
+
+/// Écriture comptable (équilibrée : Σ débit = Σ crédit). Liée à sa pièce source.
+model JournalEntry {
+  id             String            @id @default(uuid()) @db.Uuid
+  tenantId       String            @map("tenant_id") @db.Uuid
+  fiscalYearId   String            @map("fiscal_year_id") @db.Uuid
+  journal        AccountingJournal
+  date           DateTime          @db.Date
+  label          String
+  reference      String?
+  /// Pièce métier d'origine (idempotence + traçabilité) : ex. "Payment"/id.
+  sourceType     String?           @map("source_type")
+  sourceId       String?           @map("source_id")
+  postedByUserId String?           @map("posted_by_user_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  tenant     Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  fiscalYear FiscalYear    @relation(fields: [fiscalYearId], references: [id], onDelete: Cascade)
+  lines      JournalLine[]
+
+  @@index([tenantId, journal, date])
+  @@index([tenantId, sourceType, sourceId])
+  @@map("journal_entries")
+}
+
+/// Ligne d'écriture (un mouvement débit OU crédit sur un compte).
+model JournalLine {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  entryId   String   @map("entry_id") @db.Uuid
+  accountId String   @map("account_id") @db.Uuid
+  debit     Decimal  @default(0) @db.Decimal(14, 2)
+  credit    Decimal  @default(0) @db.Decimal(14, 2)
+  label     String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant  Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entry   JournalEntry @relation(fields: [entryId], references: [id], onDelete: Cascade)
+  account Account      @relation(fields: [accountId], references: [id], onDelete: Restrict)
+
+  @@index([tenantId, accountId])
+  @@index([entryId])
+  @@map("journal_lines")
+}
+
+// ─── Comptabilité — Achats / Fournisseurs ──────────────────────
+
+enum SupplierInvoiceStatus {
+  UNPAID
+  PARTIAL
+  PAID
+}
+
+model Supplier {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  name      String
+  ice       String? // Identifiant Commun de l'Entreprise (Maroc)
+  phone     String?
+  email     String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoices SupplierInvoice[]
+
+  @@index([tenantId])
+  @@map("suppliers")
+}
+
+/// Facture fournisseur (comptabilité d'engagement : dette 4411 à la saisie).
+model SupplierInvoice {
+  id               String                @id @default(uuid()) @db.Uuid
+  tenantId         String                @map("tenant_id") @db.Uuid
+  supplierId       String                @map("supplier_id") @db.Uuid
+  number           String?
+  label            String
+  /// Compte de charge (classe 6) imputé.
+  accountCode      String                @map("account_code")
+  amount           Decimal               @db.Decimal(12, 2)
+  date             DateTime              @db.Date
+  dueDate          DateTime              @map("due_date") @db.Date
+  status           SupplierInvoiceStatus @default(UNPAID)
+  note             String?
+  recordedByUserId String?               @map("recorded_by_user_id") @db.Uuid
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  tenant   Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier Supplier          @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  payments SupplierPayment[]
+
+  @@index([tenantId, status])
+  @@index([tenantId, dueDate])
+  @@map("supplier_invoices")
+}
+
+model SupplierPayment {
+  id               String        @id @default(uuid()) @db.Uuid
+  tenantId         String        @map("tenant_id") @db.Uuid
+  invoiceId        String        @map("invoice_id") @db.Uuid
+  amount           Decimal       @db.Decimal(12, 2)
+  method           PaymentMethod
+  date             DateTime      @db.Date
+  reference        String?
+  recordedByUserId String?       @map("recorded_by_user_id") @db.Uuid
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  tenant  Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  invoice SupplierInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, invoiceId])
+  @@map("supplier_payments")
+}
+
+// ─── Radiation / transfert (workflow Vie scolaire → Compta → Direction) ──
+
+enum RadiationType {
+  TRANSFERT
+  DEPART
+  AUTRE
+}
+
+enum RadiationStatus {
+  REQUESTED // demande du parent / administration
+  VIE_SCOLAIRE_OK // situation vérifiée
+  COMPTA_OK // paiements validés
+  APPROVED // direction valide → élève transféré, certificat dispo
+  REJECTED
+}
+
+model RadiationRequest {
+  id                  String          @id @default(uuid()) @db.Uuid
+  tenantId            String          @map("tenant_id") @db.Uuid
+  enrollmentId        String          @map("enrollment_id") @db.Uuid
+  studentId           String          @map("student_id") @db.Uuid
+  type                RadiationType   @default(TRANSFERT)
+  reason              String?
+  destinationSchool   String?         @map("destination_school")
+  status              RadiationStatus @default(REQUESTED)
+  debtCleared         Boolean         @default(false) @map("debt_cleared")
+  /// Relevé des notes demandé à générer à la validation.
+  noteRequested       Boolean         @default(false) @map("note_requested")
+  requestedByUserId   String?         @map("requested_by_user_id") @db.Uuid
+  vieScolaireByUserId String?         @map("vie_scolaire_by_user_id") @db.Uuid
+  comptaByUserId      String?         @map("compta_by_user_id") @db.Uuid
+  directionByUserId   String?         @map("direction_by_user_id") @db.Uuid
+  vieScolaireComment  String?         @map("vie_scolaire_comment")
+  comptaComment       String?         @map("compta_comment")
+  directionComment    String?         @map("direction_comment")
+  vieScolaireAt       DateTime?       @map("vie_scolaire_at")
+  comptaAt            DateTime?       @map("compta_at")
+  /// Documents (attestation, certificat, relevé) générés à la validation.
+  docsGeneratedAt     DateTime?       @map("docs_generated_at")
+  rejectionReason     String?         @map("rejection_reason")
+  approvedAt          DateTime?       @map("approved_at")
+  createdAt           DateTime        @default(now()) @map("created_at")
+  updatedAt           DateTime        @updatedAt @map("updated_at")
+
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  enrollment Enrollment       @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  student    Person           @relation("StudentRadiations", fields: [studentId], references: [id], onDelete: Cascade)
+  refund     RadiationRefund?
+
+  @@index([tenantId, status])
+  @@map("radiation_requests")
+}
+
+/// Statut du sous-workflow de remboursement (départ en cours d'année).
+enum RefundStatus {
+  PENDING_CHECK // vie scolaire a validé → compta doit vérifier
+  CALCULATED // compta a calculé le montant → direction doit valider
+  APPROVED // direction a validé (montant proposé ou corrigé)
+  PAID // remboursement payé + reçu généré
+  REJECTED // aucun remboursement dû / refusé
+}
+
+enum RefundMethod {
+  VIREMENT
+  CHEQUE
+  ESPECES
+}
+
+/// Base de calcul des frais consommés (choisie par la comptabilité).
+enum RefundBasis {
+  INSTALLMENT // échéances dont la date est déjà passée
+  PRORATA // au prorata des mois écoulés de l'année
+}
+
+/// Remboursement lié à une radiation en cours d'année.
+model RadiationRefund {
+  id                 String        @id @default(uuid()) @db.Uuid
+  tenantId           String        @map("tenant_id") @db.Uuid
+  radiationRequestId String        @unique @map("radiation_request_id") @db.Uuid
+  studentId          String        @map("student_id") @db.Uuid
+  status             RefundStatus  @default(PENDING_CHECK)
+  basis              RefundBasis   @default(INSTALLMENT)
+  paidTotal          Decimal       @default(0) @map("paid_total") @db.Decimal(12, 2)
+  consumedTotal      Decimal       @default(0) @map("consumed_total") @db.Decimal(12, 2)
+  computedAmount     Decimal       @default(0) @map("computed_amount") @db.Decimal(12, 2)
+  approvedAmount     Decimal?      @map("approved_amount") @db.Decimal(12, 2)
+  method             RefundMethod?
+  reference          String?
+  /// Détail par catégorie (payé / consommé / remboursable) pour le reçu.
+  breakdown          Json?
+  comptaByUserId     String?       @map("compta_by_user_id") @db.Uuid
+  directionByUserId  String?       @map("direction_by_user_id") @db.Uuid
+  directionComment   String?       @map("direction_comment")
+  paidByUserId       String?       @map("paid_by_user_id") @db.Uuid
+  approvedAt         DateTime?     @map("approved_at")
+  paidAt             DateTime?     @map("paid_at")
+  createdAt          DateTime      @default(now()) @map("created_at")
+  updatedAt          DateTime      @updatedAt @map("updated_at")
+
+  tenant  Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  request RadiationRequest @relation(fields: [radiationRequestId], references: [id], onDelete: Cascade)
+  student Person           @relation("StudentRefunds", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@map("radiation_refunds")
+}
+
+/// Alerte in-app destinée à un utilisateur du personnel (la cloche de l'en-tête).
+model StaffAlert {
+  id          String    @id @default(uuid()) @db.Uuid
+  tenantId    String    @map("tenant_id") @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  type        String // ex : RADIATION_STEP, REFUND_CHECK, GENERIC
+  title       String
+  body        String?
+  link        String?
+  relatedType String?   @map("related_type")
+  relatedId   String?   @map("related_id")
+  readAt      DateTime? @map("read_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, userId, readAt])
+  @@map("staff_alerts")
 }

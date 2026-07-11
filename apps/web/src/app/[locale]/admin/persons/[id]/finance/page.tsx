@@ -4,7 +4,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { computeStudentFinance } from '@/lib/finance';
-import { GenerateForm, RecordPaymentButton } from './client';
+import { GenerateForm, RecordPaymentButton, WaiveDebtButton } from './client';
 
 export default async function StudentFinancePage({
   params,
@@ -81,6 +81,11 @@ export default async function StudentFinancePage({
           label={t('kpi.totalRemaining')}
           value={`${finance.totalRemaining.toFixed(2)} ${currency}`}
           color={finance.totalRemaining > 0 ? 'red' : 'emerald'}
+          hint={
+            finance.totalOverdue > 0
+              ? t('kpi.overdueHint', { amount: `${finance.totalOverdue.toFixed(2)} ${currency}` })
+              : undefined
+          }
         />
       </div>
 
@@ -129,11 +134,20 @@ export default async function StudentFinancePage({
                   </td>
                   <td className="px-4 py-3 text-end">
                     {i.status !== 'PAID' && i.status !== 'CANCELLED' && (
-                      <RecordPaymentButton
-                        installmentId={i.id}
-                        remaining={i.remaining}
-                        currency={currency}
-                      />
+                      <span className="inline-flex items-center">
+                        <RecordPaymentButton
+                          installmentId={i.id}
+                          remaining={i.remaining}
+                          currency={currency}
+                        />
+                        {i.remaining > 0 && (
+                          <WaiveDebtButton
+                            installmentId={i.id}
+                            remaining={i.remaining}
+                            currency={currency}
+                          />
+                        )}
+                      </span>
                     )}
                   </td>
                 </tr>
@@ -159,10 +173,12 @@ function Kpi({
   label,
   value,
   color,
+  hint,
 }: {
   label: string;
   value: string;
   color: 'slate' | 'emerald' | 'red';
+  hint?: string;
 }) {
   const colors: Record<string, string> = {
     slate: 'text-slate-900',
@@ -173,6 +189,7 @@ function Kpi({
     <div className="rounded-2xl border border-slate-200 bg-white p-5">
       <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
       <div className={`mt-2 text-2xl font-semibold tabular-nums ${colors[color]}`}>{value}</div>
+      {hint && <div className="mt-1 text-xs font-medium text-amber-700">{hint}</div>}
     </div>
   );
 }

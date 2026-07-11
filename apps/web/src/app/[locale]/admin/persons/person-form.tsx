@@ -596,6 +596,37 @@ export function PersonForm({
       </SectionCard>
 
       <SectionCard title={t('section.address')} bodyClass="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {showParentsField &&
+            (() => {
+              const linked = parents
+                .map((p) => availableParents.find((ap) => ap.id === p.parentId))
+                .filter(
+                  (ap): ap is ParentOption => !!ap && !!(ap.address?.line1 || ap.address?.city),
+                );
+              if (linked.length === 0) return null;
+              return (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg bg-slate-50 px-3 py-2 sm:col-span-2">
+                  <span className="text-xs text-slate-500">{t('addressFromParent')}</span>
+                  {linked.map((ap) => (
+                    <button
+                      key={ap.id}
+                      type="button"
+                      onClick={() =>
+                        setAddress({
+                          line1: ap.address?.line1 ?? '',
+                          city: ap.address?.city ?? '',
+                          postalCode: ap.address?.postalCode ?? '',
+                          country: ap.address?.country ?? 'Maroc',
+                        })
+                      }
+                      className="rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                    >
+                      {ap.firstName} {ap.lastName}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
           <Field label={t('addressLine1')}>
             <input
               type="text"
@@ -633,6 +664,27 @@ export function PersonForm({
             />
           </Field>
       </SectionCard>
+
+      {type === 'STUDENT' && mode === 'create' && (
+        <SectionCard title={t('health.title')}>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label={t('health.allergies')}><textarea name="health_allergies" rows={2} className={inputCls} /></Field>
+            <Field label={t('health.chronicConditions')}><textarea name="health_chronicConditions" rows={2} className={inputCls} /></Field>
+            <Field label={t('health.treatments')}><textarea name="health_treatments" rows={2} className={inputCls} /></Field>
+            <Field label={t('health.vaccinations')}><input type="text" name="health_vaccinations" className={inputCls} /></Field>
+            <Field label={t('health.doctorName')}><input type="text" name="health_doctorName" className={inputCls} /></Field>
+            <Field label={t('health.doctorPhone')}><input type="text" name="health_doctorPhone" className={inputCls} /></Field>
+            <Field label={t('health.emergencyContactName')}><input type="text" name="health_emergencyContactName" className={inputCls} /></Field>
+            <Field label={t('health.emergencyContactPhone')}><input type="text" name="health_emergencyContactPhone" className={inputCls} /></Field>
+            <Field label={t('health.paiNote')}><input type="text" name="health_paiNote" className={inputCls} /></Field>
+          </div>
+          <div className="mt-3 space-y-1.5">
+            <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="health_pai" className="h-4 w-4 rounded border-slate-300" /> {t('health.pai')}</label>
+            <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="health_medAuthorization" className="h-4 w-4 rounded border-slate-300" /> {t('health.medAuthorization')}</label>
+            <label className="flex items-center gap-2 text-sm text-slate-700"><input type="checkbox" name="health_outingAuthorization" className="h-4 w-4 rounded border-slate-300" /> {t('health.outingAuthorization')}</label>
+          </div>
+        </SectionCard>
+      )}
 
       {showContractField && (
         <SectionCard title={t('section.contract')}>

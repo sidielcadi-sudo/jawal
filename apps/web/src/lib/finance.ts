@@ -40,6 +40,8 @@ export async function computeStudentFinance(
   totalDue: number;
   totalPaid: number;
   totalRemaining: number;
+  /** Reste dû sur les seules échéances déjà échues (dueDate ≤ aujourd'hui). */
+  totalOverdue: number;
 }> {
   const installments = await tx.installment.findMany({
     where: { studentId },
@@ -47,8 +49,10 @@ export async function computeStudentFinance(
     orderBy: { dueDate: 'asc' },
   });
 
+  const now = new Date();
   let totalDue = 0;
   let totalPaid = 0;
+  let totalOverdue = 0;
 
   const rows = installments.map((inst) => {
     const amount = Number(inst.amount);
@@ -56,6 +60,7 @@ export async function computeStudentFinance(
     if (inst.status !== 'CANCELLED') {
       totalDue += amount;
       totalPaid += paid;
+      if (inst.dueDate <= now) totalOverdue += Math.max(0, amount - paid);
     }
     return {
       id: inst.id,
@@ -80,5 +85,6 @@ export async function computeStudentFinance(
     totalDue,
     totalPaid,
     totalRemaining: Math.max(0, totalDue - totalPaid),
+    totalOverdue: Math.round(totalOverdue * 100) / 100,
   };
 }

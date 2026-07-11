@@ -10,6 +10,9 @@ import { computeSiblingDiscount } from '@/lib/enrollment-discount';
 import { addressesMatch } from '@/lib/address';
 import { buildInstallments, type FeeCategory } from '@/lib/fees';
 import { sendEnrollmentActivationEmails } from '@/lib/enrollment-activation-email';
+import { sendNotifications, parentRecipient } from '@/lib/notify';
+import { safeSendEmail } from '@/lib/email';
+import { postInstallmentPayment } from '@/lib/accounting-hooks';
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -391,7 +394,7 @@ export async function recordInstallmentPaymentAction(
       const already = inst.payments.reduce((s, p) => s + Number(p.amount), 0);
       const remaining = Math.max(0, Number(inst.amount) - already);
       if (remaining <= 0) throw new Error('Échéance déjà payée.');
-      await tx.payment.create({
+      const pay = await tx.payment.create({
         data: {
           tenantId,
           installmentId,
@@ -402,6 +405,7 @@ export async function recordInstallmentPaymentAction(
         },
       });
       await tx.installment.update({ where: { id: installmentId }, data: { status: 'PAID' } });
+      await postInstallmentPayment(tx, tenantId, installmentId, { id: pay.id, amount: remaining, method }, new Date(), session.user.id);
 
       // Avancement automatique si frais d'inscription payés.
       const isInscription = /inscription/i.test(inst.label);
@@ -458,7 +462,7 @@ export async function recordGroupPaymentAction(
         const already = inst.payments.reduce((s, p) => s + Number(p.amount), 0);
         const remaining = Math.max(0, Number(inst.amount) - already);
         if (remaining <= 0) continue;
-        await tx.payment.create({
+        const pay = await tx.payment.create({
           data: {
             tenantId,
             installmentId,
@@ -469,6 +473,7 @@ export async function recordGroupPaymentAction(
           },
         });
         await tx.installment.update({ where: { id: installmentId }, data: { status: 'PAID' } });
+        await postInstallmentPayment(tx, tenantId, installmentId, { id: pay.id, amount: remaining, method }, new Date(), session.user.id);
         if (/inscription/i.test(inst.label)) {
           const enr = await tx.enrollment.findFirst({
             where: { studentId: inst.studentId, status: 'ACCEPTE' },
@@ -516,6 +521,10 @@ export async function refuseEnrollmentAction(
   if (!reason || reason.trim().length === 0)
     return { ok: false, error: 'Motif de refus obligatoire.' };
   const tenantId = session.user.tenantId;
+  // Emails à envoyer HORS transaction (parents disposant d'un accès portail).
+  let emailTargets: { email: string; parentName: string }[] = [];
+  let emailStudent = '';
+  let emailTenant = '';
   try {
     await withTenant(tenantId, async (tx) => {
       const enr = await tx.enrollment.findUnique({ where: { id: enrollmentId } });
@@ -545,6 +554,81 @@ export async function refuseEnrollmentAction(
         entityId: enrollmentId,
         after: { reason: reason.trim() },
       });
+
+      // Notifie les parents (si contact) du refus.
+      const student = await tx.person.findUnique({ where: { id: enr.studentId }, select: { firstName: true, lastName: true } });
+      const rels = await tx.personRelation.findMany({ where: { childId: enr.studentId }, include: { parent: { select: { id: true, firstName: true, lastName: true, contacts: true } } } });
+      const tenant = await tx.tenant.findFirst({ select: { localeDefault: true, name: true } });
+      if (student && rels.length) {
+        await sendNotifications(
+          tx,
+          tenantId,
+          tenant?.localeDefault ?? 'fr',
+          rels.map((r) => ({
+            recipient: parentRecipient(r.parent.contacts),
+            recipientName: `${r.parent.lastName} ${r.parent.firstName}`,
+            template: 'enrollment.refused',
+            data: { child: `${student.lastName} ${student.firstName}`, reason: reason.trim() },
+            relatedType: 'Enrollment',
+            relatedId: enrollmentId,
+          })),
+        );
+
+        // Parents disposant d'un compte portail (User actif) → email (envoyé hors tx).
+        emailStudent = `${student.lastName} ${student.firstName}`;
+        emailTenant = tenant?.name ?? 'Établissement';
+        const accounts = await tx.userPerson.findMany({
+          where: { personId: { in: rels.map((r) => r.parent.id) } },
+          select: { user: { select: { email: true, disabledAt: true } }, person: { select: { firstName: true, lastName: true } } },
+        });
+        emailTargets = accounts
+          .filter((a) => a.user.email && !a.user.disabledAt)
+          .map((a) => ({ email: a.user.email!, parentName: `${a.person.lastName} ${a.person.firstName}` }));
+      }
+    });
+
+    // Envoi des emails de refus (hors transaction).
+    for (const tgt of emailTargets) {
+      await safeSendEmail({
+        to: tgt.email,
+        subject: `Demande d'inscription — ${emailTenant}`,
+        html:
+          `<p>Bonjour,</p>` +
+          `<p>Nous vous informons que la demande d'inscription de <strong>${emailStudent}</strong> ` +
+          `auprès de <strong>${emailTenant}</strong> n'a pas été retenue.</p>` +
+          `<p><strong>Motif :</strong> ${reason.trim()}</p>` +
+          `<p>Pour toute question, n'hésitez pas à contacter l'établissement.</p>`,
+        text: `Demande d'inscription — ${emailTenant}\n\nLa demande d'inscription de ${emailStudent} n'a pas été retenue.\nMotif : ${reason.trim()}`,
+      });
+    }
+
+    revalidate(enrollmentId);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
+  }
+}
+
+/**
+ * Réinscrit un élève dont le dossier a été REFUSÉ : rouvre le dossier en DRAFT
+ * (efface le motif/décision) pour qu'il repasse dans le pipeline d'admission.
+ * Permet de réinscrire après un refus (ex. dossier incomplet désormais complété).
+ */
+export async function reenrollRefusedEnrollmentAction(enrollmentId: string): Promise<Result> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requirePermission('tenants.manage');
+  const tenantId = session.user.tenantId;
+  try {
+    await withTenant(tenantId, async (tx) => {
+      const enr = await tx.enrollment.findUnique({ where: { id: enrollmentId }, select: { status: true } });
+      if (!enr) throw new Error('Dossier introuvable.');
+      if (enr.status !== 'REFUSE') throw new Error('Seul un dossier refusé peut être réinscrit.');
+      await tx.enrollment.update({
+        where: { id: enrollmentId },
+        data: { status: 'DRAFT', refusalReason: null, decidedAt: null, decidedByUserId: null },
+      });
+      await logAudit(tx, { tenantId, userId: session.user.id, action: 'reenrollRefused', entityType: 'Enrollment', entityId: enrollmentId });
     });
     revalidate(enrollmentId);
     return { ok: true };
@@ -582,7 +666,7 @@ export async function confirmInscriptionPaymentAction(
         orderBy: { createdAt: 'desc' },
       });
       if (inscription && Number(inscription.amount) > 0) {
-        await tx.payment.create({
+        const pay = await tx.payment.create({
           data: {
             tenantId,
             installmentId: inscription.id,
@@ -593,6 +677,7 @@ export async function confirmInscriptionPaymentAction(
           },
         });
         await tx.installment.update({ where: { id: inscription.id }, data: { status: 'PAID' } });
+        await postInstallmentPayment(tx, tenantId, inscription.id, { id: pay.id, amount: Number(inscription.amount), method }, new Date(), session.user.id);
       }
       await tx.enrollment.update({
         where: { id: enrollmentId },

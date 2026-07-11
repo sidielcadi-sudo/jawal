@@ -114,7 +114,7 @@ export default async function ParentHomePage({
   return (
     <div className="px-3 py-3">
       {/* Hero */}
-      <section className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
+      <section className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-100 to-brand-50 px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
           <p className="mt-1 text-sm text-slate-600">{t('subtitle')}</p>
@@ -153,7 +153,7 @@ export default async function ParentHomePage({
             >
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-3">
-                  <span className="grid h-11 w-11 place-items-center rounded-full bg-indigo-100 text-sm font-semibold text-[#1A56DB]">
+                  <span className="grid h-11 w-11 place-items-center rounded-full bg-indigo-100 text-sm font-semibold text-brand-600">
                     {(child.firstName[0] ?? '') + (child.lastName[0] ?? '')}
                   </span>
                   <div>
@@ -169,7 +169,7 @@ export default async function ParentHomePage({
                       {t('carnetUnread', { count: carnetUnread })}
                     </span>
                   )}
-                  <span className="text-[#1A56DB]">→</span>
+                  <span className="text-brand-600">→</span>
                 </span>
               </div>
 
@@ -229,7 +229,7 @@ export default async function ParentHomePage({
           <h2 className="text-base font-semibold text-slate-800">{t('latestAnnouncements')}</h2>
           <Link
             href={`/${locale}/parent/announcements`}
-            className="text-xs font-medium text-[#1A56DB] hover:underline"
+            className="text-xs font-medium text-brand-600 hover:underline"
           >
             {t('seeAll')} →
           </Link>

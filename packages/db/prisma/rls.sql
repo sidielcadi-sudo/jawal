@@ -122,7 +122,19 @@ DECLARE
     'book_exchange_campaigns',
     'books',
     'book_copies',
-    'book_transactions'
+    'book_transactions',
+    'fiscal_years',
+    'accounts',
+    'journal_entries',
+    'journal_lines',
+    'suppliers',
+    'supplier_invoices',
+    'supplier_payments',
+    'radiation_requests',
+    'radiation_refunds',
+    'online_payments',
+    'device_tokens',
+    'staff_alerts'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped

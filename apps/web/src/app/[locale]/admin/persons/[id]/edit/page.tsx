@@ -4,6 +4,8 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { PersonForm } from '../../person-form';
+import { HealthSection, type Health } from '../health-section';
+import { EditTabs } from './edit-tabs';
 
 export default async function EditPersonPage({
   params,
@@ -130,7 +132,16 @@ export default async function EditPersonPage({
         {t('actions.edit')} — {person.lastName} {person.firstName}
       </h1>
 
-      <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
+      <EditTabs
+        ficheLabel={t('editTabs.fiche')}
+        santeLabel={t('editTabs.health')}
+        sante={person.type === 'STUDENT' ? (
+          <div className="mt-4">
+            <HealthSection studentId={person.id} health={((person.metadata ?? {}) as { health?: Health }).health ?? {}} />
+          </div>
+        ) : null}
+        fiche={
+      <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-6">
         <PersonForm
           mode="edit"
           locale={locale}
@@ -223,6 +234,8 @@ export default async function EditPersonPage({
           rooms={rooms}
         />
       </div>
+        }
+      />
     </div>
   );
 }

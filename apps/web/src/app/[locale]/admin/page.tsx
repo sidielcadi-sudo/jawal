@@ -72,14 +72,13 @@ export default async function AdminDashboard({
       periodId ? findAtRiskStudents(tx, periodId) : Promise.resolve([]),
     ]);
 
-    // Finance quick
-    const installments = await tx.installment.findMany({
-      where: { status: { not: 'CANCELLED' } },
-      select: { amount: true },
-    });
-    const payments = await tx.payment.findMany({ select: { amount: true } });
-    const totalDue = installments.reduce((s, i) => s + Number(i.amount), 0);
-    const totalPaid = payments.reduce((s, p) => s + Number(p.amount), 0);
+    // Finance quick — agrégation côté base (évite de charger toutes les lignes).
+    const [dueAgg, paidAgg] = await Promise.all([
+      tx.installment.aggregate({ _sum: { amount: true }, where: { status: { not: 'CANCELLED' } } }),
+      tx.payment.aggregate({ _sum: { amount: true } }),
+    ]);
+    const totalDue = Number(dueAgg._sum.amount ?? 0);
+    const totalPaid = Number(paidAgg._sum.amount ?? 0);
     const finance = {
       totalDue,
       totalPaid,
@@ -108,7 +107,7 @@ export default async function AdminDashboard({
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-[#e8edff] to-[#eef0ff] px-4 py-2.5">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-100 to-brand-50 px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
           <p className="mt-0.5 text-sm text-slate-600">

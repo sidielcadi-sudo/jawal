@@ -19,8 +19,15 @@ export async function withTenant<T>(
   if (!UUID_RE.test(tenantId)) {
     throw new Error('withTenant: tenantId invalide (UUID attendu)');
   }
-  return prisma.$transaction(async (tx) => {
-    await tx.$executeRawUnsafe(`SET LOCAL app.current_tenant_id = '${tenantId}'`);
-    return fn(tx as typeof prisma);
-  });
+  return prisma.$transaction(
+    async (tx) => {
+      await tx.$executeRawUnsafe(`SET LOCAL app.current_tenant_id = '${tenantId}'`);
+      return fn(tx as typeof prisma);
+    },
+    // Le RLS impose de tout exécuter dans une seule transaction interactive ;
+    // les pages agrégées (tableau de bord) et les démarrages à froid dépassent
+    // facilement le défaut Prisma de 5 s. On élargit la fenêtre (durée max de la
+    // transaction) et l'attente d'un slot dans le pool.
+    { timeout: 15_000, maxWait: 10_000 },
+  );
 }

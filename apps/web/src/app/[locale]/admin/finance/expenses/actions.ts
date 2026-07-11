@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
+import { postExpense } from '@/lib/accounting-hooks';
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -61,6 +62,7 @@ export async function createExpenseAction(formData: FormData): Promise<Result> {
         recordedByUserId: session.user.id,
       },
     });
+    await postExpense(tx, tenantId, { id: e.id, amount: parsed.data.amount, category: parsed.data.category, method: parsed.data.method ?? null, date: parsed.data.date, label: parsed.data.label }, session.user.id);
     await logAudit(tx, {
       tenantId,
       userId: session.user.id,

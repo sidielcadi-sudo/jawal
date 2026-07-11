@@ -176,6 +176,11 @@
       }
     },
     "signOut": "Se déconnecter",
+    "alerts": {
+      "title": "Alertes",
+      "markAll": "Tout marquer lu",
+      "empty": "Aucune alerte"
+    },
     "nav": {
       "dashboard": "Tableau de bord",
       "pilotage": "Pilotage",
@@ -203,7 +208,8 @@
       "leave": "Congés & absences",
       "overtime": "Heures supplémentaires",
       "payroll": "Paie",
-      "bourse": "Bourse aux livres"
+      "bourse": "Bourse aux livres",
+      "comptabilite": "Comptabilité"
     },
     "surveys": {
       "title": "Enquêtes de satisfaction",
@@ -665,6 +671,8 @@
           "action": "Action",
           "paid": "Payé",
           "pending": "En attente",
+          "partial": "Partiel",
+          "remaining": "reste",
           "cancelled": "Annulé",
           "record": "Enregistrer",
           "recordAll": "Enregistrer",
@@ -700,14 +708,17 @@
           "TRANSFER": "Virement",
           "CMI": "CMI",
           "OTHER": "Autre"
-        }
+        },
+        "reenrollHint": "Dossier refusé — vous pouvez le réinscrire (rouvrir le dossier).",
+        "reenroll": "Réinscrire"
       },
       "filter": {
         "all": "Tous",
         "draft": "Brouillons",
         "active": "Inscrits",
         "withdrawn": "Retirés",
-        "graduated": "Diplômés"
+        "graduated": "Diplômés",
+        "refused": "Refusés"
       },
       "table": {
         "student": "Élève",
@@ -755,6 +766,8 @@
         "totalPaid": "Total réglé",
         "remaining": "Reste à régler",
         "cancelledCount": "Échéances annulées",
+        "archivedTitle": "Historique — dossier archivé",
+        "archivedHint": "Ce dossier a été radié et archivé : il reste consultable mais n’est plus modifiable.",
         "viewFinance": "Voir dans Finance",
         "previousDueTitle": "Créance antérieure non soldée",
         "previousDueHint": "Cet élève a un solde impayé d'années précédentes : {amount} {currency}.",
@@ -780,6 +793,14 @@
             "CMI": "Carte (CMI)",
             "OTHER": "Autre"
           }
+        },
+        "guardians": "Tuteurs / parents",
+        "noGuardian": "Aucun tuteur rattaché.",
+        "relations": {
+          "FATHER": "Père",
+          "MOTHER": "Mère",
+          "LEGAL_GUARDIAN": "Tuteur légal",
+          "GUARDIAN": "Tuteur"
         }
       },
       "actions": {
@@ -840,6 +861,83 @@
         "page": "Page {page} / {total}",
         "prev": "Précédent",
         "next": "Suivant"
+      },
+      "radiation": {
+        "title": "Radiation / transfert",
+        "hint": "Lance le workflow : Vie scolaire vérifie → Comptabilité valide les paiements → Direction approuve → certificat de radiation.",
+        "destination": "Établissement d’accueil",
+        "reason": "Motif",
+        "request": "Demander la radiation",
+        "certificate": "Certificat de radiation",
+        "approved": "Transféré",
+        "rejected": "Refusée",
+        "noDebt": "À jour de ses paiements (aucune dette).",
+        "hasDebt": "Dettes restantes à régulariser.",
+        "validateVieScolaire": "Valider (Vie scolaire)",
+        "validateCompta": "Valider paiements (Compta)",
+        "approve": "Approuver (Direction)",
+        "reject": "Refuser",
+        "rejectReason": "Motif du refus :",
+        "comment": "Commentaire (facultatif)",
+        "noteRequested": "Générer le relevé des notes",
+        "reexamine": "vous pouvez relancer la procédure",
+        "waiting": "En attente du responsable de l’étape",
+        "documents": "Documents générés",
+        "docScolarite": "Attestation de scolarité",
+        "docBulletin": "Relevé des notes",
+        "type": {
+          "TRANSFERT": "Transfert",
+          "DEPART": "Départ",
+          "AUTRE": "Autre"
+        },
+        "step": {
+          "vieScolaire": "Vie scolaire",
+          "compta": "Comptabilité",
+          "direction": "Direction"
+        },
+        "refund": {
+          "title": "Remboursement (départ en cours d’année)",
+          "statusLabel": "Statut",
+          "status": {
+            "PENDING_CHECK": "À vérifier",
+            "CALCULATED": "Calculé",
+            "APPROVED": "Approuvé",
+            "PAID": "Payé",
+            "REJECTED": "Aucun remboursement"
+          },
+          "basis": "Base de calcul des frais consommés",
+          "basisInstallment": "Par échéance (échéances échues)",
+          "basisProrata": "Prorata temporel (mois écoulés)",
+          "category": "Catégorie",
+          "paidCol": "Payé",
+          "consumedCol": "Consommé",
+          "dueCol": "Dû",
+          "refundableCol": "Remboursable",
+          "refundableTag": "Remboursable",
+          "nonRefundable": "Non remboursable",
+          "paidTotal": "Total payé",
+          "consumed": "Frais consommés",
+          "computed": "Montant remboursable proposé",
+          "compute": "Calculer et soumettre",
+          "recompute": "Recalculer",
+          "manualAmount": "Montant manuel (MAD)",
+          "manualHint": "Laissez vide pour le calcul automatique selon la base ; saisissez un montant s'il ne correspond pas.",
+          "validateNow": "Valider ce montant",
+          "validateBelow": "validez le montant ci-dessous",
+          "approve": "Approuver le montant",
+          "approvedAmount": "Montant approuvé",
+          "overrideHint": "Laisser vide pour approuver le montant proposé, ou saisir un autre montant.",
+          "reject": "Aucun remboursement dû",
+          "directionComment": "Commentaire direction",
+          "method": "Mode de remboursement",
+          "reference": "Référence (n° chèque / virement)",
+          "pay": "Enregistrer le paiement",
+          "receipt": "Reçu de remboursement",
+          "methods": { "VIREMENT": "Virement", "CHEQUE": "Chèque", "ESPECES": "Espèces" },
+          "waitingCompta": "En attente de la comptabilité",
+          "waitingDirection": "En attente de la direction",
+          "paidOn": "Remboursement payé"
+        }
       }
     },
     "staffAttendance": {
@@ -1568,6 +1666,20 @@
       "subtitle": "Vue d'ensemble des encaissements et des impayés.",
       "exceptionalLink": "Frais exceptionnels",
       "expensesLink": "Dépenses",
+      "waivedLink": "Créances annulées",
+      "waived": {
+        "financeCrumb": "Finances",
+        "title": "Créances annulées",
+        "subtitle": "Remises gracieuses accordées — créances effacées et comptabilisées en remise (écriture OD).",
+        "total": "Total annulé",
+        "date": "Date",
+        "student": "Élève",
+        "fee": "Frais",
+        "amount": "Montant effacé",
+        "reason": "Motif",
+        "by": "Décidé par",
+        "empty": "Aucune créance annulée."
+      },
       "year": "Année",
       "apply": "Appliquer",
       "histo": {
@@ -1722,7 +1834,8 @@
       "kpi": {
         "totalDue": "Total dû",
         "totalPaid": "Encaissé",
-        "totalRemaining": "Reste à payer"
+        "totalRemaining": "Reste à payer",
+        "overdueHint": "dont {amount} échu (en retard)"
       },
       "installments": "Échéances",
       "noFees": "Aucune grille tarifaire ne correspond au niveau de l'élève. Définissez-en une dans Paramètres > Frais.",
@@ -1765,6 +1878,18 @@
         },
         "reference": "Référence",
         "referencePlaceholder": "Numéro chèque, ref virement…",
+        "cancel": "Annuler"
+      },
+      "waive": {
+        "action": "Effacer",
+        "title": "Effacer la créance (remise gracieuse)",
+        "remaining": "Reliquat à effacer",
+        "hint": "La créance sera annulée mais restera tracée (montant, motif, auteur) et comptabilisée en remise (écriture OD).",
+        "reason": "Motif",
+        "reasonPlaceholder": "Ex. remise gracieuse direction, difficultés familiales…",
+        "reasonRequired": "Le motif est obligatoire.",
+        "confirm": "Effacer la créance",
+        "waiving": "Effacement…",
         "cancel": "Annuler"
       }
     },
@@ -2204,6 +2329,7 @@
         "addressCity": "Ville",
         "addressPostalCode": "Code postal",
         "addressCountry": "Pays",
+        "addressFromParent": "Reprendre l’adresse d’un parent/tuteur :",
         "parentsHint": "Rattachez un ou plusieurs parents existants. La fratrie sera déduite automatiquement à partir des parents partagés.",
         "parentLabel": "Parent",
         "selectParent": "Choisir un parent",
@@ -2269,7 +2395,22 @@
           "CONTRACT_END": "Fin de contrat"
         },
         "view": "Consulter",
-        "docUpload": "Téléverser (PDF/image)"
+        "docUpload": "Téléverser (PDF/image)",
+        "health": {
+          "title": "Santé & sécurité",
+          "allergies": "Allergies",
+          "chronicConditions": "Maladies chroniques",
+          "treatments": "Traitements médicaux",
+          "vaccinations": "Vaccinations",
+          "doctorName": "Médecin traitant",
+          "doctorPhone": "Tél. médecin",
+          "emergencyContactName": "Contact d’urgence",
+          "emergencyContactPhone": "Tél. urgence",
+          "paiNote": "Détail PAI",
+          "pai": "PAI (Projet d’Accueil Individualisé)",
+          "medAuthorization": "Autorisation de prise de médicaments",
+          "outingAuthorization": "Autorisation de sortie scolaire"
+        }
       },
       "studentAccess": {
         "active": "Actif",
@@ -2300,6 +2441,10 @@
         "emergencyContactPhone": "Tél. urgence",
         "medAuthorization": "Autorisation de prise de médicaments",
         "outingAuthorization": "Autorisation de sortie scolaire"
+      },
+      "editTabs": {
+        "fiche": "Fiche",
+        "health": "Santé & sécurité"
       }
     },
     "classes": {
@@ -2655,6 +2800,7 @@
       "subtitle": "Configurez le référentiel pédagogique et les utilisateurs de l'établissement.",
       "tabs": {
         "establishment": "Établissement",
+        "appearance": "Apparence",
         "years": "Années scolaires",
         "curriculum": "Cycles & niveaux",
         "subjects": "Matières",
@@ -2668,6 +2814,20 @@
         "roles": "Rôles",
         "users": "Utilisateurs",
         "audit": "Journal d'audit"
+      },
+      "appearance": {
+        "title": "Couleur du thème",
+        "hint": "Choisissez la couleur principale de l'application. Toute l'interface (menus, boutons, en-têtes) s'adaptera automatiquement.",
+        "pick": "Choisir une couleur",
+        "primary": "Couleur principale",
+        "presets": "Suggestions",
+        "preview": "Aperçu",
+        "sampleButton": "Bouton",
+        "sampleBadge": "Étiquette",
+        "save": "Enregistrer",
+        "saving": "Enregistrement…",
+        "saved": "Thème enregistré.",
+        "reset": "Réinitialiser (par défaut)"
       },
       "establishment": {
         "title": "Identité de l'établissement",
@@ -2979,6 +3139,12 @@
           "annual": "Frais annuels",
           "exceptional": "Frais exceptionnels"
         },
+        "refundable": {
+          "title": "Frais remboursables",
+          "hint": "Catégories remboursables lors d’une radiation en cours d’année (décochez l’inscription si elle n’est pas remboursable).",
+          "save": "Enregistrer",
+          "saved": "Enregistré."
+        },
         "table": {
           "year": "Année",
           "level": "Niveau",
@@ -3002,6 +3168,7 @@
           "category": "Catégorie",
           "categories": {
             "TUITION": "Scolarité",
+            "INSCRIPTION": "Frais d'inscription",
             "TRANSPORT": "Transport",
             "CANTEEN": "Cantine",
             "DAYCARE": "Garderie",
@@ -3705,6 +3872,146 @@
         "flopTitle": "Titres les moins demandés",
         "noFlop": "Tous les titres ont vendu."
       }
+    },
+    "comptabilite": {
+      "title": "Comptabilité",
+      "subtitle": "Grand livre, journaux et balance (CGNC).",
+      "journalLink": "Journal",
+      "balanceLink": "Balance générale",
+      "seedChart": "Créer le plan comptable CGNC",
+      "accountsCount": "Comptes",
+      "entriesCount": "Écritures",
+      "openYear": "Exercice ouvert",
+      "createYearTitle": "Créer un exercice comptable",
+      "yearLabel": "Libellé (ex. 2025-2026)",
+      "start": "Début",
+      "end": "Fin",
+      "createYear": "Créer l’exercice",
+      "noChart": "Aucun plan comptable.",
+      "manualTitle": "Saisie d’écriture",
+      "needYear": "Créez d’abord un exercice ouvert.",
+      "chartTitle": "Plan comptable",
+      "code": "Compte",
+      "accountName": "Intitulé",
+      "reconcilable": "Tiers",
+      "journal": "Journal",
+      "date": "Date",
+      "label": "Libellé",
+      "labelHint": "Ex. Loyer mars",
+      "account": "Compte",
+      "debit": "Débit",
+      "credit": "Crédit",
+      "total": "Total",
+      "addLine": "Ligne",
+      "balanced": "Équilibrée ✓",
+      "unbalanced": "Déséquilibrée",
+      "post": "Comptabiliser",
+      "saved": "Écriture comptabilisée ✓",
+      "deleteConfirm": "Supprimer cette écriture ?",
+      "allJournals": "Tous les journaux",
+      "filter": "Filtrer",
+      "export": "Export CSV",
+      "noEntries": "Aucune écriture.",
+      "balanceCol": "Solde",
+      "openYearLabel": "Exercice",
+      "journals": {
+        "VE": "Ventes",
+        "AC": "Achats",
+        "BQ": "Banque",
+        "CA": "Caisse",
+        "PA": "Paie",
+        "OD": "Opérations diverses"
+      },
+      "agingLink": "Balance âgée clients",
+      "totalDue": "Total dû",
+      "families": "Familles",
+      "unpaidRate": "Taux d’impayés",
+      "overdue90": "Retard > 60j",
+      "family": "Famille",
+      "notDue": "Non échu",
+      "noUnpaid": "Aucun impayé.",
+      "achats": {
+        "title": "Achats / Fournisseurs",
+        "totalDue": "Dû fournisseurs",
+        "newInvoice": "Nouvelle facture fournisseur",
+        "supplier": "Fournisseur",
+        "label": "Libellé",
+        "chargeAccount": "Compte de charge",
+        "amount": "Montant",
+        "number": "N° facture",
+        "date": "Date",
+        "dueDate": "Échéance",
+        "addInvoice": "Enregistrer la facture",
+        "invoices": "Factures",
+        "remaining": "Reste dû",
+        "status": "Statut",
+        "payment": "Règlement",
+        "pay": "Régler",
+        "noInvoices": "Aucune facture.",
+        "suppliers": "Fournisseurs",
+        "supplierName": "Nom du fournisseur",
+        "noSuppliers": "Aucun fournisseur.",
+        "method": {
+          "TRANSFER": "Virement",
+          "CHEQUE": "Chèque",
+          "CASH": "Espèces",
+          "CMI": "Carte",
+          "OTHER": "Autre"
+        },
+        "statusLabel": {
+          "UNPAID": "À payer",
+          "PARTIAL": "Partiel",
+          "PAID": "Payée"
+        }
+      },
+      "etats": {
+        "title": "États financiers",
+        "produits": "Produits",
+        "charges": "Charges",
+        "resultat": "Résultat net",
+        "treasury": "Trésorerie",
+        "recovery": "Taux de recouvrement",
+        "cpc": "Compte de produits et charges (CPC)",
+        "balanceSheet": "Bilan simplifié",
+        "assets": "Actif",
+        "liabilities": "Passif",
+        "result": "Résultat",
+        "total": "Total",
+        "cashFlow": "Flux de trésorerie",
+        "inflow": "Encaissements",
+        "outflow": "Décaissements",
+        "classBalance": "Balance par classe",
+        "class": "Classe",
+        "classes": {
+          "1": "1 — Financement permanent",
+          "2": "2 — Actif immobilisé",
+          "3": "3 — Actif circulant",
+          "4": "4 — Passif circulant",
+          "5": "5 — Trésorerie",
+          "6": "6 — Charges",
+          "7": "7 — Produits"
+        }
+      },
+      "cloture": {
+        "title": "Clôture d’exercice",
+        "hint": "La clôture reporte les soldes de bilan (classes 1–5) et le résultat (1191) en à-nouveaux de l’exercice suivant, puis verrouille l’exercice. L’à-nouveau de démarrage (go-live) se saisit via une écriture manuelle (OD) datée au début de l’exercice.",
+        "year": "Exercice",
+        "period": "Période",
+        "entries": "Écritures",
+        "status": "Statut",
+        "action": "Action",
+        "close": "Clôturer",
+        "reopen": "Réouvrir",
+        "closeConfirm": "Clôturer cet exercice ? Les soldes seront reportés en à-nouveaux de l’exercice suivant.",
+        "reopenConfirm": "Réouvrir cet exercice ? L’à-nouveau généré sera supprimé.",
+        "noYears": "Aucun exercice.",
+        "statusLabel": {
+          "OPEN": "Ouvert",
+          "CLOSED": "Clôturé"
+        }
+      },
+      "reverse": "Contre-passer",
+      "reverseConfirm": "Créer l’écriture inverse (contre-passation) ?"
     }
   },
   "superAdmin": {
@@ -3859,6 +4166,7 @@
       "cahier": "Cahier de texte",
       "announcements": "Annonces",
       "messages": "Messages",
+      "bourse": "Bourse aux livres",
       "surveys": "Enquêtes",
       "account": "Mon compte",
       "sections": {
@@ -3948,6 +4256,12 @@
       "viewYear": "Voir",
       "since": "Depuis le",
       "documentsTitle": "Documents officiels",
+      "radiationDocs": {
+        "title": "Documents de radiation / transfert",
+        "scolarite": "Attestation de scolarité",
+        "certificate": "Certificat de radiation",
+        "bulletin": "Relevé des notes"
+      },
       "cahier": {
         "tabContent": "Contenu et ressources",
         "tabHomework": "Travail à faire",
@@ -4093,6 +4407,18 @@
         "accept": "Accepter",
         "refuse": "Refuser"
       },
+      "pay": {
+        "title": "Payer en ligne",
+        "subtitle": "Réglez vos frais de scolarité par carte via CMI (paiement sécurisé).",
+        "total": "Total à payer",
+        "payButton": "Payer en ligne",
+        "redirecting": "Redirection…",
+        "selectOne": "Sélectionnez au moins une échéance.",
+        "notConfigured": "Le paiement en ligne n'est pas encore activé pour cet établissement.",
+        "notConfiguredHint": "Paiement en ligne bientôt disponible.",
+        "successBanner": "Paiement bien reçu. Votre échéancier sera mis à jour dans un instant.",
+        "failedBanner": "Le paiement n'a pas abouti. Aucun montant n'a été débité. Vous pouvez réessayer."
+      },
       "finance": {
         "title": "Scolarité",
         "empty": "Aucune échéance pour le moment.",
@@ -4123,10 +4449,13 @@
         "reserve": "Réserver",
         "cancel": "Annuler",
         "reservedByYou": "Réservé par vous",
+        "reservedFor": "Réservé pour",
+        "navTitle": "Bourse aux livres",
+        "noChild": "Aucun enfant rattaché.",
         "noneAvailable": "Aucun livre disponible.",
         "reserveHint": "La réservation maintient le livre à votre nom ; finalisez l’achat à l’école.",
-        "myDeposits": "Mes dépôts",
-        "myPurchases": "Mes achats",
+        "myDeposits": "Dépôts",
+        "myPurchases": "Achats",
         "noDeposit": "Aucun dépôt.",
         "noPurchase": "Aucun achat."
       }

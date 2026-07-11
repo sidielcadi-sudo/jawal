@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { generateInstallmentsAction, recordPaymentAction } from './actions';
+import { generateInstallmentsAction, recordPaymentAction, waiveInstallmentDebtAction } from './actions';
 
 const inputCls =
   'mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
@@ -65,6 +65,84 @@ export function GenerateForm({
         {isPending ? t('generating') : t('generate')}
       </button>
       {error && <p className="w-full text-xs text-red-700">{error}</p>}
+    </div>
+  );
+}
+
+/** Effacement de créance (remise gracieuse) sur le reliquat d'une échéance. */
+export function WaiveDebtButton({
+  installmentId,
+  remaining,
+  currency,
+}: {
+  installmentId: string;
+  remaining: number;
+  currency: string;
+}) {
+  const t = useTranslations('admin.studentFinance.waive');
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [open, setOpen] = useState(false);
+  const [reason, setReason] = useState('');
+  const [error, setError] = useState('');
+
+  function submit() {
+    setError('');
+    if (!reason.trim()) {
+      setError(t('reasonRequired'));
+      return;
+    }
+    startTransition(async () => {
+      const r = await waiveInstallmentDebtAction(installmentId, reason);
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setOpen(false);
+      router.refresh();
+    });
+  }
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="ms-1 rounded-lg border border-amber-300 px-2 py-0.5 text-xs font-medium text-amber-700 hover:bg-amber-50"
+      >
+        {t('action')}
+      </button>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 z-20 grid place-items-center bg-slate-900/40 p-4" onClick={() => setOpen(false)}>
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-5 text-start shadow-xl" onClick={(e) => e.stopPropagation()}>
+        <h3 className="text-base font-semibold text-slate-900">{t('title')}</h3>
+        <p className="mt-1 text-xs text-slate-500">
+          {t('remaining')} : <strong>{remaining.toFixed(2)} {currency}</strong>
+        </p>
+        <p className="mt-2 text-xs text-amber-700">{t('hint')}</p>
+        <div className="mt-3">
+          <label className="block text-xs font-medium text-slate-700">{t('reason')}</label>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            rows={2}
+            placeholder={t('reasonPlaceholder')}
+            className={inputCls}
+          />
+        </div>
+        {error && <div className="mt-2 rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">{error}</div>}
+        <div className="mt-4 flex justify-end gap-2 border-t border-slate-200 pt-3">
+          <button type="button" onClick={() => setOpen(false)} className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+            {t('cancel')}
+          </button>
+          <button type="button" onClick={submit} disabled={isPending} className="rounded-lg bg-amber-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-amber-700 disabled:opacity-50">
+            {isPending ? t('waiving') : t('confirm')}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

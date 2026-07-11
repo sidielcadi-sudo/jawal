@@ -22,8 +22,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ childId: string
   if (!session.user.isParent) return new Response('Forbidden', { status: 403 });
 
   const { childId } = await ctx.params;
-  const periodId = new URL(req.url).searchParams.get('period');
-  if (!periodId) return new Response('period is required', { status: 400 });
+  const url = new URL(req.url);
+  let periodId = url.searchParams.get('period');
+  const yearId = url.searchParams.get('year');
+  if (!periodId && !yearId) return new Response('period or year is required', { status: 400 });
 
   const tenantId = session.user.tenantId;
   const tenant = await prismaAdmin.tenant.findUnique({ where: { id: tenantId } });
@@ -32,9 +34,20 @@ export async function GET(req: Request, ctx: { params: Promise<{ childId: string
   const data = await withTenant(tenantId, async (tx) => {
     if (!(await parentCanAccessChild(tx, session.user.id, childId))) return 'forbidden' as const;
 
+    // À défaut de période, prend la dernière période de l'année demandée.
+    if (!periodId && yearId) {
+      const latest = await tx.period.findFirst({
+        where: { academicYearId: yearId },
+        orderBy: [{ startDate: 'desc' }],
+        select: { id: true },
+      });
+      if (!latest) return null;
+      periodId = latest.id;
+    }
+
     // Résout la classe via l'année de la période demandée (support multi-années).
     const period = await tx.period.findUnique({
-      where: { id: periodId },
+      where: { id: periodId! },
       select: { academicYearId: true },
     });
     if (!period) return null;
@@ -48,7 +61,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ childId: string
     });
     if (!sc) return null;
 
-    return loadBulletinData(tx, { classId: sc.classId, periodId, studentIds: [childId] });
+    return loadBulletinData(tx, { classId: sc.classId, periodId: periodId!, studentIds: [childId] });
   });
 
   if (data === 'forbidden') return new Response('Forbidden', { status: 403 });

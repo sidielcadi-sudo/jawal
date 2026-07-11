@@ -8,6 +8,7 @@ import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant, prismaAdmin } from '@/lib/db';
 import { safeSendEmail } from '@/lib/email';
+import { pushConversationReply } from '@/lib/push';
 
 type Result<T = void> =
   | { ok: true; data?: T }
@@ -156,6 +157,9 @@ export async function sendMessageAction(formData: FormData): Promise<Result> {
       ),
     );
   }
+
+  // Notification push aux parents participants (best-effort, hors transaction).
+  await pushConversationReply(tenantId, parsed.data.conversationId, session.user.id, notify.subject);
 
   revalidatePath('/admin/messages');
   revalidatePath(`/admin/messages/${parsed.data.conversationId}`);

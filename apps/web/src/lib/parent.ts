@@ -52,7 +52,9 @@ export async function getParentChildren(tx: Tx, userId: string): Promise<ParentC
   const activeYear = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
 
   const students = await tx.person.findMany({
-    where: { id: { in: childIds }, type: 'STUDENT', deletedAt: null },
+    // L'enfant n'apparaît dans le portail parent que si son inscription est
+    // ACTIVE (inscription validée / élève intégré) — pas dès sa création.
+    where: { id: { in: childIds }, type: 'STUDENT', deletedAt: null, enrollments: { some: { status: 'ACTIVE' } } },
     select: {
       id: true,
       firstName: true,

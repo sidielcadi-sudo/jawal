@@ -1,3 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+  # App mobile Expo (React Native) : hors workspace pnpm — Metro/React Native ne
+  # gèrent pas les symlinks pnpm. Elle s'installe/s'exécute en standalone avec npm
+  # (cd apps/mobile && npm install && npx expo start).
+  - "!apps/mobile"

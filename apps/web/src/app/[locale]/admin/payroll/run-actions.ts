@@ -7,6 +7,8 @@ import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
 import { workingDaysBetween } from '@/lib/leave';
 import { computePayslip, type PayrollConfigInput } from '@/lib/payroll-calc';
+import { buildJournal, type AccountMapping } from '@/lib/payroll-journal';
+import { postPayrollRun } from '@/lib/accounting-hooks';
 
 type Result = { ok: true; message?: string } | { ok: false; error: string };
 
@@ -124,7 +126,7 @@ export async function advancePayrollRunAction(runId: string, action: 'validate' 
   const tenantId = s.user.tenantId;
   try {
     await withTenant(tenantId, async (tx) => {
-      const run = await tx.payrollRun.findUnique({ where: { id: runId }, select: { status: true } });
+      const run = await tx.payrollRun.findUnique({ where: { id: runId }, select: { status: true, year: true, month: true } });
       if (!run) throw new Error('Run introuvable.');
       const data: Record<string, unknown> = {};
       if (action === 'validate') { if (run.status !== 'CALCULATED') throw new Error('Étape invalide.'); data.status = 'RH_VALIDATED'; data.rhByUserId = s.user.id; }
@@ -132,6 +134,24 @@ export async function advancePayrollRunAction(runId: string, action: 'validate' 
       else if (action === 'close') { if (run.status !== 'DIRECTION_APPROVED') throw new Error('Étape invalide.'); data.status = 'CLOSED'; data.closedByUserId = s.user.id; }
       else if (action === 'reopen') { if (run.status === 'CLOSED') throw new Error('Mois clôturé.'); data.status = 'CALCULATED'; }
       await tx.payrollRun.update({ where: { id: runId }, data });
+
+      // À la clôture : poste l'écriture de paie dans le grand livre.
+      if (action === 'close') {
+        const [payslips, config] = await Promise.all([
+          tx.payslip.findMany({ where: { runId }, select: { brut: true, irNet: true, employerCost: true, netPayable: true, breakdown: true } }),
+          tx.payrollConfig.findFirst({ orderBy: { effectiveFrom: 'desc' }, select: { accountMapping: true } }),
+        ]);
+        const agg = payslips.reduce(
+          (a, p) => {
+            const b = p.breakdown as Record<string, number>;
+            const social = (b.cnss ?? 0) + (b.amo ?? 0) + (b.cimr ?? 0) + (b.cnssEmployer ?? 0) + (b.familyAllowance ?? 0) + (b.amoEmployer ?? 0) + (b.trainingTax ?? 0);
+            return { brut: a.brut + p.brut, employerCharges: a.employerCharges + (b.employerCharges ?? 0), net: a.net + p.netPayable, socialBothShares: a.socialBothShares + social, ir: a.ir + p.irNet, internal: a.internal + (b.internalDeductions ?? 0) };
+          },
+          { brut: 0, employerCharges: 0, net: 0, socialBothShares: 0, ir: 0, internal: 0 },
+        );
+        const journal = buildJournal(agg, (config?.accountMapping ?? {}) as AccountMapping);
+        await postPayrollRun(tx, tenantId, runId, journal, new Date(Date.UTC(run.year, run.month, 0)), `Paie ${run.month}/${run.year}`, s.user.id);
+      }
       await logAudit(tx, { tenantId, userId: s.user.id, action: `payroll_${action}`, entityType: 'PayrollRun', entityId: runId });
     });
     revalidatePath('/admin/payroll/runs');

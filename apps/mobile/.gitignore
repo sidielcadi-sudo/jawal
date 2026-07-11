@@ -1,0 +1,13 @@
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+.env
+.env.local
+# macOS
+.DS_Store
+# Expo native
+/ios
+/android
+expo-env.d.ts

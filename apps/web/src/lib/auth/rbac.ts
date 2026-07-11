@@ -65,12 +65,42 @@ export async function can(permission: string): Promise<boolean> {
 }
 
 /**
+ * Erreur d'autorisation. Le `message` est directement présentable à
+ * l'utilisateur (les Server Actions le renvoient tel quel dans `{ ok:false }`).
+ * Le `digest` stable « FORBIDDEN » survit à la frontière serveur→client (même
+ * en prod où le message est expurgé), ce qui permet à un error boundary de
+ * reconnaître le cas et d'afficher « Opération non autorisée ».
+ */
+export class ForbiddenError extends Error {
+  digest = 'FORBIDDEN';
+  detail?: string;
+  constructor(detail?: string) {
+    super('Opération non autorisée.');
+    this.name = 'ForbiddenError';
+    this.detail = detail;
+  }
+}
+
+/**
  * À utiliser dans les Server Components / Server Actions pour gater une
- * opération. Renvoie une `Error` "Forbidden" si la permission manque ;
- * laisser l'appelant la traduire en réponse 403 ou rediriger.
+ * opération. Lève une `ForbiddenError` (message « Opération non autorisée. »)
+ * si la permission manque.
  */
 export async function requirePermission(permission: string): Promise<void> {
   if (!(await can(permission))) {
-    throw new Error(`Forbidden: missing permission "${permission}"`);
+    throw new ForbiddenError(`missing permission "${permission}"`);
+  }
+}
+
+/**
+ * Gate une opération sur l'appartenance à un rôle précis (responsable d'étape
+ * d'un workflow). `tenant_admin` (et super-admin, mappé sur `tenant_admin`)
+ * passe toujours. Sert au verrouillage des étapes de radiation/remboursement,
+ * où seul le responsable de l'étape peut valider.
+ */
+export async function requireRoleCode(codes: string[]): Promise<void> {
+  const roles = await currentUserRoleCodes();
+  if (!codes.some((c) => roles.includes(c))) {
+    throw new ForbiddenError(`rôle requis (${codes.join(', ')})`);
   }
 }

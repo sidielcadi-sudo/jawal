@@ -40,6 +40,7 @@ type IntlMessages = {
       surveys: string;
       messages: string;
       finance: string;
+      comptabilite: string;
       import: string;
       settings: string;
     };
@@ -166,15 +167,18 @@ function buildItems(locale: string): NavItem[] {
       match: (p, _s) => p.startsWith(`${prefix}/surveys`),
       roles: ['tenant_admin', 'direction'],
     },
-    {
-      href: `${prefix}/messages`,
-      labelKey: 'messages',
-      match: (p, _s) => p.startsWith(`${prefix}/messages`),
-    },
+    // « Messages » retiré du menu latéral : accessible via l'icône enveloppe
+    // dans l'en-tête (la page /admin/messages reste joignable par URL).
     {
       href: `${prefix}/finance`,
       labelKey: 'finance',
       match: (p, _s) => p === `${prefix}/finance` || p.startsWith(`${prefix}/finance/`),
+      roles: ['tenant_admin', 'direction', 'comptable'],
+    },
+    {
+      href: `${prefix}/comptabilite`,
+      labelKey: 'comptabilite',
+      match: (p, _s) => p.startsWith(`${prefix}/comptabilite`),
       roles: ['tenant_admin', 'direction', 'comptable'],
     },
     {
@@ -214,7 +218,7 @@ export function AdminSidebar({
   );
 
   return (
-    <aside className="m-3 flex h-[calc(100vh-1.5rem)] w-60 shrink-0 flex-col rounded-3xl bg-gradient-to-b from-[#1A56DB] to-[#123a8f] p-4 text-white">
+    <aside className="m-3 flex h-[calc(100vh-1.5rem)] w-60 shrink-0 flex-col rounded-3xl bg-gradient-to-b from-brand-600 to-brand-800 p-4 text-white">
       <div className="flex justify-center px-1.5 pb-4 pt-1">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={logoUrl ?? '/sesame-logo.png'} alt={tenantName || 'Logo'} className="h-14 w-auto object-contain" />
@@ -228,7 +232,7 @@ export function AdminSidebar({
                 className={[
                   'flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm transition-colors',
                   pathname.startsWith(`/${locale}/admin/group`)
-                    ? 'bg-white font-semibold text-[#143fa6] shadow'
+                    ? 'bg-white font-semibold text-brand-700 shadow'
                     : 'text-white/75 hover:bg-white/10',
                 ].join(' ')}
               >
@@ -246,7 +250,7 @@ export function AdminSidebar({
                   className={[
                     'flex items-center justify-between gap-1.5 rounded-xl px-3 py-2 text-sm transition-colors',
                     active
-                      ? 'bg-white font-semibold text-[#143fa6] shadow'
+                      ? 'bg-white font-semibold text-brand-700 shadow'
                       : 'text-white/75 hover:bg-white/10',
                   ].join(' ')}
                 >

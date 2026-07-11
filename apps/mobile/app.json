@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "Jawal Parents",
+    "slug": "jawal-parents",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "jawalparents",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ma.jawal.parents",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "ma.jawal.parents"
+    }
+  }
+}

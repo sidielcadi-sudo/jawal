@@ -7,6 +7,7 @@ import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
 import { feeCategoryApplies, buildInstallments, type FeeCategory } from '@/lib/fees';
+import { assertEnrollmentNotArchived } from '@/lib/enrollment-guard';
 
 type Result = { ok: true; message: string } | { ok: false; error: string };
 
@@ -49,6 +50,7 @@ export async function updateRegimeTransportAction(input: {
 
   try {
     return await withTenant(tenantId, async (tx): Promise<Result> => {
+      await assertEnrollmentNotArchived(tx, parsed.data.enrollmentId);
       const enr = await tx.enrollment.findUnique({
         where: { id: parsed.data.enrollmentId },
         select: { id: true, studentId: true, academicYearId: true, levelId: true, feesGenerated: true },

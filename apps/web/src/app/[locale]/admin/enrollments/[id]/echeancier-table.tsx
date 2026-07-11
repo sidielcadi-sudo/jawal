@@ -11,6 +11,8 @@ export type InstallmentRow = {
   feeType: string;
   dueDate: string;
   amount: number;
+  /** Total déjà versé sur cette échéance (pour afficher le reste dû). */
+  paid: number;
   status: 'PENDING' | 'PARTIAL' | 'PAID' | 'CANCELLED';
   method: string | null;
   reference: string | null;
@@ -57,8 +59,11 @@ export function EcheancierTable({
         </thead>
         <tbody className="divide-y divide-slate-100">
           {groups.map((g) => {
+            // « Total dû » = reste à payer (montant − déjà versé), hors annulées.
+            // Une échéance soldée ou la part déjà réglée d'une échéance partielle
+            // ne comptent plus dans le dû.
             const subtotal = g.rows.reduce(
-              (s, r) => (r.status === 'CANCELLED' ? s : s + r.amount),
+              (s, r) => (r.status === 'CANCELLED' ? s : s + Math.max(0, r.amount - r.paid)),
               0,
             );
             const unpaidIds = g.rows
@@ -106,6 +111,8 @@ function Row({
 
   const paid = row.status === 'PAID';
   const cancelled = row.status === 'CANCELLED';
+  const remaining = Math.max(0, row.amount - row.paid);
+  const isPartial = !paid && !cancelled && row.paid > 0;
 
   function save() {
     setErr('');
@@ -129,6 +136,11 @@ function Row({
         <td className="px-4 py-2 text-slate-600">{row.feeType}</td>
         <td className="px-4 py-2 text-end font-medium tabular-nums">
           {row.amount.toFixed(2)} {currency}
+          {isPartial && (
+            <div className="text-[11px] font-normal text-amber-700">
+              {t('echeancier.remaining')} {remaining.toFixed(2)} {currency}
+            </div>
+          )}
         </td>
         <td className="px-4 py-2 text-slate-600">
           {row.method ? t(`method.${row.method}`) : '—'}
@@ -140,14 +152,18 @@ function Row({
                 ? 'bg-emerald-100 text-emerald-700'
                 : cancelled
                   ? 'bg-slate-100 text-slate-500'
-                  : 'bg-amber-100 text-amber-800'
+                  : isPartial
+                    ? 'bg-blue-100 text-blue-800'
+                    : 'bg-amber-100 text-amber-800'
             }`}
           >
             {paid
               ? `✓ ${t('echeancier.paid')}`
               : cancelled
                 ? t('echeancier.cancelled')
-                : t('echeancier.pending')}
+                : isPartial
+                  ? t('echeancier.partial')
+                  : t('echeancier.pending')}
           </span>
         </td>
         <td className="px-4 py-2 text-end">

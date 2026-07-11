@@ -37,6 +37,10 @@ const TEMPLATES: Record<string, { fr: Tpl; ar: Tpl }> = {
     fr: (d) => `Le bus de la ligne « ${d.line} » aura un retard d'environ ${d.minutes} minutes.`,
     ar: (d) => `حافلة الخط «${d.line}» ستتأخر بحوالي ${d.minutes} دقيقة.`,
   },
+  'enrollment.refused': {
+    fr: (d) => `La demande d'inscription de ${d.child} n'a pas été retenue.${d.reason ? ` Motif : ${d.reason}` : ''}`,
+    ar: (d) => `لم يتم قبول طلب تسجيل ${d.child}.${d.reason ? ` السبب: ${d.reason}` : ''}`,
+  },
   'leave.approved': {
     fr: (d) => `Votre demande de congé (${d.type}) du ${d.start} au ${d.end} a été approuvée.`,
     ar: (d) => `تمت الموافقة على طلب إجازتكم (${d.type}) من ${d.start} إلى ${d.end}.`,

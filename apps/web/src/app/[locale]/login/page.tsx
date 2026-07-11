@@ -20,7 +20,7 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-screen items-center justify-center bg-white bg-[url('/login-bg.png')] bg-cover bg-center bg-no-repeat px-4 py-4">
       <div className="w-full max-w-md">
-        <div className="rounded-3xl bg-[#1A56DB] bg-[url('/form-bg.png')] bg-cover bg-center p-5 text-white shadow-2xl sm:p-6">
+        <div className="rounded-3xl bg-brand-600 bg-[url('/form-bg.png')] bg-cover bg-center p-5 text-white shadow-2xl sm:p-6">
           <div className="mb-4 text-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img

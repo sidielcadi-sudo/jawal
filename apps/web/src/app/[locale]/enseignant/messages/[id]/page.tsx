@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { getThread, isParticipant, resolveSenderNames } from '@/lib/messaging';
 import { ReplyForm, MarkRead } from '../client';
+import { markTeacherReadAction } from '../actions';
 
 export default async function TeacherThreadPage({
   params,
@@ -16,6 +17,9 @@ export default async function TeacherThreadPage({
   const session = (await auth())!;
   const userId = session.user.id;
   const t = await getTranslations('enseignant.messages');
+
+  // Marque lu côté serveur dès l'ouverture → le compteur de l'en-tête se met à jour.
+  await markTeacherReadAction(id).catch(() => null);
 
   const data = await withTenant(session.user.tenantId, async (tx) => {
     if (!(await isParticipant(tx, id, userId))) return null;

@@ -10,14 +10,12 @@ export function TeacherSidebar({
   teacherName,
   logoUrl,
   appelBadge = 0,
-  messagesBadge = 0,
 }: {
   locale: string;
   tenantName: string;
   teacherName: string;
   logoUrl?: string | null;
   appelBadge?: number;
-  messagesBadge?: number;
 }) {
   const pathname = usePathname();
   const t = useTranslations('enseignant.nav');
@@ -31,7 +29,7 @@ export function TeacherSidebar({
     { href: `${prefix}/notes`, key: 'notes', exact: false },
     { href: `${prefix}/carnet`, key: 'carnet', exact: false },
     { href: `${prefix}/classes`, key: 'classes', exact: false },
-    { href: `${prefix}/messages`, key: 'messages', exact: false },
+    // « Messages » retiré du menu : accessible via l'enveloppe de l'en-tête.
     { href: `${prefix}/account`, key: 'account', exact: false },
   ] as const;
 
@@ -39,12 +37,12 @@ export function TeacherSidebar({
     [
       'block rounded-xl px-3 py-2 text-sm transition-colors',
       active
-        ? 'bg-white font-semibold text-[#143fa6] shadow'
+        ? 'bg-white font-semibold text-brand-700 shadow'
         : 'text-white/75 hover:bg-white/10',
     ].join(' ');
 
   return (
-    <aside className="m-3 flex h-[calc(100vh-1.5rem)] w-60 shrink-0 flex-col rounded-3xl bg-gradient-to-b from-[#1A56DB] to-[#123a8f] p-4 text-white">
+    <aside className="m-3 flex h-[calc(100vh-1.5rem)] w-60 shrink-0 flex-col rounded-3xl bg-gradient-to-b from-brand-600 to-brand-800 p-4 text-white">
       <div className="px-1.5 pb-4 pt-2">
         <div className="flex justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -58,7 +56,7 @@ export function TeacherSidebar({
             const active = it.exact
               ? pathname === it.href || pathname === `${it.href}/`
               : pathname.startsWith(it.href);
-            const badge = it.key === 'appel' ? appelBadge : it.key === 'messages' ? messagesBadge : 0;
+            const badge = it.key === 'appel' ? appelBadge : 0;
             return (
               <li key={it.key}>
                 <Link href={it.href} className={cls(active)}>

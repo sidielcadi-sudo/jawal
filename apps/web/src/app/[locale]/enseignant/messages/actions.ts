@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { isParticipant } from '@/lib/messaging';
+import { pushConversationReply } from '@/lib/push';
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -28,9 +29,13 @@ export async function teacherReplyAction(formData: FormData): Promise<Result> {
   const tenantId = session.user.tenantId;
   const userId = session.user.id;
 
-  const res = await withTenant(tenantId, async (tx): Promise<Result> => {
+  const res = await withTenant(tenantId, async (tx): Promise<Result & { subject?: string }> => {
     if (!(await isParticipant(tx, parsed.data.conversationId, userId)))
       return { ok: false, error: 'Conversation introuvable.' };
+    const conv = await tx.conversation.findUnique({
+      where: { id: parsed.data.conversationId },
+      select: { subject: true },
+    });
     await tx.message.create({
       data: {
         tenantId,
@@ -47,10 +52,14 @@ export async function teacherReplyAction(formData: FormData): Promise<Result> {
       where: { conversationId_userId: { conversationId: parsed.data.conversationId, userId } },
       data: { lastReadAt: new Date() },
     });
-    return { ok: true };
+    return { ok: true, subject: conv?.subject };
   });
 
-  if (res.ok) revalidatePath(`/enseignant/messages/${parsed.data.conversationId}`);
+  if (res.ok) {
+    // Notification push aux parents participants (best-effort, hors transaction).
+    await pushConversationReply(tenantId, parsed.data.conversationId, userId, res.subject ?? null);
+    revalidatePath(`/enseignant/messages/${parsed.data.conversationId}`);
+  }
   return res;
 }
 

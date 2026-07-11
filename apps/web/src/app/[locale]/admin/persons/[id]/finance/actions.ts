@@ -7,9 +7,48 @@ import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
+import { postInstallmentPayment, postDebtWaiver } from '@/lib/accounting-hooks';
 import { computeInstallmentStatus } from '@/lib/finance';
 
 type Result = { ok: true } | { ok: false; error: string };
+
+/**
+ * Efface une créance (remise gracieuse) : le reliquat impayé d'une échéance est
+ * annulé — l'échéance passe en CANCELLED mais reste **tracée** (montant, motif,
+ * auteur, date) et une écriture OD est passée (Débit 7119 remise / Crédit 34211).
+ */
+export async function waiveInstallmentDebtAction(installmentId: string, reason: string): Promise<Result> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requirePermission('finance.write');
+  const motif = reason?.trim();
+  if (!motif) return { ok: false, error: 'Motif requis.' };
+  const tenantId = session.user.tenantId;
+  let studentId: string | null = null;
+  try {
+    studentId = await withTenant(tenantId, async (tx) => {
+      const inst = await tx.installment.findUnique({ where: { id: installmentId }, include: { payments: true } });
+      if (!inst) throw new Error('Échéance introuvable.');
+      if (inst.status === 'CANCELLED') throw new Error('Échéance déjà annulée / effacée.');
+      const paid = inst.payments.reduce((s, p) => s + Number(p.amount), 0);
+      const remaining = Math.round((Number(inst.amount) - paid) * 100) / 100;
+      if (remaining <= 0) throw new Error('Aucun reliquat à effacer (échéance soldée).');
+      const now = new Date();
+      await tx.installment.update({
+        where: { id: installmentId },
+        data: { status: 'CANCELLED', waivedAmount: remaining, waivedReason: motif, waivedByUserId: session.user.id, waivedAt: now },
+      });
+      await postDebtWaiver(tx, tenantId, { id: inst.id, label: inst.label }, remaining, now, session.user.id);
+      await logAudit(tx, { tenantId, userId: session.user.id, action: 'waive_debt', entityType: 'Installment', entityId: installmentId, after: { amount: remaining, reason: motif } });
+      return inst.studentId;
+    });
+  } catch (e: unknown) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
+  }
+  if (studentId) revalidatePath(`/admin/persons/${studentId}/finance`);
+  revalidatePath('/admin/finance');
+  return { ok: true };
+}
 
 /**
  * Génère un échéancier mensuel pour un élève à partir d'une grille tarifaire.
@@ -117,7 +156,7 @@ export async function recordPaymentAction(formData: FormData): Promise<Result> {
         throw new Error(`Le total versé (${newPaid}) dépasse l'échéance (${amount}).`);
       }
 
-      await tx.payment.create({
+      const pay = await tx.payment.create({
         data: {
           tenantId,
           installmentId: inst.id,
@@ -128,6 +167,7 @@ export async function recordPaymentAction(formData: FormData): Promise<Result> {
           recordedByUserId: session.user.id,
         },
       });
+      await postInstallmentPayment(tx, tenantId, inst.id, { id: pay.id, amount: parsed.data.amount, method: parsed.data.method }, parsed.data.paidAt ?? new Date(), session.user.id);
 
       const newStatus = computeInstallmentStatus(amount, newPaid);
       await tx.installment.update({
