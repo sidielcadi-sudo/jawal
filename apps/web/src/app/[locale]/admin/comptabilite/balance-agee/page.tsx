@@ -73,9 +73,9 @@ export default async function BalanceAgeePage({ params }: { params: Promise<{ lo
         <Kpi label={t('overdue90')} value={fmt(totals.b90 + totals.b90p)} tone="red" />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
             <tr>
               <th className="px-3 py-2.5 text-start">{t('family')}</th>
               <th className="px-3 py-2.5 text-end">{t('notDue')}</th>

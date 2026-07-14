@@ -12,26 +12,30 @@ export function SettingsTabs({ locale }: { locale: string }) {
   const t = useTranslations('admin.settings.tabs');
   const base = `/${locale}/admin/settings`;
 
+  // « Emploi du temps » déplacé du menu latéral vers Paramétrage : entrée
+  // pointant vers la page EDT (/admin/timetable), hors du préfixe /settings.
+  const entries: { key: string; href: string; label: string; active: boolean }[] = TABS.map(
+    (tab) => ({
+      key: tab,
+      href: `${base}/${tab}`,
+      label: t(tab satisfies Tab),
+      active: pathname.startsWith(`${base}/${tab}`),
+    }),
+  );
+  entries.push({
+    key: 'timetable',
+    href: `/${locale}/admin/timetable`,
+    label: t('timetable'),
+    active: pathname.startsWith(`/${locale}/admin/timetable`),
+  });
+
   return (
-    <nav className="-mb-px flex flex-wrap gap-1 border-b border-slate-200">
-      {TABS.map((tab) => {
-        const href = `${base}/${tab}`;
-        const active = pathname.startsWith(href);
-        return (
-          <Link
-            key={tab}
-            href={href}
-            className={[
-              'border-b-2 px-4 py-2 text-sm font-medium transition-colors',
-              active
-                ? 'border-brand-600 text-brand-700'
-                : 'border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700',
-            ].join(' ')}
-          >
-            {t(tab satisfies Tab)}
-          </Link>
-        );
-      })}
+    <nav className="folder-tabs">
+      {entries.map((e) => (
+        <Link key={e.key} href={e.href} className={`folder-tab ${e.active ? 'is-active' : ''}`}>
+          {e.label}
+        </Link>
+      ))}
     </nav>
   );
 }

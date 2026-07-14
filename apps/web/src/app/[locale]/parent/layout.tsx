@@ -67,7 +67,7 @@ export default async function ParentLayout({
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden p-3 ps-0 print:overflow-visible print:p-0">
-        <header className="relative mb-1 flex items-center justify-end gap-3 rounded-3xl bg-white px-5 py-2.5 shadow-sm print:hidden">
+        <header className="relative mb-1 flex items-center justify-end gap-3 rounded-2xl bg-white px-5 py-2.5 shadow-sm print:hidden">
           {tenant?.name && (
             <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap bg-gradient-to-r from-brand-600 to-brand-800 bg-clip-text text-lg font-bold text-transparent">
               {tenant.name}

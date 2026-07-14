@@ -42,9 +42,9 @@ export default async function BalancePage({ params }: { params: Promise<{ locale
         <ExportButton header={['Compte', 'Intitule', 'Debit', 'Credit', 'Solde']} rows={rows.map((r) => [r.code, r.name, r.debit.toFixed(2), r.credit.toFixed(2), r.solde.toFixed(2)])} filename="balance-generale" label={t('export')} />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
             <tr>
               <th className="px-4 py-2.5 text-start">{t('account')}</th>
               <th className="px-4 py-2.5 text-end">{t('debit')}</th>

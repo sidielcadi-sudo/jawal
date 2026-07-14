@@ -2,7 +2,9 @@
  * Calcul du remboursement d'un élève radié en cours d'année.
  * Deux bases sélectionnables par la comptabilité :
  *  - INSTALLMENT : frais consommés = paiements sur les échéances déjà échues.
- *  - PRORATA     : frais consommés = payé × (temps écoulé / durée de l'année).
+ *  - PRORATA     : frais consommés = montant × (temps écoulé / durée de service),
+ *                  la période de service allant de la rentrée (sept.) à fin juin
+ *                  (juillet/août = hors service → année terminée, prorata = 100 %).
  * La remboursabilité est configurable par catégorie de frais (settings tenant).
  */
 import type { Prisma } from '@jawal/db';
@@ -88,9 +90,16 @@ export function computeRefund(
     yearEnd: Date;
   },
 ): RefundComputation {
-  const totalMs = Math.max(1, opts.yearEnd.getTime() - opts.yearStart.getTime());
+  // Période de **service** = rentrée (septembre) → fin juin. Juillet/août ne sont
+  // pas des mois de service : au-delà de fin juin, l'année est considérée
+  // terminée (prorata plafonné à 100 % → plus rien à rembourser au temporel).
+  // On plafonne donc la fin de période au 30 juin (borné par la fin d'année si
+  // celle-ci est déjà antérieure).
+  const juneEnd = new Date(Date.UTC(opts.yearEnd.getUTCFullYear(), 5, 30, 23, 59, 59, 999));
+  const serviceEnd = opts.yearEnd.getTime() < juneEnd.getTime() ? opts.yearEnd : juneEnd;
+  const totalMs = Math.max(1, serviceEnd.getTime() - opts.yearStart.getTime());
   const elapsedMs = Math.min(totalMs, Math.max(0, opts.now.getTime() - opts.yearStart.getTime()));
-  const consumedFraction = elapsedMs / totalMs; // part de l'année déjà écoulée
+  const consumedFraction = elapsedMs / totalMs; // part de la période de service déjà écoulée
 
   // On accumule par catégorie le versé et le **coût consommé** (basé sur le
   // montant DÛ, pas sur le versé), puis on nette : remboursable = versé − coût,

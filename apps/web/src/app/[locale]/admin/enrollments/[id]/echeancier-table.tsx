@@ -41,12 +41,12 @@ export function EcheancierTable({
 
   let n = 0;
   return (
-    <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <section className="mt-5 overflow-hidden rounded-2xl border border-brand-200 bg-white">
       <div className="bg-brand-600 px-5 py-2.5">
         <h2 className="text-sm font-semibold text-white">{t('echeancier.title')}</h2>
       </div>
       <table className="w-full text-sm">
-        <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+        <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
           <tr>
             <th className="px-4 py-2 text-start">{t('echeancier.n')}</th>
             <th className="px-4 py-2 text-start">{t('echeancier.due')}</th>

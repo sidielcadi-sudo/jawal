@@ -12,8 +12,8 @@ import {
 import { listContractAlerts } from '@/lib/contract-alerts';
 import { contractStatusBadgeClass } from '@/lib/contract-status';
 import { isDirection } from '@/lib/auth/rbac';
+import { computePilotage, type Kpi, type KpiStatus } from '@/lib/kpi-pilotage';
 import { ContractAlertsActions } from './contract-alerts-actions';
-import { PilotageSection } from './pilotage-section';
 import { PeriodSelect } from './period-select';
 import { TeacherKpisSection } from './teacher-kpis-section';
 
@@ -40,12 +40,15 @@ export default async function AdminDashboard({
     const periods = activeYear?.periods ?? [];
 
     // Période sélectionnée : ?period=… si valide, sinon le trimestre courant
-    // (par date du jour), sinon le premier trimestre.
+    // (par date du jour). Hors période (vacances / fin d'année), on retombe sur
+    // le DERNIER trimestre déjà commencé (ex. juillet → T3), sinon le premier.
     const now = new Date();
     const currentPeriod = periods.find((p) => p.startDate <= now && now <= p.endDate);
+    const startedPeriods = periods.filter((p) => p.startDate <= now);
+    const fallbackPeriod = startedPeriods[startedPeriods.length - 1] ?? periods[0] ?? null;
     const requested = sp.period && periods.some((p) => p.id === sp.period) ? sp.period : null;
     const selectedPeriod =
-      periods.find((p) => p.id === requested) ?? currentPeriod ?? periods[0] ?? null;
+      periods.find((p) => p.id === requested) ?? currentPeriod ?? fallbackPeriod;
     const periodId = selectedPeriod?.id ?? null;
 
     const [headcount, academic, attendance, atRisk] = await Promise.all([
@@ -85,6 +88,10 @@ export default async function AdminDashboard({
       totalRemaining: Math.max(0, totalDue - totalPaid),
     };
 
+    // KPI de pilotage (taux de réussite, absentéisme, charge prof, satisfaction,
+    // conformité Massar, moyennes par niveau) — fusionnés dans « Vue d'ensemble ».
+    const pilotage = periodId ? await computePilotage(tx, periodId) : null;
+
     const tenant = await tx.tenant.findFirst();
     return {
       yearLabel: activeYear?.label ?? '—',
@@ -96,6 +103,7 @@ export default async function AdminDashboard({
       attendance,
       atRisk,
       finance,
+      pilotage,
       currency: tenant?.currency ?? 'MAD',
     };
   });
@@ -103,11 +111,80 @@ export default async function AdminDashboard({
   const contractAlerts = await listContractAlerts(tenantId);
   const tContract = await getTranslations('admin.persons.detail');
   const tAlerts = await getTranslations('admin.dashboard.contractAlerts');
-  const showPilotage = await isDirection();
+  const tp = await getTranslations('admin.pilotage');
+  const direction = await isDirection();
+
+  // « Vue d'ensemble » : cartes générales (tous les admins) + cartes de pilotage
+  // (direction seulement), toutes au design des cartes pilotage. Le Recouvrement
+  // n'apparaît qu'une fois (carte générale ci-dessous), pas en double.
+  const overviewCards: Array<{
+    key: string;
+    label: string;
+    value: string;
+    status: KpiStatus;
+    thresholds?: { green: string; orange: string; red: string };
+  }> = [
+    {
+      key: 'totalDue',
+      label: t('kpi.totalDue'),
+      value: `${data.finance.totalDue.toLocaleString(locale)} ${data.currency}`,
+      status: 'na',
+    },
+    {
+      key: 'collected',
+      label: t('kpi.collected'),
+      value: `${data.finance.totalPaid.toLocaleString(locale)} ${data.currency}`,
+      status: 'na',
+    },
+    {
+      key: 'toCollect',
+      label: t('kpi.toCollect'),
+      value: `${data.finance.totalRemaining.toLocaleString(locale)} ${data.currency}`,
+      status: data.finance.totalRemaining > 0 ? 'orange' : 'green',
+    },
+    {
+      key: 'students',
+      label: t('kpi.students'),
+      value: String(data.headcount.students),
+      status: 'na',
+    },
+    {
+      key: 'averageGeneral',
+      label: t('kpi.averageGeneral'),
+      value: data.academic.averageGeneral !== null ? data.academic.averageGeneral.toFixed(2) : '—',
+      status: colorToStatus(getAcademicColor(data.academic.averageGeneral)),
+    },
+    {
+      key: 'attendanceRate',
+      label: t('kpi.attendanceRate'),
+      value: data.attendance.rate !== null ? `${data.attendance.rate.toFixed(1)}%` : '—',
+      status: colorToStatus(getAttendanceColor(data.attendance.rate)),
+    },
+    {
+      key: 'collection',
+      label: t('kpi.collectionRate'),
+      value:
+        data.finance.totalDue > 0
+          ? `${((data.finance.totalPaid / data.finance.totalDue) * 100).toFixed(1)}%`
+          : '—',
+      status: colorToStatus(getCollectionColor(data.finance.totalPaid, data.finance.totalDue)),
+      thresholds: THRESHOLDS.collection,
+    },
+  ];
+  if (direction && data.pilotage) {
+    const p = data.pilotage;
+    overviewCards.push(
+      { key: 'successRate', label: tp('kpi.successRate'), value: formatKpi(p.successRate), status: p.successRate.status, thresholds: THRESHOLDS.successRate },
+      { key: 'absenteeism', label: tp('kpi.absenteeism'), value: formatKpi(p.absenteeism), status: p.absenteeism.status, thresholds: THRESHOLDS.absenteeism },
+      { key: 'teacherLoad', label: tp('kpi.teacherLoad'), value: formatKpi(p.teacherLoad), status: p.teacherLoad.status, thresholds: THRESHOLDS.teacherLoad },
+      { key: 'satisfaction', label: tp('kpi.satisfaction'), value: formatKpi(p.satisfaction), status: p.satisfaction.status, thresholds: THRESHOLDS.satisfaction },
+      { key: 'conformiteMassar', label: tp('kpi.conformiteMassar'), value: formatKpi(p.conformiteMassar), status: p.conformiteMassar.status },
+    );
+  }
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-100 to-brand-50 px-4 py-2.5">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
           <p className="mt-0.5 text-sm text-slate-600">
@@ -119,64 +196,24 @@ export default async function AdminDashboard({
         )}
       </header>
 
-      {/* Vue d'ensemble */}
+      {/* Vue d'ensemble — cartes générales + pilotage (direction), design pilotage.
+          Le Pilotage est fusionné ici ; Recouvrement n'apparaît qu'une fois. */}
       <Category label={t('cat.overview')}>
-        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Kpi
-          tone="violet"
-          icon={<Icon path={ICON_USERS} />}
-          label={t('kpi.students')}
-          value={String(data.headcount.students)}
-          sub={t('kpi.teachersClasses', {
-            teachers: data.headcount.teachers,
-            classes: data.headcount.classes,
-          })}
-        />
-        <Kpi
-          tone="emerald"
-          icon={<Icon path={ICON_CAP} />}
-          label={t('kpi.averageGeneral')}
-          value={
-            data.academic.averageGeneral !== null ? data.academic.averageGeneral.toFixed(2) : '—'
-          }
-          sub={
-            data.academic.successRate !== null
-              ? t('kpi.successRate', { value: data.academic.successRate.toFixed(0) })
-              : t('kpi.noGrades')
-          }
-          color={getAcademicColor(data.academic.averageGeneral)}
-        />
-        <Kpi
-          tone="sky"
-          icon={<Icon path={ICON_CALENDAR} />}
-          label={t('kpi.attendanceRate')}
-          value={data.attendance.rate !== null ? `${data.attendance.rate.toFixed(1)}%` : '—'}
-          sub={t('kpi.attendanceRecords', { count: data.attendance.totalRecords })}
-          color={getAttendanceColor(data.attendance.rate)}
-        />
-        <Kpi
-          tone="indigo"
-          icon={<Icon path={ICON_MONEY} />}
-          label={t('kpi.collectionRate')}
-          value={
-            data.finance.totalDue > 0
-              ? `${((data.finance.totalPaid / data.finance.totalDue) * 100).toFixed(1)}%`
-              : '—'
-          }
-          sub={t('kpi.remaining', {
-            amount: data.finance.totalRemaining.toFixed(0),
-            currency: data.currency,
-          })}
-          color={getCollectionColor(data.finance.totalPaid, data.finance.totalDue)}
-        />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {overviewCards.map((c) => (
+            <PilotCard
+              key={c.key}
+              label={c.label}
+              value={c.value}
+              status={c.status}
+              thresholds={c.thresholds}
+            />
+          ))}
         </div>
       </Category>
 
-      {/* Pilotage (direction uniquement) — fusionné depuis l'ancien menu Pilotage */}
-      {showPilotage && <PilotageSection periodId={data.selectedPeriodId} />}
-
       {/* Réussite scolaire */}
-      <Category label={t('cat.success')}>
+      <Category label={t('cat.success')} defaultOpen={false}>
         <div className="grid grid-cols-1 gap-6">
         {/* Top/bottom classes */}
         <section>
@@ -235,11 +272,17 @@ export default async function AdminDashboard({
             )}
           </div>
         </section>
+        {/* Moyennes par niveau — intégrées ici (déplacées depuis Pilotage) */}
+        <LevelAverages
+          title={tp('kpi.levelAverages')}
+          emptyLabel={tp('empty')}
+          levels={data.pilotage?.levelAverages ?? []}
+        />
         </div>
       </Category>
 
       {/* Vie scolaire & assiduité */}
-      <Category label={t('cat.vieScolaire')}>
+      <Category label={t('cat.vieScolaire')} defaultOpen={false}>
       <section>
         <h2 className="mb-3 text-base font-semibold text-slate-900">{t('attendance.title')}</h2>
           <div className="rounded-2xl border border-slate-100 bg-white shadow-sm p-5">
@@ -278,7 +321,7 @@ export default async function AdminDashboard({
       </Category>
 
       {/* Effectifs & structure */}
-      <Category label={t('cat.effectifs')}>
+      <Category label={t('cat.effectifs')} defaultOpen={false}>
       <section>
           <h2 className="mb-3 text-base font-semibold text-slate-900">
             {t('headcount.title')}
@@ -294,9 +337,8 @@ export default async function AdminDashboard({
             <Row label={t('headcount.parents')} value={String(data.headcount.parents)} />
           </div>
         </section>
-      </Category>
 
-      {/* Élèves à risque */}
+      {/* Élèves à risque — intégré dans Effectifs & structures */}
       <section className="mt-6">
         <h2 className="mb-3 text-base font-semibold text-slate-900">
           {t('atRisk.title')}{' '}
@@ -306,7 +348,7 @@ export default async function AdminDashboard({
         </h2>
         <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="px-4 py-3 text-start">{t('atRisk.student')}</th>
                 <th className="px-4 py-3 text-start">{t('atRisk.class')}</th>
@@ -383,9 +425,10 @@ export default async function AdminDashboard({
           </table>
         </div>
       </section>
+      </Category>
 
       {/* RH / Enseignants */}
-      <Category label={t('cat.rh')}>
+      <Category label={t('cat.rh')} defaultOpen={false}>
       <TeacherKpisSection periodId={data.selectedPeriodId} />
 
       {contractAlerts.length > 0 && (
@@ -398,7 +441,7 @@ export default async function AdminDashboard({
           </h2>
           <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
                 <tr>
                   <th className="px-4 py-3 text-start">{tAlerts('table.name')}</th>
                   <th className="px-4 py-3 text-start">{tAlerts('table.type')}</th>
@@ -495,75 +538,134 @@ function Category({
   );
 }
 
-function Kpi({
+const THRESHOLDS: Record<string, { green: string; orange: string; red: string }> = {
+  successRate: { green: '> 80 %', orange: '60–80 %', red: '< 60 %' },
+  absenteeism: { green: '< 5 %', orange: '5–10 %', red: '> 10 %' },
+  collection: { green: '> 90 %', orange: '80–90 %', red: '< 80 %' },
+  teacherLoad: { green: '< 15 h', orange: '15–20 h', red: '> 20 h' },
+  levelAverage: { green: '> 12', orange: '10–12', red: '< 10' },
+  satisfaction: { green: '> 4/5', orange: '3–4/5', red: '< 3/5' },
+};
+
+const STATUS_CARD: Record<KpiStatus, string> = {
+  green: 'border-emerald-200 bg-emerald-50',
+  orange: 'border-amber-200 bg-amber-50',
+  red: 'border-red-200 bg-red-50',
+  na: 'border-brand-200 bg-brand-50/40',
+};
+const STATUS_VALUE: Record<KpiStatus, string> = {
+  green: 'text-emerald-700',
+  orange: 'text-amber-700',
+  red: 'text-red-700',
+  na: 'text-slate-700',
+};
+const STATUS_DOT: Record<KpiStatus, string> = {
+  green: 'bg-emerald-500',
+  orange: 'bg-amber-500',
+  red: 'bg-red-500',
+  na: 'bg-slate-300',
+};
+
+function colorToStatus(c: 'emerald' | 'amber' | 'red' | undefined): KpiStatus {
+  if (c === 'emerald') return 'green';
+  if (c === 'amber') return 'orange';
+  if (c === 'red') return 'red';
+  return 'na';
+}
+
+function formatKpi(kpi: Kpi): string {
+  if (kpi.value === null) return '—';
+  switch (kpi.unit) {
+    case '%':
+      return `${kpi.value.toFixed(1)} %`;
+    case 'h':
+      return `${kpi.value.toFixed(1)} h`;
+    case '/20':
+      return `${kpi.value.toFixed(2)}/20`;
+    case '/5':
+      return `${kpi.value.toFixed(1)}/5`;
+    default:
+      return String(kpi.value);
+  }
+}
+
+/** Carte KPI au design « pilotage » (bordure + fond selon le statut). */
+function PilotCard({
   label,
   value,
-  sub,
-  color,
-  icon,
-  tone = 'violet',
+  status,
+  thresholds,
 }: {
   label: string;
   value: string;
-  sub?: string;
-  color?: 'emerald' | 'amber' | 'red';
-  icon?: ReactNode;
-  tone?: 'violet' | 'indigo' | 'emerald' | 'amber' | 'sky';
+  status: KpiStatus;
+  thresholds?: { green: string; orange: string; red: string };
 }) {
-  const colors: Record<string, string> = {
-    emerald: 'text-emerald-700',
-    amber: 'text-amber-700',
-    red: 'text-red-700',
-  };
-  const tones: Record<string, string> = {
-    violet: 'bg-violet-100 text-violet-600',
-    indigo: 'bg-indigo-100 text-indigo-600',
-    emerald: 'bg-emerald-100 text-emerald-600',
-    amber: 'bg-amber-100 text-amber-600',
-    sky: 'bg-sky-100 text-sky-600',
-  };
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm transition-shadow hover:shadow-md">
-      <div className="flex items-center gap-4">
-        <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl ${tones[tone]}`}>
-          {icon}
-        </span>
-        <div className="min-w-0">
-          <div
-            className={`text-2xl font-bold tabular-nums ${color ? colors[color] : 'text-slate-900'}`}
-          >
-            {value}
-          </div>
-          <div className="truncate text-xs text-slate-500">{label}</div>
-        </div>
+    <div className={`rounded-2xl border p-5 ${STATUS_CARD[status]}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</span>
+        <span className={`h-2 w-2 rounded-full ${STATUS_DOT[status]}`} />
       </div>
-      {sub && <div className="mt-3 text-xs text-slate-400">{sub}</div>}
+      <div className={`mt-2 text-3xl font-semibold tabular-nums ${STATUS_VALUE[status]}`}>
+        {value}
+      </div>
+      {thresholds && (
+        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-500">
+          <span>🟢 {thresholds.green}</span>
+          <span>🟠 {thresholds.orange}</span>
+          <span>🔴 {thresholds.red}</span>
+        </div>
+      )}
     </div>
   );
 }
 
-function Icon({ path }: { path: string }) {
+/** Moyennes par niveau (barres) — intégré dans « Réussite scolaire ». */
+function LevelAverages({
+  title,
+  emptyLabel,
+  levels,
+}: {
+  title: string;
+  emptyLabel: string;
+  levels: { levelId: string; label: string; average: number | null; status: KpiStatus }[];
+}) {
+  const maxLevel = Math.max(1, ...levels.map((l) => l.average ?? 0), 20);
   return (
-    <svg
-      width="22"
-      height="22"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d={path} />
-    </svg>
+    <section>
+      <h2 className="mb-3 text-base font-semibold text-slate-900">{title}</h2>
+      <p className="mb-3 text-[11px] text-slate-500">
+        🟢 {THRESHOLDS.levelAverage!.green} · 🟠 {THRESHOLDS.levelAverage!.orange} · 🔴{' '}
+        {THRESHOLDS.levelAverage!.red}
+      </p>
+      <div className="rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        {levels.length === 0 ? (
+          <p className="text-sm text-slate-500">{emptyLabel}</p>
+        ) : (
+          <ul className="space-y-2.5">
+            {levels.map((l) => (
+              <li key={l.levelId} className="flex items-center gap-3">
+                <span className="w-24 shrink-0 truncate text-sm text-slate-700">{l.label}</span>
+                <div className="relative h-5 flex-1 overflow-hidden rounded bg-slate-100">
+                  <div
+                    className={`h-full ${STATUS_DOT[l.status]}`}
+                    style={{ width: `${l.average !== null ? (l.average / maxLevel) * 100 : 0}%` }}
+                  />
+                </div>
+                <span
+                  className={`w-16 shrink-0 text-end text-sm font-semibold tabular-nums ${STATUS_VALUE[l.status]}`}
+                >
+                  {l.average !== null ? `${l.average.toFixed(2)}` : '—'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
   );
 }
-
-const ICON_USERS = 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8m14 10v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75';
-const ICON_CAP = 'M22 10 12 5 2 10l10 5 10-5ZM6 12v5c0 1 2.5 2.5 6 2.5s6-1.5 6-2.5v-5';
-const ICON_CALENDAR = 'M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2ZM9 16l2 2 4-4';
-const ICON_MONEY = 'M2 7h20v10H2zM12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6M6 10v0M18 14v0';
 
 function Counter({
   label,

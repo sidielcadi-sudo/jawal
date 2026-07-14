@@ -106,7 +106,10 @@
         "attendanceRate": "الحضور",
         "attendanceRecords": "{count, plural, =0 {لا توجد سجلات} one {سجل #} other {# سجلات}}",
         "collectionRate": "التحصيل",
-        "remaining": "متبقي {amount} {currency}"
+        "remaining": "متبقي {amount} {currency}",
+        "totalDue": "الإجمالي المستحق",
+        "collected": "المُحصَّل",
+        "toCollect": "المتبقي للتحصيل"
       },
       "academic": {
         "title": "الأداء الأكاديمي",
@@ -202,7 +205,7 @@
       "messages": "الرسائل",
       "finance": "المالية",
       "import": "استيراد CSV",
-      "settings": "الإعدادات",
+      "settings": "الإعداد",
       "group": "عرض المجموعة",
       "transport": "النقل",
       "leave": "العطل والغيابات",
@@ -1976,9 +1979,18 @@
         "photo": "الصورة",
         "studentClass": "القسم",
         "mainTeacher": "الأستاذ الرئيسي",
+        "status": "الحالة",
         "father": "الأب",
         "mother": "الأم",
         "actions": "إجراءات"
+      },
+      "studentStatus": {
+        "ACTIVE": "نشِط",
+        "WITHDRAWN": "مشطوب",
+        "AFFECTE": "مُسنَد",
+        "INSCRIPTION_VALIDEE": "تسجيل مُصادق",
+        "GRADUATED": "متخرّج",
+        "unknown": "—"
       },
       "filters": {
         "search": "بحث",
@@ -2332,6 +2344,7 @@
         "addressCountry": "البلد",
         "addressFromParent": "نسخ عنوان أحد الوالدين/الأولياء:",
         "parentsHint": "اربط هذا التلميذ بوالد أو أكثر مسجَّلين مسبقًا. تُستنتج الإخوة تلقائيًا.",
+        "guardianRequired": "اربط وليَّ أمر واحدًا على الأقل لتسجيل الطلب.",
         "parentLabel": "ولي الأمر",
         "selectParent": "اختر وليًا",
         "relationLabel": "الصلة",
@@ -2814,7 +2827,8 @@
         "attendance-reasons": "أسباب المناداة",
         "roles": "الأدوار",
         "users": "المستخدمون",
-        "audit": "سجل التدقيق"
+        "audit": "سجل التدقيق",
+        "timetable": "استعمال الزمن"
       },
       "appearance": {
         "title": "لون النمط",

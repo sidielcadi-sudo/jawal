@@ -55,6 +55,41 @@ html[dir='rtl'] {
   font-family: var(--font-arabic);
 }
 
+/* ─── Onglets « dossier » (folder tabs) ───
+   Forme onglet à coins hauts arrondis, couleurs existantes conservées : onglets
+   inactifs en texte gris, onglet actif encadré (contour = couleur du trait
+   horizontal) dont le bas masque le trait pour se fondre avec le contenu. */
+.folder-tabs {
+  --folder-line: rgb(var(--brand-700)); /* trait horizontal bleu (= contour de l'onglet actif) */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 4px;
+  border-bottom: 1px solid var(--folder-line);
+}
+.folder-tab {
+  position: relative;
+  margin-bottom: -1px; /* chevauche le trait pour que l'onglet actif le masque */
+  padding: 0.5rem 1.15rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: rgb(100 116 139); /* slate-500 : gris (inactif) */
+  white-space: nowrap;
+  border: 1px solid transparent;
+  border-radius: 10px 10px 0 0;
+  transition: color 0.15s ease;
+}
+.folder-tab:hover {
+  color: rgb(51 65 85); /* slate-700 */
+}
+.folder-tab.is-active {
+  color: rgb(var(--brand-700));
+  background: #fff;
+  /* contour bleu (= couleur du libellé) ; bas = blanc → masque le trait horizontal */
+  border-color: rgb(var(--brand-700)) rgb(var(--brand-700)) #fff;
+}
+
 body {
   @apply text-slate-900 antialiased;
   background-color: var(--color-bg); /* #F8F9FB — gris froid très léger */

@@ -217,7 +217,7 @@ export default async function ParentChildVieScolairePage({
                     <Link
                       key={s.key}
                       href={`${base}?tab=carnet&sub=${s.key}`}
-                      className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium ${
+                      className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium ${
                         sub === s.key
                           ? 'bg-brand-600 text-white'
                           : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'

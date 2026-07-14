@@ -568,8 +568,10 @@ export default async function EnrollmentDetailPage({
         <EcheancierTable rows={installmentRows} currency={tenant.currency} />
       )}
 
-      {/* Radiation / transfert — workflow Vie scolaire → Compta → Direction + certificat */}
-      {(['ACTIVE', 'AFFECTE', 'INSCRIPTION_VALIDEE'].includes(enrollment.status) || radiationRequest) && (
+      {/* Radiation / transfert — uniquement pour un élève inscrit et actif.
+          Le statut reste ACTIVE pendant tout le workflow (Vie scolaire → Compta →
+          Direction) et ne passe à WITHDRAWN qu'à l'exécution finale. */}
+      {enrollment.status === 'ACTIVE' && (
         <RadiationPanel
           enrollmentId={enrollment.id}
           request={radiationRequest}

@@ -91,9 +91,9 @@ export default async function VentePage({
         <button className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">{tv('searchBtn')}</button>
       </form>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
             <tr>
               <th className="px-3 py-2 text-start">{t('depot.code')}</th>
               <th className="px-3 py-2 text-start">{t('bookTitle')}</th>

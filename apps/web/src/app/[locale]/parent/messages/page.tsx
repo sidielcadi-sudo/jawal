@@ -21,7 +21,7 @@ export default async function ParentMessagesPage({
 
   return (
     <div className="px-3 py-3">
-      <section className="mb-4 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-100 to-brand-50 px-4 py-2.5">
+      <section className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
         <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
       </section>
 

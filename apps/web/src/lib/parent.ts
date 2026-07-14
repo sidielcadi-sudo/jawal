@@ -105,7 +105,7 @@ export type ParentChildContext = {
   className: string | null;
   cycleLabel: string | null;
   year: { id: string; label: string } | null;
-  periods: { id: string; label: string }[];
+  periods: { id: string; label: string; startDate: Date; endDate: Date }[];
 };
 
 /**
@@ -127,7 +127,11 @@ export async function loadParentChildContext(
 
   const year = await tx.academicYear.findFirst({
     where: { active: true },
-    select: { id: true, label: true, periods: { orderBy: { startDate: 'asc' }, select: { id: true, label: true } } },
+    select: {
+      id: true,
+      label: true,
+      periods: { orderBy: { startDate: 'asc' }, select: { id: true, label: true, startDate: true, endDate: true } },
+    },
   });
 
   const sc = year

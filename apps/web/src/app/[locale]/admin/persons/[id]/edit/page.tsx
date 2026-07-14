@@ -50,6 +50,10 @@ export default async function EditPersonPage({
             lastName: true,
             address: true,
             relationsAsParent: {
+              // Fratrie = uniquement les élèves actifs de l'établissement.
+              where: {
+                child: { type: 'STUDENT', deletedAt: null, enrollments: { some: { status: 'ACTIVE' } } },
+              },
               select: {
                 child: {
                   select: {

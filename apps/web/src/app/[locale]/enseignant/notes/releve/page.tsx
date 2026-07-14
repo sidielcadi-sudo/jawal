@@ -94,7 +94,7 @@ export default async function RelevePage({
       {subjectId && periodId ? (
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="px-4 py-2 text-start font-semibold">{t('releve.student')}</th>
                 <th className="w-16 px-2 py-2 text-center font-semibold" title={t('releve.hAbsFull')}>{t('releve.hAbs')}</th>

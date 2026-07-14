@@ -49,6 +49,9 @@ type IntlMessages = {
 
 function buildItems(locale: string): NavItem[] {
   const prefix = `/${locale}/admin`;
+  // Ordre du menu défini par la refonte (liste explicite). « Emploi du temps »
+  // est déplacé dans Paramétrage ; « Vie scolaire » et l'ancien « Justifications »
+  // (attendance/justifications) sont retirés du menu (pages joignables par URL).
   return [
     {
       href: `${prefix}`,
@@ -56,24 +59,9 @@ function buildItems(locale: string): NavItem[] {
       match: (p, _s) => p === prefix || p === `${prefix}/`,
     },
     {
-      href: `${prefix}/vie-scolaire`,
-      labelKey: 'vieScolaire',
-      match: (p, _s) => p.startsWith(`${prefix}/vie-scolaire`),
-      // Point 6 : visible uniquement pour la Vie scolaire (CPE), pas pour
-      // la direction / l'admin établissement.
-      roles: ['cpe'],
-    },
-    {
-      href: `${prefix}/carnet`,
-      labelKey: 'carnet',
-      match: (p, _s) => p.startsWith(`${prefix}/carnet`),
-      roles: ['cpe', 'tenant_admin', 'direction', 'scolarite'],
-    },
-    {
-      href: `${prefix}/attendance/management`,
-      labelKey: 'absenceMgmt',
-      match: (p, _s) => p.startsWith(`${prefix}/attendance/management`),
-      roles: ['cpe', 'tenant_admin', 'direction'],
+      href: `${prefix}/enrollments`,
+      labelKey: 'enrollments',
+      match: (p, _s) => p.startsWith(`${prefix}/enrollments`),
     },
     {
       href: `${prefix}/persons?type=STUDENT`,
@@ -105,32 +93,30 @@ function buildItems(locale: string): NavItem[] {
       match: (p, _s) => p.startsWith(`${prefix}/classes`),
     },
     {
-      href: `${prefix}/enrollments`,
-      labelKey: 'enrollments',
-      match: (p, _s) => p.startsWith(`${prefix}/enrollments`),
+      href: `${prefix}/finance`,
+      labelKey: 'finance',
+      match: (p, _s) => p === `${prefix}/finance` || p.startsWith(`${prefix}/finance/`),
+      roles: ['tenant_admin', 'direction', 'comptable'],
     },
     {
-      href: `${prefix}/bourse`,
-      labelKey: 'bourse',
-      match: (p, _s) => p.startsWith(`${prefix}/bourse`),
-      roles: ['tenant_admin', 'direction', 'cpe'],
+      href: `${prefix}/carnet`,
+      labelKey: 'carnet',
+      match: (p, _s) => p.startsWith(`${prefix}/carnet`),
+      roles: ['cpe', 'tenant_admin', 'direction', 'scolarite'],
+    },
+    // « Justifications » = ancienne « Gestion des absences » (attendance/management),
+    // renommée. L'ancien lien attendance/justifications est masqué.
+    {
+      href: `${prefix}/attendance/management`,
+      labelKey: 'justifications',
+      match: (p, _s) => p.startsWith(`${prefix}/attendance/management`),
+      roles: ['cpe', 'tenant_admin', 'direction'],
     },
     {
       href: `${prefix}/transport`,
       labelKey: 'transport',
       match: (p, _s) => p.startsWith(`${prefix}/transport`),
       roles: ['tenant_admin', 'direction', 'cpe'],
-    },
-    {
-      href: `${prefix}/timetable`,
-      labelKey: 'timetable',
-      match: (p, _s) => p === `${prefix}/timetable` || p.startsWith(`${prefix}/timetable`),
-    },
-    // Lien « Présences » masqué (la page reste accessible par URL directe).
-    {
-      href: `${prefix}/attendance/justifications`,
-      labelKey: 'justifications',
-      match: (p, _s) => p.startsWith(`${prefix}/attendance/justifications`),
     },
     {
       href: `${prefix}/staff-attendance`,
@@ -157,6 +143,17 @@ function buildItems(locale: string): NavItem[] {
       roles: ['tenant_admin', 'direction', 'comptable'],
     },
     {
+      href: `${prefix}/comptabilite`,
+      labelKey: 'comptabilite',
+      match: (p, _s) => p.startsWith(`${prefix}/comptabilite`),
+      roles: ['tenant_admin', 'direction', 'comptable'],
+    },
+    {
+      href: `${prefix}/persons/import`,
+      labelKey: 'import',
+      match: (p, _s) => p.includes('/persons/import'),
+    },
+    {
       href: `${prefix}/announcements`,
       labelKey: 'announcements',
       match: (p, _s) => p.startsWith(`${prefix}/announcements`),
@@ -167,24 +164,11 @@ function buildItems(locale: string): NavItem[] {
       match: (p, _s) => p.startsWith(`${prefix}/surveys`),
       roles: ['tenant_admin', 'direction'],
     },
-    // « Messages » retiré du menu latéral : accessible via l'icône enveloppe
-    // dans l'en-tête (la page /admin/messages reste joignable par URL).
     {
-      href: `${prefix}/finance`,
-      labelKey: 'finance',
-      match: (p, _s) => p === `${prefix}/finance` || p.startsWith(`${prefix}/finance/`),
-      roles: ['tenant_admin', 'direction', 'comptable'],
-    },
-    {
-      href: `${prefix}/comptabilite`,
-      labelKey: 'comptabilite',
-      match: (p, _s) => p.startsWith(`${prefix}/comptabilite`),
-      roles: ['tenant_admin', 'direction', 'comptable'],
-    },
-    {
-      href: `${prefix}/persons/import`,
-      labelKey: 'import',
-      match: (p, _s) => p.includes('/persons/import'),
+      href: `${prefix}/bourse`,
+      labelKey: 'bourse',
+      match: (p, _s) => p.startsWith(`${prefix}/bourse`),
+      roles: ['tenant_admin', 'direction', 'cpe'],
     },
     {
       href: `${prefix}/settings`,

@@ -439,7 +439,7 @@ export default async function PersonDetailPage({
 
   return (
     <div className="px-3 py-3">
-      <div className="mb-6 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-100 to-brand-50 px-4 py-3">
+      <div className="mb-6 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-3">
       <nav className="mb-2 text-xs text-slate-500">
         <Link href={backHref} className="hover:text-brand-700">
           {backLabel}

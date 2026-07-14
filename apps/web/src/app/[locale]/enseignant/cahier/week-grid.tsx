@@ -70,7 +70,7 @@ export function WeekGrid({
     });
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
       <table className="w-full table-fixed border-collapse text-center text-xs">
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50 text-slate-500">

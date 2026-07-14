@@ -106,7 +106,10 @@
         "attendanceRate": "Présence",
         "attendanceRecords": "{count, plural, =0 {Aucun pointage} one {# pointage} other {# pointages}}",
         "collectionRate": "Recouvrement",
-        "remaining": "Reste {amount} {currency}"
+        "remaining": "Reste {amount} {currency}",
+        "totalDue": "Total dû",
+        "collected": "Encaissé",
+        "toCollect": "Reste à recouvrer"
       },
       "academic": {
         "title": "Performance académique",
@@ -202,7 +205,7 @@
       "messages": "Messages",
       "finance": "Finances",
       "import": "Importer CSV",
-      "settings": "Paramètres",
+      "settings": "Paramétrage",
       "group": "Vue groupe",
       "transport": "Transport",
       "leave": "Congés & absences",
@@ -1975,9 +1978,18 @@
         "photo": "Photo",
         "studentClass": "Classe",
         "mainTeacher": "Prof principal",
+        "status": "Statut",
         "father": "Père",
         "mother": "Mère",
         "actions": "Actions"
+      },
+      "studentStatus": {
+        "ACTIVE": "Actif",
+        "WITHDRAWN": "Retiré",
+        "AFFECTE": "Affecté",
+        "INSCRIPTION_VALIDEE": "Inscription validée",
+        "GRADUATED": "Diplômé",
+        "unknown": "—"
       },
       "filters": {
         "search": "Recherche",
@@ -2331,6 +2343,7 @@
         "addressCountry": "Pays",
         "addressFromParent": "Reprendre l’adresse d’un parent/tuteur :",
         "parentsHint": "Rattachez un ou plusieurs parents existants. La fratrie sera déduite automatiquement à partir des parents partagés.",
+        "guardianRequired": "Rattachez au moins un parent ou tuteur pour enregistrer l'inscription.",
         "parentLabel": "Parent",
         "selectParent": "Choisir un parent",
         "relationLabel": "Lien",
@@ -2813,7 +2826,8 @@
         "attendance-reasons": "Motifs d'appel",
         "roles": "Rôles",
         "users": "Utilisateurs",
-        "audit": "Journal d'audit"
+        "audit": "Journal d'audit",
+        "timetable": "Emploi du temps"
       },
       "appearance": {
         "title": "Couleur du thème",

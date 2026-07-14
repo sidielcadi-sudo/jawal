@@ -24,8 +24,14 @@ export default async function ParentChildNotesPage({
   const data = await withTenant(session.user.tenantId, async (tx) => {
     const ctx = await loadParentChildContext(tx, session.user.id, childId);
     if (!ctx) return null;
+    // Période sélectionnée : ?period=… sinon le trimestre/semestre courant. Hors
+    // période (vacances/fin d'année) : dernier trimestre commencé, sinon le 1er.
+    const now = new Date();
+    const current = ctx.periods.find((p) => p.startDate <= now && now <= p.endDate);
+    const started = ctx.periods.filter((p) => p.startDate <= now);
+    const fallback = started[started.length - 1] ?? ctx.periods[0] ?? null;
     const selectedPeriod =
-      ctx.periods.find((p) => p.id === sp.period) ?? ctx.periods[0] ?? null;
+      ctx.periods.find((p) => p.id === sp.period) ?? current ?? fallback;
 
     // Onglet Notes : évaluations de la classe sur la période.
     const notes =
@@ -93,7 +99,7 @@ export default async function ParentChildNotesPage({
             <Link
               key={p.id}
               href={`${base}?tab=${tab}&period=${p.id}`}
-              className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-medium ${
+              className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium ${
                 data.selectedPeriod?.id === p.id
                   ? 'bg-brand-600 text-white'
                   : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'

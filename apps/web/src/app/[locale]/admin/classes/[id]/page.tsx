@@ -153,7 +153,7 @@ export default async function ClassDetailPage({
             </div>
 
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
                 <tr>
                   <th className="px-4 py-2 text-start">{tDetail('table.name')}</th>
                   <th className="px-4 py-2 text-start">{tDetail('table.enrolledAt')}</th>
@@ -273,9 +273,9 @@ export default async function ClassDetailPage({
       {/* Programme du niveau × profs affectés */}
       <section className="mt-6">
         <h2 className="mb-3 text-base font-semibold text-slate-900">{tDetail('programme')}</h2>
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="px-4 py-3 text-start">{tDetail('subject')}</th>
                 <th className="px-4 py-3 text-end">{tDetail('coefficient')}</th>

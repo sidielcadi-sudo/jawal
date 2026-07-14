@@ -89,7 +89,7 @@ export function AlertsBell({
       </button>
 
       {open && (
-        <div className="absolute end-0 z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg">
+        <div className="absolute end-0 z-50 mt-2 w-80 overflow-hidden rounded-2xl border border-brand-200 bg-white shadow-lg">
           <div className="flex items-center justify-between border-b border-slate-100 px-4 py-2.5">
             <span className="text-sm font-semibold text-slate-700">{t('title')}</span>
             {unread > 0 && (

@@ -2,8 +2,8 @@ import React, { useEffect } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
-import * as Notifications from 'expo-notifications';
 import { AuthProvider, useAuth } from './src/auth';
+import { subscribeToNotificationTaps } from './src/push';
 import { NavigationProvider, useNav } from './src/navigation';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
@@ -25,17 +25,14 @@ function Splash() {
 function PushListener() {
   const { navigate } = useNav();
   useEffect(() => {
-    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data as
-        | { type?: string; conversationId?: string }
-        | undefined;
+    // No-op en Expo Go (push retiré depuis SDK 53).
+    return subscribeToNotificationTaps((data) => {
       if (data?.type === 'announcement') navigate({ name: 'announcements' });
       else if (data?.type === 'message') {
         if (data.conversationId) navigate({ name: 'thread', conversationId: data.conversationId });
         else navigate({ name: 'messages' });
       }
     });
-    return () => sub.remove();
   }, [navigate]);
   return null;
 }

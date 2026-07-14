@@ -34,9 +34,9 @@ export default async function TransportIncidentsPage({ params }: { params: Promi
 
       <h1 className="mb-4 text-base font-bold text-slate-900">⚠ {t('incidents.title')}</h1>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
             <tr>
               <th className="px-4 py-2.5 text-start">{t('incidents.when')}</th>
               <th className="px-4 py-2.5 text-start">{t('lines.title')}</th>

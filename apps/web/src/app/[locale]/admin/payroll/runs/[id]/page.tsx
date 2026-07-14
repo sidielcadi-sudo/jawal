@@ -78,7 +78,7 @@ export default async function PayrollRunDetail({ params }: { params: Promise<{ l
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
         <table className="w-full min-w-[760px] text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
             <tr>
               <th className="px-3 py-2.5 text-start">{t('employee')}</th>
               <th className="px-3 py-2.5 text-end">{tr('brut')}</th>
@@ -143,9 +143,9 @@ export default async function PayrollRunDetail({ params }: { params: Promise<{ l
               filename={`journal-paie-${run.year}-${String(run.month).padStart(2, '0')}`}
             />
           </div>
-          <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
                 <tr>
                   <th className="px-3 py-2 text-start">{tr('account')}</th>
                   <th className="px-3 py-2 text-start">{tr('label')}</th>

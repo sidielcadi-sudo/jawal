@@ -9,16 +9,12 @@ export function ChildTabs({
   current: string;
 }) {
   return (
-    <div className="mb-5 flex flex-wrap gap-2 border-b border-slate-100">
+    <div className="folder-tabs mb-5">
       {tabs.map((tab) => (
         <Link
           key={tab.key}
           href={tab.href}
-          className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium ${
-            current === tab.key
-              ? 'border-brand-600 text-brand-700'
-              : 'border-transparent text-slate-500 hover:text-slate-700'
-          }`}
+          className={`folder-tab ${current === tab.key ? 'is-active' : ''}`}
         >
           {tab.label}
         </Link>

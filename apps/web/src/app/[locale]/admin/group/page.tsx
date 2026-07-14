@@ -89,14 +89,14 @@ export default async function GroupDashboard({
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-100 to-brand-50 px-4 py-2.5">
+      <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
         <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
         <p className="mt-0.5 text-sm text-slate-600">{t('subtitle', { count: rows.length })}</p>
       </header>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
             <tr>
               <th className="px-4 py-3 text-start">{t('site')}</th>
               <th className="px-4 py-3 text-end">{t('students')}</th>

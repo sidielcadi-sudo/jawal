@@ -78,7 +78,7 @@ export default async function StudentHomePage({ params }: { params: Promise<{ lo
         {/* Colonne principale */}
         <div className="space-y-4 xl:col-span-2">
           {/* Hero */}
-          <section className="flex items-center justify-between gap-4 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-100 to-brand-50 p-6">
+          <section className="flex items-center justify-between gap-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm p-6">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">
                 {t('home.hello', { name: dash.firstName })}

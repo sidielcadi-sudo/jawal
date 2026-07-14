@@ -7,6 +7,8 @@ import { Pagination } from '@/components/pagination';
 
 const PAGE_SIZE = 20;
 const VALID_TYPES = ['STUDENT', 'TEACHER', 'STAFF', 'PARENT'] as const;
+// Statuts d'inscription pour lesquels on dispose d'un libellé dédié (colonne Statut).
+const STUDENT_STATUSES = ['ACTIVE', 'WITHDRAWN', 'AFFECTE', 'INSCRIPTION_VALIDEE', 'GRADUATED'];
 type PersonTypeLiteral = (typeof VALID_TYPES)[number];
 
 function isPersonType(value: string | undefined): value is PersonTypeLiteral {
@@ -56,6 +58,8 @@ export default async function PersonsListPage({
     mainTeacher: string | null;
     father: string | null;
     mother: string | null;
+    /** Statut d'inscription de l'année active (ACTIVE, WITHDRAWN…) ou null. */
+    status: string | null;
   };
   const {
     persons,
@@ -177,7 +181,7 @@ export default async function PersonsListPage({
           where: { active: true },
           select: { id: true },
         });
-        const [enr, rel] = await Promise.all([
+        const [enr, rel, enrollments] = await Promise.all([
           tx.studentClass.findMany({
             where: {
               studentId: { in: ids },
@@ -199,9 +203,20 @@ export default async function PersonsListPage({
               parent: { select: { firstName: true, lastName: true, contacts: true } },
             },
           }),
+          // Statut d'inscription de l'année active (Actif / Retiré…).
+          activeYear
+            ? tx.enrollment.findMany({
+                where: { studentId: { in: ids }, academicYearId: activeYear.id },
+                select: { studentId: true, status: true },
+              })
+            : Promise.resolve([]),
         ]);
         for (const id of ids)
-          studentExtras.set(id, { className: null, mainTeacher: null, father: null, mother: null });
+          studentExtras.set(id, { className: null, mainTeacher: null, father: null, mother: null, status: null });
+        for (const e of enrollments) {
+          const s = studentExtras.get(e.studentId);
+          if (s) s.status = e.status;
+        }
         for (const e of enr) {
           const s = studentExtras.get(e.studentId);
           if (!s) continue;
@@ -294,7 +309,7 @@ export default async function PersonsListPage({
 
   return (
     <div className="px-3 py-3">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-100 to-brand-50 px-4 py-2.5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{title}</h1>
           <p className="mt-0.5 text-sm text-slate-600">{t('count', { count: total })}</p>
@@ -423,9 +438,9 @@ export default async function PersonsListPage({
         </Link>
       </form>
 
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+          <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
             <tr>
               {isStudentView && <th className="px-4 py-3 text-start">{t('table.photo')}</th>}
               <th className="px-4 py-3 text-start">{t('table.name')}</th>
@@ -434,6 +449,7 @@ export default async function PersonsListPage({
                   <th className="px-4 py-3 text-start">{t('table.contact')}</th>
                   <th className="px-4 py-3 text-start">{t('table.studentClass')}</th>
                   <th className="px-4 py-3 text-start">{t('table.mainTeacher')}</th>
+                  <th className="px-4 py-3 text-start">{t('table.status')}</th>
                 </>
               ) : isTeacherView ? (
                 <>
@@ -503,6 +519,16 @@ export default async function PersonsListPage({
                           <td className="px-4 py-3 text-xs text-slate-600">
                             {s?.mainTeacher ?? '—'}
                           </td>
+                          <td className="px-4 py-3">
+                            <StudentStatusBadge
+                              status={s?.status ?? null}
+                              label={
+                                s?.status && STUDENT_STATUSES.includes(s.status)
+                                  ? t(`studentStatus.${s.status}` as never)
+                                  : t('studentStatus.unknown')
+                              }
+                            />
+                          </td>
                         </>
                       );
                     })()
@@ -556,7 +582,7 @@ export default async function PersonsListPage({
             })}
             {persons.length === 0 && (
               <tr>
-                <td colSpan={isStudentView ? 6 : 5} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={isStudentView ? 7 : 5} className="px-4 py-10 text-center text-slate-500">
                   {t('empty')}
                 </td>
               </tr>
@@ -567,6 +593,22 @@ export default async function PersonsListPage({
 
       <Pagination page={page} totalPages={totalPages} hrefFor={(p) => qs({ page: String(p) })} />
     </div>
+  );
+}
+
+function StudentStatusBadge({ status, label }: { status: string | null; label: string }) {
+  const tone =
+    status === 'ACTIVE'
+      ? 'bg-emerald-100 text-emerald-700'
+      : status === 'WITHDRAWN'
+        ? 'bg-red-100 text-red-700'
+        : status
+          ? 'bg-amber-100 text-amber-700'
+          : 'bg-slate-100 text-slate-500';
+  return (
+    <span className={`whitespace-nowrap rounded px-2 py-0.5 text-xs font-medium ${tone}`}>
+      {label}
+    </span>
   );
 }
 

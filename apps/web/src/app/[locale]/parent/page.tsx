@@ -28,11 +28,14 @@ export default async function ParentHomePage({
     });
     const periods = activeYear?.periods ?? [];
 
-    // Période sélectionnée : ?period=… sinon le trimestre/semestre courant, sinon le 1er.
+    // Période sélectionnée : ?period=… sinon le trimestre/semestre courant. Hors
+    // période (vacances/fin d'année) : dernier trimestre commencé, sinon le 1er.
     const now = new Date();
     const current = periods.find((p) => p.startDate <= now && now <= p.endDate);
+    const started = periods.filter((p) => p.startDate <= now);
+    const fallback = started[started.length - 1] ?? periods[0] ?? null;
     const selectedPeriod =
-      periods.find((p) => p.id === sp.period) ?? current ?? periods[0] ?? null;
+      periods.find((p) => p.id === sp.period) ?? current ?? fallback;
 
     // Fenêtre de calcul des KPI : période choisie, sinon l'année entière.
     const winStart = selectedPeriod?.startDate ?? activeYear?.startDate ?? null;
@@ -114,7 +117,7 @@ export default async function ParentHomePage({
   return (
     <div className="px-3 py-3">
       {/* Hero */}
-      <section className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-100 to-brand-50 px-4 py-2.5">
+      <section className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
           <p className="mt-1 text-sm text-slate-600">{t('subtitle')}</p>
@@ -126,7 +129,7 @@ export default async function ParentHomePage({
               <Link
                 key={p.id}
                 href={`/${locale}/parent?period=${p.id}`}
-                className={`whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium ${
+                className={`whitespace-nowrap rounded-lg px-3 py-1 text-xs font-medium ${
                   data.selectedPeriodId === p.id
                     ? 'bg-brand-600 text-white'
                     : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'

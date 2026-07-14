@@ -50,7 +50,7 @@ export default async function TimetableDashboardPage({
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-100 to-brand-50 px-4 py-2.5">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
           <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>
@@ -238,7 +238,7 @@ export default async function TimetableDashboardPage({
           </div>
 
           {/* Indicateur salles spécialisées : capacité (séances/sem) vs séances requises */}
-          <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <section className="mb-6 overflow-hidden rounded-2xl border border-brand-200 bg-white">
             <div className="border-b border-slate-200 bg-slate-50 px-4 py-2">
               <h2 className="text-sm font-semibold text-slate-700">{t('roomCapacity.title')}</h2>
               <p className="text-[11px] text-slate-500">{t('roomCapacity.hint')}</p>
@@ -284,7 +284,7 @@ export default async function TimetableDashboardPage({
           </section>
 
           {/* Couverture horaire par matière : programme vs profs disponibles */}
-          <section className="mb-6 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+          <section className="mb-6 overflow-hidden rounded-2xl border border-brand-200 bg-white">
             <div className="border-b border-slate-200 bg-slate-50 px-4 py-2">
               <h2 className="text-sm font-semibold text-slate-700">{t('subjectCoverage.title')}</h2>
               <p className="text-[11px] text-slate-500">{t('subjectCoverage.hint')}</p>

@@ -124,7 +124,7 @@ export default async function GradeBookPage({
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
           <table className="min-w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 text-start">
                   {t('table.student')}

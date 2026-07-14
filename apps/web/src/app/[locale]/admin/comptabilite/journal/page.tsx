@@ -60,7 +60,7 @@ export default async function JournalPage({
         {entries.map((e) => {
           const totD = e.lines.reduce((s, l) => s + Number(l.debit), 0);
           return (
-            <div key={e.id} className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div key={e.id} className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
               <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50 px-4 py-2 text-sm">
                 <span className="font-medium text-slate-800">
                   <span className="me-2 rounded bg-brand-100 px-1.5 py-0.5 text-[10px] font-semibold text-brand-700">{e.journal}</span>

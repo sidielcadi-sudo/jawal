@@ -245,7 +245,7 @@ function MissingAppelPanel({
   slotFmtLabel: string;
 }) {
   return (
-    <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <section className="mt-5 overflow-hidden rounded-2xl border border-brand-200 bg-white">
       <div className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
         {t('appel.title', { slot: slotFmtLabel })}
         <span className="ms-2 text-xs font-normal text-slate-400">
@@ -472,7 +472,7 @@ function SlotDetailPanel({
   slotFmtLabel: string;
 }) {
   return (
-    <section className="mt-5 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <section className="mt-5 overflow-hidden rounded-2xl border border-brand-200 bg-white">
       <div className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
         {t('detailTitle', { slot: slotFmtLabel, col: t(`cols.${detail.col}`) })}
         <span className="ms-2 text-xs font-normal text-slate-400">

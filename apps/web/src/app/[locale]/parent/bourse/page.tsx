@@ -53,7 +53,7 @@ export default async function ParentBourseAggregatedPage({
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 overflow-hidden rounded-3xl bg-gradient-to-r from-brand-100 to-brand-50 px-4 py-2.5">
+      <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
         <h1 className="text-base font-bold text-slate-900">{t('navTitle')}</h1>
       </header>
 
@@ -73,9 +73,9 @@ export default async function ParentBourseAggregatedPage({
                 <button className="ms-2 rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">{t('filter')}</button>
               </form>
             </div>
-            <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+            <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
               <table className="w-full text-sm">
-                <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
                   <tr>
                     <th className="px-3 py-2 text-start">{t('book')}</th>
                     <th className="px-3 py-2 text-start">{tc('level')}</th>

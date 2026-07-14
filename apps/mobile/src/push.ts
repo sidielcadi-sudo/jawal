@@ -1,25 +1,37 @@
 import { Platform } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
+import type * as NotificationsType from 'expo-notifications';
 import { api } from './api';
 
 /**
  * Notifications push (Expo). Enregistre le jeton de l'appareil auprès de l'API
  * après connexion, et affiche les notifications reçues au premier plan.
  *
- * ⚠️ Le push distant nécessite un **appareil physique** + un **projectId EAS**
- * (`eas init`). En prod : development build / EAS Build (Expo Go a des limites
- * de push selon les versions). Tout est best-effort : jamais bloquant.
+ * ⚠️ Expo Go a **retiré le push distant** (remote notifications) depuis le SDK 53 :
+ * le simple import d'`expo-notifications` y déclenche une erreur fatale (le module
+ * appelle `addPushTokenListener` au chargement). On charge donc le module en
+ * **lazy `require`** UNIQUEMENT hors Expo Go — Metro n'exécute le code d'un module
+ * qu'au moment du `require`, donc rien ne s'exécute côté Expo Go.
+ *
+ * Le push reste pleinement disponible en **development build / EAS Build**.
  */
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
+export const isExpoGo = Constants.executionEnvironment === 'storeClient';
+
+let Notifications: typeof NotificationsType | null = null;
+if (!isExpoGo) {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  Notifications = require('expo-notifications') as typeof NotificationsType;
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+    }),
+  });
+}
 
 function getProjectId(): string | undefined {
   return (
@@ -29,7 +41,7 @@ function getProjectId(): string | undefined {
 }
 
 async function getExpoToken(): Promise<string | null> {
-  if (!Device.isDevice) return null;
+  if (!Notifications || !Device.isDevice) return null;
   const projectId = getProjectId();
   const res = await Notifications.getExpoPushTokenAsync(projectId ? { projectId } : undefined);
   return res.data;
@@ -38,7 +50,7 @@ async function getExpoToken(): Promise<string | null> {
 /** Demande la permission, récupère le jeton Expo et l'enregistre côté API. */
 export async function registerForPush(authToken: string): Promise<void> {
   try {
-    if (!Device.isDevice) return;
+    if (!Notifications || !Device.isDevice) return;
     const existing = await Notifications.getPermissionsAsync();
     let status = existing.status;
     if (status !== 'granted') {
@@ -68,4 +80,22 @@ export async function unregisterPush(authToken: string): Promise<void> {
   } catch {
     // best-effort
   }
+}
+
+/**
+ * S'abonne au tap sur une notification (navigation contextuelle). No-op en
+ * Expo Go. Renvoie une fonction de désabonnement.
+ */
+export function subscribeToNotificationTaps(
+  onTap: (data: { type?: string; conversationId?: string } | undefined) => void,
+): () => void {
+  if (!Notifications) return () => {};
+  const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+    onTap(
+      response.notification.request.content.data as
+        | { type?: string; conversationId?: string }
+        | undefined,
+    );
+  });
+  return () => sub.remove();
 }

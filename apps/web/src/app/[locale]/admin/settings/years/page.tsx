@@ -18,9 +18,9 @@ export default async function YearsPage({ params }: { params: Promise<{ locale: 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
       <section className="lg:col-span-2">
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="px-4 py-3 text-start">{t('table.label')}</th>
                 <th className="px-4 py-3 text-start">{t('table.start')}</th>

@@ -54,6 +54,10 @@ export default async function NewPersonPage({
             lastName: true,
             address: true,
             relationsAsParent: {
+              // Fratrie = uniquement les élèves actifs de l'établissement.
+              where: {
+                child: { type: 'STUDENT', deletedAt: null, enrollments: { some: { status: 'ACTIVE' } } },
+              },
               select: {
                 child: {
                   select: {
@@ -115,9 +119,13 @@ export default async function NewPersonPage({
     },
   );
   const isAdmission = sp.admission === '1' && defaultType === 'STUDENT';
+  const tNav = await getTranslations('admin.nav');
 
-  const backHref = `/${locale}/admin/persons?type=${defaultType}`;
-  const backLabel = t(`title.${defaultType}` as never);
+  // Fil d'Ariane : une inscription vient du menu « Inscriptions », pas de « Élèves ».
+  const backHref = isAdmission
+    ? `/${locale}/admin/enrollments`
+    : `/${locale}/admin/persons?type=${defaultType}`;
+  const backLabel = isAdmission ? tNav('enrollments') : t(`title.${defaultType}` as never);
   const newKey = {
     STUDENT: 'newStudent',
     TEACHER: 'newTeacher',

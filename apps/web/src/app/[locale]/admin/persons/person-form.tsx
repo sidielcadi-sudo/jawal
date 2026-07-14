@@ -152,9 +152,18 @@ export function PersonForm({
     setStagedPhotoUrl(file ? URL.createObjectURL(file) : null);
   }
 
-  function onSubmit(formData: FormData) {
+  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
+    // On gère la soumission manuellement (preventDefault) afin que React ne
+    // réinitialise pas les champs déjà saisis en cas d'erreur de validation.
+    e.preventDefault();
     setError('');
     setFieldErrors({});
+    // Nouvelle inscription : au moins un tuteur/parent rattaché est obligatoire.
+    if (admission && mode === 'create' && !parents.some((p) => p.parentId)) {
+      setError(t('guardianRequired'));
+      return;
+    }
+    const formData = new FormData(e.currentTarget);
     formData.set('parents', JSON.stringify(parents));
     startTransition(async () => {
       const result =
@@ -213,15 +222,17 @@ export function PersonForm({
   function setParent(idx: number, patch: Partial<ParentLink>) {
     const next = parents.map((p, i) => (i === idx ? { ...p, ...patch } : p));
     setParents(next);
-    // #2 — Adresse par défaut = celle du père (modifiable). On ne pré-remplit
-    // que si l'adresse élève est encore vide, pour ne pas écraser une saisie.
+    // #2 — Adresse par défaut = celle du tuteur sélectionné (quel que soit le
+    // lien : père, mère, tuteur légal…). On ne pré-remplit que si l'adresse
+    // élève est encore vide, pour ne pas écraser une saisie. Si elle est ensuite
+    // modifiée, elle devra toujours correspondre à celle d'un tuteur (contrôle
+    // à la validation du dossier).
     const link = next[idx];
     if (!link?.parentId) return;
     const parent = availableParents.find((ap) => ap.id === link.parentId);
     const padr = parent?.address;
-    const isFather = link.type === 'FATHER';
     const addressEmpty = !address.line1.trim() && !address.city.trim();
-    if (isFather && padr && addressEmpty) {
+    if (padr && addressEmpty) {
       setAddress({
         line1: padr.line1 ?? '',
         city: padr.city ?? '',
@@ -232,7 +243,7 @@ export function PersonForm({
   }
 
   return (
-    <form action={onSubmit} className="space-y-6">
+    <form onSubmit={onSubmit} className="space-y-6">
       {admission && (
         <SectionCard title={t('section.admission')} bodyClass="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label={t('admissionYear')}>
@@ -477,8 +488,10 @@ export function PersonForm({
 
       {/* #2 — Bloc Parent/Tuteur juste après l'identité */}
       {showParentsField && (
-        <SectionCard title={t('section.parents')}>
-          <p className="text-xs text-slate-500">{t('parentsHint')}</p>
+        <SectionCard title={admission ? `${t('section.parents')} *` : t('section.parents')}>
+          <p className="text-xs text-slate-500">
+            {admission ? t('guardianRequired') : t('parentsHint')}
+          </p>
           <div className="mt-3 space-y-2">
             {parents.map((p, idx) => {
               const selected = availableParents.find((ap) => ap.id === p.parentId);
@@ -954,7 +967,7 @@ function SectionCard({
   children: React.ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white shadow-sm">
       <div className="border-b border-slate-200 bg-[#E6E6FA] px-5 py-3">
         <h2 className="text-base font-semibold text-slate-800">{title}</h2>
       </div>

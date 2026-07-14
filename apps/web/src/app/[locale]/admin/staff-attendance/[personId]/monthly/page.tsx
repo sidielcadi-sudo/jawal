@@ -196,9 +196,9 @@ export default async function MonthlyStaffAttendancePage({
         <h2 className="mb-3 text-base font-semibold text-slate-900">
           {t('monthly.details')}
         </h2>
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="px-4 py-3 text-start">{t('monthly.day')}</th>
                 <th className="px-4 py-3 text-start">{t('monthly.statusCol')}</th>

@@ -140,9 +140,9 @@ export default async function RemplacementsPage({
       ) : sessions.length === 0 ? (
         <p className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-500">{ts('noSessions')}</p>
       ) : (
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+        <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="px-3 py-2.5 text-start">{ts('date')}</th>
                 <th className="px-3 py-2.5 text-start">{ts('slot')}</th>

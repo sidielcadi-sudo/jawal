@@ -35,7 +35,7 @@ export default async function ParentChildLayout({
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 flex items-center gap-2.5 rounded-3xl bg-gradient-to-r from-brand-100 to-brand-50 px-4 py-2.5">
+      <header className="mb-4 flex items-center gap-2.5 -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
         <div className="grid h-9 w-9 place-items-center rounded-lg bg-white/70 text-sm font-semibold text-brand-600">
           {(ctx.child.firstName[0] ?? '') + (ctx.child.lastName[0] ?? '')}
         </div>
