@@ -439,7 +439,7 @@ export default async function PersonDetailPage({
 
   return (
     <div className="px-3 py-3">
-      <div className="mb-6 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-3">
+      <div className="mb-6 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3">
       <nav className="mb-2 text-xs text-slate-500">
         <Link href={backHref} className="hover:text-brand-700">
           {backLabel}
@@ -533,8 +533,8 @@ export default async function PersonDetailPage({
       <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-3">
         {/* Colonne gauche (large) : un seul conteneur pour que l'aside se cale en haut */}
         <div className="space-y-6 md:col-span-2">
-        <section className="rounded-2xl border border-slate-200 bg-white p-5">
-          <h2 className="text-sm font-semibold text-slate-700">{tDetail('contact')}</h2>
+        <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+          <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tDetail('contact')}</h2>
           <dl className="mt-3 space-y-2 text-sm">
             <Row label="Email" value={contacts.email} />
             <Row label={tDetail('phone')} value={contacts.phone} />
@@ -555,7 +555,7 @@ export default async function PersonDetailPage({
         {/* Informations employeur — enseignant / personnel (remplit la colonne) */}
         {isEmployee && (
           <section className="rounded-2xl border border-slate-200 bg-white p-5 md:col-span-2">
-            <h2 className="text-sm font-semibold text-slate-700">{tDetail('employerInfo')}</h2>
+            <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tDetail('employerInfo')}</h2>
             <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
               <Row
                 label={tForm('employmentStatus.label')}
@@ -580,7 +580,7 @@ export default async function PersonDetailPage({
         {/* Identité & autorisations — élève */}
         {person.type === 'STUDENT' && (
           <section className="rounded-2xl border border-slate-200 bg-white p-5 md:col-span-2">
-            <h2 className="text-sm font-semibold text-slate-700">{tForm('studentIdentity')}</h2>
+            <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tForm('studentIdentity')}</h2>
             <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
               <Row label={tForm('cne')} value={meta.cne || undefined} />
               <Row label={tForm('codeMassar')} value={meta.codeMassar || undefined} />
@@ -620,8 +620,8 @@ export default async function PersonDetailPage({
           <div
             className={`grid gap-6 md:col-span-2 ${siblings.length > 0 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}
           >
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-700">{tDetail('parents')}</h2>
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tDetail('parents')}</h2>
               {person.relationsAsChild.length === 0 ? (
                 <p className="mt-2 text-xs text-slate-500">{tDetail('noParent')}</p>
               ) : (
@@ -644,8 +644,8 @@ export default async function PersonDetailPage({
             </section>
 
             {siblings.length > 0 && (
-              <section className="rounded-2xl border border-slate-200 bg-white p-5">
-                <h2 className="text-sm font-semibold text-slate-700">{tDetail('siblings')}</h2>
+              <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+                <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tDetail('siblings')}</h2>
                 <ul className="mt-2 space-y-1.5 text-sm">
                   {siblings.map((s) => (
                     <li key={s.id} className="rounded-lg border border-slate-100 px-3 py-1.5">
@@ -667,8 +667,8 @@ export default async function PersonDetailPage({
 
         <aside className="space-y-4">
           {person.type === 'STUDENT' && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="mb-3 text-sm font-semibold text-slate-700">{tDetail('documents')}</h2>
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tDetail('documents')}</h2>
               <DocumentsPanel
                 hrefBase={`/api/admin/persons/${person.id}/document.pdf`}
                 years={documentYears}
@@ -678,8 +678,8 @@ export default async function PersonDetailPage({
           )}
 
           {person.type === 'TEACHER' && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="mb-3 text-sm font-semibold text-slate-700">
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">
                 {tDetail('portalAccessTeacher')}
               </h2>
               <TeacherAccess
@@ -691,8 +691,8 @@ export default async function PersonDetailPage({
           )}
 
           {isEmployee && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-700">{tDetail('contract')}</h2>
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tDetail('contract')}</h2>
               <dl className="mt-3 space-y-2 text-sm">
                 {person.type === 'STAFF' && (
                   <Row label={tForm('service')} value={serviceLabel ?? undefined} />
@@ -746,8 +746,8 @@ export default async function PersonDetailPage({
           )}
 
           {person.type === 'TEACHER' && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-700">{tDetail('assignments')}</h2>
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tDetail('assignments')}</h2>
               {person.teacherAssignments.length === 0 ? (
                 <p className="mt-2 text-xs text-slate-500">{tDetail('noAssignment')}</p>
               ) : (
@@ -773,8 +773,8 @@ export default async function PersonDetailPage({
           )}
 
           {person.type === 'TEACHER' && person.teacherSpecialties.length > 0 && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-700">{tDetail('specialties')}</h2>
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tDetail('specialties')}</h2>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {person.teacherSpecialties.map((s) => (
                   <span
@@ -789,8 +789,8 @@ export default async function PersonDetailPage({
           )}
 
           {person.type === 'TEACHER' && person.teacherCycles.length > 0 && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-700">{tDetail('cyclesTaught')}</h2>
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tDetail('cyclesTaught')}</h2>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {person.teacherCycles.map((c) => (
                   <span
@@ -805,8 +805,8 @@ export default async function PersonDetailPage({
           )}
 
           {person.type === 'TEACHER' && person.teacherPriorityClasses.length > 0 && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-700">{tDetail('priorityClasses')}</h2>
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tDetail('priorityClasses')}</h2>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {person.teacherPriorityClasses.map((p) => (
                   <span
@@ -821,8 +821,8 @@ export default async function PersonDetailPage({
           )}
 
           {isEmployee && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-700">{tDetail('hr')}</h2>
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tDetail('hr')}</h2>
               <dl className="mt-3 space-y-2 text-sm">
                 {person.hireDate && (
                   <Row
@@ -857,8 +857,8 @@ export default async function PersonDetailPage({
           )}
 
           {isEmployee && (person.rib || person.grossSalary !== null || person.payrollMethod) && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-700">{tDetail('financial')}</h2>
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tDetail('financial')}</h2>
               <dl className="mt-3 space-y-2 text-sm">
                 <Row label={tDetail('bankName')} value={person.bankName ?? undefined} />
                 <Row label={tDetail('rib')} value={person.rib ?? undefined} mono />
@@ -924,8 +924,8 @@ export default async function PersonDetailPage({
           )}
 
           {attendanceSummary && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <div className="flex items-center justify-between">
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <div className="-mx-5 -mt-5 mb-4 flex items-center justify-between border-b border-slate-200 table-head px-5 py-3">
                 <h2 className="text-sm font-semibold text-slate-700">
                   {tDetail('attendanceSummary')} —{' '}
                   <span className="text-slate-500 first-letter:uppercase">
@@ -978,8 +978,8 @@ export default async function PersonDetailPage({
           )}
 
           {person.type === 'STUDENT' && enrollmentHistory.length > 0 && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <div className="flex items-center justify-between">
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <div className="-mx-5 -mt-5 mb-4 flex items-center justify-between border-b border-slate-200 table-head px-5 py-3">
                 <h2 className="text-sm font-semibold text-slate-700">
                   {tDetail('enrollmentHistory.title')}
                 </h2>
@@ -1035,8 +1035,8 @@ export default async function PersonDetailPage({
           )}
 
           {person.type === 'STUDENT' && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-700">{tDetail('classes')}</h2>
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tDetail('classes')}</h2>
               {person.studentClasses.length === 0 ? (
                 <p className="mt-2 text-xs text-slate-500">{tDetail('noClass')}</p>
               ) : (
@@ -1055,8 +1055,8 @@ export default async function PersonDetailPage({
           )}
 
           {person.type === 'STUDENT' && studentAttendance && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-700">
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">
                 {tDetail('studentAttendance.title')}
               </h2>
               {studentAttendance.total === 0 ? (
@@ -1129,8 +1129,8 @@ export default async function PersonDetailPage({
           {person.type === 'STUDENT' && <HealthSection studentId={person.id} health={health} />}
 
           {person.type === 'STUDENT' && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="mb-3 text-sm font-semibold text-slate-700">
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">
                 {tDetail('portalAccessStudent')}
               </h2>
               <StudentAccess
@@ -1142,8 +1142,8 @@ export default async function PersonDetailPage({
           )}
 
           {person.type === 'PARENT' && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="mb-3 text-sm font-semibold text-slate-700">
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">
                 {tDetail('portalAccess')}
               </h2>
               <ParentAccess
@@ -1155,8 +1155,8 @@ export default async function PersonDetailPage({
           )}
 
           {person.type === 'PARENT' && (
-            <section className="rounded-2xl border border-slate-200 bg-white p-5">
-              <h2 className="text-sm font-semibold text-slate-700">{tDetail('family.title')}</h2>
+            <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+              <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tDetail('family.title')}</h2>
               {familyOverview.length === 0 ? (
                 <p className="mt-2 text-xs text-slate-500">{tDetail('noChild')}</p>
               ) : (
@@ -1249,8 +1249,8 @@ export default async function PersonDetailPage({
             </section>
           )}
 
-          <section className="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-slate-700">{tDetail('meta')}</h2>
+          <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+            <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tDetail('meta')}</h2>
             <dl className="mt-3 space-y-2 text-xs text-slate-600">
               <Row label="ID" value={person.id} mono />
               <Row

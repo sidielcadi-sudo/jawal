@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { getTeacherPersonId } from '@/lib/teacher';
 import { SaisieGrid } from './saisie-grid';
+import { pickPeriodId } from '@/lib/periods';
 
 export default async function NotesSaisiePage({
   params,
@@ -67,8 +68,7 @@ export default async function NotesSaisiePage({
       subjectsForClass.find((s) => s.subjectId === sp.subject)?.subjectId ??
       subjectsForClass[0]?.subjectId ??
       null;
-    const periodId =
-      year.periods.find((p) => p.id === sp.period)?.id ?? year.periods[0]?.id ?? null;
+    const periodId = pickPeriodId(year.periods, sp.period);
 
     if (!classId || !subjectId || !periodId) {
       return { svc, classes, subjectsForClass, periods: year.periods, classId, subjectId, periodId, grid: null };

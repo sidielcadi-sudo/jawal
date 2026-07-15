@@ -26,7 +26,7 @@ export default async function ComptabilitePage({ params }: { params: Promise<{ l
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 flex items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
+      <header className="mb-4 flex items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">📒 {t('title')}</h1>
           <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>
@@ -68,7 +68,7 @@ export default async function ComptabilitePage({ params }: { params: Promise<{ l
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* Saisie d'écriture */}
-          <section className="rounded-2xl border border-slate-200 bg-white p-4 lg:col-span-2">
+          <section className="rounded-2xl border border-brand-200 bg-white p-4 lg:col-span-2">
             <h2 className="mb-2 text-sm font-semibold text-slate-900">{t('manualTitle')}</h2>
             {hasOpenYear ? (
               <ManualEntryForm accounts={accounts.map((a) => ({ code: a.code, name: a.name }))} />
@@ -80,7 +80,7 @@ export default async function ComptabilitePage({ params }: { params: Promise<{ l
           {/* Plan comptable */}
           <aside>
             <h2 className="mb-2 text-base font-semibold text-slate-900">{t('chartTitle')}</h2>
-            <section className="rounded-2xl border border-slate-200 bg-white p-4">
+            <section className="rounded-2xl border border-brand-200 bg-white p-4">
               <CreateForm action={createAccountAction} className="mb-3 grid grid-cols-[auto_1fr_auto] gap-1.5">
                 <input name="code" required placeholder={t('code')} className={`${inputCls} w-20`} />
                 <input name="name" required placeholder={t('accountName')} className={inputCls} />
@@ -104,7 +104,7 @@ export default async function ComptabilitePage({ params }: { params: Promise<{ l
 
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+    <div className="rounded-2xl border border-brand-200 bg-white p-3">
       <div className="text-xl font-bold tabular-nums text-slate-800">{value}</div>
       <div className="mt-0.5 text-xs text-slate-500">{label}</div>
     </div>

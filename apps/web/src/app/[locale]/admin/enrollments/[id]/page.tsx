@@ -344,7 +344,7 @@ export default async function EnrollmentDetailPage({
         </span>
       </nav>
 
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-3">
+      <header className="-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
             {enrollment.student.lastName} {enrollment.student.firstName}

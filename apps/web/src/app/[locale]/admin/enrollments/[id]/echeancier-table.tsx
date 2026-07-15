@@ -46,7 +46,7 @@ export function EcheancierTable({
         <h2 className="text-sm font-semibold text-white">{t('echeancier.title')}</h2>
       </div>
       <table className="w-full text-sm">
-        <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+        <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
           <tr>
             <th className="px-4 py-2 text-start">{t('echeancier.n')}</th>
             <th className="px-4 py-2 text-start">{t('echeancier.due')}</th>

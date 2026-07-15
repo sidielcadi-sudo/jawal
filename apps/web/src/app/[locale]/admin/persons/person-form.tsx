@@ -968,7 +968,7 @@ function SectionCard({
 }) {
   return (
     <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white shadow-sm">
-      <div className="border-b border-slate-200 bg-[#E6E6FA] px-5 py-3">
+      <div className="border-b border-slate-200 table-head px-5 py-3">
         <h2 className="text-base font-semibold text-slate-800">{title}</h2>
       </div>
       <div className={`p-5 ${bodyClass ?? ''}`}>{children}</div>

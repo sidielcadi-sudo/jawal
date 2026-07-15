@@ -48,7 +48,7 @@ export default async function ClassConstraintsPage({
       </nav>
 
       <header className="mb-5">
-        <h1 className="text-2xl font-semibold text-slate-900">
+        <h1 className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 text-2xl font-semibold text-slate-900">
           {t('title')} — {cls.name}
         </h1>
         <p className="mt-1 text-sm text-slate-500">

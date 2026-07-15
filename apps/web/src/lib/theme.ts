@@ -80,3 +80,38 @@ export function tenantPrimaryColor(settings: unknown): string | null {
   const p = (settings as { theme?: { primary?: string } } | null)?.theme?.primary;
   return typeof p === 'string' && isValidHex(p) ? p : null;
 }
+
+/** Hex #RRGGBB → canaux « r g b » (format des variables CSS). */
+export function hexToChannels(hex: string): string {
+  const [r, g, b] = hexToRgb(hex);
+  return `${r} ${g} ${b}`;
+}
+
+function themeColor(settings: unknown, key: 'band' | 'tableHeader'): string | null {
+  const v = (settings as { theme?: Record<string, unknown> } | null)?.theme?.[key];
+  return typeof v === 'string' && isValidHex(v) ? v : null;
+}
+
+/** Couleur des bandes de titre (settings.theme.band) ou null → suit brand-100. */
+export function tenantBandColor(settings: unknown): string | null {
+  return themeColor(settings, 'band');
+}
+
+/** Couleur des en-têtes de tableau (settings.theme.tableHeader) ou null → défaut. */
+export function tenantTableHeaderColor(settings: unknown): string | null {
+  return themeColor(settings, 'tableHeader');
+}
+
+/**
+ * CSS des couleurs additionnelles configurables (bande de titre / en-tête de
+ * tableau). Chaîne vide si aucune n'est définie (on garde alors les défauts).
+ */
+export function extraColorsCss(band: string | null, tableHeader: string | null): string {
+  const vars = [
+    band ? `--band:${hexToChannels(band)}` : null,
+    tableHeader ? `--table-header:${hexToChannels(tableHeader)}` : null,
+  ]
+    .filter(Boolean)
+    .join(';');
+  return vars ? `:root{${vars}}` : '';
+}

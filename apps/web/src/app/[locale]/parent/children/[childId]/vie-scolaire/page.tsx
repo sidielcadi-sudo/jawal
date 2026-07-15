@@ -341,7 +341,7 @@ export default async function ParentChildVieScolairePage({
             <p className="px-4 py-8 text-center text-sm text-slate-400">{t('equipe.empty')}</p>
           ) : (
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-100 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400">
+              <thead className="border-b border-slate-100 table-head text-[10px] uppercase tracking-wide text-slate-400">
                 <tr>
                   <th className="px-4 py-2 text-start">{t('equipe.subject')}</th>
                   <th className="px-4 py-2 text-start">{t('equipe.teacher')}</th>

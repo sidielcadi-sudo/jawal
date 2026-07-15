@@ -52,7 +52,7 @@ export default async function EditClassPage({
         <span>{t('actions.edit')}</span>
       </nav>
 
-      <h1 className="text-2xl font-semibold text-slate-900">
+      <h1 className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 text-2xl font-semibold text-slate-900">
         {t('actions.edit')} — {cls.name}
       </h1>
 

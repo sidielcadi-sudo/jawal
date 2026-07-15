@@ -41,7 +41,7 @@ export default async function PayrollRunsPage({ params }: { params: Promise<{ lo
 
       <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+          <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
             <tr>
               <th className="px-4 py-2.5 text-start">{tr('period')}</th>
               <th className="px-4 py-2.5 text-end">{tr('payslips')}</th>

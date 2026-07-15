@@ -210,7 +210,7 @@ export default async function ClassTimetablePage({
         <span>{t('title')}</span>
       </nav>
 
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+      <header className="-mx-4 sm:-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
             {t('title')} — {cls.name}

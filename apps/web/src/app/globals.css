@@ -26,6 +26,23 @@
   --brand-700: 20 63 166;
   --brand-800: 18 58 143;
   --brand-900: 14 47 115;
+
+  /* Couleurs configurables (Paramétrage → Apparence).
+     - --band : fond des bandes de titre. Par défaut, suit la couleur principale
+       de l'établissement (brand-100) ; surchargeable par tenant.
+     - --table-header : fond des en-têtes de tableau (défaut #A9EAFE). */
+  --band: var(--brand-100);
+  --table-header: 169 234 254;
+}
+
+/* Bande de titre : dégradé doux depuis la couleur configurée. */
+.title-band {
+  background-image: linear-gradient(to right, rgb(var(--band)), rgb(var(--band) / 0.45));
+}
+
+/* En-tête de tableau : couleur configurée. */
+.table-head {
+  background-color: rgb(var(--table-header));
 }
 
 html {

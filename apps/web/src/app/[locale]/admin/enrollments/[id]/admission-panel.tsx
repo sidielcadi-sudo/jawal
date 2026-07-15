@@ -246,7 +246,7 @@ export function AdmissionPanel({
           ) : (
             <div className="mt-2 overflow-hidden rounded-lg border border-slate-200">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-[11px] uppercase tracking-wide text-slate-500">
+                <thead className="table-head text-[11px] uppercase tracking-wide text-slate-500">
                   <tr>
                     <th className="px-3 py-2 text-start">{t('feeTable.type')}</th>
                     <th className="px-3 py-2 text-end">{t('feeTable.amount')}</th>

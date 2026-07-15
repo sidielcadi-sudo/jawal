@@ -63,7 +63,7 @@ export default async function StudentFinancePage({
         <span>{t('title')}</span>
       </nav>
 
-      <header className="mb-6">
+      <header className="mb-6 overflow-hidden -mx-6 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3">
         <h1 className="text-2xl font-semibold text-slate-900">
           {t('title')} — {student.lastName} {student.firstName}
         </h1>
@@ -104,7 +104,7 @@ export default async function StudentFinancePage({
         </div>
         <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+            <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="px-4 py-3 text-start">{t('table.label')}</th>
                 <th className="px-4 py-3 text-start">{t('table.dueDate')}</th>
@@ -186,7 +186,7 @@ function Kpi({
     red: 'text-red-700',
   };
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="rounded-2xl border border-brand-200 bg-white p-5">
       <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
       <div className={`mt-2 text-2xl font-semibold tabular-nums ${colors[color]}`}>{value}</div>
       {hint && <div className="mt-1 text-xs font-medium text-amber-700">{hint}</div>}

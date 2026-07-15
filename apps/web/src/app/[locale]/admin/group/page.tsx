@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { computeHeadcount, computeAcademicOverview, computeAttendanceRate } from '@/lib/bi';
+import { pickPeriodId } from '@/lib/periods';
 
 type Row = {
   name: string;
@@ -38,9 +39,7 @@ export default async function GroupDashboard({
           include: { periods: { orderBy: { startDate: 'asc' } } },
         });
         const periods = year?.periods ?? [];
-        const now = new Date();
-        const periodId =
-          (periods.find((p) => p.startDate <= now && now <= p.endDate) ?? periods[0])?.id ?? null;
+        const periodId = pickPeriodId(periods);
 
         const headcount = await computeHeadcount(tx);
         const academic = periodId ? await computeAcademicOverview(tx, periodId) : null;
@@ -89,14 +88,14 @@ export default async function GroupDashboard({
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
+      <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
         <p className="mt-0.5 text-sm text-slate-600">{t('subtitle', { count: rows.length })}</p>
       </header>
 
       <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+          <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
             <tr>
               <th className="px-4 py-3 text-start">{t('site')}</th>
               <th className="px-4 py-3 text-end">{t('students')}</th>

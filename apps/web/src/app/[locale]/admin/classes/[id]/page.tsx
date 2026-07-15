@@ -86,7 +86,7 @@ export default async function ClassDetailPage({
         <span>{cls.name}</span>
       </nav>
 
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <header className="-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
             {cls.name}
@@ -153,7 +153,7 @@ export default async function ClassDetailPage({
             </div>
 
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+              <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
                 <tr>
                   <th className="px-4 py-2 text-start">{tDetail('table.name')}</th>
                   <th className="px-4 py-2 text-start">{tDetail('table.enrolledAt')}</th>
@@ -275,7 +275,7 @@ export default async function ClassDetailPage({
         <h2 className="mb-3 text-base font-semibold text-slate-900">{tDetail('programme')}</h2>
         <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+            <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="px-4 py-3 text-start">{tDetail('subject')}</th>
                 <th className="px-4 py-3 text-end">{tDetail('coefficient')}</th>

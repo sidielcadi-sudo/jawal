@@ -144,8 +144,10 @@ export default async function NewPersonPage({
         <span>{newLabel}</span>
       </nav>
 
-      <h1 className="text-2xl font-semibold text-slate-900">{newLabel}</h1>
-      <p className="mt-1 text-sm text-slate-500">{t('newSubtitle')}</p>
+      <div className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3">
+        <h1 className="text-2xl font-semibold text-slate-900">{newLabel}</h1>
+        <p className="mt-1 text-sm text-slate-500">{t('newSubtitle')}</p>
+      </div>
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
         <PersonForm

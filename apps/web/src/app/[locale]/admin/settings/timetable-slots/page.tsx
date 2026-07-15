@@ -21,7 +21,7 @@ export default async function TimetableSlotsPage({
   return (
     <div className="mx-auto max-w-4xl px-6 py-8">
       <header className="mb-5">
-        <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
+        <h1 className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 text-2xl font-semibold text-slate-900">{t('title')}</h1>
         <p className="mt-1 text-sm text-slate-500">{t('subtitle')}</p>
       </header>
 

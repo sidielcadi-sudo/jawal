@@ -127,7 +127,7 @@ export default async function ParentChildNotesPage({
                 </div>
                 <div className="overflow-hidden rounded-xl border border-slate-100">
                   <table className="w-full text-xs">
-                    <thead className="bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400">
+                    <thead className="table-head text-[10px] uppercase tracking-wide text-slate-400">
                       <tr>
                         <th className="px-3 py-1.5 text-start">{t('notes.evaluation')}</th>
                         <th className="px-2 py-1.5 text-end">{t('notes.mark')}</th>
@@ -190,7 +190,7 @@ export default async function ParentChildNotesPage({
         ) : (
           <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-100 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-400">
+              <thead className="border-b border-slate-100 table-head text-[10px] uppercase tracking-wide text-slate-400">
                 <tr>
                   <th className="px-3 py-2 text-start">{t('classBulletin.subject')}</th>
                   <th className="px-2 py-2 text-end">{t('classBulletin.childAvg')}</th>

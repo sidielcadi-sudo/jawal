@@ -309,7 +309,7 @@ export default async function PersonsListPage({
 
   return (
     <div className="px-3 py-3">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{title}</h1>
           <p className="mt-0.5 text-sm text-slate-600">{t('count', { count: total })}</p>
@@ -440,7 +440,7 @@ export default async function PersonsListPage({
 
       <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+          <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
             <tr>
               {isStudentView && <th className="px-4 py-3 text-start">{t('table.photo')}</th>}
               <th className="px-4 py-3 text-start">{t('table.name')}</th>

@@ -112,7 +112,7 @@ export default async function MonthlyStaffAttendancePage({
         <span>{t('monthly.title')}</span>
       </nav>
 
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+      <header className="-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
             {person.lastName} {person.firstName}
@@ -198,7 +198,7 @@ export default async function MonthlyStaffAttendancePage({
         </h2>
         <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+            <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="px-4 py-3 text-start">{t('monthly.day')}</th>
                 <th className="px-4 py-3 text-start">{t('monthly.statusCol')}</th>

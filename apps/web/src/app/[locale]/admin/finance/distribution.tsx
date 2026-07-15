@@ -5,9 +5,18 @@ import { useTranslations, useLocale } from 'next-intl';
 
 type Bucket = { label: string; due: number; collected: number };
 type Data = { global: Bucket[]; monthly: Bucket[]; quarterly: Bucket[]; semestrial: Bucket[]; annual: Bucket[] };
-type TabKey = 'global' | 'monthly' | 'quarterly' | 'semestrial' | 'annual';
+type TabKey = 'global' | 'monthly' | 'quarterly' | 'semestrial' | 'annual' | 'method';
+type MethodSlice = { method: string; amount: number };
 
-export function DistributionTabs({ data, currency }: { data: Data; currency: string }) {
+export function DistributionTabs({
+  data,
+  byMethod,
+  currency,
+}: {
+  data: Data;
+  byMethod: MethodSlice[];
+  currency: string;
+}) {
   const t = useTranslations('admin.finance.histo');
   const [tab, setTab] = useState<TabKey>('global');
   const tabs: { key: TabKey; label: string }[] = [
@@ -16,8 +25,8 @@ export function DistributionTabs({ data, currency }: { data: Data; currency: str
     { key: 'quarterly', label: t('tabQuarterly') },
     { key: 'semestrial', label: t('tabSemestrial') },
     { key: 'annual', label: t('tabAnnual') },
+    { key: 'method', label: t('tabMethod') },
   ];
-  const current = data[tab];
 
   return (
     <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5">
@@ -40,15 +49,108 @@ export function DistributionTabs({ data, currency }: { data: Data; currency: str
         ))}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-end gap-3 text-xs text-slate-600">
-        <Legend className="bg-blue-500" label={t('due')} />
-        <Legend className="bg-gray-400" label={t('collected')} />
-        <Legend className="bg-orange-500" label={t('unpaid')} />
-      </div>
-
-      <Histogram data={current} currency={currency} />
-      <DistTable data={current} currency={currency} />
+      {tab === 'method' ? (
+        <MethodPie data={byMethod} currency={currency} />
+      ) : (
+        <>
+          <div className="mt-4 flex flex-wrap items-center justify-end gap-3 text-xs text-slate-600">
+            <Legend className="bg-blue-500" label={t('due')} />
+            <Legend className="bg-gray-400" label={t('collected')} />
+            <Legend className="bg-orange-500" label={t('unpaid')} />
+          </div>
+          <Histogram data={data[tab]} currency={currency} />
+          <DistTable data={data[tab]} currency={currency} />
+        </>
+      )}
     </section>
+  );
+}
+
+const METHOD_COLORS: Record<string, string> = {
+  CASH: '#10b981',
+  CHEQUE: '#3b82f6',
+  TRANSFER: '#8b5cf6',
+  CMI: '#f59e0b',
+  STRIPE: '#ec4899',
+  OTHER: '#64748b',
+};
+
+/** Camembert (donut) des montants encaissés par moyen de paiement. */
+function MethodPie({ data, currency }: { data: MethodSlice[]; currency: string }) {
+  const th = useTranslations('admin.finance.histo');
+  const tm = useTranslations('admin.finance.methods');
+  const locale = useLocale();
+  const total = data.reduce((s, d) => s + d.amount, 0);
+  const fmt = (n: number) => `${nf(n, locale)} ${currency}`;
+  if (total <= 0) {
+    return <p className="mt-6 text-sm text-slate-500">{th('methodEmpty')}</p>;
+  }
+  const R = 70;
+  const sw = 34;
+  const cx = 90;
+  const cy = 90;
+  const circ = 2 * Math.PI * R;
+  let offset = 0;
+  const segs = data.map((d) => {
+    const frac = d.amount / total;
+    const len = frac * circ;
+    const seg = {
+      method: d.method,
+      amount: d.amount,
+      frac,
+      len,
+      off: offset,
+      color: METHOD_COLORS[d.method] ?? '#64748b',
+    };
+    offset -= len;
+    return seg;
+  });
+  const compact =
+    total >= 1_000_000
+      ? `${(total / 1_000_000).toFixed(1)}M`
+      : total >= 1000
+        ? `${Math.round(total / 1000)}k`
+        : `${Math.round(total)}`;
+
+  return (
+    <div className="mt-5 flex flex-col items-center gap-8 sm:flex-row">
+      <svg viewBox="0 0 180 180" className="h-44 w-44 shrink-0" role="img" aria-label={th('collected')}>
+        {segs.map((s, i) => (
+          <circle
+            key={i}
+            cx={cx}
+            cy={cy}
+            r={R}
+            fill="none"
+            stroke={s.color}
+            strokeWidth={sw}
+            strokeDasharray={`${s.len} ${circ - s.len}`}
+            strokeDashoffset={s.off}
+            transform={`rotate(-90 ${cx} ${cy})`}
+          >
+            <title>{`${tm(s.method)}: ${fmt(s.amount)} (${(s.frac * 100).toFixed(1)}%)`}</title>
+          </circle>
+        ))}
+        <text x={cx} y={cy - 3} textAnchor="middle" fontSize={10} fill="#64748b">
+          {th('collected')}
+        </text>
+        <text x={cx} y={cy + 13} textAnchor="middle" fontSize={14} fontWeight={700} fill="#0f172a">
+          {compact} {currency}
+        </text>
+      </svg>
+      <ul className="w-full max-w-sm space-y-2.5">
+        {segs.map((s, i) => (
+          <li key={i} className="flex items-center gap-2 text-sm">
+            <span className="h-3 w-3 shrink-0 rounded-sm" style={{ backgroundColor: s.color }} />
+            <span className="flex-1 truncate text-slate-700">{tm(s.method)}</span>
+            <span className="font-medium tabular-nums text-slate-900">{fmt(s.amount)}</span>
+            <span className="w-12 text-end tabular-nums text-slate-500">
+              {(s.frac * 100).toFixed(1)}%
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

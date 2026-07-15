@@ -67,7 +67,7 @@ export default async function TeacherSubjectGradesPage({
       </nav>
 
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">
+        <h1 className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 text-2xl font-semibold text-slate-900">
           {t('title')} — {cls.name}
         </h1>
         <p className="mt-1 text-sm text-slate-500">
@@ -103,7 +103,7 @@ export default async function TeacherSubjectGradesPage({
 
           <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+              <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
                 <tr>
                   <th className="px-4 py-3 text-start">{t('table.label')}</th>
                   <th className="px-4 py-3 text-start">{t('table.period')}</th>

@@ -62,7 +62,7 @@ export function CarnetView({
 
       {/* Événements signalés dans les feuilles d'appel (dérivés, lecture seule) */}
       <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
-        <div className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
+        <div className="border-b border-slate-200 table-head px-4 py-2 text-sm font-semibold text-slate-700">
           {t('eventsTitle')}
         </div>
         <table className="w-full text-sm">
@@ -169,7 +169,7 @@ function Section({
 
   return (
     <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
-      <div className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
+      <div className="border-b border-slate-200 table-head px-4 py-2 text-sm font-semibold text-slate-700">
         {t(`sections.${type}`)}
       </div>
 

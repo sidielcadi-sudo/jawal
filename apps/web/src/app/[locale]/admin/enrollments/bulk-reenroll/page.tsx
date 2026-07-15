@@ -122,7 +122,7 @@ export default async function BulkReenrollPage({
     return (
       <div className="mx-auto max-w-3xl px-6 py-8">
         <Breadcrumb locale={locale} t={t} />
-        <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
+        <h1 className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 text-2xl font-semibold text-slate-900">{t('title')}</h1>
         <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-6 py-8 text-sm text-amber-900">
           {t('needTwoYears')}
           <Link
@@ -139,7 +139,7 @@ export default async function BulkReenrollPage({
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       <Breadcrumb locale={locale} t={t} />
-      <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
+      <h1 className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 text-2xl font-semibold text-slate-900">{t('title')}</h1>
       <p className="mt-1 text-sm text-slate-500">{t('subtitle')}</p>
 
       <BulkReenrollSheet

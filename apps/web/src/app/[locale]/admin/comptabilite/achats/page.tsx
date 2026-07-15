@@ -47,7 +47,9 @@ export default async function AchatsPage({ params }: { params: Promise<{ locale:
         <span>{ta('title')}</span>
       </nav>
 
-      <h1 className="mb-3 text-base font-bold text-slate-900">{ta('title')}</h1>
+      <div className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{ta('title')}</h1>
+      </div>
 
       <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
         <Kpi label={ta('totalDue')} value={fmt(totalDue)} tone="red" />
@@ -57,7 +59,7 @@ export default async function AchatsPage({ params }: { params: Promise<{ locale:
       </div>
 
       {/* Facture fournisseur */}
-      <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
+      <section className="mb-4 rounded-2xl border border-brand-200 bg-white p-4">
         <h2 className="mb-2 text-sm font-semibold text-slate-900">{ta('newInvoice')}</h2>
         <CreateForm action={createInvoiceAction} className="grid grid-cols-2 gap-2 md:grid-cols-4">
           <select name="supplierId" required defaultValue="" className={inputCls}>
@@ -83,7 +85,7 @@ export default async function AchatsPage({ params }: { params: Promise<{ locale:
           <h2 className="mb-2 text-base font-semibold text-slate-900">{ta('invoices')}</h2>
           <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+              <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
                 <tr>
                   <th className="px-3 py-2 text-start">{ta('supplier')}</th>
                   <th className="px-3 py-2 text-start">{ta('label')}</th>
@@ -118,7 +120,7 @@ export default async function AchatsPage({ params }: { params: Promise<{ locale:
         {/* Fournisseurs */}
         <aside>
           <h2 className="mb-2 text-base font-semibold text-slate-900">{ta('suppliers')}</h2>
-          <section className="rounded-2xl border border-slate-200 bg-white p-4">
+          <section className="rounded-2xl border border-brand-200 bg-white p-4">
             <CreateForm action={createSupplierAction} className="mb-3 space-y-1.5">
               <input name="name" required placeholder={ta('supplierName')} className={`w-full ${inputCls}`} />
               <div className="flex gap-1.5">
@@ -140,7 +142,7 @@ export default async function AchatsPage({ params }: { params: Promise<{ locale:
 function Kpi({ label, value, tone }: { label: string; value: string; tone?: string }) {
   const c = tone === 'red' ? 'text-red-700' : tone === 'amber' ? 'text-amber-700' : 'text-slate-800';
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+    <div className="rounded-2xl border border-brand-200 bg-white p-3">
       <div className={`text-lg font-bold tabular-nums ${c}`}>{value}</div>
       <div className="mt-0.5 text-xs text-slate-500">{label}</div>
     </div>

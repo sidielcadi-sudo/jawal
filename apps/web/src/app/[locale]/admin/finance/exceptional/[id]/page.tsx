@@ -123,7 +123,7 @@ export default async function ExceptionalFeeDetailPage({
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
+      <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <Link href={base} className="text-xs text-brand-700 hover:underline">← {t('backToList')}</Link>
         <h1 className="mt-1 text-base font-bold text-slate-900">{fee.label}</h1>
         <p className="mt-0.5 text-sm text-slate-600">
@@ -139,7 +139,7 @@ export default async function ExceptionalFeeDetailPage({
         <section className="lg:col-span-2">
           <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-sm">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-100 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+              <thead className="border-b border-slate-100 table-head text-xs uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-4 py-3 text-start">{t('suivi.student')}</th>
                   <th className="px-4 py-3 text-start">{t('suivi.class')}</th>

@@ -26,7 +26,7 @@ export default async function BoursePage({ params }: { params: Promise<{ locale:
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 flex items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
+      <header className="mb-4 flex items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">📚 {t('title')}</h1>
           <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>
@@ -77,7 +77,7 @@ export default async function BoursePage({ params }: { params: Promise<{ locale:
           </CreateForm>
           <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+              <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
                 <tr>
                   <th className="px-3 py-2 text-start">{t('bookTitle')}</th>
                   <th className="px-3 py-2 text-start">{t('level')}</th>

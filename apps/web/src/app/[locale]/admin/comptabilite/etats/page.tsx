@@ -73,7 +73,7 @@ export default async function EtatsPage({ params }: { params: Promise<{ locale: 
         <span>{te('title')}</span>
       </nav>
 
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <h1 className="text-base font-bold text-slate-900">{te('title')}</h1>
         <ExportButton header={['Compte', 'Intitule', 'Debit', 'Credit', 'Solde']} rows={rows.map((r) => [r.code, r.name, r.debit.toFixed(2), r.credit.toFixed(2), r.solde.toFixed(2)])} filename="etats-financiers" label={t('export')} />
       </div>
@@ -147,14 +147,14 @@ export default async function EtatsPage({ params }: { params: Promise<{ locale: 
 function Kpi({ label, value, tone, big }: { label: string; value: string; tone?: string; big?: boolean }) {
   const c = tone === 'emerald' ? 'text-emerald-700' : tone === 'red' ? 'text-red-700' : tone === 'amber' ? 'text-amber-700' : 'text-slate-800';
   return (
-    <div className={`rounded-2xl border bg-white p-3 ${big ? 'border-brand-200' : 'border-slate-200'}`}>
+    <div className={`rounded-2xl border bg-white p-3 ${big ? 'border-brand-300' : 'border-brand-200'}`}>
       <div className={`text-lg font-bold tabular-nums ${c}`}>{value}</div>
       <div className="mt-0.5 text-xs text-slate-500">{label}</div>
     </div>
   );
 }
 function Panel({ title, children }: { title: string; children: React.ReactNode }) {
-  return <section className="rounded-2xl border border-slate-200 bg-white p-4"><h2 className="mb-2 text-sm font-semibold text-slate-900">{title}</h2>{children}</section>;
+  return <section className="rounded-2xl border border-brand-200 bg-white p-4"><h2 className="mb-2 text-sm font-semibold text-slate-900">{title}</h2>{children}</section>;
 }
 function Line({ label, value }: { label: string; value: string }) {
   return <div className="flex justify-between py-0.5 text-sm"><span className="min-w-0 truncate text-slate-600">{label}</span><span className="ms-2 tabular-nums text-slate-800">{value}</span></div>;

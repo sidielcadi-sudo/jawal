@@ -139,7 +139,9 @@ export default async function VieScolaireBoardPage({
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
+      <h1 className="mb-4 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 text-2xl font-semibold text-slate-900">
+        {t('title')}
+      </h1>
       <div className="mt-3">
         <VieScolaireTabs locale={locale} />
       </div>
@@ -253,7 +255,7 @@ function MissingAppelPanel({
         </span>
       </div>
       <table className="w-full text-sm">
-        <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
+        <thead className="border-b border-slate-100 table-head text-xs uppercase tracking-wide text-slate-700">
           <tr>
             <th className="px-4 py-2 text-start">{t('appel.teacher')}</th>
             <th className="px-4 py-2 text-start">{t('col.class')}</th>
@@ -481,7 +483,7 @@ function SlotDetailPanel({
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
+          <thead className="border-b border-slate-100 table-head text-xs uppercase tracking-wide text-slate-700">
             <tr>
               <th className="px-4 py-2 text-start">{t('col.student')}</th>
               <th className="px-4 py-2 text-start">{t('col.class')}</th>

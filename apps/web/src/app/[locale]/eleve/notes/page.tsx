@@ -24,7 +24,7 @@ export default async function StudentNotesPage({ params }: { params: Promise<{ l
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
         {notes.generalAverage !== null && (
           <span className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm">
@@ -54,7 +54,7 @@ export default async function StudentNotesPage({ params }: { params: Promise<{ l
                 </span>
               </div>
               <table className="w-full text-sm">
-                <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
+                <thead className="border-b border-slate-100 table-head text-xs uppercase tracking-wide text-slate-700">
                   <tr>
                     <th className="px-4 py-2 text-start">{t('evaluation')}</th>
                     <th className="px-2 py-2 text-start">{t('period')}</th>

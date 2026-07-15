@@ -11,21 +11,36 @@ import { isValidHex } from '@/lib/theme';
 type Result = { ok: true } | { ok: false; error: string };
 
 /**
- * Enregistre la couleur primaire du thème de l'établissement
- * (`tenant.settings.theme.primary`). Valeur vide → retour au thème par défaut.
+ * Enregistre les couleurs du thème de l'établissement (`tenant.settings.theme`) :
+ *  - `primary` : couleur principale (pilote la palette brand 50→900) ;
+ *  - `band` : fond des bandes de titre (défaut : suit brand-100) ;
+ *  - `tableHeader` : fond des en-têtes de tableau (défaut : #A9EAFE).
+ * Une valeur vide = retour au défaut pour cette couleur. Toutes vides → thème par défaut.
  */
-export async function saveThemeAction(primary: string): Promise<Result> {
+export async function saveThemeAction(
+  primary: string,
+  band = '',
+  tableHeader = '',
+): Promise<Result> {
   const session = await auth();
   if (!session?.user) return { ok: false, error: 'Non authentifié' };
   await requirePermission('tenants.manage');
-  const value = (primary ?? '').trim();
-  if (value && !isValidHex(value)) return { ok: false, error: 'Couleur invalide (format #RRGGBB attendu).' };
+  const values = {
+    primary: (primary ?? '').trim(),
+    band: (band ?? '').trim(),
+    tableHeader: (tableHeader ?? '').trim(),
+  };
+  for (const v of Object.values(values)) {
+    if (v && !isValidHex(v)) return { ok: false, error: 'Couleur invalide (format #RRGGBB attendu).' };
+  }
   const tenantId = session.user.tenantId;
   try {
     await withTenant(tenantId, async (tx) => {
       const tenant = await tx.tenant.findFirstOrThrow({ select: { id: true, settings: true } });
       const settings = { ...((tenant.settings as Record<string, unknown>) ?? {}) };
-      if (value) settings.theme = { ...((settings.theme as Record<string, unknown>) ?? {}), primary: value };
+      const theme: Record<string, string> = {};
+      for (const [k, v] of Object.entries(values)) if (v) theme[k] = v;
+      if (Object.keys(theme).length > 0) settings.theme = theme;
       else delete settings.theme;
       await tx.tenant.update({ where: { id: tenant.id }, data: { settings: settings as Prisma.InputJsonValue } });
       await logAudit(tx, {
@@ -34,7 +49,7 @@ export async function saveThemeAction(primary: string): Promise<Result> {
         action: 'update',
         entityType: 'Tenant',
         entityId: tenant.id,
-        after: { themePrimary: value || 'default' },
+        after: { theme: Object.keys(theme).length ? theme : 'default' },
       });
     });
     // Le thème est injecté dans le layout racine → revalider tout l'arbre.

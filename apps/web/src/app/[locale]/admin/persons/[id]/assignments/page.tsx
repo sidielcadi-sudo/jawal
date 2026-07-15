@@ -61,7 +61,7 @@ export default async function AssignmentsPage({
         <span>{tA('title')}</span>
       </nav>
 
-      <h1 className="text-2xl font-semibold text-slate-900">{tA('title')}</h1>
+      <h1 className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 text-2xl font-semibold text-slate-900">{tA('title')}</h1>
       <p className="mt-1 text-sm text-slate-500">
         {tA('subtitle', { name: `${teacher.lastName} ${teacher.firstName}` })}
       </p>
@@ -70,7 +70,7 @@ export default async function AssignmentsPage({
         <section className="lg:col-span-2">
           <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+              <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
                 <tr>
                   <th className="px-4 py-3 text-start">{tA('table.subject')}</th>
                   <th className="px-4 py-3 text-start">{tA('table.class')}</th>

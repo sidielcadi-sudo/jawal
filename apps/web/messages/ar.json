@@ -1698,7 +1698,17 @@
         "collected": "المُحصَّل",
         "unpaid": "غير مؤدى",
         "cumul": "التراكمي",
-        "total": "المجموع"
+        "total": "المجموع",
+        "tabMethod": "وسيلة الأداء",
+        "methodEmpty": "لا مداخيل خلال السنة."
+      },
+      "methods": {
+        "CASH": "نقدًا",
+        "CHEQUE": "شيك",
+        "TRANSFER": "تحويل بنكي",
+        "CMI": "أداء إلكتروني (CMI)",
+        "STRIPE": "بطاقة (Stripe)",
+        "OTHER": "أخرى"
       },
       "kpi": {
         "totalDue": "المبلغ المستحق",
@@ -2836,7 +2846,12 @@
         "pick": "اختيار لون",
         "primary": "اللون الأساسي",
         "presets": "اقتراحات",
+        "band": "أشرطة العناوين",
+        "tableHeader": "رؤوس الجداول",
         "preview": "معاينة",
+        "sampleBandTitle": "عنوان الصفحة",
+        "sampleCol1": "عمود",
+        "sampleCol2": "قيمة",
         "sampleButton": "زر",
         "sampleBadge": "وسم",
         "save": "حفظ",

@@ -43,6 +43,10 @@ export default async function JournalPage({
         <span>{t('journalLink')}</span>
       </nav>
 
+      <div className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{t('journalLink')}</h1>
+      </div>
+
       <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
         <form className="flex items-end gap-2">
           <label className="text-xs font-medium text-slate-600"><span className="mb-1 block">{t('journal')}</span>

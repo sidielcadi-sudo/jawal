@@ -6,6 +6,7 @@ import { withTenant, prismaAdmin } from '@/lib/db';
 import { computeStudentReport, computeClassBook, computeMention } from '@/lib/grades';
 import { PrintButton } from './print-button';
 import { AppreciationEditor, CouncilEditor } from './editors';
+import { pickPeriodId } from '@/lib/periods';
 
 export default async function BulletinPage({
   params,
@@ -46,7 +47,7 @@ export default async function BulletinPage({
       orderBy: [{ order: 'asc' }, { label: 'asc' }],
     });
 
-    const selectedPeriodId = sp.period ?? cls.academicYear.periods[0]?.id;
+    const selectedPeriodId = pickPeriodId(cls.academicYear.periods, sp.period) ?? undefined;
     if (!selectedPeriodId) {
       return {
         cls,

@@ -127,7 +127,7 @@ export default async function TeacherTimetablePage({
         <span>{t('title')}</span>
       </nav>
 
-      <header className="mb-5 flex flex-wrap items-end justify-between gap-3">
+      <header className="-mx-4 sm:-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
             {t('teacherWeek')} — {teacher.lastName} {teacher.firstName}
@@ -242,7 +242,7 @@ export default async function TeacherTimetablePage({
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+            <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="px-3 py-3 text-start">{t('slot')}</th>
                 {DAYS.map((d) => (

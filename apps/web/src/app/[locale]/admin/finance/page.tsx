@@ -32,7 +32,7 @@ export default async function FinanceDashboardPage({
       select: { id: true, amount: true, status: true, studentId: true, dueDate: true, feeScheduleItemId: true },
     });
     const allPayments = await tx.payment.findMany({
-      select: { amount: true, paidAt: true, installmentId: true },
+      select: { amount: true, paidAt: true, installmentId: true, method: true },
     });
 
     // Année scolaire sélectionnée → fenêtre de filtrage. KPI, listes d'impayés
@@ -66,6 +66,18 @@ export default async function FinanceDashboardPage({
       totalPaid += paidByInst.get(i.id) ?? 0;
     }
     const collectionRate = totalDue > 0 ? (totalPaid / totalDue) * 100 : 0;
+
+    // Répartition des montants encaissés par moyen de paiement (sur l'année) —
+    // même périmètre que « Encaissé » (paiements des échéances de l'année).
+    const yearInstIds = new Set(yearInstallments.map((i) => i.id));
+    const byMethodMap = new Map<string, number>();
+    for (const p of allPayments) {
+      if (!yearInstIds.has(p.installmentId)) continue;
+      byMethodMap.set(p.method, (byMethodMap.get(p.method) ?? 0) + Number(p.amount));
+    }
+    const byMethod = [...byMethodMap.entries()]
+      .map(([method, amount]) => ({ method, amount }))
+      .sort((a, b) => b.amount - a.amount);
 
     // Top 10 élèves en retard de paiement (totalRemaining décroissant)
     const remainingByStudent = new Map<string, number>();
@@ -227,6 +239,7 @@ export default async function FinanceDashboardPage({
       quarterlyHisto,
       semestrialHisto,
       annualHisto,
+      byMethod,
       unpaidFamiliesCount: unpaid.familiesCount,
       topFamilies: unpaid.families.slice(0, 6),
       years: years.map((y) => ({ id: y.id, label: y.label, active: y.active })),
@@ -236,7 +249,7 @@ export default async function FinanceDashboardPage({
 
   return (
     <div className="px-3 py-3">
-      <header className="relative mb-4 flex flex-wrap items-center justify-between gap-3 -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
+      <header className="relative mb-4 flex flex-wrap items-center justify-between gap-3 -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
           <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>
@@ -311,6 +324,7 @@ export default async function FinanceDashboardPage({
           semestrial: data.semestrialHisto,
           annual: data.annualHisto,
         }}
+        byMethod={data.byMethod}
         currency={data.currency}
       />
 
@@ -324,7 +338,7 @@ export default async function FinanceDashboardPage({
           </div>
           <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+              <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
                 <tr>
                   <th className="px-4 py-3 text-start">{t('unpaid.family')}</th>
                   <th className="px-4 py-3 text-end">{t('unpaid.impaye')}</th>

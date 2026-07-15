@@ -4,6 +4,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { computeClassBook } from '@/lib/grades';
+import { pickPeriodId } from '@/lib/periods';
 
 export default async function GradeBookPage({
   params,
@@ -39,8 +40,8 @@ export default async function GradeBookPage({
       orderBy: [{ order: 'asc' }, { label: 'asc' }],
     });
 
-    // Période sélectionnée : explicite via querystring, sinon la première période
-    const selectedPeriodId = sp.period ?? cls.academicYear.periods[0]?.id;
+    // Période sélectionnée : explicite via querystring, sinon le trimestre courant
+    const selectedPeriodId = pickPeriodId(cls.academicYear.periods, sp.period) ?? undefined;
     if (!selectedPeriodId) {
       return { cls, subjects, periods: cls.academicYear.periods, selectedPeriodId: null, book: null };
     }
@@ -83,7 +84,7 @@ export default async function GradeBookPage({
         <span>{t('title')}</span>
       </nav>
 
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
+      <header className="-mx-4 sm:-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
             {t('title')} — {cls.name}
@@ -124,7 +125,7 @@ export default async function GradeBookPage({
       ) : (
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
           <table className="min-w-full text-sm">
-            <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+            <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="sticky left-0 z-10 bg-slate-50 px-4 py-3 text-start">
                   {t('table.student')}

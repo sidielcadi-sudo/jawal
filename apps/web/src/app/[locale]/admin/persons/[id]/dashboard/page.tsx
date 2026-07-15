@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
+import { pickPeriodId } from '@/lib/periods';
 import { computeTeacherDashboard } from '@/lib/kpi-teacher';
 import { TeacherDashboardView } from '@/components/teacher-dashboard-view';
 
@@ -30,7 +31,7 @@ export default async function TeacherDashboardPage({
       include: { periods: { orderBy: { startDate: 'asc' } } },
     });
     const periods = activeYear?.periods ?? [];
-    const selectedPeriodId = sp.period ?? periods[0]?.id ?? null;
+    const selectedPeriodId = pickPeriodId(periods, sp.period);
     const dash = await computeTeacherDashboard(tx, { teacherId: id, periodId: selectedPeriodId });
     return {
       teacher,
@@ -53,7 +54,7 @@ export default async function TeacherDashboardPage({
         <span>{t('title')}</span>
       </nav>
 
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
+      <header className="-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-6 flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">{t('title')}</h1>
           <p className="mt-1 text-sm text-slate-500">

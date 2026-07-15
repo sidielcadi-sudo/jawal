@@ -63,8 +63,10 @@ export default async function NewEnrollmentPage({
         <span className="mx-1.5">›</span>
         <span>{t('new.title')}</span>
       </nav>
-      <h1 className="text-2xl font-semibold text-slate-900">{t('new.title')}</h1>
-      <p className="mt-1 text-sm text-slate-500">{t('new.subtitle')}</p>
+      <div className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3">
+        <h1 className="text-2xl font-semibold text-slate-900">{t('new.title')}</h1>
+        <p className="mt-1 text-sm text-slate-500">{t('new.subtitle')}</p>
+      </div>
 
       <form action={submit} className="mt-6 space-y-5 rounded-2xl border border-slate-200 bg-white p-6">
         <Field label={t('new.student')}>

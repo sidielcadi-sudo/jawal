@@ -66,7 +66,7 @@ export default async function AdmissionsSettingsPage({
           <div className="lg:col-span-2">
             <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
               <table className="w-full text-sm">
-                <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+                <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
                   <tr>
                     <th className="px-4 py-2 text-start">{t('doc.code')}</th>
                     <th className="px-4 py-2 text-start">{t('doc.label')}</th>
@@ -143,7 +143,7 @@ export default async function AdmissionsSettingsPage({
         {activeYear && (
           <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white lg:max-w-2xl">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+              <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
                 <tr>
                   <th className="px-4 py-2 text-start">{t('quota.level')}</th>
                   <th className="px-4 py-2 text-end">{t('quota.taken')}</th>

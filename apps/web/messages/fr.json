@@ -1697,7 +1697,17 @@
         "collected": "Encaissé",
         "unpaid": "Impayé",
         "cumul": "Cumul",
-        "total": "Total"
+        "total": "Total",
+        "tabMethod": "Moyen de paiement",
+        "methodEmpty": "Aucun encaissement sur l'année."
+      },
+      "methods": {
+        "CASH": "Espèces",
+        "CHEQUE": "Chèque",
+        "TRANSFER": "Virement",
+        "CMI": "Paiement en ligne (CMI)",
+        "STRIPE": "Carte (Stripe)",
+        "OTHER": "Autre"
       },
       "kpi": {
         "totalDue": "Total dû",
@@ -2835,7 +2845,12 @@
         "pick": "Choisir une couleur",
         "primary": "Couleur principale",
         "presets": "Suggestions",
+        "band": "Bandes de titre",
+        "tableHeader": "En-têtes de tableau",
         "preview": "Aperçu",
+        "sampleBandTitle": "Titre de page",
+        "sampleCol1": "Colonne",
+        "sampleCol2": "Valeur",
         "sampleButton": "Bouton",
         "sampleBadge": "Étiquette",
         "save": "Enregistrer",

@@ -78,7 +78,7 @@ export default async function EvaluationSheetPage({
       </nav>
 
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-900">{ev.label}</h1>
+        <h1 className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 text-2xl font-semibold text-slate-900">{ev.label}</h1>
         <p className="mt-1 text-sm text-slate-500">
           {ev.subject.label} · {ev.period.label} ·{' '}
           {new Date(ev.date).toLocaleDateString(locale)} ·{' '}

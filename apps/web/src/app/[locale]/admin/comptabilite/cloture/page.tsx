@@ -23,12 +23,14 @@ export default async function CloturePage({ params }: { params: Promise<{ locale
         <span>{tc('title')}</span>
       </nav>
 
-      <h1 className="mb-1 text-base font-bold text-slate-900">{tc('title')}</h1>
+      <div className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{tc('title')}</h1>
+      </div>
       <p className="mb-4 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">{tc('hint')}</p>
 
       <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+          <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
             <tr>
               <th className="px-4 py-2.5 text-start">{tc('year')}</th>
               <th className="px-4 py-2.5 text-start">{tc('period')}</th>

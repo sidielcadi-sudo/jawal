@@ -143,7 +143,7 @@ export function ConstraintsForm({
         ) : (
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-xs">
-              <thead className="border-b border-slate-200 bg-slate-50 text-[10px] uppercase tracking-wide text-slate-500">
+              <thead className="border-b border-slate-200 table-head text-[10px] uppercase tracking-wide text-slate-500">
                 <tr>
                   <th className="px-2 py-2 text-start">{t('forbiddenSlots.slot')}</th>
                   {DAY_KEYS.slice(0, 6).map((d) => (

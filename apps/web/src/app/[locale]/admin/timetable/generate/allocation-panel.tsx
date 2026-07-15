@@ -187,7 +187,7 @@ export function AllocationPanel({
 
           <div className="overflow-x-auto rounded-lg border border-slate-200">
             <table className="w-full text-xs">
-              <thead className="bg-slate-50 text-[10px] uppercase text-slate-500">
+              <thead className="table-head text-[10px] uppercase text-slate-500">
                 <tr>
                   <th className="px-3 py-2 text-start">{t('class')}</th>
                   <th className="px-3 py-2 text-start">{t('subject')}</th>

@@ -48,7 +48,7 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
+      <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <h1 className="text-base font-bold text-slate-900">🏖️ {t('title')}</h1>
         <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>
       </header>
@@ -75,7 +75,7 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
               <h2 className="mb-2 text-base font-semibold text-slate-900">{t('requests')}</h2>
               <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
                 <table className="w-full text-sm">
-                  <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+                  <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
                     <tr>
                       <th className="px-3 py-2.5 text-start">{t('employee')}</th>
                       <th className="px-3 py-2.5 text-start">{t('type')}</th>

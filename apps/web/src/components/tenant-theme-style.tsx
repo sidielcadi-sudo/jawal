@@ -1,6 +1,13 @@
 import { auth } from '@/lib/auth';
 import { prismaAdmin } from '@/lib/db';
-import { generateBrandScale, brandScaleCss, tenantPrimaryColor } from '@/lib/theme';
+import {
+  generateBrandScale,
+  brandScaleCss,
+  tenantPrimaryColor,
+  tenantBandColor,
+  tenantTableHeaderColor,
+  extraColorsCss,
+} from '@/lib/theme';
 
 /**
  * Injecte les variables CSS « brand » du thème de l'établissement (couleur
@@ -18,8 +25,18 @@ export async function TenantThemeStyle() {
       select: { settings: true },
     });
     const primary = tenantPrimaryColor(tenant?.settings);
-    if (!primary) return null;
-    return <style dangerouslySetInnerHTML={{ __html: brandScaleCss(generateBrandScale(primary)) }} />;
+    const band = tenantBandColor(tenant?.settings);
+    const tableHeader = tenantTableHeaderColor(tenant?.settings);
+    // Palette « brand » + couleurs additionnelles (bande de titre / en-tête de
+    // tableau). Chacune est optionnelle : on n'injecte que ce qui est configuré.
+    const css = [
+      primary ? brandScaleCss(generateBrandScale(primary)) : '',
+      extraColorsCss(band, tableHeader),
+    ]
+      .filter(Boolean)
+      .join('');
+    if (!css) return null;
+    return <style dangerouslySetInnerHTML={{ __html: css }} />;
   } catch {
     return null;
   }

@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { computeVieScolaire } from '@/lib/kpi-vie-scolaire';
 import type { KpiStatus } from '@/lib/kpi-pilotage';
+import { pickPeriodId } from '@/lib/periods';
 import { VieScolaireTabs } from './tabs';
 
 const TEXT: Record<KpiStatus, string> = {
@@ -44,7 +45,7 @@ export default async function VieScolairePage({
       include: { periods: { orderBy: { startDate: 'asc' } } },
     });
     const periods = activeYear?.periods ?? [];
-    const selectedPeriodId = sp.period ?? periods[0]?.id ?? null;
+    const selectedPeriodId = pickPeriodId(periods, sp.period);
     const vs = await computeVieScolaire(tx, selectedPeriodId);
     return {
       periods: periods.map((p) => ({ id: p.id, label: p.label })),
@@ -61,7 +62,7 @@ export default async function VieScolairePage({
       <div className="mb-4">
         <VieScolaireTabs locale={locale} />
       </div>
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
           <p className="mt-0.5 text-sm text-slate-600">{today}</p>

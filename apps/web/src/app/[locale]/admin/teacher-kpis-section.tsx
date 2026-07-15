@@ -172,7 +172,7 @@ function Table({ head, rows }: { head: string[]; rows: string[][] }) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
-        <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
+        <thead className="border-b border-slate-100 table-head text-xs uppercase tracking-wide text-slate-700">
           <tr>
             {head.map((h, i) => (
               <th key={i} className={i === 0 ? 'px-3 py-2 text-start' : 'px-3 py-2 text-end'}>

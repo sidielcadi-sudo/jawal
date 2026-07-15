@@ -65,7 +65,7 @@ export default async function SuperAdminGroups({
           <h2 className="mb-3 text-base font-semibold text-slate-900">Établissements & rattachement</h2>
           <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+              <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
                 <tr>
                   <th className="px-4 py-3 text-start">Établissement</th>
                   <th className="px-4 py-3 text-start">Slug</th>
@@ -94,7 +94,7 @@ export default async function SuperAdminGroups({
           <h2 className="mb-3 mt-8 text-base font-semibold text-slate-900">Accès multi-sites accordés</h2>
           <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
             <table className="w-full text-sm">
-              <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+              <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
                 <tr>
                   <th className="px-4 py-3 text-start">Compte (email)</th>
                   <th className="px-4 py-3 text-start">Site autorisé</th>

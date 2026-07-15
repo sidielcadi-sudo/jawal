@@ -37,7 +37,7 @@ export default async function SurveyResultsPage({
         <span>{survey.title}</span>
       </nav>
 
-      <header className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <header className="-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">{survey.title}</h1>
           <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">

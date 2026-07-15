@@ -26,7 +26,7 @@ export default async function BalanceAgeePage({ params }: { params: Promise<{ lo
 
   const today = new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00Z');
   const dayMs = 86400000;
-  const byStudent = new Map<string, { name: string; b: Buckets; total: number }>();
+  const byStudent = new Map<string, { id: string; name: string; b: Buckets; total: number }>();
   const totals = empty();
   let grandTotal = 0;
 
@@ -36,7 +36,7 @@ export default async function BalanceAgeePage({ params }: { params: Promise<{ lo
     if (remaining <= 0) continue;
     const age = Math.floor((today.getTime() - new Date(i.dueDate).getTime()) / dayMs);
     const key = age < 0 ? 'current' : age <= 30 ? 'b30' : age <= 60 ? 'b60' : age <= 90 ? 'b90' : 'b90p';
-    const row = byStudent.get(i.studentId) ?? { name: `${i.student.lastName} ${i.student.firstName}`, b: empty(), total: 0 };
+    const row = byStudent.get(i.studentId) ?? { id: i.studentId, name: `${i.student.lastName} ${i.student.firstName}`, b: empty(), total: 0 };
     row.b[key] += remaining;
     row.total += remaining;
     byStudent.set(i.studentId, row);
@@ -56,7 +56,7 @@ export default async function BalanceAgeePage({ params }: { params: Promise<{ lo
         <span>{t('agingLink')}</span>
       </nav>
 
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <h1 className="text-base font-bold text-slate-900">{t('agingLink')}</h1>
         <ExportButton
           header={['Famille', 'Non echu', '1-30', '31-60', '61-90', '+90', 'Total']}
@@ -75,7 +75,7 @@ export default async function BalanceAgeePage({ params }: { params: Promise<{ lo
 
       <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
         <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+          <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
             <tr>
               <th className="px-3 py-2.5 text-start">{t('family')}</th>
               <th className="px-3 py-2.5 text-end">{t('notDue')}</th>
@@ -88,7 +88,7 @@ export default async function BalanceAgeePage({ params }: { params: Promise<{ lo
           </thead>
           <tbody className="divide-y divide-slate-100">
             {rows.map((r) => (
-              <tr key={r.name}>
+              <tr key={r.id}>
                 <td className="px-3 py-2 font-medium text-slate-800">{r.name}</td>
                 <td className="px-3 py-2 text-end tabular-nums text-slate-500">{r.b.current ? fmt(r.b.current) : ''}</td>
                 <td className="px-3 py-2 text-end tabular-nums text-slate-600">{r.b.b30 ? fmt(r.b.b30) : ''}</td>
@@ -122,7 +122,7 @@ export default async function BalanceAgeePage({ params }: { params: Promise<{ lo
 function Kpi({ label, value, tone }: { label: string; value: string; tone?: string }) {
   const c = tone === 'red' ? 'text-red-700' : tone === 'amber' ? 'text-amber-700' : 'text-slate-800';
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-3">
+    <div className="rounded-2xl border border-brand-200 bg-white p-3">
       <div className={`text-xl font-bold tabular-nums ${c}`}>{value}</div>
       <div className="mt-0.5 text-xs text-slate-500">{label}</div>
     </div>

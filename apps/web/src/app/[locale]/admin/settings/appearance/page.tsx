@@ -1,7 +1,7 @@
 import { setRequestLocale } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { prismaAdmin } from '@/lib/db';
-import { tenantPrimaryColor } from '@/lib/theme';
+import { tenantPrimaryColor, tenantBandColor, tenantTableHeaderColor } from '@/lib/theme';
 import { AppearanceForm } from './client';
 
 export default async function AppearanceSettingsPage({
@@ -17,6 +17,8 @@ export default async function AppearanceSettingsPage({
     select: { settings: true },
   });
   const primary = tenantPrimaryColor(tenant?.settings);
+  const band = tenantBandColor(tenant?.settings);
+  const tableHeader = tenantTableHeaderColor(tenant?.settings);
 
-  return <AppearanceForm initialPrimary={primary} />;
+  return <AppearanceForm initialPrimary={primary} initialBand={band} initialTableHeader={tableHeader} />;
 }

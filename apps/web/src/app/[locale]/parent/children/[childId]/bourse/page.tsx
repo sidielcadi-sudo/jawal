@@ -60,7 +60,7 @@ export default async function ParentBoursePage({
         </div>
         <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+            <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="px-3 py-2 text-start">{t('book')}</th>
                 <th className="px-3 py-2 text-start">{tc('level')}</th>

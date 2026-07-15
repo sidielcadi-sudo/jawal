@@ -111,7 +111,7 @@ export default async function StaffAttendanceSynthesePage({
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 bg-gradient-to-r from-brand-100 to-brand-50 shadow-sm px-4 py-2.5">
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{tSyn('title')}</h1>
           <p className="mt-0.5 text-sm text-slate-600">

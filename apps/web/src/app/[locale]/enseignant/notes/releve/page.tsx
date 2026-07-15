@@ -4,6 +4,7 @@ import { withTenant } from '@/lib/db';
 import { getTeacherPersonId, teacherTeachesClassSubject } from '@/lib/teacher';
 import { loadReleveRows, loadClassSubjects, type ReleveRow } from '@/lib/notes-releve';
 import { AppreciationCell } from './appreciation-cell';
+import { pickPeriod } from '@/lib/periods';
 
 export default async function RelevePage({
   params,
@@ -40,7 +41,7 @@ export default async function RelevePage({
 
     const subjects = await loadClassSubjects(tx, classId, year.id);
     const subjectId = subjects.find((s) => s.subjectId === sp.subject)?.subjectId ?? subjects[0]?.subjectId ?? null;
-    const period = year.periods.find((p) => p.id === sp.period) ?? year.periods[0] ?? null;
+    const period = pickPeriod(year.periods, sp.period);
 
     if (!subjectId || !period) {
       return { classes, classId, subjects, subjectId, periods: year.periods, periodId: period?.id ?? null, canEdit: false, rows: [] as ReleveRow[] };
@@ -94,7 +95,7 @@ export default async function RelevePage({
       {subjectId && periodId ? (
         <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
           <table className="w-full text-sm">
-            <thead className="border-b border-slate-200 bg-[#A9EAFE] text-xs uppercase tracking-wide text-slate-700">
+            <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
               <tr>
                 <th className="px-4 py-2 text-start font-semibold">{t('releve.student')}</th>
                 <th className="w-16 px-2 py-2 text-center font-semibold" title={t('releve.hAbsFull')}>{t('releve.hAbs')}</th>
