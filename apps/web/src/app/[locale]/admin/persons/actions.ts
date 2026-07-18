@@ -5,12 +5,204 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { personCreateSchema, personUpdateSchema, TEACHER_SERVICE_CODE } from '@jawal/shared';
 import { auth } from '@/lib/auth';
-import { requirePermission } from '@/lib/auth/rbac';
+import { requirePermission, requireRoleCode } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
 import type { Prisma } from '@/lib/db';
+import { sendNotifications, parentRecipient, emailRecipient, type NotifyItem } from '@/lib/notify';
+import { renderTemplate } from '@/lib/notify-templates';
+import { sendDirectMessage } from '@/lib/inapp-message';
+import { alertRole } from '@/lib/staff-alerts';
 
 type Tx = Parameters<Parameters<typeof withTenant>[1]>[0];
+
+/** Rôles autorisés à (ré)affecter la classe d'un élève depuis sa fiche. */
+const CLASS_CHANGE_ROLES = ['tenant_admin', 'direction', 'cpe', 'scolarite'];
+
+/**
+ * Change la classe d'un élève (vie scolaire / direction / admin). Désactive la
+ * classe active courante, (ré)active la nouvelle, et synchronise la classe du
+ * dossier d'inscription de l'année. Action dédiée : n'exige pas `students.write`
+ * (réservé à la modification complète de la fiche).
+ */
+export async function changeStudentClassAction(
+  studentId: string,
+  classId: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requireRoleCode(CLASS_CHANGE_ROLES);
+  const tenantId = session.user.tenantId;
+  if (!classId) return { ok: false, error: 'Classe requise.' };
+
+  try {
+    await withTenant(tenantId, async (tx) => {
+      const student = await tx.person.findUnique({
+        where: { id: studentId },
+        select: {
+          type: true,
+          firstName: true,
+          lastName: true,
+          contacts: true,
+          userPersons: { select: { userId: true, user: { select: { email: true } } } },
+        },
+      });
+      if (!student || student.type !== 'STUDENT') throw new Error('Élève introuvable.');
+
+      const cls = await tx.class.findUnique({
+        where: { id: classId },
+        include: { _count: { select: { students: { where: { unenrolledAt: null } } } } },
+      });
+      if (!cls || cls.deletedAt) throw new Error('Classe introuvable ou archivée.');
+
+      const current = await tx.studentClass.findFirst({
+        where: { studentId, unenrolledAt: null },
+        select: { id: true, classId: true, class: { select: { name: true } } },
+      });
+      if (current?.classId === classId) return; // déjà dans cette classe
+
+      if (cls._count.students >= cls.capacity) throw new Error(`Capacité atteinte (${cls.capacity}).`);
+
+      // Désactive l'appartenance de classe courante.
+      if (current) {
+        await tx.studentClass.update({ where: { id: current.id }, data: { unenrolledAt: new Date() } });
+      }
+      // (Ré)active la nouvelle appartenance.
+      const existing = await tx.studentClass.findUnique({
+        where: { studentId_classId: { studentId, classId } },
+      });
+      if (existing) {
+        await tx.studentClass.update({
+          where: { id: existing.id },
+          data: { unenrolledAt: null, enrolledAt: new Date() },
+        });
+      } else {
+        await tx.studentClass.create({ data: { tenantId, studentId, classId } });
+      }
+
+      // Synchronise la classe du dossier d'inscription de l'année → l'attestation
+      // de scolarité, l'emploi du temps et l'équipe pédagogique (lus par classe)
+      // reflètent automatiquement la nouvelle classe.
+      await tx.enrollment.updateMany({
+        where: {
+          studentId,
+          academicYearId: cls.academicYearId,
+          status: { notIn: ['WITHDRAWN', 'GRADUATED', 'REFUSE'] },
+        },
+        data: { classId },
+      });
+
+      await logAudit(tx, {
+        tenantId,
+        userId: session.user.id,
+        action: 'change_class',
+        entityType: 'StudentClass',
+        entityId: studentId,
+        after: { studentId, classId, from: current?.classId ?? null },
+      });
+
+      // ── Notifications : parents, élève, profs (nouvelle classe), vie scolaire ─
+      await notifyClassChange(tx, {
+        tenantId,
+        fromUserId: session.user.id,
+        studentId,
+        student,
+        childName: `${student.firstName} ${student.lastName}`,
+        oldClass: current?.class.name ?? '—',
+        newClass: cls.name,
+        newClassId: classId,
+        academicYearId: cls.academicYearId,
+      });
+    });
+    revalidatePath(`/admin/persons/${studentId}`);
+    revalidatePath(`/admin/persons/${studentId}/edit`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
+  }
+}
+
+type PersonContact = { contacts: unknown; userPersons: { userId: string; user: { email: string | null } | null }[] };
+
+/**
+ * Signale un changement de classe à toutes les parties : parents, élève,
+ * professeurs de la nouvelle classe et vie scolaire. Chaque destinataire reçoit
+ * un message interne (portail) et un e-mail ; la vie scolaire une alerte cloche.
+ */
+async function notifyClassChange(
+  tx: Tx,
+  args: {
+    tenantId: string;
+    fromUserId: string;
+    studentId: string;
+    student: PersonContact;
+    childName: string;
+    oldClass: string;
+    newClass: string;
+    newClassId: string;
+    academicYearId: string;
+  },
+): Promise<void> {
+  const { tenantId, fromUserId, childName, oldClass, newClass } = args;
+  const locale = (await tx.tenant.findFirst({ select: { localeDefault: true } }))?.localeDefault ?? 'fr';
+  const data = { child: childName, oldClass, newClass };
+  const familyBody = renderTemplate('class.changed', data, locale);
+  const teacherBody = renderTemplate('class.teacher', data, locale);
+  const familySubject = `Changement de classe — ${childName}`;
+  const items: NotifyItem[] = [];
+
+  // Parents référents.
+  const relations = await tx.personRelation.findMany({
+    where: { childId: args.studentId },
+    select: { parent: { select: { id: true, contacts: true, userPersons: { select: { userId: true, user: { select: { email: true } } } } } } },
+    orderBy: { createdAt: 'asc' },
+  });
+  const seenParents = new Set<string>();
+  for (const r of relations) {
+    if (seenParents.has(r.parent.id)) continue;
+    seenParents.add(r.parent.id);
+    const up = r.parent.userPersons[0];
+    if (up?.userId) {
+      await sendDirectMessage(tx, { tenantId, fromUserId, toUserId: up.userId, subject: familySubject, body: familyBody });
+    }
+    items.push({ channel: 'EMAIL', recipient: emailRecipient(r.parent.contacts, up?.user?.email), template: 'class.changed', data, studentId: args.studentId, relatedType: 'StudentClass', relatedId: args.studentId });
+  }
+
+  // Élève.
+  const su = args.student.userPersons[0];
+  if (su?.userId) {
+    await sendDirectMessage(tx, { tenantId, fromUserId, toUserId: su.userId, subject: familySubject, body: familyBody });
+  }
+  items.push({ channel: 'EMAIL', recipient: emailRecipient(args.student.contacts, su?.user?.email), template: 'class.changed', data, studentId: args.studentId, relatedType: 'StudentClass', relatedId: args.studentId });
+
+  // Professeurs de la nouvelle classe (équipe pédagogique).
+  const assigns = await tx.teacherAssignment.findMany({
+    where: { classId: args.newClassId, academicYearId: args.academicYearId },
+    select: { teacher: { select: { id: true, contacts: true, userPersons: { select: { userId: true, user: { select: { email: true } } } } } } },
+  });
+  const seenTeachers = new Set<string>();
+  for (const a of assigns) {
+    if (seenTeachers.has(a.teacher.id)) continue;
+    seenTeachers.add(a.teacher.id);
+    const up = a.teacher.userPersons[0];
+    if (up?.userId) {
+      await sendDirectMessage(tx, { tenantId, fromUserId, toUserId: up.userId, subject: `Nouvel élève — ${newClass}`, body: teacherBody });
+    }
+    items.push({ channel: 'EMAIL', recipient: emailRecipient(a.teacher.contacts, up?.user?.email), template: 'class.teacher', data, relatedType: 'StudentClass', relatedId: args.studentId });
+  }
+
+  // Vie scolaire : alerte cloche.
+  await alertRole(tx, tenantId, ['cpe', 'scolarite'], {
+    type: 'CLASS_CHANGE',
+    title: `Changement de classe — ${childName}`,
+    body: `${oldClass} → ${newClass}`,
+    link: `/admin/persons/${args.studentId}`,
+    relatedType: 'StudentClass',
+    relatedId: args.studentId,
+  });
+
+  await sendNotifications(tx, tenantId, locale, items);
+}
 
 /**
  * Déduit le service de rattachement d'une personne depuis son type/rôle :

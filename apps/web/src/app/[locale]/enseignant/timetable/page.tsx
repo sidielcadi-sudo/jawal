@@ -2,6 +2,8 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { getTeacherPersonId } from '@/lib/teacher';
+import { upcomingOverridesForTeacher } from '@/lib/timetable-overrides';
+import { UpcomingOverrides } from '@/components/upcoming-overrides';
 
 const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
 
@@ -32,7 +34,8 @@ export default async function TeacherTimetablePage({
         : [];
     const byCell = new Map<string, (typeof entries)[number]>();
     for (const e of entries) byCell.set(`${e.dayOfWeek}-${e.slotId}`, e);
-    return { slots, byCell, count: entries.length };
+    const overrides = teacherId ? await upcomingOverridesForTeacher(tx, teacherId) : [];
+    return { slots, byCell, count: entries.length, overrides };
   });
 
   return (
@@ -41,6 +44,16 @@ export default async function TeacherTimetablePage({
         <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
         <p className="mt-0.5 text-sm text-slate-600">{t('weeklyHoursCount', { count: data.count })}</p>
       </header>
+
+      <UpcomingOverrides
+        items={data.overrides}
+        locale={locale}
+        title={t('changesTitle')}
+        substituteLabel={t('substitute')}
+        cancelledLabel={t('cancelled')}
+        coveringLabel={t('covering')}
+        absentLabel={t('absentCovered')}
+      />
 
       {data.count === 0 ? (
         <p className="mt-6 text-sm text-slate-500">{t('empty')}</p>

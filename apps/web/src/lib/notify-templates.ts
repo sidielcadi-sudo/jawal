@@ -49,6 +49,30 @@ const TEMPLATES: Record<string, { fr: Tpl; ar: Tpl }> = {
     fr: (d) => `Votre demande de congé (${d.type}) du ${d.start} au ${d.end} a été refusée.${d.comment ? ` Motif : ${d.comment}` : ''}`,
     ar: (d) => `تم رفض طلب إجازتكم (${d.type}) من ${d.start} إلى ${d.end}.${d.comment ? ` السبب: ${d.comment}` : ''}`,
   },
+  // ── Remplacements (étape 4 « Communication ») ────────────────────────────
+  'substitution.assigned': {
+    fr: (d) => `Vous assurez un remplacement le ${d.date} (${d.slot}) — ${d.subject} avec la classe ${d.class}${d.room ? `, salle ${d.room}` : ''}.`,
+    ar: (d) => `ستؤمّنون تعويضًا يوم ${d.date} (${d.slot}) — ${d.subject} مع قسم ${d.class}${d.room ? `، القاعة ${d.room}` : ''}.`,
+  },
+  'substitution.class': {
+    fr: (d) => `Le cours de ${d.subject} du ${d.date} (${d.slot}) de ${d.child} sera assuré par un(e) remplaçant(e).`,
+    ar: (d) => `حصة ${d.subject} يوم ${d.date} (${d.slot}) الخاصة بـ ${d.child} سيؤمّنها أستاذ(ة) معوّض(ة).`,
+  },
+  'substitution.cancelled': {
+    fr: (d) => `Le cours de ${d.subject} du ${d.date} (${d.slot}) de ${d.child} est annulé.`,
+    ar: (d) => `حصة ${d.subject} يوم ${d.date} (${d.slot}) الخاصة بـ ${d.child} ملغاة.`,
+  },
+  // ── Changement de classe ─────────────────────────────────────────────────
+  'class.changed': {
+    fr: (d) =>
+      `${d.child} a changé de classe : ${d.oldClass} → ${d.newClass}. L'attestation de scolarité, l'emploi du temps et l'équipe pédagogique ont été mis à jour.`,
+    ar: (d) =>
+      `${d.child} غيّر القسم: ${d.oldClass} ← ${d.newClass}. تم تحديث شهادة التمدرس واستعمال الزمن والطاقم التربوي.`,
+  },
+  'class.teacher': {
+    fr: (d) => `${d.child} a rejoint votre classe ${d.newClass}.`,
+    ar: (d) => `${d.child} التحق بقسمكم ${d.newClass}.`,
+  },
 };
 
 export type NotificationTemplateKey = keyof typeof TEMPLATES;

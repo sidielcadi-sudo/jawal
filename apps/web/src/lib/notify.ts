@@ -89,3 +89,9 @@ export function parentRecipient(contacts: unknown): string | null {
   const c = (contacts ?? {}) as { whatsapp?: string; phone?: string };
   return c.whatsapp?.trim() || c.phone?.trim() || null;
 }
+
+/** Adresse e-mail depuis les contacts (fallback : e-mail du compte lié). */
+export function emailRecipient(contacts: unknown, fallbackEmail?: string | null): string | null {
+  const c = (contacts ?? {}) as { email?: string };
+  return c.email?.trim() || fallbackEmail?.trim() || null;
+}

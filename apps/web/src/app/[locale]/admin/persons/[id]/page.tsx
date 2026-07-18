@@ -9,6 +9,7 @@ import { TeacherAccess } from './teacher-access';
 import { StudentAccess } from './student-access';
 import { HealthSection, type Health } from './health-section';
 import { DocumentsPanel } from '@/components/documents-panel';
+import { pickPeriodId } from '@/lib/periods';
 import { computeContractStatus, contractStatusBadgeClass } from '@/lib/contract-status';
 import {
   categoryOf,
@@ -361,6 +362,7 @@ export default async function PersonDetailPage({
   // Documents officiels (élève) : années + périodes de l'année active.
   let documentYears: { id: string; label: string }[] = [];
   let documentPeriods: { id: string; label: string }[] = [];
+  let documentPeriodId: string | null = null;
   if (person.type === 'STUDENT') {
     const dd = await withTenant(tenantId, async (tx) => {
       // Année active en tête (les deux années peuvent partager la même date
@@ -378,10 +380,13 @@ export default async function PersonDetailPage({
       return {
         years: years.map((y) => ({ id: y.id, label: y.label })),
         periods: periods.map((p) => ({ id: p.id, label: p.label })),
+        // Trimestre en cours (défaut du panneau Documents).
+        currentPeriodId: pickPeriodId(periods),
       };
     });
     documentYears = dd.years;
     documentPeriods = dd.periods;
+    documentPeriodId = dd.currentPeriodId;
   }
 
   const contacts = (person.contacts ?? {}) as { email?: string; phone?: string; whatsapp?: string };
@@ -673,6 +678,7 @@ export default async function PersonDetailPage({
                 hrefBase={`/api/admin/persons/${person.id}/document.pdf`}
                 years={documentYears}
                 periods={documentPeriods}
+                defaultPeriodId={documentPeriodId ?? undefined}
               />
             </section>
           )}

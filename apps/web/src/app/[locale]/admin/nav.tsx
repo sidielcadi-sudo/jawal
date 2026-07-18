@@ -48,16 +48,25 @@ type IntlMessages = {
   };
 };
 
-function buildItems(locale: string): NavItem[] {
+function buildItems(locale: string, roleCodes: string[]): NavItem[] {
   const prefix = `/${locale}/admin`;
+  // Utilisateurs vie scolaire (CPE hors direction) : leur « Tableau de bord »
+  // est le Cockpit vie scolaire (pas la page Pilotage, réservée à la direction).
+  const isVieScolaireOnly =
+    roleCodes.includes('cpe') &&
+    !roleCodes.includes('tenant_admin') &&
+    !roleCodes.includes('direction');
   // Ordre du menu défini par la refonte (liste explicite). « Emploi du temps »
-  // est déplacé dans Paramétrage ; « Vie scolaire » et l'ancien « Justifications »
-  // (attendance/justifications) sont retirés du menu (pages joignables par URL).
+  // est déplacé dans Paramétrage ; l'ancien « Justifications »
+  // (attendance/justifications) est retiré du menu (page joignable par URL).
+  // « Vie scolaire » n'a plus d'entrée : le cockpit et le tableau de bord
+  // journalier sont des onglets de « Tableau de bord » (cf. DashboardTabs).
   return [
     {
-      href: `${prefix}`,
+      href: isVieScolaireOnly ? `${prefix}/vie-scolaire` : `${prefix}`,
       labelKey: 'dashboard',
-      match: (p, _s) => p === prefix || p === `${prefix}/`,
+      match: (p, _s) =>
+        p === prefix || p === `${prefix}/` || p.startsWith(`${prefix}/vie-scolaire`),
     },
     {
       href: `${prefix}/enrollments`,
@@ -114,6 +123,14 @@ function buildItems(locale: string): NavItem[] {
       roles: ['cpe', 'tenant_admin', 'direction'],
     },
     {
+      href: `${prefix}/leave`,
+      labelKey: 'leave',
+      match: (p, _s) => p.startsWith(`${prefix}/leave`),
+      // Vie scolaire incluse : elle enregistre les absences et organise les
+      // remplacements (l'approbation reste réservée à l'admin/direction).
+      roles: ['tenant_admin', 'direction', 'cpe', 'scolarite'],
+    },
+    {
       href: `${prefix}/transport`,
       labelKey: 'transport',
       match: (p, _s) => p.startsWith(`${prefix}/transport`),
@@ -123,12 +140,6 @@ function buildItems(locale: string): NavItem[] {
       href: `${prefix}/staff-attendance`,
       labelKey: 'staffAttendance',
       match: (p, _s) => p.startsWith(`${prefix}/staff-attendance`),
-      roles: ['tenant_admin', 'direction'],
-    },
-    {
-      href: `${prefix}/leave`,
-      labelKey: 'leave',
-      match: (p, _s) => p.startsWith(`${prefix}/leave`),
       roles: ['tenant_admin', 'direction'],
     },
     {
@@ -239,7 +250,7 @@ export function AdminSidebar({
       return next;
     });
   }
-  const items = buildItems(locale).filter(
+  const items = buildItems(locale, roleCodes).filter(
     (item) => !item.roles || item.roles.some((r) => roleCodes.includes(r)),
   );
 

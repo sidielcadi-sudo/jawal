@@ -6,6 +6,11 @@ export type UnpaidStudentRow = {
   studentName: string;
   familyId: string;
   familyName: string;
+  /** Total dû sur les échéances échues non soldées. */
+  due: number;
+  /** Déjà versé sur ces mêmes échéances (règlements partiels). */
+  paid: number;
+  /** Reste à recouvrer (= due − paid). */
   unpaid: number;
   echeances: string[];
   daysLate: number;
@@ -46,19 +51,48 @@ export async function loadUnpaidByFamily(tx: Prisma.TransactionClient): Promise<
     orderBy: { dueDate: 'asc' },
   });
 
-  type Agg = { name: string; unpaid: number; echeances: string[]; firstDue: Date };
+  type Agg = {
+    name: string;
+    due: number;
+    paid: number;
+    unpaid: number;
+    echeances: string[];
+    /** Première échéance NON soldée — base du calcul du retard. */
+    firstDue: Date | null;
+  };
   const byStudent = new Map<string, Agg>();
   for (const i of installments) {
     const paid = i.payments.reduce((s, p) => s + Number(p.amount), 0);
     const rem = Number(i.amount) - paid;
-    if (rem <= 0.01) continue;
-    const a =
-      byStudent.get(i.studentId) ??
-      { name: `${i.student.lastName} ${i.student.firstName}`, unpaid: 0, echeances: [], firstDue: i.dueDate };
-    a.unpaid += rem;
-    a.echeances.push(i.label);
-    if (i.dueDate < a.firstDue) a.firstDue = i.dueDate;
-    byStudent.set(i.studentId, a);
+    let a = byStudent.get(i.studentId);
+    if (!a) {
+      a = {
+        name: `${i.student.lastName} ${i.student.firstName}`,
+        due: 0,
+        paid: 0,
+        unpaid: 0,
+        echeances: [],
+        firstDue: null,
+      };
+      byStudent.set(i.studentId, a);
+    }
+    // « Dû » et « Payé » couvrent TOUTES les échéances échues, y compris celles
+    // entièrement soldées : sans ça un élève à jour sur septembre afficherait
+    // « Payé 0 ». Seul le « Reste » ne retient que les échéances non soldées,
+    // donc l'égalité Dû − Payé = Reste tient toujours.
+    a.due += Number(i.amount);
+    a.paid += paid;
+    if (rem > 0.01) {
+      a.unpaid += rem;
+      a.echeances.push(i.label);
+      // installments est trié par dueDate asc → la 1ʳᵉ impayée est la plus ancienne.
+      a.firstDue ??= i.dueDate;
+    }
+  }
+
+  // Un élève n'est « en impayé » que s'il reste au moins une échéance non soldée.
+  for (const [studentId, a] of byStudent) {
+    if (a.firstDue === null) byStudent.delete(studentId);
   }
 
   if (byStudent.size === 0) return { rows: [], families: [], familiesCount: 0 };
@@ -81,12 +115,15 @@ export async function loadUnpaidByFamily(tx: Prisma.TransactionClient): Promise<
   const rows: UnpaidStudentRow[] = [];
   for (const [studentId, a] of byStudent) {
     const fam = parentOf.get(studentId);
-    const daysLate = Math.max(0, Math.floor((today.getTime() - a.firstDue.getTime()) / dayMs));
+    // firstDue est garanti non-null : les élèves sans impayé ont été retirés.
+    const daysLate = Math.max(0, Math.floor((today.getTime() - a.firstDue!.getTime()) / dayMs));
     rows.push({
       studentId,
       studentName: a.name,
       familyId: fam?.id ?? studentId,
       familyName: fam?.name ?? a.name,
+      due: Math.round(a.due * 100) / 100,
+      paid: Math.round(a.paid * 100) / 100,
       unpaid: Math.round(a.unpaid * 100) / 100,
       echeances: a.echeances,
       daysLate,

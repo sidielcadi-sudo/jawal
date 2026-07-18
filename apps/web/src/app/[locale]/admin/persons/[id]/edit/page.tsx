@@ -6,6 +6,7 @@ import { withTenant } from '@/lib/db';
 import { PersonForm } from '../../person-form';
 import { HealthSection, type Health } from '../health-section';
 import { EditTabs } from './edit-tabs';
+import { ChangeStudentClass } from './change-class';
 
 export default async function EditPersonPage({
   params,
@@ -35,6 +36,7 @@ export default async function EditPersonPage({
             teacherCycles: true,
             teacherPriorityClasses: true,
             diplomas: { orderBy: { order: 'asc' } },
+            studentClasses: { where: { unenrolledAt: null }, select: { classId: true }, take: 1 },
           },
         }),
         tx.personRole.findMany({
@@ -137,6 +139,16 @@ export default async function EditPersonPage({
           {t('actions.edit')} — {person.lastName} {person.firstName}
         </h1>
       </div>
+
+      {person.type === 'STUDENT' && (
+        <div className="mb-4">
+          <ChangeStudentClass
+            studentId={person.id}
+            classes={allClasses}
+            currentClassId={person.studentClasses[0]?.classId ?? null}
+          />
+        </div>
+      )}
 
       <EditTabs
         ficheLabel={t('editTabs.fiche')}

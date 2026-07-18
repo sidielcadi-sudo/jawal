@@ -7,25 +7,33 @@ import { loadParentChildContext } from '@/lib/parent';
 import { loadStudentCarnet } from '@/lib/carnet';
 import { AcknowledgeCarnet } from '@/components/carnet/acknowledge-carnet';
 import { TimetableGridReadonly, type ReadonlyEntry } from '@/components/timetable-grid-readonly';
+import { DayTimetable, type DayCourse } from '@/components/day-timetable';
 import { ChildTabs } from '../tabs';
 import { JustifyButton } from '../justify-button';
 
 const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
+const DOW_CODES = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
+const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
 export default async function ParentChildVieScolairePage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string; childId: string }>;
-  searchParams: Promise<{ tab?: string; sub?: string }>;
+  searchParams: Promise<{ tab?: string; sub?: string; date?: string }>;
 }) {
   const { locale, childId } = await params;
   const sp = await searchParams;
   setRequestLocale(locale);
   const session = (await auth())!;
   const t = await getTranslations('parent.child');
-  const tab = sp.tab === 'carnet' || sp.tab === 'equipe' ? sp.tab : 'edt';
+  // Défaut : « Aujourd'hui » (vue par jour).
+  const tab =
+    sp.tab === 'carnet' || sp.tab === 'equipe' || sp.tab === 'edt' ? sp.tab : 'jour';
   const sub = sp.sub === 'retard' || sp.sub === 'autres' ? sp.sub : 'absence';
+  // Vue « Par jour » : date demandée (?date=YYYY-MM-DD) sinon aujourd'hui.
+  const selectedDate =
+    sp.date && /^\d{4}-\d{2}-\d{2}$/.test(sp.date) ? sp.date : ymd(new Date());
 
   const data = await withTenant(session.user.tenantId, async (tx) => {
     const ctx = await loadParentChildContext(tx, session.user.id, childId);
@@ -44,6 +52,34 @@ export default async function ParentChildVieScolairePage({
               teacher: { select: { firstName: true, lastName: true } },
               room: { select: { label: true } },
             },
+          })
+        : [];
+
+    // Vue « Par jour » : cours de la classe le jour sélectionné, + overrides
+    // APPROUVÉS de cette date (annulation → rouge, remplacement → prof remplaçant).
+    const dayCode = DOW_CODES[new Date(`${selectedDate}T00:00:00.000Z`).getUTCDay()]!;
+    const dayEntries =
+      tab === 'jour' && ctx.classId && ctx.year
+        ? await tx.timetableEntry.findMany({
+            where: { classId: ctx.classId, academicYearId: ctx.year.id, dayOfWeek: dayCode },
+            include: {
+              slot: { select: { startTime: true, endTime: true, order: true, isBreak: true } },
+              subject: { select: { label: true } },
+              teacher: { select: { firstName: true, lastName: true } },
+              room: { select: { label: true, code: true } },
+            },
+            orderBy: { slot: { order: 'asc' } },
+          })
+        : [];
+    const dayOverrides =
+      tab === 'jour' && dayEntries.length
+        ? await tx.timetableOverride.findMany({
+            where: {
+              entryId: { in: dayEntries.map((e) => e.id) },
+              date: new Date(`${selectedDate}T00:00:00.000Z`),
+              approvalStatus: 'APPROVED',
+            },
+            include: { substituteTeacher: { select: { firstName: true, lastName: true } } },
           })
         : [];
 
@@ -105,7 +141,7 @@ export default async function ParentChildVieScolairePage({
           )?.mainTeacher ?? null
         : null;
 
-    return { ctx, slots, entries, carnet, team, mainTeacher, toJustify, justifyReasons };
+    return { ctx, slots, entries, dayEntries, dayOverrides, carnet, team, mainTeacher, toJustify, justifyReasons };
   });
   if (!data) notFound();
 
@@ -118,18 +154,86 @@ export default async function ParentChildVieScolairePage({
     teacherName: e.teacher ? `${e.teacher.lastName} ${e.teacher.firstName}` : null,
     roomLabel: e.room?.label ?? null,
   }));
+
+  // Cours du jour (onglet « Par jour ») avec les overrides approuvés appliqués.
+  const overrideByEntry = new Map(data.dayOverrides.map((o) => [o.entryId, o]));
+  const dayCourses: DayCourse[] = data.dayEntries.map((e) => {
+    const ov = overrideByEntry.get(e.id);
+    return {
+      startTime: e.slot.startTime,
+      endTime: e.slot.endTime,
+      subject: e.subject?.label ?? null,
+      teacher: e.teacher ? `${e.teacher.lastName} ${e.teacher.firstName}` : null,
+      room: e.room?.label ?? e.room?.code ?? null,
+      isBreak: e.slot.isBreak,
+      cancelled: ov?.kind === 'CANCELLED',
+      substituteName:
+        ov?.kind === 'SUBSTITUTION' && ov.substituteTeacher
+          ? `${ov.substituteTeacher.lastName} ${ov.substituteTeacher.firstName}`
+          : null,
+    };
+  });
+  // Navigation date (jour précédent / suivant / aujourd'hui).
+  const dayMs = 86_400_000;
+  const selDate = new Date(`${selectedDate}T00:00:00.000Z`);
+  const prevDate = ymd(new Date(selDate.getTime() - dayMs));
+  const nextDate = ymd(new Date(selDate.getTime() + dayMs));
+  const dayHref = (d: string) => `${base}?tab=jour&date=${d}`;
+  const dateLabel = selDate.toLocaleDateString(locale, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  });
+
   return (
     <>
       <ChildTabs
         current={tab}
         tabs={[
+          { key: 'jour', label: t('vieScolaire.tabDay'), href: `${base}?tab=jour` },
           { key: 'edt', label: t('vieScolaire.tabEdt'), href: `${base}?tab=edt` },
           { key: 'carnet', label: t('vieScolaire.tabCarnet'), href: `${base}?tab=carnet` },
           { key: 'equipe', label: t('vieScolaire.tabTeam'), href: `${base}?tab=equipe` },
         ]}
       />
 
-      {tab === 'edt' ? (
+      {tab === 'jour' ? (
+        !data.ctx.classId ? (
+          <p className="text-sm text-slate-400">{t('noClass')}</p>
+        ) : (
+          <div>
+            <div className="mb-4 flex items-center justify-center gap-2">
+              <Link
+                href={dayHref(prevDate)}
+                aria-label={t('vieScolaire.prevDay')}
+                className="grid h-9 w-9 place-items-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+              >
+                ‹
+              </Link>
+              <div className="min-w-[12rem] rounded-lg border border-brand-200 bg-white px-4 py-1.5 text-center">
+                <div className="text-sm font-semibold capitalize text-slate-800">{dateLabel}</div>
+              </div>
+              <Link
+                href={dayHref(nextDate)}
+                aria-label={t('vieScolaire.nextDay')}
+                className="grid h-9 w-9 place-items-center rounded-lg border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+              >
+                ›
+              </Link>
+            </div>
+            <DayTimetable
+              courses={dayCourses}
+              labels={{
+                empty: t('vieScolaire.dayEmpty'),
+                cancelled: t('vieScolaire.cancelled'),
+                substitute: t('vieScolaire.substitute'),
+                break: t('vieScolaire.break'),
+              }}
+            />
+          </div>
+        )
+      ) : tab === 'edt' ? (
         !data.ctx.classId ? (
           <p className="text-sm text-slate-400">{t('noClass')}</p>
         ) : (

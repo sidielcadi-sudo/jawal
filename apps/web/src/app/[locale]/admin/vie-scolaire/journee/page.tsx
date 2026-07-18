@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
-import { requirePermission } from '@/lib/auth/rbac';
+import { requirePermission, isVieScolaireOnly } from '@/lib/auth/rbac';
 import { toDateStr, addDays } from '@/lib/lesson-book';
 import {
   loadDailyBoard,
@@ -16,7 +16,7 @@ import {
   type SlotDetailRow,
   type MissingAppelRow,
 } from '@/lib/vie-scolaire-board';
-import { VieScolaireTabs } from '../tabs';
+import { DashboardTabs } from '../../dashboard-tabs';
 import { StudentSearch } from './student-search';
 import { RaCheckbox, MotifPicker, NotifyAppelButton, type Reason } from './row-actions';
 
@@ -75,6 +75,8 @@ export default async function VieScolaireBoardPage({
   await requirePermission('discipline.write');
   const t = await getTranslations('admin.vieScolaire.board');
   const session = (await auth())!;
+  // Onglet Pilotage visible seulement pour admin/direction (pas pour le CPE).
+  const showPilotage = !(await isVieScolaireOnly());
 
   // Date demandée explicitement, sinon on ouvre sur la dernière journée ayant des
   // appels (résolu côté tx) pour éviter une vue vide le jour courant.
@@ -143,7 +145,7 @@ export default async function VieScolaireBoardPage({
         {t('title')}
       </h1>
       <div className="mt-3">
-        <VieScolaireTabs locale={locale} />
+        <DashboardTabs locale={locale} showPilotage={showPilotage} />
       </div>
 
       {/* Barre d'outils : date, classe, élève */}

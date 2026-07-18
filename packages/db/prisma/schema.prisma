@@ -186,6 +186,15 @@ enum TimetableOverrideKind {
   SUBSTITUTION
 }
 
+/// Circuit d'approbation d'un remplacement : la vie scolaire valide (soumet),
+/// puis la direction/admin approuve ou refuse. Messages envoyés seulement si
+/// APPROVED.
+enum SubstitutionApproval {
+  PENDING
+  APPROVED
+  REFUSED
+}
+
 /// Types de contraintes paramétrables qui pilotent le solveur d'EDT.
 ///
 /// MAX_SAME_SUBJECT_PER_DAY (hard)
@@ -1675,6 +1684,15 @@ model TimetableOverride {
   substituteRoomId    String?               @map("substitute_room_id") @db.Uuid
   substituteSubjectId String?               @map("substitute_subject_id") @db.Uuid
   reason              String?
+  /// Validation par la vie scolaire : soumet le remplacement à l'approbation.
+  validatedAt         DateTime?             @map("validated_at")
+  validatedByUserId   String?               @map("validated_by_user_id") @db.Uuid
+  /// Approbation par la direction/admin. Les messages (parent + remplaçant) ne
+  /// partent qu'une fois APPROVED.
+  approvalStatus      SubstitutionApproval  @default(PENDING) @map("approval_status")
+  approvalByUserId    String?               @map("approval_by_user_id") @db.Uuid
+  approvalAt          DateTime?             @map("approval_at")
+  approvalComment     String?               @map("approval_comment")
   createdByUserId     String?               @map("created_by_user_id") @db.Uuid
   createdAt           DateTime              @default(now()) @map("created_at")
   updatedAt           DateTime              @updatedAt @map("updated_at")

@@ -122,7 +122,9 @@ export default async function UnpaidPage({
             <tr>
               <th className="px-4 py-3 text-start">{t('family')}</th>
               <th className="px-4 py-3 text-start">{t('student')}</th>
-              <th className="px-4 py-3 text-end">{t('amount')}</th>
+              <th className="px-4 py-3 text-end">{t('due')}</th>
+              <th className="px-4 py-3 text-end">{t('paid')}</th>
+              <th className="px-4 py-3 text-end">{t('remaining')}</th>
               <th className="px-4 py-3 text-start">{t('echeances')}</th>
               <th className="px-4 py-3 text-end">{t('daysLate')}</th>
               <th className="px-4 py-3 text-end">{t('action')}</th>
@@ -143,6 +145,12 @@ export default async function UnpaidPage({
                     </td>
                   )}
                   <td className="px-4 py-3 text-slate-700">{r.studentName}</td>
+                  <td className="px-4 py-3 text-end tabular-nums text-slate-700">
+                    {fmt(r.due)} {currency}
+                  </td>
+                  <td className="px-4 py-3 text-end tabular-nums text-emerald-700">
+                    {fmt(r.paid)} {currency}
+                  </td>
                   <td className="px-4 py-3 text-end tabular-nums font-semibold text-red-700">
                     {fmt(r.unpaid)} {currency}
                   </td>
@@ -162,7 +170,7 @@ export default async function UnpaidPage({
             })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-10 text-center text-slate-500">
+                <td colSpan={8} className="px-4 py-10 text-center text-slate-500">
                   {q ? t('noResult') : t('empty')}
                 </td>
               </tr>

@@ -15,6 +15,8 @@ export default async function StudentFinancePage({
   setRequestLocale(locale);
   const t = await getTranslations('admin.studentFinance');
   const tPersons = await getTranslations('admin.persons');
+  // Libellés des moyens de paiement (partagés avec la répartition Finances).
+  const tMethod = await getTranslations('admin.finance.methods');
 
   const session = (await auth())!;
   const tenantId = session.user.tenantId;
@@ -148,6 +150,25 @@ export default async function StudentFinancePage({
                           />
                         )}
                       </span>
+                    )}
+                    {/* Données du paiement (moyen · référence · date), comme dans
+                        l'échéancier du dossier d'inscription. */}
+                    {i.payments.length > 0 && (
+                      <div className="mt-1 space-y-0.5 text-[11px] leading-tight text-slate-500">
+                        {i.payments.map((p) => (
+                          <div key={p.id}>
+                            <span className="font-medium text-emerald-700">
+                              {tMethod(p.method as never)}
+                            </span>
+                            {p.reference && <span> · {p.reference}</span>}
+                            <span> · {new Date(p.paidAt).toLocaleDateString(locale)}</span>
+                            <span className="tabular-nums"> · {p.amount.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {i.payments.length === 0 && (i.status === 'PAID' || i.status === 'CANCELLED') && (
+                      <span className="text-xs text-slate-400">—</span>
                     )}
                   </td>
                 </tr>

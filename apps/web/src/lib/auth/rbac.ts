@@ -56,6 +56,20 @@ export async function isDirection(): Promise<boolean> {
 }
 
 /**
+ * True si l'utilisateur est vie scolaire (CPE) SANS être direction/admin. Ces
+ * utilisateurs n'ont pas la page Pilotage : leur tableau de bord est le Cockpit
+ * vie scolaire (2 onglets Cockpit + Journalier, sans onglet Pilotage).
+ */
+export async function isVieScolaireOnly(): Promise<boolean> {
+  const codes = await currentUserRoleCodes();
+  return (
+    codes.includes('cpe') &&
+    !codes.includes('tenant_admin') &&
+    !codes.includes('direction')
+  );
+}
+
+/**
  * Vérifie si l'utilisateur courant possède une permission.
  * Le `*` global et les wildcards `<module>.*` sont gérés.
  */

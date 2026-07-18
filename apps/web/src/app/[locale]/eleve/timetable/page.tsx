@@ -2,7 +2,9 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { getStudentPersonId } from '@/lib/student';
+import { upcomingOverridesForClass } from '@/lib/timetable-overrides';
 import { TimetableGridReadonly, type ReadonlyEntry } from '@/components/timetable-grid-readonly';
+import { UpcomingOverrides } from '@/components/upcoming-overrides';
 
 const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
 
@@ -41,7 +43,8 @@ export default async function StudentTimetablePage({
             },
           })
         : [];
-    return { classId, slots, entries };
+    const overrides = classId ? await upcomingOverridesForClass(tx, classId) : [];
+    return { classId, slots, entries, overrides };
   });
 
   const dayLabels = Object.fromEntries(DAYS.map((d) => [d, t(`days.${d}`)]));
@@ -62,6 +65,14 @@ export default async function StudentTimetablePage({
         {!data.classId ? (
           <p className="text-sm text-slate-500">{t('noClass')}</p>
         ) : (
+          <>
+          <UpcomingOverrides
+            items={data.overrides}
+            locale={locale}
+            title={t('changesTitle')}
+            substituteLabel={t('substitute')}
+            cancelledLabel={t('cancelled')}
+          />
           <TimetableGridReadonly
             days={[...DAYS]}
             dayLabels={dayLabels}
@@ -75,6 +86,7 @@ export default async function StudentTimetablePage({
             hourLabel={t('hour')}
             emptyLabel={t('empty')}
           />
+          </>
         )}
       </div>
     </div>

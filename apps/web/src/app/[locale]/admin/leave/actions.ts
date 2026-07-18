@@ -2,11 +2,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
-import { requirePermission } from '@/lib/auth/rbac';
+import { requirePermission, requireRoleCode } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
 import { workingDaysBetween } from '@/lib/leave';
 import { sendNotifications, parentRecipient } from '@/lib/notify';
+import { alertTeacherAbsence } from '@/lib/leave-alerts';
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -19,6 +20,16 @@ async function guard() {
   const session = await auth();
   if (!session?.user) return null;
   await requirePermission('tenants.manage');
+  return session;
+}
+
+/** Rôles autorisés à enregistrer une absence (vie scolaire incluse). */
+const ABSENCE_ROLES = ['tenant_admin', 'direction', 'cpe', 'scolarite'];
+
+async function guardRoles(codes: string[]) {
+  const session = await auth();
+  if (!session?.user) return null;
+  await requireRoleCode(codes);
   return session;
 }
 
@@ -53,7 +64,9 @@ export async function seedDefaultLeaveTypesAction(): Promise<Result> {
 }
 
 export async function createLeaveRequestAction(fd: FormData): Promise<Result> {
-  const s = await guard();
+  // La vie scolaire enregistre les absences (étape 1 du workflow) ; l'approbation
+  // reste réservée à l'admin/direction (reviewLeaveRequestAction → guard()).
+  const s = await guardRoles(ABSENCE_ROLES);
   if (!s) return { ok: false, error: 'Non autorisé' };
   const tenantId = s.user.tenantId;
   const personId = str(fd, 'personId');
@@ -89,7 +102,21 @@ export async function createLeaveRequestAction(fd: FormData): Promise<Result> {
           reason: str(fd, 'reason') ?? null,
           status: 'PENDING',
         },
+        include: {
+          person: { select: { firstName: true, lastName: true, type: true } },
+          leaveType: { select: { labelFr: true } },
+        },
       });
+      // Absence d'un enseignant → alerte vie scolaire/direction (remplacement).
+      if (r.person.type === 'TEACHER') {
+        await alertTeacherAbsence(tx, tenantId, {
+          leaveId: r.id,
+          teacherName: `${r.person.lastName} ${r.person.firstName}`,
+          typeLabel: r.leaveType.labelFr,
+          start: startDate,
+          end: endDate,
+        });
+      }
       await logAudit(tx, { tenantId, userId: s.user.id, action: 'create', entityType: 'LeaveRequest', entityId: r.id, after: { personId, leaveTypeId, days } });
     });
     revalidatePath('/admin/leave');

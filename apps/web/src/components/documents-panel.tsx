@@ -16,14 +16,17 @@ export function DocumentsPanel({
   hrefBase,
   years,
   periods,
+  defaultPeriodId,
 }: {
   hrefBase: string;
   years: Opt[];
   periods: Opt[];
+  /** Trimestre présélectionné (par défaut le trimestre en cours). */
+  defaultPeriodId?: string;
 }) {
   const t = useTranslations('admin.documents');
   const [year, setYear] = useState(years[0]?.id ?? '');
-  const [period, setPeriod] = useState(periods[0]?.id ?? '');
+  const [period, setPeriod] = useState(defaultPeriodId ?? periods[0]?.id ?? '');
 
   const selectCls = 'mt-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm shadow-sm';
   const btnCls =

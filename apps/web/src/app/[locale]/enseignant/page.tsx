@@ -1,4 +1,5 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
+import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { getTeacherPersonId } from '@/lib/teacher';
@@ -17,7 +18,11 @@ export default async function TeacherHomePage({
   const { locale } = await params;
   const sp = await searchParams;
   setRequestLocale(locale);
-  const session = (await auth())!;
+  // Le layout redirige déjà les sessions nulles, mais dans l'App Router la page
+  // se rend en parallèle du layout : sans ce garde, une session expirée fait
+  // `null.user` → 500 au lieu d'une redirection propre vers la connexion.
+  const session = await auth();
+  if (!session?.user) redirect(`/${locale}/login`);
   const t = await getTranslations('admin.teacherDashboard');
   const tNav = await getTranslations('enseignant');
 

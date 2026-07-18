@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
@@ -11,9 +12,10 @@ import {
 } from '@/lib/bi';
 import { listContractAlerts } from '@/lib/contract-alerts';
 import { contractStatusBadgeClass } from '@/lib/contract-status';
-import { isDirection } from '@/lib/auth/rbac';
+import { isDirection, isVieScolaireOnly as checkVieScolaireOnly } from '@/lib/auth/rbac';
 import { computePilotage, type Kpi, type KpiStatus } from '@/lib/kpi-pilotage';
 import { ContractAlertsActions } from './contract-alerts-actions';
+import { DashboardTabs } from './dashboard-tabs';
 import { PeriodSelect } from './period-select';
 import { TeacherKpisSection } from './teacher-kpis-section';
 
@@ -30,6 +32,13 @@ export default async function AdminDashboard({
 
   const session = (await auth())!;
   const tenantId = session.user.tenantId;
+
+  // La page Pilotage est réservée à la direction/admin. Les utilisateurs vie
+  // scolaire (CPE, hors direction) ont pour tableau de bord le Cockpit vie
+  // scolaire (2 onglets Cockpit + Journalier), sans page Pilotage.
+  const isVieScolaireOnly = await checkVieScolaireOnly();
+  if (isVieScolaireOnly) redirect(`/${locale}/admin/vie-scolaire`);
+
   const t = await getTranslations('admin.dashboard');
 
   const data = await withTenant(tenantId, async (tx) => {
@@ -184,6 +193,9 @@ export default async function AdminDashboard({
 
   return (
     <div className="px-3 py-3">
+      <div className="mb-4">
+        <DashboardTabs locale={locale} showPilotage={!isVieScolaireOnly} />
+      </div>
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
