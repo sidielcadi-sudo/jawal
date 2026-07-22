@@ -37,7 +37,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   const months = locale === 'ar' ? MONTHS_AR : MONTHS_FR;
 
   const pdfData: PayslipPdfData = {
-    tenantName: tenant?.name ?? 'Jawal',
+    tenantName: tenant?.name ?? 'LeadSchool',
     currency: tenant?.currency ?? 'MAD',
     period: `${months[slip.run.month]} ${slip.run.year}`,
     employee: { name: `${slip.person.lastName} ${slip.person.firstName}`, cin: slip.person.cin, cnss: p?.cnssNumber ?? null },

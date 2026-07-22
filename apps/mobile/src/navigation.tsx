@@ -6,12 +6,15 @@ import { BackHandler } from 'react-native';
  * pour cette phase). On passera à Expo Router / React Navigation si l'arbre
  * d'écrans se complexifie.
  */
+export type ChildTab = 'cahier' | 'notes' | 'vie' | 'competences' | 'soutien' | 'scolarite';
+
 export type Route =
   | { name: 'home' }
-  | { name: 'child'; childId: string; childName: string }
+  | { name: 'child'; tab: ChildTab } // enfant = celui sélectionné dans l'état global
   | { name: 'announcements' }
   | { name: 'messages' }
-  | { name: 'thread'; conversationId: string; subject?: string };
+  | { name: 'thread'; conversationId: string; subject?: string }
+  | { name: 'placeholder'; title: string; note?: string };
 
 type NavState = {
   route: Route;

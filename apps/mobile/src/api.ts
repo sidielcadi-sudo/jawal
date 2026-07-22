@@ -66,6 +66,48 @@ export type Scolarite = {
 };
 export type PayInit = { orderId: string; amount: number; action: string; fields: Record<string, string> };
 export type PaymentStatus = { status: 'PENDING' | 'PAID' | 'FAILED'; amount: number; paidAt: string | null };
+export type SupportResource = { id: string; title: string; url: string };
+export type SupportSession = {
+  date: string;
+  time: string | null;
+  topic: string | null;
+  present: boolean | null;
+  appreciation: string | null;
+  resources: SupportResource[];
+};
+export type SupportCourse = {
+  courseTitle: string;
+  subject: string;
+  teacher: string | null;
+  sessions: SupportSession[];
+};
+export type UpcomingExam = { id: string; subject: string; label: string; date: string };
+export type MasteryScaleItem = { code: string; label: string; color: string };
+export type CompetencyKind = 'DISCIPLINARY' | 'TRANSVERSAL'; // Compétence / Aptitude
+export type CompetencyDomain = {
+  id: string;
+  label: string;
+  kind: CompetencyKind;
+  rate: number | null;
+  covered: number;
+  total: number;
+  /** Écart en points vs période précédente (null si non comparable). */
+  delta: number | null;
+  competencies: { id: string; label: string; rate: number | null; kind: CompetencyKind }[];
+};
+export type CompetencyReport =
+  | { available: false }
+  | {
+      available: true;
+      periodLabel: string;
+      provisional: boolean;
+      disciplinaryRate: number | null;
+      transversalRate: number | null;
+      covered: number;
+      total: number;
+      scale: MasteryScaleItem[];
+      domains: CompetencyDomain[];
+    };
 
 export const api = {
   login: (tenantSlug: string, email: string, password: string) =>
@@ -81,6 +123,12 @@ export const api = {
     request<{ lessons: Lesson[]; homeworks: Homework[] }>(`/api/mobile/children/${childId}/cahier`, { token }),
   vieScolaire: (token: string, childId: string) =>
     request<{ carnet: { entries: CarnetEntry[]; events: CarnetEvent[] } }>(`/api/mobile/children/${childId}/vie-scolaire`, { token }),
+  soutien: (token: string, childId: string) =>
+    request<{ courses: SupportCourse[] }>(`/api/mobile/children/${childId}/soutien`, { token }),
+  competences: (token: string, childId: string) =>
+    request<CompetencyReport>(`/api/mobile/children/${childId}/competences`, { token }),
+  upcoming: (token: string, childId: string) =>
+    request<{ items: UpcomingExam[] }>(`/api/mobile/children/${childId}/upcoming`, { token }),
   registerPush: (token: string, expoToken: string, platform: 'ios' | 'android') =>
     request<{ ok: boolean }>('/api/mobile/push/register', { token, method: 'POST', body: { token: expoToken, platform } }),
   unregisterPush: (token: string, expoToken: string) =>

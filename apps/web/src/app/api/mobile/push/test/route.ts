@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     where: { tenantId: principal.tenantId, userId: principal.userId },
   });
   await pushToUsers(principal.tenantId, [principal.userId], {
-    title: 'Jawal',
+    title: 'LeadSchool',
     body: 'Notification de test ✅',
     data: { type: 'test' },
   });

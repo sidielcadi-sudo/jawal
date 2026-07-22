@@ -133,7 +133,7 @@ function buildEmailHtml(alerts: ContractAlert[], lang: 'fr' | 'ar', tenantName: 
   return `<!doctype html>
 <html dir="${dir}">
   <body style="font-family:system-ui,sans-serif;color:#111827;max-width:680px;margin:0 auto;padding:24px;">
-    <h2 style="margin:0 0 16px 0;">Jawal</h2>
+    <h2 style="margin:0 0 16px 0;">LeadSchool</h2>
     <p>${labels.intro}</p>
     <table style="width:100%;border-collapse:collapse;font-size:14px;">
       <thead>

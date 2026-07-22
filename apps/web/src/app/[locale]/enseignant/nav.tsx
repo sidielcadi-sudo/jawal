@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
+import { PortalAvatar as Avatar } from '@/components/portal-avatar';
 
 const EMOJI: Record<string, string> = {
   home: '🏠',
@@ -19,15 +20,11 @@ const EMOJI: Record<string, string> = {
 
 export function TeacherSidebar({
   locale,
-  tenantName,
-  teacherName,
-  logoUrl,
+  photoUrl,
   appelBadge = 0,
 }: {
   locale: string;
-  tenantName: string;
-  teacherName: string;
-  logoUrl?: string | null;
+  photoUrl?: string | null;
   appelBadge?: number;
 }) {
   const pathname = usePathname();
@@ -55,6 +52,7 @@ export function TeacherSidebar({
     { href: `${prefix}/appel`, key: 'appel', exact: false },
     { href: `${prefix}/cahier`, key: 'cahier', exact: false },
     { href: `${prefix}/notes`, key: 'notes', exact: false },
+    { href: `${prefix}/competences`, key: 'competences', exact: false },
     { href: `${prefix}/carnet`, key: 'carnet', exact: false },
     { href: `${prefix}/classes`, key: 'classes', exact: false },
     { href: `${prefix}/leave`, key: 'leave', exact: false },
@@ -75,21 +73,16 @@ export function TeacherSidebar({
         collapsed ? 'w-[4.75rem]' : 'w-60'
       }`}
     >
-      <div className={`mb-2 flex items-center px-1 ${collapsed ? 'justify-center' : 'justify-between'}`}>
-        {!collapsed && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={logoUrl ?? '/sesame-logo.png'}
-            alt={tenantName || 'Logo'}
-            className="h-11 w-auto object-contain"
-          />
-        )}
+      <div className="relative mb-2 flex min-h-[2.75rem] items-center justify-center px-1">
+        {!collapsed && <Avatar photoUrl={photoUrl} />}
         <button
           type="button"
           onClick={toggle}
           title={collapsed ? 'Développer le menu' : 'Réduire le menu'}
           aria-label={collapsed ? 'Développer le menu' : 'Réduire le menu'}
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-white/80 hover:bg-white/10"
+          className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-white/80 hover:bg-white/10 ${
+            collapsed ? '' : 'absolute end-0 top-1/2 -translate-y-1/2'
+          }`}
         >
           <svg
             width="18"
@@ -107,9 +100,6 @@ export function TeacherSidebar({
           </svg>
         </button>
       </div>
-      {!collapsed && teacherName && (
-        <div className="mb-1 truncate px-2 text-center text-xs text-white/60">{teacherName}</div>
-      )}
       <nav className="sidebar-scroll -me-1 flex-1 overflow-y-auto overflow-x-hidden pe-1 py-1">
         <ul className="space-y-1">
           {items.map((it) => {

@@ -40,6 +40,8 @@ type EditState = {
   note: string;
 };
 
+export type CellOverride = { kind: 'CANCELLED' | 'SUBSTITUTION'; label: string };
+
 export function TimetableGrid({
   locale: _locale,
   classId,
@@ -49,6 +51,7 @@ export function TimetableGrid({
   entries,
   conflictEntryIds,
   availabilityWarningIds,
+  approvedOverrides,
   subjects,
   teachers,
   rooms,
@@ -61,6 +64,8 @@ export function TimetableGrid({
   entries: GridEntry[];
   conflictEntryIds: Set<string>;
   availabilityWarningIds?: Set<string>;
+  /** Override APPROUVÉ à venir par entryId (remplacement / annulation). */
+  approvedOverrides?: Record<string, CellOverride>;
   subjects: SubjectOpt[];
   teachers: TeacherOpt[];
   rooms: RoomOpt[];
@@ -158,6 +163,8 @@ export function TimetableGrid({
                   const e = entryByKey.get(`${d}|${s.id}`);
                   const inConflict = e && conflictEntryIds.has(e.id);
                   const outOfAvailability = e && availabilityWarningIds?.has(e.id);
+                  const ov = e ? approvedOverrides?.[e.id] : undefined;
+                  const cancelled = ov?.kind === 'CANCELLED';
                   return (
                     <td
                       key={d}
@@ -167,21 +174,34 @@ export function TimetableGrid({
                       {e ? (
                         <div
                           className={`rounded-lg border p-2 text-[11px] leading-tight ${
-                            inConflict
+                            cancelled
                               ? 'border-red-300 bg-red-50'
-                              : outOfAvailability
+                              : ov
                                 ? 'border-amber-300 bg-amber-50'
-                                : 'border-brand-200 bg-brand-50'
+                                : inConflict
+                                  ? 'border-red-300 bg-red-50'
+                                  : outOfAvailability
+                                    ? 'border-amber-300 bg-amber-50'
+                                    : 'border-brand-200 bg-brand-50'
                           }`}
                         >
-                          <div className="font-semibold text-slate-900">
+                          <div className={`font-semibold ${cancelled ? 'text-red-700 line-through' : 'text-slate-900'}`}>
                             {e.subjectLabel ?? t('untitledCourse')}
                           </div>
                           {e.teacherName && (
-                            <div className="mt-0.5 text-slate-600">{e.teacherName}</div>
+                            <div className={`mt-0.5 ${cancelled ? 'text-red-400 line-through' : 'text-slate-600'}`}>{e.teacherName}</div>
                           )}
                           {e.roomLabel && (
-                            <div className="text-slate-500">📍 {e.roomLabel}</div>
+                            <div className={cancelled ? 'text-red-300' : 'text-slate-500'}>📍 {e.roomLabel}</div>
+                          )}
+                          {ov && (
+                            <div
+                              className={`mt-1 rounded px-1 py-0.5 text-[10px] font-semibold ${
+                                cancelled ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'
+                              }`}
+                            >
+                              {ov.label}
+                            </div>
                           )}
                           {inConflict && (
                             <div className="mt-1 text-[10px] font-semibold text-red-700">

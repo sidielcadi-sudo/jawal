@@ -1,5 +1,5 @@
 /**
- * URL de l'API Jawal (app Next.js).
+ * URL de l'API LeadSchool (app Next.js).
  *
  * ⚠️ En développement, NE PAS utiliser `localhost` : sur un téléphone (Expo Go),
  * `localhost` désigne le téléphone lui-même, pas votre ordinateur. Utilisez

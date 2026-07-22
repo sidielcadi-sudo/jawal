@@ -62,6 +62,15 @@ const TEMPLATES: Record<string, { fr: Tpl; ar: Tpl }> = {
     fr: (d) => `Le cours de ${d.subject} du ${d.date} (${d.slot}) de ${d.child} est annulé.`,
     ar: (d) => `حصة ${d.subject} يوم ${d.date} (${d.slot}) الخاصة بـ ${d.child} ملغاة.`,
   },
+  // ── Annulation d'absence : le prof est finalement présent ────────────────
+  'substitution.reverted': {
+    fr: (d) => `Le remplacement du ${d.date} (${d.slot}) — ${d.subject} avec la classe ${d.class} est annulé : ${d.teacher} assure son cours.`,
+    ar: (d) => `تم إلغاء التعويض ليوم ${d.date} (${d.slot}) — ${d.subject} مع قسم ${d.class}: ${d.teacher} سيؤمّن حصته.`,
+  },
+  'substitution.maintained': {
+    fr: (d) => `Le cours de ${d.subject} du ${d.date} (${d.slot}) de ${d.child} est maintenu : le professeur est présent.`,
+    ar: (d) => `حصة ${d.subject} يوم ${d.date} (${d.slot}) الخاصة بـ ${d.child} مؤكَّدة: الأستاذ حاضر.`,
+  },
   // ── Changement de classe ─────────────────────────────────────────────────
   'class.changed': {
     fr: (d) =>
@@ -72,6 +81,31 @@ const TEMPLATES: Record<string, { fr: Tpl; ar: Tpl }> = {
   'class.teacher': {
     fr: (d) => `${d.child} a rejoint votre classe ${d.newClass}.`,
     ar: (d) => `${d.child} التحق بقسمكم ${d.newClass}.`,
+  },
+  'class.teacherLeft': {
+    fr: (d) => `${d.child} a quitté votre classe ${d.oldClass} (nouvelle classe : ${d.newClass}).`,
+    ar: (d) => `${d.child} غادر قسمكم ${d.oldClass} (القسم الجديد: ${d.newClass}).`,
+  },
+  // ── Soutien scolaire ─────────────────────────────────────────────────────
+  'support.enrolled': {
+    fr: (d) =>
+      `${d.child} est inscrit(e) au cours de soutien « ${d.course} »${d.subject ? ` (${d.subject})` : ''}${d.slot ? ` — ${d.slot}` : ''}.`,
+    ar: (d) =>
+      `${d.child} مسجّل في درس الدعم «${d.course}»${d.subject ? ` (${d.subject})` : ''}${d.slot ? ` — ${d.slot}` : ''}.`,
+  },
+  'support.absent': {
+    fr: (d) =>
+      `${d.child} a été noté(e) absent(e) au cours de soutien « ${d.course} » du ${d.date}${d.topic ? ` (${d.topic})` : ''}.`,
+    ar: (d) =>
+      `${d.child} سُجّل غائبًا في درس الدعم «${d.course}» يوم ${d.date}${d.topic ? ` (${d.topic})` : ''}.`,
+  },
+  // Bilan de compétences : notifié **au gel périodique** uniquement, jamais à
+  // chaque évaluation (une classe de 30 × 20 items = 600 notifications).
+  'competency.report': {
+    fr: (d) =>
+      `Le bilan de compétences de ${d.child} pour ${d.period} est disponible : ${d.disciplinary} en compétences disciplinaires, ${d.transversal} en aptitudes transversales. Consultez le détail dans votre espace parent.`,
+    ar: (d) =>
+      `حصيلة كفايات ${d.child} برسم ${d.period} متاحة: ${d.disciplinary} في الكفايات المادّية، و${d.transversal} في القدرات العرضانية. يمكنكم الاطلاع على التفاصيل في فضاء الآباء.`,
   },
 };
 

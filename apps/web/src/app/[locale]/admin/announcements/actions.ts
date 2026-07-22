@@ -200,7 +200,7 @@ async function notifyAudience(
       if (!email) return;
       await safeSendEmail({
         to: email,
-        subject: `[${tenant?.name ?? 'Jawal'}] ${announcement.title}`,
+        subject: `[${tenant?.name ?? 'LeadSchool'}] ${announcement.title}`,
         html: `<p>Bonjour ${r.firstName},</p><p>${announcement.body.replace(/\n/g, '<br/>')}</p><hr/><p style="font-size:11px;color:#888">Annonce — ${tenant?.name}</p>`,
         text: `${announcement.title}\n\n${announcement.body}`,
       });

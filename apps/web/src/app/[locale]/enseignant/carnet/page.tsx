@@ -38,7 +38,8 @@ export default async function TeacherCarnetPage({
     if (!classId) return { classes, students: [], classId, studentId: null, carnet: null };
 
     const scs = await tx.studentClass.findMany({
-      where: { classId, unenrolledAt: null },
+      // Élèves actifs uniquement : exclut les radiés/supprimés du menu.
+      where: { classId, unenrolledAt: null, student: { deletedAt: null } },
       include: { student: { select: { id: true, firstName: true, lastName: true } } },
       orderBy: { student: { lastName: 'asc' } },
     });

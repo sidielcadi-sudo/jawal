@@ -147,6 +147,8 @@ function renderStudentBulletin(
       </tfoot>
     </table>
 
+    ${renderCompetences(bs, opts)}
+
     <section class="council">
       <h2>${esc(t('council.title'))}</h2>
       ${councilHtml}
@@ -159,6 +161,73 @@ function renderStudentBulletin(
 
     <footer class="foot">${esc(t('footer', { id: student.id.slice(0, 8) }))}</footer>
   </section>`;
+}
+
+/** Couleur d'un taux d'acquisition (alignée sur l'échelle NA → M). */
+function compColor(rate: number | null): string {
+  if (rate === null) return '#cbd5e1';
+  if (rate < 33) return '#ef4444';
+  if (rate < 55) return '#f97316';
+  if (rate < 80) return '#10b981';
+  return '#059669';
+}
+
+/**
+ * Volet « Compétences & aptitudes » du bulletin (APC).
+ * Deux blocs — disciplinaire et transversal — avec une barre par domaine et le
+ * détail par compétence. Rien n'est imprimé si le module n'est pas alimenté.
+ */
+function renderCompetences(bs: BulletinStudent, opts: BulletinRenderOptions): string {
+  const { t } = opts;
+  const c = bs.competences;
+  if (!c || c.total === 0) return '';
+
+  const pct = (r: number | null) => (r === null ? '—' : `${Math.round(r)}%`);
+
+    const block = (kind: 'DISCIPLINARY' | 'TRANSVERSAL', title: string, globalRate: number | null) => {
+    // Domaines ayant des lignes de ce type (Compétence ou Aptitude).
+    const domains = c.domains
+      .map((d) => ({ label: d.label, comps: d.competencies.filter((x) => x.kind === kind && x.total > 0) }))
+      .filter((d) => d.comps.length > 0);
+    if (domains.length === 0) return '';
+    const rows = domains
+      .map((d) => {
+        const domRates = d.comps.filter((x) => x.rate !== null).map((x) => x.rate!);
+        const domRate = domRates.length ? domRates.reduce((s, r) => s + r, 0) / domRates.length : null;
+        const comps = d.comps
+          .map(
+            (x) =>
+              `<li><span class="cname">${esc(x.label)}</span>
+                 <span class="cbar"><i style="width:${x.rate ?? 0}%;background:${compColor(x.rate)}"></i></span>
+                 <span class="cval">${pct(x.rate)}<span class="ccov">${x.covered}/${x.total}</span></span></li>`,
+          )
+          .join('');
+        return `<div class="cdomain">
+            <div class="chead">
+              <span class="dname">${esc(d.label)}</span>
+              <span class="dval" style="color:${compColor(domRate)}">${pct(domRate)}</span>
+            </div>
+            <ul class="clist">${comps}</ul>
+          </div>`;
+      })
+      .join('');
+    return `<div class="cblock">
+        <h3>${esc(title)} <span class="cglobal" style="color:${compColor(globalRate)}">${pct(globalRate)}</span></h3>
+        ${rows}
+      </div>`;
+  };
+
+  const disc = block('DISCIPLINARY', t('competences.disciplinary'), c.disciplinaryRate);
+  const trans = block('TRANSVERSAL', t('competences.transversal'), c.transversalRate);
+  if (!disc && !trans) return '';
+
+  return `<section class="competences">
+      <h2>${esc(t('competences.title'))}${
+        c.provisional ? `<span class="cprov">${esc(t('competences.provisional'))}</span>` : ''
+      }</h2>
+      <div class="cgrid">${disc}${trans}</div>
+      <p class="cscale">${esc(t('competences.legend'))}</p>
+    </section>`;
 }
 
 const STYLES = `
@@ -201,6 +270,25 @@ const STYLES = `
   .sig { border: 1px solid #cbd5e1; padding: 10px; height: 72px; }
   .sig-lbl { font-size: 10px; text-transform: uppercase; color: #64748b; }
   .foot { margin-top: 20px; border-top: 1px solid #e2e8f0; padding-top: 8px; text-align: center; font-size: 9px; color: #94a3b8; }
+
+  /* Volet compétences (APC) */
+  .competences { margin-top: 18px; border-top: 2px solid #334155; padding-top: 10px; page-break-inside: avoid; }
+  .competences h2 { margin: 0 0 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+  .cprov { margin-inline-start: 8px; border-radius: 4px; background: #fef3c7; color: #b45309; padding: 1px 6px; font-size: 9px; font-weight: 600; text-transform: none; }
+  .cgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .cblock h3 { margin: 0 0 6px; font-size: 11px; font-weight: 700; color: #334155; }
+  .cglobal { margin-inline-start: 6px; font-size: 12px; }
+  .cdomain { margin-bottom: 7px; }
+  .chead { display: flex; justify-content: space-between; font-size: 10px; font-weight: 600; color: #475569; }
+  .dval { font-weight: 700; }
+  .clist { list-style: none; margin: 3px 0 0; padding: 0; }
+  .clist li { display: flex; align-items: center; gap: 5px; font-size: 9px; margin-bottom: 2px; }
+  .cname { flex: 0 0 42%; color: #475569; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cbar { flex: 1; height: 5px; border-radius: 3px; background: #f1f5f9; overflow: hidden; }
+  .cbar i { display: block; height: 100%; border-radius: 3px; }
+  .cval { flex: 0 0 52px; text-align: end; color: #334155; font-weight: 600; }
+  .ccov { margin-inline-start: 3px; color: #cbd5e1; font-weight: 400; }
+  .cscale { margin: 6px 0 0; font-size: 9px; color: #94a3b8; }
 `;
 
 /**

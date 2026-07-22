@@ -45,7 +45,7 @@ export default function LoginScreen() {
       style={[styles.container, { paddingTop: insets.top + 40, paddingBottom: insets.bottom + 20 }]}
     >
       <View style={styles.header}>
-        <Text style={styles.brand}>Jawal</Text>
+        <Text style={styles.brand}>LeadSchool</Text>
         <Text style={styles.subtitle}>Espace parents</Text>
       </View>
 

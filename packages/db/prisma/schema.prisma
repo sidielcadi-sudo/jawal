@@ -331,6 +331,13 @@ model TenantGroup {
 }
 
 model Tenant {
+  supportSessionSkills  SupportSessionSkill[]
+  competencyReports     CompetencyReport[]
+  competencyFrameworks  CompetencyFramework[]
+  competencyNodes       CompetencyNode[]
+  competencyNodeLevels  CompetencyNodeLevel[]
+  masteryLevels         MasteryLevel[]
+  competencyAssessments CompetencyAssessment[]
   id            String        @id @default(uuid()) @db.Uuid
   slug          String        @unique
   name          String
@@ -518,6 +525,8 @@ enum StudentRegime {
 }
 
 model Person {
+  competencyReports CompetencyReport[] @relation("StudentCompetencyReports")
+  competencyAssessments CompetencyAssessment[] @relation("StudentCompetencyAssessments")
   id                      String                @id @default(uuid()) @db.Uuid
   tenantId                String                @map("tenant_id") @db.Uuid
   type                    PersonType
@@ -876,6 +885,7 @@ model UserRole {
 // ─── Structure pédagogique ─────────────────────────────────
 
 model AcademicYear {
+  competencyFrameworks CompetencyFramework[]
   id        String   @id @default(uuid()) @db.Uuid
   tenantId  String   @map("tenant_id") @db.Uuid
   label     String // "2025-2026"
@@ -899,6 +909,8 @@ model AcademicYear {
 }
 
 model Period {
+  competencyReports CompetencyReport[]
+  competencyAssessments CompetencyAssessment[]
   id             String     @id @default(uuid()) @db.Uuid
   tenantId       String     @map("tenant_id") @db.Uuid
   academicYearId String     @map("academic_year_id") @db.Uuid
@@ -936,6 +948,7 @@ model Cycle {
 }
 
 model Level {
+  competencyNodeLevels CompetencyNodeLevel[]
   id        String   @id @default(uuid()) @db.Uuid
   tenantId  String   @map("tenant_id") @db.Uuid
   cycleId   String   @map("cycle_id") @db.Uuid
@@ -1283,6 +1296,7 @@ model AbsenceJustification {
 /// moyenne générale d'une période ; on garde la possibilité de coefficients
 /// par filière pour la V1 via des configs séparées plus tard.
 model Subject {
+  competencyNodes CompetencyNode[]
   id          String   @id @default(uuid()) @db.Uuid
   tenantId    String   @map("tenant_id") @db.Uuid
   code        String // "math", "fr", "ar"
@@ -1971,6 +1985,143 @@ model Message {
   @@map("messages")
 }
 
+// ─── Soutien scolaire (cours de soutien / activités payantes) ──
+
+enum SupportEnrollmentStatus {
+  ACTIVE
+  WITHDRAWN
+}
+
+/// Mode de tarification d'un cours de soutien.
+enum SupportPricingMode {
+  FREE // gratuit
+  PER_SESSION // prix par séance
+  MONTHLY // forfait mensuel
+  TERM // forfait trimestriel
+  ANNUAL // forfait annuel
+}
+
+/// Cours de soutien (activité parascolaire, payante ou gratuite). Le planning
+/// hebdomadaire est porté par plusieurs `SupportSlot` (N séances/semaine).
+/// Rattaché à une année. Références externes (matière/prof/niveau) en UUID
+/// scalaire : isolation par RLS via `tenant_id` (cf. rls.sql).
+model SupportCourse {
+  id             String             @id @default(uuid()) @db.Uuid
+  tenantId       String             @map("tenant_id") @db.Uuid
+  academicYearId String             @map("academic_year_id") @db.Uuid
+  subjectId      String             @map("subject_id") @db.Uuid
+  teacherId      String?            @map("teacher_id") @db.Uuid
+  levelId        String?            @map("level_id") @db.Uuid
+  title          String
+  pricingMode    SupportPricingMode @default(FREE) @map("pricing_mode")
+  /// Montant selon le mode (par séance / mensuel / trimestriel / annuel). 0 si gratuit.
+  price          Decimal            @default(0) @db.Decimal(12, 2)
+  description    String?
+  active         Boolean            @default(true)
+  createdAt      DateTime           @default(now()) @map("created_at")
+  updatedAt      DateTime           @updatedAt @map("updated_at")
+
+  slots       SupportSlot[]
+  enrollments SupportEnrollment[]
+  sessions    SupportSession[]
+  resources   SupportResource[]
+
+  @@index([tenantId, academicYearId])
+  @@map("support_courses")
+}
+
+/// Ressource pédagogique d'un cours de soutien (lien PDF / vidéo / fiche).
+model SupportResource {
+  id               String   @id @default(uuid()) @db.Uuid
+  tenantId         String   @map("tenant_id") @db.Uuid
+  supportCourseId  String   @map("support_course_id") @db.Uuid
+  supportSessionId String?  @map("support_session_id") @db.Uuid
+  title            String
+  url              String
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  course  SupportCourse   @relation(fields: [supportCourseId], references: [id], onDelete: Cascade)
+  session SupportSession? @relation(fields: [supportSessionId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, supportCourseId])
+  @@index([tenantId, supportSessionId])
+  @@map("support_resources")
+}
+
+/// Créneau hebdomadaire récurrent d'un cours de soutien (jour/heure/salle).
+/// Le nombre de créneaux = nombre de séances par semaine.
+model SupportSlot {
+  id              String    @id @default(uuid()) @db.Uuid
+  tenantId        String    @map("tenant_id") @db.Uuid
+  supportCourseId String    @map("support_course_id") @db.Uuid
+  dayOfWeek       DayOfWeek @map("day_of_week")
+  startTime       String    @map("start_time")
+  endTime         String    @map("end_time")
+  roomId          String?   @map("room_id") @db.Uuid
+
+  course SupportCourse @relation(fields: [supportCourseId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, supportCourseId])
+  @@map("support_slots")
+}
+
+/// Affectation d'un élève à un cours de soutien (volontaire ou recommandé).
+model SupportEnrollment {
+  id              String                  @id @default(uuid()) @db.Uuid
+  tenantId        String                  @map("tenant_id") @db.Uuid
+  supportCourseId String                  @map("support_course_id") @db.Uuid
+  studentId       String                  @map("student_id") @db.Uuid
+  recommended     Boolean                 @default(false)
+  status          SupportEnrollmentStatus @default(ACTIVE)
+  enrolledAt      DateTime                @default(now()) @map("enrolled_at")
+  unenrolledAt    DateTime?               @map("unenrolled_at")
+
+  course SupportCourse @relation(fields: [supportCourseId], references: [id], onDelete: Cascade)
+
+  @@unique([supportCourseId, studentId])
+  @@index([tenantId, studentId])
+  @@map("support_enrollments")
+}
+
+/// Séance datée d'un cours de soutien (contenu + appel + appréciations — P2).
+model SupportSession {
+  skills SupportSessionSkill[]
+  competencyAssessments CompetencyAssessment[]
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  supportCourseId String   @map("support_course_id") @db.Uuid
+  date            DateTime @db.Date
+  topic           String?
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  course     SupportCourse       @relation(fields: [supportCourseId], references: [id], onDelete: Cascade)
+  attendance SupportAttendance[]
+  resources  SupportResource[]
+
+  @@unique([supportCourseId, date])
+  @@index([tenantId, date])
+  @@map("support_sessions")
+}
+
+/// Présence + appréciation d'un élève sur une séance de soutien.
+model SupportAttendance {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  sessionId    String   @map("session_id") @db.Uuid
+  studentId    String   @map("student_id") @db.Uuid
+  present      Boolean  @default(true)
+  appreciation String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  session SupportSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, studentId])
+  @@index([tenantId, studentId])
+  @@map("support_attendance")
+}
+
 // ─── Finance (M10) ─────────────────────────────────────────
 
 /// Grille tarifaire pour un niveau et une année scolaire.
@@ -2045,6 +2196,8 @@ model Installment {
   tenantId          String            @map("tenant_id") @db.Uuid
   studentId         String            @map("student_id") @db.Uuid
   feeScheduleItemId String?           @map("fee_schedule_item_id") @db.Uuid // null si ad hoc
+  /// Rattachement à un cours de soutien (activité « Soutien » dans Finances).
+  supportCourseId   String?           @map("support_course_id") @db.Uuid
   label             String // "Mensualité septembre"
   amount            Decimal           @db.Decimal(12, 2)
   dueDate           DateTime          @map("due_date") @db.Date
@@ -3218,4 +3371,190 @@ model StaffAlert {
 
   @@index([tenantId, userId, readAt])
   @@map("staff_alerts")
+}
+
+// ─── Compétences & aptitudes (approche par compétences, APC) ───────────────
+
+enum CompetencyKind {
+  DISCIPLINARY // rattachée à une matière
+  TRANSVERSAL // aptitude transversale, évaluable par tout enseignant
+}
+
+enum FrameworkStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum AssessmentSource {
+  CLASS // saisie depuis une classe
+  SUPPORT // saisie depuis une séance de soutien
+  REPORT // consolidation lors d'un bilan
+}
+
+/// Référentiel de compétences, versionné par année scolaire.
+model CompetencyFramework {
+  id             String          @id @default(uuid()) @db.Uuid
+  tenantId       String          @map("tenant_id") @db.Uuid
+  academicYearId String          @map("academic_year_id") @db.Uuid
+  label          String
+  version        Int             @default(1)
+  status         FrameworkStatus @default(DRAFT)
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  nodes        CompetencyNode[]
+  reports      CompetencyReport[]
+
+  @@unique([tenantId, academicYearId, version])
+  @@index([tenantId, status])
+  @@map("competency_frameworks")
+}
+
+/// Arbre unique domaine → compétence → sous-compétence (profondeur variable).
+/// Les aptitudes transversales sont des nœuds `kind = TRANSVERSAL` sans matière.
+model CompetencyNode {
+  supportSessions SupportSessionSkill[]
+  id          String         @id @default(uuid()) @db.Uuid
+  tenantId    String         @map("tenant_id") @db.Uuid
+  frameworkId String         @map("framework_id") @db.Uuid
+  parentId    String?        @map("parent_id") @db.Uuid
+  kind        CompetencyKind
+  labelFr     String         @map("label_fr")
+  labelAr     String?        @map("label_ar")
+  /// Indicateur observable affiché à l'enseignant lors de la saisie.
+  descriptor  String?
+  /// Matière pilote : détermine qui peut évaluer. Null = ouvert à tous les
+  /// enseignants. Hérité du plus proche ancêtre qui en porte une.
+  subjectId   String?        @map("subject_id") @db.Uuid
+  depth       Int            @default(0)
+  order       Int            @default(0)
+  /// Seules les feuilles sont réellement évaluables.
+  isLeaf      Boolean        @default(false) @map("is_leaf")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  tenant      Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  framework   CompetencyFramework    @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+  parent      CompetencyNode?        @relation("CompetencyTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children    CompetencyNode[]       @relation("CompetencyTree")
+  subject     Subject?               @relation(fields: [subjectId], references: [id])
+  levels      CompetencyNodeLevel[]
+  assessments CompetencyAssessment[]
+
+  @@index([tenantId, frameworkId, kind])
+  @@index([tenantId, parentId])
+  @@map("competency_nodes")
+}
+
+/// Activation d'un nœud pour un niveau scolaire.
+/// Aucune ligne = le nœud s'applique à tous les niveaux.
+model CompetencyNodeLevel {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  nodeId   String @map("node_id") @db.Uuid
+  levelId  String @map("level_id") @db.Uuid
+
+  tenant Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  node   CompetencyNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  level  Level          @relation(fields: [levelId], references: [id], onDelete: Cascade)
+
+  @@unique([nodeId, levelId])
+  @@index([tenantId, levelId])
+  @@map("competency_node_levels")
+}
+
+/// Échelle de maîtrise configurable (NA / ECA / A / M par défaut).
+model MasteryLevel {
+  id       String  @id @default(uuid()) @db.Uuid
+  tenantId String  @map("tenant_id") @db.Uuid
+  code     String
+  labelFr  String  @map("label_fr")
+  labelAr  String? @map("label_ar")
+  /// Valeur numérique servant aux moyennes et pourcentages (NA=0 … M=3).
+  value    Int
+  color    String  @default("#94a3b8")
+  order    Int     @default(0)
+
+  tenant      Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assessments CompetencyAssessment[]
+
+  @@unique([tenantId, code])
+  @@map("mastery_levels")
+}
+
+/// Évaluation d'un élève sur une feuille de l'arbre, pour une période donnée.
+/// Une ligne par enseignant : la synthèse se fait par moyenne des valeurs.
+model CompetencyAssessment {
+  id                String           @id @default(uuid()) @db.Uuid
+  tenantId          String           @map("tenant_id") @db.Uuid
+  studentId         String           @map("student_id") @db.Uuid
+  nodeId            String           @map("node_id") @db.Uuid
+  periodId          String           @map("period_id") @db.Uuid
+  masteryLevelId    String           @map("mastery_level_id") @db.Uuid
+  comment           String?
+  source            AssessmentSource @default(CLASS)
+  supportSessionId  String?          @map("support_session_id") @db.Uuid
+  evaluatedByUserId String           @map("evaluated_by_user_id") @db.Uuid
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student        Person          @relation("StudentCompetencyAssessments", fields: [studentId], references: [id], onDelete: Cascade)
+  node           CompetencyNode  @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  period         Period          @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  mastery        MasteryLevel    @relation(fields: [masteryLevelId], references: [id])
+  supportSession SupportSession? @relation(fields: [supportSessionId], references: [id], onDelete: SetNull)
+
+  @@unique([studentId, nodeId, periodId, evaluatedByUserId])
+  @@index([tenantId, periodId, nodeId])
+  @@index([tenantId, studentId, periodId])
+  @@map("competency_assessments")
+}
+
+/// Bilan de compétences figé pour un élève et une période.
+/// Indispensable à la reproductibilité : sans ce gel, le PDF d'un trimestre
+/// changerait si un enseignant saisit une évaluation des mois plus tard.
+model CompetencyReport {
+  id          String @id @default(uuid()) @db.Uuid
+  tenantId    String @map("tenant_id") @db.Uuid
+  studentId   String @map("student_id") @db.Uuid
+  periodId    String @map("period_id") @db.Uuid
+  frameworkId String @map("framework_id") @db.Uuid
+  /// Synthèse figée : domaines → compétences → taux, couverture, items.
+  data        Json
+  /// Taux globaux au moment du gel (0–100), null si aucune évaluation.
+  disciplinaryRate  Float? @map("disciplinary_rate")
+  transversalRate   Float? @map("transversal_rate")
+  generatedByUserId String? @map("generated_by_user_id") @db.Uuid
+  generatedAt       DateTime @default(now()) @map("generated_at")
+
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  student   Person              @relation("StudentCompetencyReports", fields: [studentId], references: [id], onDelete: Cascade)
+  period    Period              @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  framework CompetencyFramework @relation(fields: [frameworkId], references: [id], onDelete: Cascade)
+
+  @@unique([studentId, periodId])
+  @@index([tenantId, periodId])
+  @@map("competency_reports")
+}
+
+/// Compétences ciblées par une séance de soutien.
+/// Permet de mesurer l'impact des séances sur les acquis, et — via la
+/// remédiation ciblée — de constituer un groupe à partir d'une compétence.
+model SupportSessionSkill {
+  id               String @id @default(uuid()) @db.Uuid
+  tenantId         String @map("tenant_id") @db.Uuid
+  supportSessionId String @map("support_session_id") @db.Uuid
+  nodeId           String @map("node_id") @db.Uuid
+
+  tenant  Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  session SupportSession @relation(fields: [supportSessionId], references: [id], onDelete: Cascade)
+  node    CompetencyNode @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+
+  @@unique([supportSessionId, nodeId])
+  @@index([tenantId, nodeId])
+  @@map("support_session_skills")
 }

@@ -51,7 +51,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       <div class="row"><span class="lbl">Mode de paiement</span><span>${sale ? METHOD_FR[sale.method ?? ''] ?? sale.method : '—'}</span></div>
     </div>
     <div class="total"><span class="l">Montant payé</span><span class="v">${(copy.salePrice ?? copy.askPrice).toFixed(2)} ${cur}</span></div>
-    <div class="foot">${esc(tenant?.name ?? 'Jawal')} — Reçu généré le ${date}</div>
+    <div class="foot">${esc(tenant?.name ?? 'LeadSchool')} — Reçu généré le ${date}</div>
   </body></html>`;
 
   const pdf = await htmlToPdf(html);

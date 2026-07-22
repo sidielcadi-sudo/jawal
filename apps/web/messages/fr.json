@@ -1,10 +1,10 @@
 {
   "app": {
-    "name": "Jawal",
+    "name": "LeadSchool",
     "tagline": "Plateforme intégrée de gestion scolaire"
   },
   "home": {
-    "title": "Bienvenue sur Jawal",
+    "title": "Bienvenue sur LeadSchool",
     "subtitle": "Gestion intégrée pour établissements primaires, secondaires et supérieurs.",
     "cta": {
       "login": "Se connecter",
@@ -33,7 +33,7 @@
   },
   "login": {
     "title": "Connexion",
-    "subtitle": "Accédez à votre espace Jawal",
+    "subtitle": "Accédez à votre espace LeadSchool",
     "demoHint": "Démo : admin@demo.jawal.ma / demo1234 (slug : demo)",
     "fields": {
       "tenantSlug": "Identifiant de l'établissement",
@@ -92,6 +92,7 @@
   "admin": {
     "dashboard": {
       "title": "Pilotage",
+      "bandTitle": "Pilotage de l'activité",
       "welcome": "Bienvenue, {name}",
       "period": "Période",
       "kpi": {
@@ -217,7 +218,9 @@
       "overtime": "Heures supplémentaires",
       "payroll": "Paie",
       "bourse": "Bourse aux livres",
-      "comptabilite": "Comptabilité"
+      "comptabilite": "Comptabilité",
+      "soutien": "Soutien scolaire",
+      "competences": "Compétences et aptitudes"
     },
     "surveys": {
       "title": "Enquêtes de satisfaction",
@@ -1396,7 +1399,9 @@
         "FRI": "Vendredi",
         "SAT": "Samedi",
         "SUN": "Dimanche"
-      }
+      },
+      "overrideSubTag": "Remplacement",
+      "overrideCancelledTag": "Annulé"
     },
     "classConstraints": {
       "title": "Contraintes EDT",
@@ -1728,7 +1733,7 @@
       "year": "Année",
       "apply": "Appliquer",
       "histo": {
-        "sectionTitle": "Répartition cadence",
+        "sectionTitle": "Evolution et répartition",
         "tabGlobal": "Vue globale",
         "tabMonthly": "Mensuelle",
         "tabQuarterly": "Trimestrielle",
@@ -1741,7 +1746,8 @@
         "cumul": "Cumul",
         "total": "Total",
         "tabMethod": "Moyen de paiement",
-        "methodEmpty": "Aucun encaissement sur l'année."
+        "methodEmpty": "Aucun encaissement sur l'année.",
+        "tabActivity": "Activité"
       },
       "methods": {
         "CASH": "Espèces",
@@ -1884,6 +1890,122 @@
         "title": "Activité récente",
         "last30days": "Encaissé sur 30 jours",
         "paymentCount": "{count, plural, =0 {Aucun paiement} one {# paiement} other {# paiements}}"
+      },
+      "activity": {
+        "tuition": "Scolarité",
+        "canteen": "Cantine",
+        "transport": "Transport",
+        "other": "Frais exceptionnels",
+        "support": "Soutien"
+      },
+      "sections": {
+        "revenus": "Revenus & encaissements",
+        "impayes": "Impayés & recouvrement",
+        "depenses": "Dépenses & charges",
+        "tresorerie": "Trésorerie",
+        "rentabilite": "Rentabilité",
+        "suivi": "Suivi administratif"
+      },
+      "sectionHint": {
+        "depenses": "Achats, charges et dépenses de l'établissement."
+      },
+      "comingSoon": "À venir",
+      "rentabilite": {
+        "title": "Rentabilité par activité",
+        "activity": "Activité",
+        "hint": "Revenus (dû / encaissé / impayé) par activité sur l'année sélectionnée."
+      },
+      "treso": {
+        "balance": "Solde de trésorerie",
+        "autonomyDays": "{days} jours d'autonomie",
+        "noExpense": "Aucune dépense enregistrée",
+        "cashIn": "Cash In ce mois",
+        "cashOut": "Cash Out ce mois",
+        "vsPrevMonth": "vs mois précédent",
+        "projection3": "Projection 3 mois",
+        "flow": "Flux de trésorerie",
+        "flowIn": "Encaissements",
+        "flowOut": "Dépenses",
+        "coverage": "Ratio de couverture",
+        "months": "mois",
+        "covCritical": "< 2 critique",
+        "covMedium": "2–4 moyen",
+        "covComfort": "> 4 confort",
+        "hint": "Solde = encaissements cumulés − dépenses cumulées. Autonomie et couverture calculées sur la charge mensuelle moyenne des 6 derniers mois."
+      },
+      "recouv": {
+        "totalUnpaid": "Total des impayés",
+        "rateLabel": "Taux d'impayés",
+        "collectionRate": "Taux de recouvrement",
+        "collectedOf": "{paid} encaissés sur {due}",
+        "inDunning": "En cours de relance",
+        "families": "{count} familles",
+        "remindersSent": "{count} relances envoyées",
+        "recovered": "Montant récupéré",
+        "recoveredHint": "Encaissé ce mois après échéance",
+        "beforeDunning": "Avant relance",
+        "afterDunning": "Après relance",
+        "noDunning": "Aucune relance enregistrée",
+        "dunningHint": "Sur les élèves relancés : part encaissée avant la 1re relance, et part du reliquat récupérée après.",
+        "agingTitle": "Ancienneté des impayés",
+        "aging": {
+          "d0_30": "0–30 j",
+          "d31_60": "31–60 j",
+          "d61_90": "61–90 j",
+          "d90p": "+ 90 j"
+        }
+      },
+      "dep": {
+        "monthTotal": "Dépenses du mois",
+        "yearTotal": "Total annuel dépensé",
+        "yearHint": "Sur l'année scolaire sélectionnée",
+        "costPerStudent": "Coût moyen par élève",
+        "netResult": "Résultat net",
+        "breakdown": "Répartition des dépenses",
+        "trend": "Évolution des dépenses",
+        "cat": {
+          "SALARY": "Salaires",
+          "RENT": "Loyer",
+          "UTILITIES": "Énergie & fluides",
+          "SUPPLIES": "Fournitures scolaires",
+          "MAINTENANCE": "Entretien & réparations",
+          "TRANSPORT": "Transport",
+          "TAXES": "Impôts & taxes",
+          "OTHER": "Dépenses diverses"
+        }
+      },
+      "suivi": {
+        "digital": "Paiements digitalisés",
+        "digitalHint": "Virement, CMI et carte",
+        "avgDelay": "Délai moyen de relance",
+        "avgDelayHint": "Entre 1re échéance impayée et 1re relance",
+        "days": "{count} jours",
+        "overpaid": "Surpaiements reçus",
+        "overpaidHint": "Montants encaissés au-delà du dû",
+        "upcoming": "Échéances à venir",
+        "invoices": "{count} échéances",
+        "upcomingHint": "Dues dans les 30 prochains jours",
+        "delayTitle": "Délais de relance",
+        "delayHint": "Répartition des familles relancées par délai d'intervention.",
+        "delay": {
+          "d0_15": "0–15 j",
+          "d16_30": "16–30 j",
+          "d31_60": "31–60 j",
+          "d60p": "+ 60 j"
+        },
+        "enrolled": "Élèves inscrits",
+        "students": "{count} élèves",
+        "transfers": "Transferts d'élèves",
+        "transferCount": "{count} demandes",
+        "reminders": "Relances envoyées"
+      },
+      "renta": {
+        "netResult": "Résultat net",
+        "netMargin": "Marge nette",
+        "revenuePerStudent": "Revenu moyen par élève",
+        "students": "{count} élèves actifs",
+        "topActivities": "Activités les plus rentables",
+        "noActivity": "Aucun encaissement sur l'année."
       }
     },
     "studentFinance": {
@@ -2755,7 +2877,14 @@
         "head": "Chef d'établissement",
         "parent": "Responsable légal"
       },
-      "footer": "Bulletin généré par Jawal · Réf : {id}"
+      "footer": "Bulletin généré par LeadSchool · Réf : {id}",
+      "competences": {
+        "title": "Compétences & aptitudes",
+        "disciplinary": "Compétences",
+        "transversal": "Aptitudes",
+        "provisional": "Provisoire",
+        "legend": "Taux d’acquisition par domaine et par compétence. Les items non évalués sont exclus du calcul ; le second nombre indique la couverture."
+      }
     },
     "grades": {
       "classes": "Classes",
@@ -2888,7 +3017,8 @@
         "roles": "Rôles",
         "users": "Utilisateurs",
         "audit": "Journal d'audit",
-        "timetable": "Emploi du temps"
+        "timetable": "Emploi du temps",
+        "competences": "Compétences"
       },
       "appearance": {
         "title": "Couleur du thème",
@@ -3721,11 +3851,7 @@
         "substituteTbd": "À affecter",
         "empty": "Aucun remplacement sur la période."
       },
-      "rollup": {
-        "PENDING": "En attente",
-        "PARTIAL": "Partiellement approuvé",
-        "APPROVED": "Approuvé"
-      }
+      "choose": "Choisir"
     },
     "overtime": {
       "title": "Heures supplémentaires",
@@ -4138,6 +4264,197 @@
       },
       "reverse": "Contre-passer",
       "reverseConfirm": "Créer l’écriture inverse (contre-passation) ?"
+    },
+    "soutien": {
+      "title": "Soutien scolaire",
+      "subtitle": "Cours de soutien et activités (payants ou gratuits).",
+      "tabs": {
+        "manage": "Soutien",
+        "report": "Rapport soutien"
+      },
+      "newCourse": "Nouveau cours de soutien",
+      "archived": "archivé",
+      "perMonth": "/mois",
+      "free": "Gratuit",
+      "empty": "Aucun cours de soutien.",
+      "studentsTitle": "Élèves affectés ({count})",
+      "noStudents": "Aucun élève affecté.",
+      "editTitle": "Cadre du cours",
+      "col": {
+        "course": "Cours",
+        "subject": "Matière",
+        "teacher": "Professeur",
+        "slot": "Créneau",
+        "students": "Élèves",
+        "price": "Tarif",
+        "student": "Élève",
+        "class": "Classe",
+        "mode": "Mode",
+        "sessions": "Séances"
+      },
+      "days": {
+        "MON": "Lundi",
+        "TUE": "Mardi",
+        "WED": "Mercredi",
+        "THU": "Jeudi",
+        "FRI": "Vendredi",
+        "SAT": "Samedi"
+      },
+      "form": {
+        "title": "Intitulé",
+        "titlePlaceholder": "Ex. Soutien Maths 3e",
+        "subject": "Matière",
+        "choose": "— Choisir —",
+        "teacher": "Professeur responsable",
+        "none": "—",
+        "level": "Niveau concerné",
+        "allLevels": "Tous niveaux",
+        "frequency": "Fréquence",
+        "day": "Jour",
+        "start": "Début",
+        "end": "Fin",
+        "room": "Salle",
+        "paid": "Cours payant",
+        "monthlyPrice": "Tarif mensuel",
+        "description": "Description",
+        "save": "Enregistrer",
+        "create": "Créer le cours",
+        "slotsTitle": "Créneaux des séances",
+        "sessionsPerWeek": "{count} séance(s)/semaine",
+        "addSlot": "Ajouter séance",
+        "removeSlot": "Retirer",
+        "pricingMode": "Mode de tarification"
+      },
+      "enroll": {
+        "student": "Élève",
+        "recommended": "Recommandé",
+        "volunteer": "Volontaire",
+        "add": "Affecter",
+        "remove": "Retirer",
+        "removeConfirm": "Retirer cet élève du cours ?",
+        "hint": "Les parents sont notifiés (message + e-mail) à l'affectation."
+      },
+      "pricing": {
+        "FREE": "Gratuit",
+        "PER_SESSION": "Prix par séance",
+        "MONTHLY": "Forfait mensuel",
+        "TERM": "Forfait trimestriel",
+        "ANNUAL": "Forfait annuel"
+      },
+      "priceLabel": {
+        "PER_SESSION": "Prix par séance",
+        "MONTHLY": "Forfait mensuel",
+        "TERM": "Forfait trimestriel",
+        "ANNUAL": "Forfait annuel"
+      },
+      "pricingSuffix": {
+        "PER_SESSION": "/séance",
+        "MONTHLY": "/mois",
+        "TERM": "/trimestre",
+        "ANNUAL": "/an"
+      },
+      "session": {
+        "title": "Séances",
+        "date": "Date",
+        "topic": "Thème / contenu",
+        "topicPlaceholder": "Ex. Équations du 2nd degré",
+        "add": "Ajouter la séance",
+        "empty": "Aucune séance.",
+        "presentCount": "Présents",
+        "present": "Présent",
+        "appreciation": "Appréciation",
+        "appreciationPlaceholder": "Progrès, comportement…",
+        "attendanceTitle": "Appel & appréciations",
+        "save": "Enregistrer",
+        "saved": "Enregistré.",
+        "absentCount": "Absents",
+        "noTopic": "thème à saisir",
+        "saveTopic": "Enregistrer le thème"
+      },
+      "resource": {
+        "title": "Ressources pédagogiques",
+        "short": "Ress.",
+        "sessionHint": "Documents et liens partagés pour cette séance.",
+        "empty": "Aucune ressource.",
+        "add": "Ajouter"
+      },
+      "billing": {
+        "title": "Facturation",
+        "hint": "{count} échéance(s) déjà générée(s). Régénérer ré-applique le tarif courant aux échéances non réglées (les échéances déjà encaissées sont conservées).",
+        "generate": "Générer / mettre à jour la facturation",
+        "done": "{count} échéance(s) générée(s)."
+      },
+      "report": {
+        "title": "Rapport soutien",
+        "subtitle": "Inscrits, présence et revenus par cours et par matière.",
+        "back": "Retour aux cours",
+        "kpiCourses": "Cours actifs",
+        "kpiStudents": "Élèves inscrits",
+        "kpiSessions": "Séances tenues",
+        "kpiPresence": "Présence moyenne",
+        "byCourse": "Par cours",
+        "bySubject": "Par matière",
+        "presence": "Présence",
+        "revenue": "Encaissé / Dû",
+        "coursesShort": "Cours",
+        "rentabiliteHint": "Rentabilité détaillée dans Finances › Rentabilité."
+      },
+      "skills": {
+        "title": "Compétences travaillées",
+        "hint": "Reliez la séance aux compétences visées : les évaluations saisies ici sont tracées comme issues du soutien.",
+        "choose": "Choisir les compétences",
+        "close": "Fermer",
+        "count": "{count} sélectionnées",
+        "save": "Enregistrer",
+        "saved": "{count} évaluations enregistrées.",
+        "noStudent": "Aucun élève inscrit.",
+        "noPeriod": "Aucune période scolaire ne couvre la date de cette séance : impossible d’enregistrer des évaluations."
+      }
+    },
+    "competences": {
+      "title": "Compétences & aptitudes",
+      "noFramework": "Aucun référentiel actif pour l’année en cours.",
+      "itemCount": "{count} items évaluables",
+      "scale": "Échelle",
+      "tabDisciplinary": "Compétences",
+      "tabTransversal": "Aptitudes",
+      "allTeachers": "Tous les enseignants",
+      "allLevels": "Tous les niveaux",
+      "nLevels": "{count} niveaux",
+      "levelsHint": "Aucun niveau coché = évaluable à tous les niveaux.",
+      "resetLevels": "Tous les niveaux",
+      "save": "Enregistrer",
+      "hint": "La matière rattachée détermine quel enseignant peut évaluer l’item. Sans matière, l’item est ouvert à tous les enseignants.",
+      "tabReferentiel": "Référentiel",
+      "tabBilan": "Bilan",
+      "bilanTitle": "Bilan de compétences",
+      "bilanSubtitle": "Taux d’acquisition par domaine, par élève et par classe.",
+      "bilanHint": "Taux = moyenne des paliers rapportée au maximum de l’échelle. Les items non évalués sont exclus du calcul ; la couverture indique le nombre d’items renseignés. Consolidation multi-enseignants par moyenne arrondie.",
+      "class": "Classe",
+      "period": "Période",
+      "student": "Élève",
+      "disciplinaryShort": "Compétences",
+      "transversalShort": "Aptitudes",
+      "coverageShort": "Couverture",
+      "noStudent": "Aucun élève dans cette classe.",
+      "freeze": "Figer le bilan",
+      "refreeze": "Re-figer",
+      "frozenAt": "Figé le {date}",
+      "frozenDone": "Bilan figé pour {count} élèves.",
+      "tabRemediation": "Remédiation",
+      "remediationTitle": "Remédiation ciblée",
+      "remediationSubtitle": "Partir d’une compétence pour identifier les élèves à accompagner.",
+      "competencyToRemediate": "Compétence",
+      "levelFilter": "Niveau",
+      "threshold": "Seuil",
+      "currentLevel": "Niveau actuel",
+      "remediationCount": "{count} élèves à accompagner",
+      "remediationEmpty": "Aucun élève sous le seuil pour cette compétence.",
+      "remediationHint": "Seuls les élèves déjà évalués apparaissent. Le niveau retenu est la moyenne arrondie des évaluations de tous les enseignants.",
+      "enrollGroup": "Inscrire les {count} élèves",
+      "enrolling": "Inscription…",
+      "enrolled": "{count} inscrits, {failed} ignorés (déjà inscrits).",
+      "noCourse": "Aucun cours de soutien actif."
     }
   },
   "superAdmin": {
@@ -4418,7 +4735,7 @@
       },
       "vieScolaire": {
         "tabEdt": "Emploi du temps",
-        "tabCarnet": "Carnet",
+        "tabCarnet": "Carnet de correspondance",
         "tabTeam": "Équipe pédagogique",
         "tabDay": "Aujourd'hui",
         "prevDay": "Jour précédent",
@@ -4427,7 +4744,9 @@
         "dayEmpty": "Aucun cours ce jour.",
         "cancelled": "Annulé",
         "substitute": "Remplacé par",
-        "break": "Pause déjeuner"
+        "break": "Pause déjeuner",
+        "tabSupport": "Soutien",
+        "tabCompetences": "Compétences"
       },
       "edt": {
         "hour": "Heure",
@@ -4595,6 +4914,22 @@
         "myPurchases": "Achats",
         "noDeposit": "Aucun dépôt.",
         "noPurchase": "Aucun achat."
+      },
+      "support": {
+        "empty": "Aucun cours de soutien.",
+        "noSession": "Aucune séance pour le moment.",
+        "notMarked": "Non pointé",
+        "present": "Présent",
+        "absent": "Absent",
+        "appreciation": "Appréciation"
+      },
+      "competences": {
+        "empty": "Aucune évaluation de compétences pour le moment.",
+        "provisional": "Provisoire",
+        "coverage": "{covered}/{total} items évalués",
+        "disciplinary": "Compétences",
+        "transversal": "Aptitudes",
+        "vsPrevious": "Évolution par rapport à la période précédente"
       }
     },
     "announcements": {
@@ -4622,7 +4957,8 @@
       "classes": "Mes classes",
       "leave": "Congés & absences",
       "messages": "Messages",
-      "account": "Mon compte"
+      "account": "Mon compte",
+      "competences": "Compétences"
     },
     "notes": {
       "tabs": {
@@ -4906,6 +5242,48 @@
         "REJECTED": "Refusé",
         "CANCELLED": "Annulé"
       }
+    },
+    "competences": {
+      "title": "Compétences & aptitudes",
+      "subtitle": "Évaluer une compétence pour toute la classe.",
+      "noAccess": "Aucune classe ne vous est affectée.",
+      "noFramework": "Aucun référentiel actif pour l’année en cours.",
+      "noClass": "Aucune classe ne vous est affectée.",
+      "noItem": "Aucune compétence évaluable pour cette classe.",
+      "class": "Classe",
+      "period": "Période",
+      "competency": "Compétence",
+      "transversal": "Aptitudes",
+      "itemsAvailable": "{count} items évaluables",
+      "quickFill": "Saisie rapide",
+      "coverage": "{filled}/{total} évalués",
+      "othersEvaluated": "évalué par {count} autre(s) enseignant(s)",
+      "noStudent": "Aucun élève dans cette classe.",
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "saved": "{count} évaluations enregistrées.",
+      "tabSaisie": "Saisie",
+      "tabBilan": "Bilan",
+      "bilanTitle": "Bilan de compétences",
+      "bilanSubtitle": "Progression de la classe par domaine.",
+      "grid": {
+        "title": "Grille de saisie de classe",
+        "classLabel": "{subject} — {class}",
+        "general": "Compétences générales",
+        "subject": "Matière",
+        "students": "Élèves",
+        "academic": "Compétences académiques",
+        "aptitudes": "Aptitudes transversales",
+        "search": "Rechercher un élève…",
+        "prefill": "Pré-remplir :",
+        "apply": "Appliquer",
+        "hideAptitudes": "Masquer les aptitudes",
+        "save": "Enregistrer",
+        "saving": "Enregistrement…",
+        "saved": "{count} saisie(s) enregistrée(s).",
+        "nothingToSave": "Aucune modification.",
+        "noStudent": "Aucun élève."
+      }
     }
   },
   "carnet": {
@@ -4926,13 +5304,17 @@
       "OBSERVATION": "Observations",
       "ENCOURAGEMENT": "Encouragements",
       "DEFAUT_CARNET": "Défauts de carnet",
-      "REMARQUE_DISCIPLINAIRE": "Remarques disciplinaires"
+      "REMARQUE_DISCIPLINAIRE": "Remarques disciplinaires",
+      "AVERTISSEMENT": "Avertissements",
+      "EXCLUSION": "Exclusions"
     },
     "add": {
       "OBSERVATION": "Saisir une nouvelle observation",
       "ENCOURAGEMENT": "Saisir un nouvel encouragement",
       "DEFAUT_CARNET": "Saisir un nouveau défaut de carnet",
-      "REMARQUE_DISCIPLINAIRE": "Saisir une nouvelle remarque"
+      "REMARQUE_DISCIPLINAIRE": "Saisir une nouvelle remarque",
+      "AVERTISSEMENT": "Saisir un nouvel avertissement",
+      "EXCLUSION": "Saisir une nouvelle exclusion"
     },
     "col": {
       "date": "Date",

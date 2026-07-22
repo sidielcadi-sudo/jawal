@@ -46,9 +46,9 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </Link>
         </div>
 
-        {/* Logo Jawal à l'intérieur de la carte, agrandi */}
+        {/* Logo LeadSchool à l'intérieur de la carte, agrandi */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/jawal-logo.png" alt="Jawal" className="mx-auto mt-8 h-24 w-auto object-contain" />
+        <img src="/jawal-logo.png" alt="LeadSchool" className="mx-auto mt-8 h-24 w-auto object-contain" />
       </div>
     </main>
   );

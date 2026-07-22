@@ -52,7 +52,7 @@ export function CreateRequestForm({ staff, types }: { staff: Opt[]; types: Opt[]
       className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-5"
     >
       <select name="personId" required defaultValue="" className={input}>
-        <option value="" disabled>{t('employee')}</option>
+        <option value="" disabled>{t('choose')}</option>
         {staff.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
       </select>
       <select name="leaveTypeId" required defaultValue="" className={input}>

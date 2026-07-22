@@ -5,15 +5,17 @@ import { useTranslations, useLocale } from 'next-intl';
 
 type Bucket = { label: string; due: number; collected: number };
 type Data = { global: Bucket[]; monthly: Bucket[]; quarterly: Bucket[]; semestrial: Bucket[]; annual: Bucket[] };
-type TabKey = 'global' | 'monthly' | 'quarterly' | 'semestrial' | 'annual' | 'method';
+type TabKey = 'global' | 'monthly' | 'quarterly' | 'semestrial' | 'annual' | 'activity' | 'method';
 type MethodSlice = { method: string; amount: number };
 
 export function DistributionTabs({
   data,
+  byActivity,
   byMethod,
   currency,
 }: {
   data: Data;
+  byActivity: Bucket[];
   byMethod: MethodSlice[];
   currency: string;
 }) {
@@ -25,6 +27,7 @@ export function DistributionTabs({
     { key: 'quarterly', label: t('tabQuarterly') },
     { key: 'semestrial', label: t('tabSemestrial') },
     { key: 'annual', label: t('tabAnnual') },
+    { key: 'activity', label: t('tabActivity') },
     { key: 'method', label: t('tabMethod') },
   ];
 
@@ -58,8 +61,8 @@ export function DistributionTabs({
             <Legend className="bg-gray-400" label={t('collected')} />
             <Legend className="bg-orange-500" label={t('unpaid')} />
           </div>
-          <Histogram data={data[tab]} currency={currency} />
-          <DistTable data={data[tab]} currency={currency} />
+          <Histogram data={tab === 'activity' ? byActivity : data[tab]} currency={currency} />
+          <DistTable data={tab === 'activity' ? byActivity : data[tab]} currency={currency} />
         </>
       )}
     </section>

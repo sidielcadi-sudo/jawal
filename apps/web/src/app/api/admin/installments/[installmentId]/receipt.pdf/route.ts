@@ -130,7 +130,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ installmentId:
     .foot { margin-top:40px; color:#94a3b8; font-size:11px; text-align:center; }
   </style></head><body>
     <div class="head">
-      <div class="brand">${logoDataUri ? `<img src="${logoDataUri}" alt="" />` : ''}${esc(tenant?.name ?? 'Jawal')}</div>
+      <div class="brand">${logoDataUri ? `<img src="${logoDataUri}" alt="" />` : ''}${esc(tenant?.name ?? 'LeadSchool')}</div>
       <div class="meta">Reçu N° ${receiptNo}<br>${todayStr}</div>
     </div>
     <h1>Reçu de paiement</h1>
@@ -157,7 +157,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ installmentId:
       <div class="row"><span class="lbl">Total réglé</span><span class="num">${fmt(schedPaid)}</span></div>
       <div class="row grand"><span>Reste global</span><span class="num">${fmt(schedRemaining)}</span></div>
     </div>
-    <div class="foot">${esc(tenant?.name ?? 'Jawal')} — Document généré le ${todayStr}</div>
+    <div class="foot">${esc(tenant?.name ?? 'LeadSchool')} — Document généré le ${todayStr}</div>
   </body></html>`;
 
   const pdf = await htmlToPdf(html);

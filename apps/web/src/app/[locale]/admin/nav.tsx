@@ -41,6 +41,8 @@ type IntlMessages = {
       surveys: string;
       messages: string;
       finance: string;
+      soutien: string;
+      competences: string;
       comptabilite: string;
       import: string;
       settings: string;
@@ -115,12 +117,24 @@ function buildItems(locale: string, roleCodes: string[]): NavItem[] {
       roles: ['cpe', 'tenant_admin', 'direction', 'scolarite'],
     },
     // « Justifications » = ancienne « Gestion des absences » (attendance/management),
-    // renommée. L'ancien lien attendance/justifications est masqué.
+    // renommée. Placée juste après le carnet de correspondance.
     {
       href: `${prefix}/attendance/management`,
       labelKey: 'justifications',
       match: (p, _s) => p.startsWith(`${prefix}/attendance/management`),
       roles: ['cpe', 'tenant_admin', 'direction'],
+    },
+    {
+      href: `${prefix}/competences/bilan`,
+      labelKey: 'competences',
+      match: (p, _s) => p.startsWith(`${prefix}/competences`),
+      roles: ['cpe', 'tenant_admin', 'direction', 'scolarite'],
+    },
+    {
+      href: `${prefix}/soutien`,
+      labelKey: 'soutien',
+      match: (p, _s) => p.startsWith(`${prefix}/soutien`),
+      roles: ['cpe', 'tenant_admin', 'direction', 'scolarite'],
     },
     {
       href: `${prefix}/leave`,
@@ -129,12 +143,6 @@ function buildItems(locale: string, roleCodes: string[]): NavItem[] {
       // Vie scolaire incluse : elle enregistre les absences et organise les
       // remplacements (l'approbation reste réservée à l'admin/direction).
       roles: ['tenant_admin', 'direction', 'cpe', 'scolarite'],
-    },
-    {
-      href: `${prefix}/transport`,
-      labelKey: 'transport',
-      match: (p, _s) => p.startsWith(`${prefix}/transport`),
-      roles: ['tenant_admin', 'direction', 'cpe'],
     },
     {
       href: `${prefix}/staff-attendance`,
@@ -147,6 +155,12 @@ function buildItems(locale: string, roleCodes: string[]): NavItem[] {
       labelKey: 'overtime',
       match: (p, _s) => p.startsWith(`${prefix}/overtime`),
       roles: ['tenant_admin', 'direction', 'comptable'],
+    },
+    {
+      href: `${prefix}/transport`,
+      labelKey: 'transport',
+      match: (p, _s) => p.startsWith(`${prefix}/transport`),
+      roles: ['tenant_admin', 'direction', 'cpe'],
     },
     {
       href: `${prefix}/payroll`,
@@ -201,6 +215,7 @@ const EMOJI: Record<string, string> = {
   parents: '👪',
   classes: '🏫',
   finance: '💰',
+  soutien: '📚',
   carnet: '📒',
   justifications: '✅',
   transport: '🚍',

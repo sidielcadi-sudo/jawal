@@ -176,22 +176,18 @@ export default async function AbsenceManagementPage({
         <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>
       </header>
 
-      {/* Onglets statut */}
-      <div className="mt-4 flex flex-wrap gap-1 border-b border-slate-200">
+      {/* Onglets statut (style « onglets dossier » du tableau de bord Admin) */}
+      <nav className="mt-4 folder-tabs">
         {STATUSES.map((s) => (
           <a
             key={s}
             href={`${base}?status=${s}${sp.class ? `&class=${sp.class}` : ''}`}
-            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
-              status === s
-                ? 'border-brand-600 text-brand-700'
-                : 'border-transparent text-slate-500 hover:text-slate-700'
-            }`}
+            className={`folder-tab ${status === s ? 'is-active' : ''}`}
           >
             {t(`status.${s}`)} <span className="text-xs text-slate-400">({data.counts[s] ?? 0})</span>
           </a>
         ))}
-      </div>
+      </nav>
 
       {/* Filtre classe */}
       <form method="get" className="mt-3 flex items-center gap-2">

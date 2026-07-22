@@ -36,9 +36,9 @@ export default async function LoginPage({
             <LoginForm error={sp.error} callbackUrl={sp.callbackUrl} locale={locale} />
           </div>
 
-          {/* Logo Jawal en bas, centré */}
+          {/* Logo LeadSchool en bas, centré */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/jawal-logo.png" alt="Jawal" className="mx-auto mt-4 h-9 w-auto object-contain" />
+          <img src="/jawal-logo.png" alt="LeadSchool" className="mx-auto mt-4 h-9 w-auto object-contain" />
         </div>
       </div>
     </main>

@@ -11,7 +11,7 @@ export function generateStaticParams() {
 }
 
 export const metadata = {
-  title: "Jawal — Gestion intégrée d'établissement scolaire",
+  title: "LeadSchool — Gestion intégrée d'établissement scolaire",
   description: 'Plateforme SaaS multi-tenant pour le primaire, le secondaire et le supérieur.',
 };
 

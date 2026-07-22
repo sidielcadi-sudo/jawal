@@ -1,6 +1,8 @@
 import 'server-only';
 import type { Prisma } from '@/lib/db';
 import { computeClassBook, type SubjectMeta } from '@/lib/grades';
+import { loadActiveFramework } from '@/lib/competences';
+import { computeReports, type StudentReport } from '@/lib/competency-report';
 
 type Tx = Prisma.TransactionClient;
 
@@ -13,6 +15,12 @@ export type BulletinStudent = {
   /** subjectId → texte d'appréciation pour la période. */
   apprec: Map<string, string>;
   council: { generalAppreciation: string | null; decision: string | null; heldAt: Date | null } | null;
+  /**
+   * Volet compétences (APC). Issu du bilan **figé** si la direction l'a gelé
+   * pour la période ; sinon calculé à la volée et marqué `provisional`.
+   * Null si aucun référentiel actif.
+   */
+  competences: (StudentReport & { provisional: boolean }) | null;
 };
 
 export type BulletinData = {
@@ -112,6 +120,33 @@ export async function loadBulletinData(
   }
   const councilByStudent = new Map(councils.map((c) => [c.studentId, c]));
 
+  // Volet compétences : bilan figé prioritaire, sinon calcul à la volée.
+  const compIds = enrolled.filter((s) => targetSet.has(s.id)).map((s) => s.id);
+  const competencesByStudent = new Map<string, StudentReport & { provisional: boolean }>();
+  const framework = await loadActiveFramework(tx);
+  if (framework && compIds.length > 0) {
+    const frozen = await tx.competencyReport.findMany({
+      where: { periodId: opts.periodId, studentId: { in: compIds } },
+      select: { studentId: true, data: true },
+    });
+    for (const f of frozen) {
+      competencesByStudent.set(f.studentId, {
+        ...(f.data as unknown as StudentReport),
+        provisional: false,
+      });
+    }
+    const missing = compIds.filter((id) => !competencesByStudent.has(id));
+    if (missing.length > 0) {
+      const live = await computeReports(tx, {
+        frameworkId: framework.id,
+        periodId: opts.periodId,
+        studentIds: missing,
+        levelId: cls.levelId,
+      });
+      for (const [id, r] of live) competencesByStudent.set(id, { ...r, provisional: true });
+    }
+  }
+
   const students: BulletinStudent[] = enrolled
     .filter((s) => targetSet.has(s.id))
     .map((s) => ({
@@ -119,6 +154,7 @@ export async function loadBulletinData(
       row: classBook.rows.find((r) => r.studentId === s.id)!,
       apprec: apprecByStudent.get(s.id) ?? new Map<string, string>(),
       council: councilByStudent.get(s.id) ?? null,
+      competences: competencesByStudent.get(s.id) ?? null,
     }));
 
   return {

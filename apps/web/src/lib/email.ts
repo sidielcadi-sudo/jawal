@@ -22,7 +22,7 @@ function getTransporter() {
   return transporter;
 }
 
-const FROM = process.env.SMTP_FROM ?? 'Jawal <no-reply@jawal.local>';
+const FROM = process.env.SMTP_FROM ?? 'LeadSchool <no-reply@jawal.local>';
 
 export type EmailOptions = {
   to: string;

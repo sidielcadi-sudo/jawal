@@ -54,6 +54,6 @@ export function renderRadiationCertificate(input: RadiationCertificateInput): st
       <p>Le présent certificat est délivré pour servir et valoir ce que de droit.</p>
     </div>
     <div class="sign"><span>Fait le ${esc(today)}</span><span>Signature et cachet</span></div>
-    <div class="foot">${esc(input.tenantName || 'Jawal')} — Document généré le ${esc(today)}</div>
+    <div class="foot">${esc(input.tenantName || 'LeadSchool')} — Document généré le ${esc(today)}</div>
   </body></html>`;
 }

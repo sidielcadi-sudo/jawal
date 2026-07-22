@@ -1,10 +1,10 @@
 {
   "app": {
-    "name": "جوال",
+    "name": "LeadSchool",
     "tagline": "منصة متكاملة لإدارة المؤسسات التعليمية"
   },
   "home": {
-    "title": "مرحبًا بكم في جوال",
+    "title": "مرحبًا بكم في LeadSchool",
     "subtitle": "إدارة متكاملة للمؤسسات الابتدائية والثانوية والعليا.",
     "cta": {
       "login": "تسجيل الدخول",
@@ -33,7 +33,7 @@
   },
   "login": {
     "title": "تسجيل الدخول",
-    "subtitle": "ولوج إلى فضائكم على جوال",
+    "subtitle": "ولوج إلى فضائكم على LeadSchool",
     "demoHint": "تجربة: admin@demo.jawal.ma / demo1234 (المعرف: demo)",
     "fields": {
       "tenantSlug": "معرّف المؤسسة",
@@ -92,6 +92,7 @@
   "admin": {
     "dashboard": {
       "title": "القيادة",
+      "bandTitle": "قيادة النشاط",
       "welcome": "مرحبًا، {name}",
       "period": "الفترة",
       "kpi": {
@@ -217,7 +218,9 @@
       "overtime": "الساعات الإضافية",
       "payroll": "الأجور",
       "bourse": "سوق الكتب",
-      "comptabilite": "المحاسبة"
+      "comptabilite": "المحاسبة",
+      "soutien": "الدعم المدرسي",
+      "competences": "الكفايات والقدرات"
     },
     "surveys": {
       "title": "استبيانات الرضا",
@@ -1397,7 +1400,9 @@
         "FRI": "الجمعة",
         "SAT": "السبت",
         "SUN": "الأحد"
-      }
+      },
+      "overrideSubTag": "تعويض",
+      "overrideCancelledTag": "ملغى"
     },
     "classConstraints": {
       "title": "قيود الجدول",
@@ -1729,7 +1734,7 @@
       "year": "السنة",
       "apply": "تطبيق",
       "histo": {
-        "sectionTitle": "التوزيع حسب الوتيرة",
+        "sectionTitle": "التطور والتوزيع",
         "tabGlobal": "نظرة شاملة",
         "tabMonthly": "شهرية",
         "tabQuarterly": "فصلية",
@@ -1742,7 +1747,8 @@
         "cumul": "التراكمي",
         "total": "المجموع",
         "tabMethod": "وسيلة الأداء",
-        "methodEmpty": "لا مداخيل خلال السنة."
+        "methodEmpty": "لا مداخيل خلال السنة.",
+        "tabActivity": "النشاط"
       },
       "methods": {
         "CASH": "نقدًا",
@@ -1885,6 +1891,122 @@
         "title": "النشاط الأخير",
         "last30days": "محصل خلال 30 يوم",
         "paymentCount": "{count, plural, =0 {لا توجد مدفوعات} one {# دفعة} other {# مدفوعات}}"
+      },
+      "activity": {
+        "tuition": "الدراسة",
+        "canteen": "المطعم",
+        "transport": "النقل",
+        "other": "مصاريف استثنائية",
+        "support": "الدعم"
+      },
+      "sections": {
+        "revenus": "المداخيل والتحصيلات",
+        "impayes": "غير المؤداة والتحصيل",
+        "depenses": "النفقات والأعباء",
+        "tresorerie": "الخزينة",
+        "rentabilite": "المردودية",
+        "suivi": "المتابعة الإدارية"
+      },
+      "sectionHint": {
+        "depenses": "مشتريات وأعباء ونفقات المؤسسة."
+      },
+      "comingSoon": "قريبًا",
+      "rentabilite": {
+        "title": "المردودية حسب النشاط",
+        "activity": "النشاط",
+        "hint": "المداخيل (مستحق/محصّل/غير مؤدّى) حسب النشاط للسنة المختارة."
+      },
+      "treso": {
+        "balance": "رصيد الخزينة",
+        "autonomyDays": "{days} يوماً من الاستقلالية",
+        "noExpense": "لا مصاريف مسجّلة",
+        "cashIn": "المداخيل هذا الشهر",
+        "cashOut": "المصاريف هذا الشهر",
+        "vsPrevMonth": "مقارنة بالشهر السابق",
+        "projection3": "توقّع 3 أشهر",
+        "flow": "تدفّق الخزينة",
+        "flowIn": "المداخيل",
+        "flowOut": "المصاريف",
+        "coverage": "نسبة التغطية",
+        "months": "أشهر",
+        "covCritical": "أقل من 2 حرِج",
+        "covMedium": "2–4 متوسط",
+        "covComfort": "أكثر من 4 مريح",
+        "hint": "الرصيد = مجموع المداخيل ناقص مجموع المصاريف. تُحتسب الاستقلالية والتغطية على أساس متوسط المصاريف الشهرية لآخر 6 أشهر."
+      },
+      "recouv": {
+        "totalUnpaid": "مجموع غير المؤدّى",
+        "rateLabel": "نسبة غير المؤدّى",
+        "collectionRate": "نسبة التحصيل",
+        "collectedOf": "{paid} محصّلة من {due}",
+        "inDunning": "قيد التذكير",
+        "families": "{count} أسرة",
+        "remindersSent": "{count} تذكيراً مُرسلاً",
+        "recovered": "المبلغ المسترجع",
+        "recoveredHint": "محصّل هذا الشهر بعد تاريخ الاستحقاق",
+        "beforeDunning": "قبل التذكير",
+        "afterDunning": "بعد التذكير",
+        "noDunning": "لا تذكيرات مسجّلة",
+        "dunningHint": "بالنسبة للتلاميذ المُذكَّرين: النسبة المحصّلة قبل أول تذكير، ونسبة المتبقّي المسترجعة بعده.",
+        "agingTitle": "أقدمية غير المؤدّى",
+        "aging": {
+          "d0_30": "0–30 ي",
+          "d31_60": "31–60 ي",
+          "d61_90": "61–90 ي",
+          "d90p": "+ 90 ي"
+        }
+      },
+      "dep": {
+        "monthTotal": "مصاريف الشهر",
+        "yearTotal": "مجموع المصاريف السنوية",
+        "yearHint": "خلال السنة الدراسية المختارة",
+        "costPerStudent": "متوسط الكلفة لكل تلميذ",
+        "netResult": "النتيجة الصافية",
+        "breakdown": "توزيع المصاريف",
+        "trend": "تطوّر المصاريف",
+        "cat": {
+          "SALARY": "الأجور",
+          "RENT": "الكراء",
+          "UTILITIES": "الماء والكهرباء",
+          "SUPPLIES": "اللوازم المدرسية",
+          "MAINTENANCE": "الصيانة والإصلاح",
+          "TRANSPORT": "النقل",
+          "TAXES": "الضرائب والرسوم",
+          "OTHER": "مصاريف متنوعة"
+        }
+      },
+      "suivi": {
+        "digital": "الأداءات الرقمية",
+        "digitalHint": "تحويل بنكي، CMI وبطاقة",
+        "avgDelay": "متوسط أجل التذكير",
+        "avgDelayHint": "بين أول قسط غير مؤدّى وأول تذكير",
+        "days": "{count} يوماً",
+        "overpaid": "المبالغ الزائدة المقبوضة",
+        "overpaidHint": "مبالغ محصّلة تفوق المستحق",
+        "upcoming": "أقساط قادمة",
+        "invoices": "{count} قسطاً",
+        "upcomingHint": "مستحقة خلال 30 يوماً القادمة",
+        "delayTitle": "آجال التذكير",
+        "delayHint": "توزيع الأسر المُذكَّرة حسب أجل التدخّل.",
+        "delay": {
+          "d0_15": "0–15 ي",
+          "d16_30": "16–30 ي",
+          "d31_60": "31–60 ي",
+          "d60p": "+ 60 ي"
+        },
+        "enrolled": "التلاميذ المسجّلون",
+        "students": "{count} تلميذاً",
+        "transfers": "تحويلات التلاميذ",
+        "transferCount": "{count} طلباً",
+        "reminders": "التذكيرات المُرسلة"
+      },
+      "renta": {
+        "netResult": "النتيجة الصافية",
+        "netMargin": "الهامش الصافي",
+        "revenuePerStudent": "متوسط المداخيل لكل تلميذ",
+        "students": "{count} تلميذاً نشطاً",
+        "topActivities": "الأنشطة الأكثر مردودية",
+        "noActivity": "لا مداخيل خلال السنة."
       }
     },
     "studentFinance": {
@@ -2756,7 +2878,14 @@
         "head": "مدير المؤسسة",
         "parent": "ولي الأمر"
       },
-      "footer": "كشف صادر عن جوال · الرقم : {id}"
+      "footer": "كشف صادر عن LeadSchool · الرقم : {id}",
+      "competences": {
+        "title": "الكفايات والقدرات",
+        "disciplinary": "الكفايات",
+        "transversal": "القدرات",
+        "provisional": "مؤقّت",
+        "legend": "نسبة التملّك حسب المجال والكفاية. تُستثنى العناصر غير المقيَّمة من الحساب؛ ويشير الرقم الثاني إلى التغطية."
+      }
     },
     "grades": {
       "classes": "الأقسام",
@@ -2889,7 +3018,8 @@
         "roles": "الأدوار",
         "users": "المستخدمون",
         "audit": "سجل التدقيق",
-        "timetable": "استعمال الزمن"
+        "timetable": "استعمال الزمن",
+        "competences": "الكفايات"
       },
       "appearance": {
         "title": "لون النمط",
@@ -3722,11 +3852,7 @@
         "substituteTbd": "للتعيين",
         "empty": "لا تعويضات في هذه الفترة."
       },
-      "rollup": {
-        "PENDING": "قيد الانتظار",
-        "PARTIAL": "موافق عليه جزئيًا",
-        "APPROVED": "موافق عليه"
-      }
+      "choose": "اختر"
     },
     "overtime": {
       "title": "الساعات الإضافية",
@@ -4139,6 +4265,197 @@
       },
       "reverse": "قيد عكسي",
       "reverseConfirm": "إنشاء القيد العكسي؟"
+    },
+    "soutien": {
+      "title": "الدعم المدرسي",
+      "subtitle": "دروس الدعم والأنشطة (مؤدّى عنها أو مجانية).",
+      "tabs": {
+        "manage": "الدعم",
+        "report": "تقرير الدعم"
+      },
+      "newCourse": "درس دعم جديد",
+      "archived": "مؤرشف",
+      "perMonth": "/شهر",
+      "free": "مجاني",
+      "empty": "لا توجد دروس دعم.",
+      "studentsTitle": "التلاميذ المسجّلون ({count})",
+      "noStudents": "لا تلاميذ مسجّلون.",
+      "editTitle": "إطار الدرس",
+      "col": {
+        "course": "الدرس",
+        "subject": "المادة",
+        "teacher": "الأستاذ",
+        "slot": "الحصة",
+        "students": "التلاميذ",
+        "price": "الثمن",
+        "student": "التلميذ",
+        "class": "القسم",
+        "mode": "الوضع",
+        "sessions": "الحصص"
+      },
+      "days": {
+        "MON": "الإثنين",
+        "TUE": "الثلاثاء",
+        "WED": "الأربعاء",
+        "THU": "الخميس",
+        "FRI": "الجمعة",
+        "SAT": "السبت"
+      },
+      "form": {
+        "title": "العنوان",
+        "titlePlaceholder": "مثال: دعم الرياضيات",
+        "subject": "المادة",
+        "choose": "— اختر —",
+        "teacher": "الأستاذ المسؤول",
+        "none": "—",
+        "level": "المستوى المعني",
+        "allLevels": "كل المستويات",
+        "frequency": "الوتيرة",
+        "day": "اليوم",
+        "start": "البداية",
+        "end": "النهاية",
+        "room": "القاعة",
+        "paid": "درس مؤدّى عنه",
+        "monthlyPrice": "الثمن الشهري",
+        "description": "الوصف",
+        "save": "حفظ",
+        "create": "إنشاء الدرس",
+        "slotsTitle": "حصص الأوقات",
+        "sessionsPerWeek": "{count} حصة/أسبوع",
+        "addSlot": "إضافة حصة",
+        "removeSlot": "حذف",
+        "pricingMode": "نمط التسعير"
+      },
+      "enroll": {
+        "student": "التلميذ",
+        "recommended": "موصى به",
+        "volunteer": "متطوّع",
+        "add": "تسجيل",
+        "remove": "إزالة",
+        "removeConfirm": "إزالة هذا التلميذ من الدرس؟",
+        "hint": "يتم إشعار الآباء (رسالة + بريد) عند التسجيل."
+      },
+      "pricing": {
+        "FREE": "مجاني",
+        "PER_SESSION": "الثمن بالحصة",
+        "MONTHLY": "اشتراك شهري",
+        "TERM": "اشتراك فصلي",
+        "ANNUAL": "اشتراك سنوي"
+      },
+      "priceLabel": {
+        "PER_SESSION": "الثمن بالحصة",
+        "MONTHLY": "اشتراك شهري",
+        "TERM": "اشتراك فصلي",
+        "ANNUAL": "اشتراك سنوي"
+      },
+      "pricingSuffix": {
+        "PER_SESSION": "/حصة",
+        "MONTHLY": "/شهر",
+        "TERM": "/فصل",
+        "ANNUAL": "/سنة"
+      },
+      "session": {
+        "title": "الحصص",
+        "date": "التاريخ",
+        "topic": "الموضوع / المحتوى",
+        "topicPlaceholder": "مثال: معادلات الدرجة الثانية",
+        "add": "إضافة الحصة",
+        "empty": "لا حصص.",
+        "presentCount": "الحاضرون",
+        "present": "حاضر",
+        "appreciation": "ملاحظة",
+        "appreciationPlaceholder": "التقدّم، السلوك…",
+        "attendanceTitle": "المناداة والملاحظات",
+        "save": "حفظ",
+        "saved": "تم الحفظ.",
+        "absentCount": "الغائبون",
+        "noTopic": "الموضوع مطلوب",
+        "saveTopic": "حفظ الموضوع"
+      },
+      "resource": {
+        "title": "الموارد التربوية",
+        "short": "موارد",
+        "sessionHint": "وثائق وروابط مشتركة لهذه الحصة.",
+        "empty": "لا موارد.",
+        "add": "إضافة"
+      },
+      "billing": {
+        "title": "الفوترة",
+        "hint": "{count} قسط مُنشأ. تُعيد المعالجة تطبيق التعرفة الحالية على الأقساط غير المسددة (تُحفَظ الأقساط المحصّلة).",
+        "generate": "إنشاء / تحديث الفوترة",
+        "done": "تم إنشاء {count} قسط."
+      },
+      "report": {
+        "title": "تقرير الدعم",
+        "subtitle": "المسجّلون والحضور والمداخيل حسب الدرس والمادة.",
+        "back": "العودة إلى الدروس",
+        "kpiCourses": "دروس نشطة",
+        "kpiStudents": "التلاميذ المسجّلون",
+        "kpiSessions": "الحصص المنجزة",
+        "kpiPresence": "متوسط الحضور",
+        "byCourse": "حسب الدرس",
+        "bySubject": "حسب المادة",
+        "presence": "الحضور",
+        "revenue": "المحصّل / المستحق",
+        "coursesShort": "دروس",
+        "rentabiliteHint": "المردودية المفصّلة في المالية › المردودية."
+      },
+      "skills": {
+        "title": "الكفايات المستهدفة",
+        "hint": "اربط الحصة بالكفايات المستهدفة: تُسجَّل التقييمات هنا على أنها صادرة عن الدعم.",
+        "choose": "اختيار الكفايات",
+        "close": "إغلاق",
+        "count": "{count} مختارة",
+        "save": "حفظ",
+        "saved": "تم حفظ {count} تقييماً.",
+        "noStudent": "لا تلميذ مسجّل.",
+        "noPeriod": "لا فترة دراسية تغطي تاريخ هذه الحصة: يتعذّر تسجيل التقييمات."
+      }
+    },
+    "competences": {
+      "title": "الكفايات والقدرات",
+      "noFramework": "لا يوجد إطار مرجعي نشط للسنة الحالية.",
+      "itemCount": "{count} عنصراً قابلاً للتقييم",
+      "scale": "سلّم التقييم",
+      "tabDisciplinary": "الكفايات",
+      "tabTransversal": "القدرات",
+      "allTeachers": "جميع الأساتذة",
+      "allLevels": "جميع المستويات",
+      "nLevels": "{count} مستويات",
+      "levelsHint": "عدم اختيار أي مستوى = قابل للتقييم في جميع المستويات.",
+      "resetLevels": "جميع المستويات",
+      "save": "حفظ",
+      "hint": "المادة المرتبطة تحدّد الأستاذ المخوّل بالتقييم. بدون مادة، يكون العنصر مفتوحاً لجميع الأساتذة.",
+      "tabReferentiel": "الإطار المرجعي",
+      "tabBilan": "الحصيلة",
+      "bilanTitle": "حصيلة الكفايات",
+      "bilanSubtitle": "نسب التملّك حسب المجال، لكل تلميذ ولكل قسم.",
+      "bilanHint": "النسبة = متوسط الدرجات منسوباً إلى أقصى السلّم. تُستثنى العناصر غير المقيَّمة من الحساب؛ وتشير التغطية إلى عدد العناصر المقيَّمة. تُوحَّد تقييمات الأساتذة بالمتوسط المقرَّب.",
+      "class": "القسم",
+      "period": "الفترة",
+      "student": "التلميذ",
+      "disciplinaryShort": "الكفايات",
+      "transversalShort": "القدرات",
+      "coverageShort": "التغطية",
+      "noStudent": "لا تلاميذ في هذا القسم.",
+      "freeze": "تجميد الحصيلة",
+      "refreeze": "إعادة التجميد",
+      "frozenAt": "جُمّدت في {date}",
+      "frozenDone": "تم تجميد حصيلة {count} تلميذاً.",
+      "tabRemediation": "الدعم الموجّه",
+      "remediationTitle": "الدعم الموجّه",
+      "remediationSubtitle": "الانطلاق من كفاية لتحديد التلاميذ المحتاجين للمواكبة.",
+      "competencyToRemediate": "الكفاية",
+      "levelFilter": "المستوى",
+      "threshold": "العتبة",
+      "currentLevel": "المستوى الحالي",
+      "remediationCount": "{count} تلميذاً للمواكبة",
+      "remediationEmpty": "لا تلميذ دون العتبة لهذه الكفاية.",
+      "remediationHint": "تظهر فقط أسماء التلاميذ المقيَّمين. المستوى المعتمد هو متوسط تقييمات جميع الأساتذة مقرَّباً.",
+      "enrollGroup": "تسجيل {count} تلميذاً",
+      "enrolling": "جارٍ التسجيل…",
+      "enrolled": "تم تسجيل {count}، وتجاهل {failed} (مسجّلون سلفاً).",
+      "noCourse": "لا درس دعم نشط."
     }
   },
   "superAdmin": {
@@ -4428,7 +4745,9 @@
         "dayEmpty": "لا حصص في هذا اليوم.",
         "cancelled": "ملغى",
         "substitute": "يعوّضه",
-        "break": "استراحة الغداء"
+        "break": "استراحة الغداء",
+        "tabSupport": "الدعم",
+        "tabCompetences": "الكفايات"
       },
       "edt": {
         "hour": "الساعة",
@@ -4596,6 +4915,22 @@
         "myPurchases": "المشتريات",
         "noDeposit": "لا إيداع.",
         "noPurchase": "لا شراء."
+      },
+      "support": {
+        "empty": "لا دروس دعم.",
+        "noSession": "لا حصص حاليًا.",
+        "notMarked": "غير مسجّل",
+        "present": "حاضر",
+        "absent": "غائب",
+        "appreciation": "ملاحظة"
+      },
+      "competences": {
+        "empty": "لا تقييم للكفايات في الوقت الحالي.",
+        "provisional": "مؤقّت",
+        "coverage": "{covered}/{total} عنصراً مقيَّماً",
+        "disciplinary": "الكفايات",
+        "transversal": "القدرات",
+        "vsPrevious": "التطوّر مقارنة بالفترة السابقة"
       }
     },
     "announcements": {
@@ -4623,7 +4958,8 @@
       "classes": "أقسامي",
       "leave": "العطل والغيابات",
       "messages": "الرسائل",
-      "account": "حسابي"
+      "account": "حسابي",
+      "competences": "الكفايات"
     },
     "notes": {
       "tabs": {
@@ -4907,6 +5243,48 @@
         "REJECTED": "مرفوض",
         "CANCELLED": "ملغى"
       }
+    },
+    "competences": {
+      "title": "الكفايات والقدرات",
+      "subtitle": "تقييم كفاية لكامل القسم.",
+      "noAccess": "لا قسم مُسند إليك.",
+      "noFramework": "لا يوجد إطار مرجعي نشط للسنة الحالية.",
+      "noClass": "لا قسم مُسند إليك.",
+      "noItem": "لا كفاية قابلة للتقييم لهذا القسم.",
+      "class": "القسم",
+      "period": "الفترة",
+      "competency": "الكفاية",
+      "transversal": "القدرات",
+      "itemsAvailable": "{count} عنصراً",
+      "quickFill": "إدخال سريع",
+      "coverage": "{filled}/{total} مقيَّمون",
+      "othersEvaluated": "قيّمه {count} أستاذ آخر",
+      "noStudent": "لا تلاميذ في هذا القسم.",
+      "save": "حفظ",
+      "saving": "جارٍ الحفظ…",
+      "saved": "تم حفظ {count} تقييماً.",
+      "tabSaisie": "الإدخال",
+      "tabBilan": "الحصيلة",
+      "bilanTitle": "حصيلة الكفايات",
+      "bilanSubtitle": "تقدّم القسم حسب المجال.",
+      "grid": {
+        "title": "شبكة إدخال القسم",
+        "classLabel": "{subject} — {class}",
+        "general": "كفايات عامة",
+        "subject": "المادة",
+        "students": "التلاميذ",
+        "academic": "الكفايات المادّية",
+        "aptitudes": "القدرات العرضانية",
+        "search": "البحث عن تلميذ…",
+        "prefill": "ملء مسبق:",
+        "apply": "تطبيق",
+        "hideAptitudes": "إخفاء القدرات",
+        "save": "حفظ",
+        "saving": "جارٍ الحفظ…",
+        "saved": "تم حفظ {count} إدخالاً.",
+        "nothingToSave": "لا تغييرات.",
+        "noStudent": "لا تلاميذ."
+      }
     }
   },
   "carnet": {
@@ -4927,13 +5305,17 @@
       "OBSERVATION": "ملاحظات",
       "ENCOURAGEMENT": "تشجيعات",
       "DEFAUT_CARNET": "مخالفات الدفتر",
-      "REMARQUE_DISCIPLINAIRE": "ملاحظات تأديبية"
+      "REMARQUE_DISCIPLINAIRE": "ملاحظات تأديبية",
+      "AVERTISSEMENT": "إنذارات",
+      "EXCLUSION": "إقصاءات"
     },
     "add": {
       "OBSERVATION": "إدخال ملاحظة جديدة",
       "ENCOURAGEMENT": "إدخال تشجيع جديد",
       "DEFAUT_CARNET": "إدخال مخالفة جديدة",
-      "REMARQUE_DISCIPLINAIRE": "إدخال ملاحظة جديدة"
+      "REMARQUE_DISCIPLINAIRE": "إدخال ملاحظة جديدة",
+      "AVERTISSEMENT": "إدخال إنذار جديد",
+      "EXCLUSION": "إدخال إقصاء جديد"
     },
     "col": {
       "date": "التاريخ",

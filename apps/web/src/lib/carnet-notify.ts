@@ -40,7 +40,7 @@ export async function notifyCarnetEntries(tenantId: string, entryIds: string[]):
         select: { childId: true, parent: { select: { type: true, contacts: true } } },
       });
       const tenant = await tx.tenant.findUnique({ where: { id: tenantId }, select: { name: true } });
-      return { entries, students, relations, tenantName: tenant?.name ?? 'Jawal' };
+      return { entries, students, relations, tenantName: tenant?.name ?? 'LeadSchool' };
     });
     if (!ctx) return;
 

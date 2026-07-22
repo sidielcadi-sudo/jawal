@@ -101,7 +101,8 @@ export async function changeStudentClassAction(
         after: { studentId, classId, from: current?.classId ?? null },
       });
 
-      // ── Notifications : parents, élève, profs (nouvelle classe), vie scolaire ─
+      // ── Notifications : parents, élève, profs (ancienne + nouvelle classe),
+      //    vie scolaire ─────────────────────────────────────────────────────
       await notifyClassChange(tx, {
         tenantId,
         fromUserId: session.user.id,
@@ -109,6 +110,7 @@ export async function changeStudentClassAction(
         student,
         childName: `${student.firstName} ${student.lastName}`,
         oldClass: current?.class.name ?? '—',
+        oldClassId: current?.classId ?? null,
         newClass: cls.name,
         newClassId: classId,
         academicYearId: cls.academicYearId,
@@ -138,6 +140,7 @@ async function notifyClassChange(
     student: PersonContact;
     childName: string;
     oldClass: string;
+    oldClassId: string | null;
     newClass: string;
     newClassId: string;
     academicYearId: string;
@@ -147,7 +150,6 @@ async function notifyClassChange(
   const locale = (await tx.tenant.findFirst({ select: { localeDefault: true } }))?.localeDefault ?? 'fr';
   const data = { child: childName, oldClass, newClass };
   const familyBody = renderTemplate('class.changed', data, locale);
-  const teacherBody = renderTemplate('class.teacher', data, locale);
   const familySubject = `Changement de classe — ${childName}`;
   const items: NotifyItem[] = [];
 
@@ -175,20 +177,33 @@ async function notifyClassChange(
   }
   items.push({ channel: 'EMAIL', recipient: emailRecipient(args.student.contacts, su?.user?.email), template: 'class.changed', data, studentId: args.studentId, relatedType: 'StudentClass', relatedId: args.studentId });
 
-  // Professeurs de la nouvelle classe (équipe pédagogique).
-  const assigns = await tx.teacherAssignment.findMany({
-    where: { classId: args.newClassId, academicYearId: args.academicYearId },
-    select: { teacher: { select: { id: true, contacts: true, userPersons: { select: { userId: true, user: { select: { email: true } } } } } } },
-  });
+  // Professeurs concernés : nouvelle classe (« a rejoint ») ET ancienne classe
+  // (« a quitté »). Un prof présent dans les deux n'est prévenu qu'une fois
+  // (priorité à la nouvelle classe).
   const seenTeachers = new Set<string>();
-  for (const a of assigns) {
-    if (seenTeachers.has(a.teacher.id)) continue;
-    seenTeachers.add(a.teacher.id);
-    const up = a.teacher.userPersons[0];
-    if (up?.userId) {
-      await sendDirectMessage(tx, { tenantId, fromUserId, toUserId: up.userId, subject: `Nouvel élève — ${newClass}`, body: teacherBody });
+  const notifyTeachers = async (
+    classId: string,
+    template: 'class.teacher' | 'class.teacherLeft',
+    subject: string,
+  ) => {
+    const body = renderTemplate(template, data, locale);
+    const assigns = await tx.teacherAssignment.findMany({
+      where: { classId, academicYearId: args.academicYearId },
+      select: { teacher: { select: { id: true, contacts: true, userPersons: { select: { userId: true, user: { select: { email: true } } } } } } },
+    });
+    for (const a of assigns) {
+      if (seenTeachers.has(a.teacher.id)) continue;
+      seenTeachers.add(a.teacher.id);
+      const up = a.teacher.userPersons[0];
+      if (up?.userId) {
+        await sendDirectMessage(tx, { tenantId, fromUserId, toUserId: up.userId, subject, body });
+      }
+      items.push({ channel: 'EMAIL', recipient: emailRecipient(a.teacher.contacts, up?.user?.email), template, data, relatedType: 'StudentClass', relatedId: args.studentId });
     }
-    items.push({ channel: 'EMAIL', recipient: emailRecipient(a.teacher.contacts, up?.user?.email), template: 'class.teacher', data, relatedType: 'StudentClass', relatedId: args.studentId });
+  };
+  await notifyTeachers(args.newClassId, 'class.teacher', `Nouvel élève — ${newClass}`);
+  if (args.oldClassId && args.oldClassId !== args.newClassId) {
+    await notifyTeachers(args.oldClassId, 'class.teacherLeft', `Départ d'élève — ${oldClass}`);
   }
 
   // Vie scolaire : alerte cloche.

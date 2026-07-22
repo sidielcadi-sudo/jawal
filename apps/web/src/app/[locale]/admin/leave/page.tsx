@@ -4,7 +4,6 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { can } from '@/lib/auth/rbac';
 import { computeLeaveBalance } from '@/lib/leave';
-import { computeSubstitutionRollups, type RollupStatus } from '@/lib/substitution-rollup';
 import { SeedTypesButton, CreateRequestForm, RequestRowActions } from './leave-client';
 
 const STATUS_BADGE: Record<string, string> = {
@@ -12,14 +11,6 @@ const STATUS_BADGE: Record<string, string> = {
   APPROVED: 'bg-emerald-100 text-emerald-700',
   REJECTED: 'bg-red-100 text-red-700',
   CANCELLED: 'bg-slate-100 text-slate-500',
-};
-
-// Statut d'approbation des remplacements (absences enseignants).
-const ROLLUP_BADGE: Record<RollupStatus, string> = {
-  PENDING: 'bg-amber-100 text-amber-700',
-  PARTIAL: 'bg-orange-100 text-orange-700',
-  APPROVED: 'bg-emerald-100 text-emerald-700',
-  NONE: 'bg-slate-100 text-slate-500',
 };
 
 export default async function LeavePage({ params }: { params: Promise<{ locale: string }> }) {
@@ -53,16 +44,10 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
           _sum: { days: true },
         })
       : [];
-    // Rollup d'approbation des remplacements pour les absences enseignants.
-    const teacherLeaves = requests.filter((r) => r.person.type === 'TEACHER');
-    const rollups = await computeSubstitutionRollups(
-      tx,
-      teacherLeaves.map((r) => ({ id: r.id, personId: r.personId, startDate: r.startDate, endDate: r.endDate })),
-    );
-    return { types, staff, requests, annual, takenByPerson, rollups };
+    return { types, staff, requests, annual, takenByPerson };
   });
 
-  const { types, staff, requests, annual, takenByPerson, rollups } = data;
+  const { types, staff, requests, annual, takenByPerson } = data;
   const takenMap = new Map(takenByPerson.map((g) => [g.personId, g._sum.days ?? 0]));
   const typeLabel = (fr: string, ar: string) => (locale === 'ar' ? ar : fr);
 
@@ -114,10 +99,7 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {requests.map((r) => {
-                      const isTeacher = r.person.type === 'TEACHER';
-                      const rollup = isTeacher ? rollups.get(r.id) : undefined;
-                      return (
+                    {requests.map((r) => (
                       <tr key={r.id}>
                         <td className="px-3 py-2.5 font-medium text-slate-800">{r.person.lastName} {r.person.firstName}</td>
                         <td className="px-3 py-2.5 text-xs text-slate-600">{typeLabel(r.leaveType.labelFr, r.leaveType.labelAr)}</td>
@@ -126,32 +108,23 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
                         </td>
                         <td className="px-3 py-2.5 text-end tabular-nums text-slate-600">{r.days}</td>
                         <td className="px-3 py-2.5 text-center">
-                          {/* Enseignant : statut d'approbation des remplacements ; sinon statut du congé. */}
-                          {isTeacher && rollup && rollup.status !== 'NONE' ? (
-                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${ROLLUP_BADGE[rollup.status]}`}>
-                              {t(`rollup.${rollup.status}`)}
-                              {rollup.status === 'PARTIAL' ? ` (${rollup.approved}/${rollup.total})` : ''}
-                            </span>
-                          ) : (
-                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE[r.status]}`}>{t(`statusLabel.${r.status}`)}</span>
-                          )}
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE[r.status]}`}>{t(`statusLabel.${r.status}`)}</span>
                         </td>
                         <td className="px-3 py-2.5 text-end">
                           <span className="flex items-center justify-end gap-2">
-                            {isTeacher ? (
+                            {/* Remplacements : validation des séances (profs). L'approbation
+                                du congé (Approuver/Refuser) met à jour le pointage. */}
+                            {r.person.type === 'TEACHER' &&
                               (r.status === 'APPROVED' || r.status === 'PENDING') && (
                                 <a href={`/${locale}/admin/leave/${r.id}/remplacements`} className="text-xs font-medium text-brand-600 hover:text-brand-700 hover:underline">
                                   {t('subs.link')}
                                 </a>
-                              )
-                            ) : (
-                              canManage && <RequestRowActions id={r.id} status={r.status} />
-                            )}
+                              )}
+                            {canManage && <RequestRowActions id={r.id} status={r.status} />}
                           </span>
                         </td>
                       </tr>
-                      );
-                    })}
+                    ))}
                     {requests.length === 0 && (
                       <tr><td colSpan={6} className="px-3 py-8 text-center text-slate-400">{t('empty')}</td></tr>
                     )}

@@ -56,7 +56,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ sellerId: strin
       <tbody>${rows}</tbody>
     </table>
     <div class="total"><span class="l">Total remboursé</span><span class="v">${totalNet.toFixed(2)} ${cur}</span></div>
-    <div class="foot">${esc(tenant?.name ?? 'Jawal')} — Reçu généré le ${today}</div>
+    <div class="foot">${esc(tenant?.name ?? 'LeadSchool')} — Reçu généré le ${today}</div>
   </body></html>`;
 
   const pdf = await htmlToPdf(html);

@@ -1,8 +1,9 @@
 /**
  * Vue « emploi du temps du jour » (liste chronologique), inspirée de l'appli
- * mobile : barre colorée par matière, plage horaire, matière, prof, salle.
- * Un cours annulé est marqué en rouge (fond clair + barré). Un remplacement
- * affiche le prof remplaçant.
+ * mobile : chaque cours est une carte à bordure fine repérée par un chevron en
+ * contour dont le tracé porte la couleur de la matière, avec plage horaire,
+ * matière, prof, salle. Un cours annulé est marqué en rouge (fond clair +
+ * barré). Un remplacement affiche le prof remplaçant.
  */
 
 export type DayCourse = {
@@ -72,16 +73,27 @@ export function DayTimetable({
         return (
           <li
             key={i}
-            className={`flex items-stretch gap-3 rounded-xl ps-1 ${
-              c.cancelled ? 'bg-red-50' : ''
+            className={`relative flex items-center gap-3 rounded-xl border py-2 pe-3 ps-2 ${
+              c.cancelled ? 'border-red-200 bg-red-50' : 'border-slate-200 bg-white'
             }`}
           >
-            <div className="w-14 shrink-0 py-1 text-xs text-slate-500">
+            <div className="w-14 shrink-0 text-xs text-slate-500">
               <div className="font-semibold text-slate-700">{c.startTime}</div>
               <div>{c.endTime}</div>
             </div>
-            <div className="w-1.5 shrink-0 rounded-full" style={{ backgroundColor: bar }} />
-            <div className="min-w-0 flex-1 py-1">
+            <svg
+              aria-hidden
+              viewBox="0 0 24 24"
+              className="edt-chevron h-12 w-12 shrink-0"
+              fill="none"
+              stroke={bar}
+              strokeWidth={1.8}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            >
+              <path d="M6 2 L21 12 L6 22 L12 12 Z" />
+            </svg>
+            <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <span
                   className={`font-bold uppercase ${

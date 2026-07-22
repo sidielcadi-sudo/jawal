@@ -1,5 +1,5 @@
 /**
- * Démo de style « Smart dashboard » appliquée à Jawal (aperçu uniquement).
+ * Démo de style « Smart dashboard » appliquée à LeadSchool (aperçu uniquement).
  * Page autonome, données fictives — sert à évaluer une direction visuelle :
  * sidebar indigo arrondie, fond clair, cartes arrondies, donuts & barres.
  * URL : /<locale>/style-demo
@@ -77,7 +77,7 @@ export default function StyleDemoPage() {
       <aside className="m-3 flex w-60 shrink-0 flex-col rounded-3xl bg-gradient-to-b from-[#3f3ad1] to-[#2b2796] p-5 text-white">
         <div className="mb-8 flex items-center gap-2 text-xl font-bold">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/20">🎓</span>
-          Jawal
+          LeadSchool
         </div>
         <nav className="flex-1 space-y-1">
           {NAV.map((n) => (

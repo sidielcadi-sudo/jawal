@@ -23,8 +23,17 @@ type Event = {
   justifStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
 };
 
-// Sections affichées (type d'entrée associé).
-const SECTIONS = ['OBSERVATION', 'ENCOURAGEMENT', 'DEFAUT_CARNET', 'REMARQUE_DISCIPLINAIRE'] as const;
+// Sections affichées (type d'entrée associé). Les 3 niveaux de gravité de la
+// vie scolaire — Remarque (Léger), Avertissement (Moyen), Exclusion (Grave) —
+// sont saisissables ; leur affichage dépend de `allowedTypes` (discipline.write).
+const SECTIONS = [
+  'OBSERVATION',
+  'ENCOURAGEMENT',
+  'DEFAUT_CARNET',
+  'REMARQUE_DISCIPLINAIRE',
+  'AVERTISSEMENT',
+  'EXCLUSION',
+] as const;
 
 export function CarnetView({
   studentId,

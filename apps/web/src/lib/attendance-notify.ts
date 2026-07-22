@@ -27,7 +27,7 @@ export async function notifyAbsentees(tenantId: string, sessionId: string): Prom
 
   const { sessionRow, tenant } = data;
   const dateStr = sessionRow.date.toLocaleDateString('fr-FR');
-  const tenantName = tenant?.name ?? 'Jawal';
+  const tenantName = tenant?.name ?? 'LeadSchool';
   const className = sessionRow.class.name;
 
   await Promise.all(

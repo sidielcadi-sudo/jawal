@@ -34,6 +34,7 @@ export default async function VieScolairePage({
   setRequestLocale(locale);
   const session = (await auth())!;
   const t = await getTranslations('admin.vieScolaire');
+  const td = await getTranslations('admin.dashboard');
   // Onglet Pilotage visible seulement pour admin/direction (pas pour le CPE).
   const showPilotage = !(await isVieScolaireOnly());
 
@@ -57,12 +58,15 @@ export default async function VieScolairePage({
 
   return (
     <div className="px-3 py-3">
+      <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{td('bandTitle')}</h1>
+      </header>
       <div className="mb-4">
         <DashboardTabs locale={locale} showPilotage={showPilotage} />
       </div>
       <header className="mb-4 flex flex-wrap items-center justify-between gap-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <div>
-          <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+          <h2 className="text-base font-bold text-slate-900">{t('title')}</h2>
           <p className="mt-0.5 text-sm text-slate-600">{today}</p>
         </div>
         {data.periods.length > 0 && (

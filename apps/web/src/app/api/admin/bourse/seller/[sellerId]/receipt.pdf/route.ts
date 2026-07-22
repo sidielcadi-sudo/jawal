@@ -63,7 +63,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ sellerId: strin
     </table>
     <div class="total">Valeur estimée : ${total.toFixed(2)} ${cur}</div>
     <p style="margin-top:8px;font-size:11px;color:#64748b;">Le montant remboursé dépendra des exemplaires effectivement vendus, déduction faite de l'éventuelle commission.</p>
-    <div class="foot">${esc(tenant?.name ?? 'Jawal')} — Reçu généré le ${today}</div>
+    <div class="foot">${esc(tenant?.name ?? 'LeadSchool')} — Reçu généré le ${today}</div>
   </body></html>`;
 
   const pdf = await htmlToPdf(html);

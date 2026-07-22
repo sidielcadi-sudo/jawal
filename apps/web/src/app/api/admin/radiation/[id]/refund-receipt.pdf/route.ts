@@ -70,7 +70,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
       <p>Ce reçu est délivré à la suite de la radiation de l'élève en cours d'année, pour servir et valoir ce que de droit.</p>
     </div>
     <div class="sign"><span>Fait le ${esc(today)}</span><span>Signature et cachet</span></div>
-    <div class="foot">${esc(tenant?.name ?? 'Jawal')} — Document généré le ${esc(today)}</div>
+    <div class="foot">${esc(tenant?.name ?? 'LeadSchool')} — Document généré le ${esc(today)}</div>
   </body></html>`;
 
   const pdf = await htmlToPdf(html);

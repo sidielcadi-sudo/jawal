@@ -3,14 +3,17 @@ import { ActivityIndicator, View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from './src/auth';
+import { AppStateProvider } from './src/app-state';
 import { subscribeToNotificationTaps } from './src/push';
 import { NavigationProvider, useNav } from './src/navigation';
+import { DrawerMenu } from './src/components/DrawerMenu';
 import LoginScreen from './src/screens/LoginScreen';
 import HomeScreen from './src/screens/HomeScreen';
 import AnnouncementsScreen from './src/screens/AnnouncementsScreen';
 import ChildDetailScreen from './src/screens/ChildDetailScreen';
 import MessagesScreen from './src/screens/MessagesScreen';
 import ThreadScreen from './src/screens/ThreadScreen';
+import PlaceholderScreen from './src/screens/PlaceholderScreen';
 import { colors } from './src/theme';
 
 function Splash() {
@@ -41,13 +44,15 @@ function Screens() {
   const { route } = useNav();
   switch (route.name) {
     case 'child':
-      return <ChildDetailScreen childId={route.childId} childName={route.childName} />;
+      return <ChildDetailScreen initialTab={route.tab} />;
     case 'announcements':
       return <AnnouncementsScreen />;
     case 'messages':
       return <MessagesScreen />;
     case 'thread':
       return <ThreadScreen conversationId={route.conversationId} subject={route.subject} />;
+    case 'placeholder':
+      return <PlaceholderScreen title={route.title} note={route.note} />;
     case 'home':
     default:
       return <HomeScreen />;
@@ -60,8 +65,11 @@ function Root() {
   if (!token) return <LoginScreen />;
   return (
     <NavigationProvider>
-      <PushListener />
-      <Screens />
+      <AppStateProvider>
+        <PushListener />
+        <Screens />
+        <DrawerMenu />
+      </AppStateProvider>
     </NavigationProvider>
   );
 }

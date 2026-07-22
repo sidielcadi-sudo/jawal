@@ -1,201 +1,188 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth';
+import { useAppState } from '../app-state';
 import { useNav } from '../navigation';
-import { api, ApiError, type Child, type Me } from '../api';
+import { api, ApiError, type Homework, type UpcomingExam } from '../api';
+import { AppHeader } from '../components/AppHeader';
 import { colors } from '../theme';
+
+/** Formate un ISO YYYY-MM-DD en libellé « lun. 21 juil. ». */
+function dayLabel(iso: string) {
+  return new Date(`${iso}T00:00:00Z`).toLocaleDateString('fr-FR', {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    timeZone: 'UTC',
+  });
+}
 
 export default function HomeScreen() {
   const { token, logout } = useAuth();
+  const { selectedChild, loading: meLoading } = useAppState();
   const { navigate } = useNav();
   const insets = useSafeAreaInsets();
-  const [me, setMe] = useState<Me | null>(null);
+
+  const [exams, setExams] = useState<UpcomingExam[]>([]);
+  const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const childId = selectedChild?.id ?? null;
+
   const load = useCallback(async () => {
-    if (!token) return;
+    if (!token || !childId) {
+      setLoading(false);
+      return;
+    }
     setError('');
     try {
-      setMe(await api.me(token));
+      const [up, cah] = await Promise.all([api.upcoming(token, childId), api.cahier(token, childId)]);
+      setExams(up.items);
+      setHomeworks(cah.homeworks);
     } catch (e) {
-      if (e instanceof ApiError && e.status === 401) {
-        await logout();
-        return;
-      }
+      if (e instanceof ApiError && e.status === 401) return logout();
       setError(e instanceof ApiError ? e.message : 'Erreur inattendue.');
     } finally {
       setLoading(false);
     }
-  }, [token, logout]);
+  }, [token, childId, logout]);
 
   useEffect(() => {
+    setLoading(true);
     load();
   }, [load]);
 
-  if (loading) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator color={colors.brand} size="large" />
-      </View>
-    );
+  // Devoirs groupés par date d'échéance (les plus proches d'abord).
+  const withDue = homeworks.filter((h) => h.dueDate);
+  const byDay = new Map<string, Homework[]>();
+  for (const h of withDue) {
+    const d = h.dueDate!.slice(0, 10);
+    byDay.set(d, [...(byDay.get(d) ?? []), h]);
   }
+  const days = [...byDay.keys()].sort();
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top + 8 }]}>
-      <View style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.hello}>Bonjour</Text>
-          <Text style={styles.name}>{me?.user.name ?? me?.user.email ?? 'Parent'}</Text>
+    <View style={styles.container}>
+      <AppHeader title="Page d'accueil" />
+
+      {meLoading || loading ? (
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.brand} size="large" />
         </View>
-        <TouchableOpacity onPress={logout} style={styles.logout}>
-          <Text style={styles.logoutText}>Déconnexion</Text>
-        </TouchableOpacity>
-      </View>
+      ) : !selectedChild ? (
+        <View style={styles.centered}>
+          <Text style={styles.empty}>Aucun enfant rattaché à ce compte.</Text>
+        </View>
+      ) : (
+        <ScrollView
+          contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={load} tintColor={colors.brand} />}
+        >
+          {error ? <Text style={styles.error}>{error}</Text> : null}
 
-      <TouchableOpacity style={styles.annCard} onPress={() => navigate({ name: 'announcements' })}>
-        <Text style={styles.annIcon}>📣</Text>
-        <Text style={styles.annText}>Annonces de l’établissement</Text>
-        <Text style={styles.chevron}>›</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.annCard} onPress={() => navigate({ name: 'messages' })}>
-        <Text style={styles.annIcon}>✉️</Text>
-        <Text style={styles.annText}>Messagerie avec l’école</Text>
-        {me && me.unreadMessages > 0 ? (
-          <View style={styles.badge}>
-            <Text style={styles.badgeText}>{me.unreadMessages}</Text>
+          {/* Prochains DS */}
+          <View style={styles.sectionHead}>
+            <Text style={styles.sectionTitle}>Prochains DS</Text>
+            <TouchableOpacity onPress={() => navigate({ name: 'child', tab: 'notes' })}>
+              <Text style={styles.seeAll}>Tout voir ↗</Text>
+            </TouchableOpacity>
           </View>
-        ) : null}
-        <Text style={styles.chevron}>›</Text>
-      </TouchableOpacity>
+          {exams.length === 0 ? (
+            <Text style={styles.emptyLine}>Aucun contrôle programmé.</Text>
+          ) : (
+            exams.slice(0, 3).map((e) => (
+              <View key={e.id} style={styles.card}>
+                <View style={styles.dateChip}>
+                  <Text style={styles.dateChipDay}>{new Date(`${e.date}T00:00:00Z`).getUTCDate()}</Text>
+                  <Text style={styles.dateChipMonth}>
+                    {new Date(`${e.date}T00:00:00Z`).toLocaleDateString('fr-FR', { month: 'short', timeZone: 'UTC' })}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.examSubject}>{e.subject.toUpperCase()}</Text>
+                  <Text style={styles.examLabel}>{e.label}</Text>
+                  <Text style={styles.examDate}>{dayLabel(e.date)}</Text>
+                </View>
+              </View>
+            ))
+          )}
 
-      <TouchableOpacity
-        style={styles.testBtn}
-        onPress={async () => {
-          if (!token) return;
-          try {
-            const r = await api.testPush(token);
-            Alert.alert('Notification de test', r.devices > 0 ? 'Envoyée. Vérifiez la barre de notifications.' : 'Aucun appareil enregistré (autorisez les notifications).');
-          } catch {
-            Alert.alert('Erreur', 'Envoi impossible.');
-          }
-        }}
-      >
-        <Text style={styles.testBtnText}>🔔 Tester une notification</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.sectionTitle}>Mes enfants</Text>
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-
-      <FlatList
-        data={me?.children ?? []}
-        keyExtractor={(c) => c.id}
-        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: insets.bottom + 24 }}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={load} tintColor={colors.brand} />}
-        ListEmptyComponent={<Text style={styles.empty}>Aucun enfant rattaché à ce compte.</Text>}
-        renderItem={({ item }: { item: Child }) => (
-          <TouchableOpacity
-            style={styles.card}
-            onPress={() => navigate({ name: 'child', childId: item.id, childName: `${item.firstName} ${item.lastName}` })}
-          >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {item.firstName.charAt(0)}
-                {item.lastName.charAt(0)}
-              </Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.childName}>
-                {item.firstName} {item.lastName}
-              </Text>
-              {item.className ? <Text style={styles.childClass}>{item.className}</Text> : null}
-            </View>
-            <Text style={styles.chevron}>›</Text>
-          </TouchableOpacity>
-        )}
-      />
+          {/* Travail à faire */}
+          <View style={[styles.sectionHead, { marginTop: 22 }]}>
+            <Text style={styles.sectionTitle}>Travail à faire pour les prochains jours</Text>
+            <TouchableOpacity onPress={() => navigate({ name: 'child', tab: 'cahier' })}>
+              <Text style={styles.seeAll}>Tout voir ↗</Text>
+            </TouchableOpacity>
+          </View>
+          {days.length === 0 ? (
+            <Text style={styles.emptyLine}>Aucun devoir à venir.</Text>
+          ) : (
+            days.map((d) => (
+              <View key={d} style={{ marginBottom: 12 }}>
+                <View style={styles.dayPill}>
+                  <Text style={styles.dayPillText}>Pour {dayLabel(d)}</Text>
+                </View>
+                {byDay.get(d)!.map((h) => (
+                  <View key={h.id} style={styles.hwRow}>
+                    <View style={styles.hwBar} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.hwSubject}>{(h.subject ?? '—').toUpperCase()}</Text>
+                      <Text style={styles.hwDesc}>{h.description}</Text>
+                    </View>
+                    <View style={styles.notDone}>
+                      <Text style={styles.notDoneText}>Non fait</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ))
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.bg },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10 },
-  hello: { fontSize: 13, color: colors.textMuted },
-  name: { fontSize: 20, fontWeight: '800', color: colors.text },
-  logout: { paddingVertical: 6, paddingHorizontal: 10, borderRadius: 8, borderWidth: 1, borderColor: colors.border },
-  logoutText: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
-  annCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: 16,
-    marginTop: 4,
-    marginBottom: 8,
-    padding: 14,
-    borderRadius: 14,
-    backgroundColor: '#EFF3FF',
-    borderWidth: 1,
-    borderColor: '#DBE4FF',
-  },
-  annIcon: { fontSize: 18, marginRight: 10 },
-  annText: { flex: 1, fontSize: 15, fontWeight: '600', color: colors.brandDark },
-  badge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    paddingHorizontal: 6,
-    backgroundColor: colors.danger,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 6,
-  },
-  badgeText: { color: colors.white, fontSize: 11, fontWeight: '800' },
-  testBtn: { marginHorizontal: 16, marginBottom: 4, paddingVertical: 6, alignItems: 'center' },
-  testBtnText: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textMuted,
-    textTransform: 'uppercase',
-    marginTop: 8,
-    marginBottom: 8,
-    paddingHorizontal: 16,
-  },
-  error: { color: colors.danger, paddingHorizontal: 16, marginBottom: 8 },
-  empty: { color: colors.textMuted, textAlign: 'center', marginTop: 24 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  empty: { color: colors.textMuted },
+  emptyLine: { color: colors.textMuted, fontSize: 13, marginTop: 4 },
+  error: { color: colors.danger, marginBottom: 8 },
+  sectionHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  sectionTitle: { flex: 1, fontSize: 15, fontWeight: '800', color: colors.brandDark },
+  seeAll: { fontSize: 12, fontWeight: '700', color: colors.brand },
   card: {
     flexDirection: 'row',
-    alignItems: 'center',
+    gap: 12,
     backgroundColor: colors.card,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: colors.border,
-    padding: 14,
-    marginBottom: 10,
+    padding: 12,
+    marginBottom: 8,
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: colors.brand,
+  dateChip: {
+    width: 46,
+    borderRadius: 10,
+    backgroundColor: '#DFF3EE',
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    paddingVertical: 6,
   },
-  avatarText: { color: colors.white, fontWeight: '800' },
-  childName: { fontSize: 16, fontWeight: '700', color: colors.text },
-  childClass: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
-  chevron: { fontSize: 22, color: colors.textMuted, marginLeft: 8 },
+  dateChipDay: { fontSize: 18, fontWeight: '900', color: colors.brandDark },
+  dateChipMonth: { fontSize: 11, fontWeight: '700', color: colors.brand, textTransform: 'lowercase' },
+  examSubject: { fontSize: 14, fontWeight: '800', color: colors.text },
+  examLabel: { fontSize: 13, color: colors.text, marginTop: 1 },
+  examDate: { fontSize: 12, color: colors.textMuted, marginTop: 3 },
+  dayPill: { alignSelf: 'flex-start', backgroundColor: '#DFF3EE', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 8 },
+  dayPillText: { fontSize: 13, fontWeight: '700', color: colors.brandDark },
+  hwRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
+  hwBar: { width: 4, alignSelf: 'stretch', borderRadius: 2, backgroundColor: '#F97316' },
+  hwSubject: { fontSize: 14, fontWeight: '800', color: colors.text },
+  hwDesc: { fontSize: 13, color: colors.textMuted, marginTop: 1 },
+  notDone: { backgroundColor: '#DBEAFE', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
+  notDoneText: { fontSize: 11, fontWeight: '700', color: '#1D4ED8' },
 });

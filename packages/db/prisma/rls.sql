@@ -134,7 +134,20 @@ DECLARE
     'radiation_refunds',
     'online_payments',
     'device_tokens',
-    'staff_alerts'
+    'staff_alerts',
+    'support_courses',
+    'support_slots',
+    'support_enrollments',
+    'support_sessions',
+    'support_attendance',
+    'support_resources',
+    'competency_frameworks',
+    'competency_nodes',
+    'competency_node_levels',
+    'mastery_levels',
+    'competency_assessments',
+    'competency_reports',
+    'support_session_skills'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped

@@ -14,7 +14,6 @@ import {
 } from '@/lib/timetable-validation';
 import { TimetableGrid, type GridEntry, type GridSlot, type SubjectOpt, type TeacherOpt, type RoomOpt } from './grid';
 import { OverridesPanel } from './overrides';
-import { GenerateButton } from './generate-button';
 
 const DAYS: DayKey[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -180,6 +179,24 @@ export default async function ClassTimetablePage({
     })
     .filter((v): v is { id: string; label: string } => v !== null);
 
+  // Overrides APPROUVÉS à venir → reflet dans la grille (le plus proche par cellule).
+  const approvedOverrides: Record<string, { kind: 'CANCELLED' | 'SUBSTITUTION'; label: string }> = {};
+  for (const o of overrides) {
+    if (o.approvalStatus !== 'APPROVED' || approvedOverrides[o.entryId]) continue;
+    const dateLabel = new Date(o.date).toLocaleDateString(locale, {
+      day: '2-digit',
+      month: '2-digit',
+      timeZone: 'UTC',
+    });
+    approvedOverrides[o.entryId] =
+      o.kind === 'CANCELLED'
+        ? { kind: 'CANCELLED', label: `${t('overrideCancelledTag')} · ${dateLabel}` }
+        : {
+            kind: 'SUBSTITUTION',
+            label: `${t('overrideSubTag')}${o.substituteTeacher ? ` · ${o.substituteTeacher.lastName} ${o.substituteTeacher.firstName}` : ''} · ${dateLabel}`,
+          };
+  }
+
   const overridesView = overrides.map((o) => {
     const slot = slotById.get(o.entry.slotId);
     return {
@@ -220,7 +237,6 @@ export default async function ClassTimetablePage({
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <GenerateButton classId={cls.id} />
           <Link
             href={`/${locale}/admin/settings/timetable-slots`}
             className="text-xs text-brand-700 hover:underline"
@@ -316,6 +332,7 @@ export default async function ClassTimetablePage({
               relevantConflicts.flatMap((c) => c.entryIds).filter((id) => myEntryIds.has(id)),
             )}
             availabilityWarningIds={new Set(availabilityWarnings.map((w) => w.entryId))}
+            approvedOverrides={approvedOverrides}
             subjects={subjectOpts}
             teachers={teacherOpts}
             rooms={roomOpts}

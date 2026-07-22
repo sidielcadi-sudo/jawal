@@ -6,7 +6,9 @@ import { loadStudentCarnet } from '@/lib/carnet';
 import { CarnetView } from '@/components/carnet/carnet-view';
 import { CarnetFilters } from '@/components/carnet/carnet-filters';
 
-const ALL_TYPES = ['OBSERVATION', 'ENCOURAGEMENT', 'DEFAUT_CARNET', 'REMARQUE_DISCIPLINAIRE'];
+// Types saisissables par la Vie scolaire (discipline.write). Gravité déduite
+// par le tableau de bord : Remarque = Léger, Avertissement = Moyen, Exclusion = Grave.
+const ALL_TYPES = ['OBSERVATION', 'ENCOURAGEMENT', 'DEFAUT_CARNET', 'REMARQUE_DISCIPLINAIRE', 'AVERTISSEMENT', 'EXCLUSION'];
 
 export default async function AdminCarnetPage({
   params,
@@ -34,7 +36,8 @@ export default async function AdminCarnetPage({
     if (!classId) return { classList, students: [], classId, studentId: null, carnet: null };
 
     const scs = await tx.studentClass.findMany({
-      where: { classId, unenrolledAt: null },
+      // Élèves actifs uniquement : exclut les radiés/supprimés du menu.
+      where: { classId, unenrolledAt: null, student: { deletedAt: null } },
       include: { student: { select: { id: true, firstName: true, lastName: true } } },
       orderBy: { student: { lastName: 'asc' } },
     });

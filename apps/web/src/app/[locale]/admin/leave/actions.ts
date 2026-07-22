@@ -5,11 +5,17 @@ import { auth } from '@/lib/auth';
 import { requirePermission, requireRoleCode } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
+import type { Prisma } from '@/lib/db';
 import { workingDaysBetween } from '@/lib/leave';
-import { sendNotifications, parentRecipient } from '@/lib/notify';
+import { sendNotifications, parentRecipient, emailRecipient, type NotifyItem } from '@/lib/notify';
+import { renderTemplate } from '@/lib/notify-templates';
+import { sendDirectMessage } from '@/lib/inapp-message';
 import { alertTeacherAbsence } from '@/lib/leave-alerts';
 
 type Result = { ok: true } | { ok: false; error: string };
+
+const DOW_CODES = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
+const fmtDate = (d: Date) => d.toISOString().slice(0, 10).split('-').reverse().join('/');
 
 const str = (fd: FormData, k: string) => {
   const v = fd.get(k);
@@ -138,13 +144,23 @@ export async function reviewLeaveRequestAction(
     await withTenant(tenantId, async (tx) => {
       const req = await tx.leaveRequest.findUnique({
         where: { id },
-        include: { person: { select: { contacts: true } }, leaveType: { select: { labelFr: true } } },
+        include: { person: { select: { contacts: true } }, leaveType: { select: { labelFr: true, code: true } } },
       });
       if (!req) throw new Error('Demande introuvable.');
       await tx.leaveRequest.update({
         where: { id },
         data: { status: decision, reviewedByUserId: s.user.id, reviewedAt: new Date(), decisionComment: comment ?? null },
       });
+      // Approbation → alimente le Pointage personnel (absence/retard) sur la période.
+      if (decision === 'APPROVED') {
+        await syncStaffAttendanceFromLeave(tx, tenantId, s.user.id, {
+          personId: req.personId,
+          startDate: req.startDate,
+          endDate: req.endDate,
+          code: req.leaveType.code,
+          typeLabel: req.leaveType.labelFr,
+        });
+      }
       // Notifie l'employé de la décision.
       const tenant = await tx.tenant.findFirst({ select: { localeDefault: true } });
       const fmt = (d: Date) => d.toISOString().slice(0, 10);
@@ -167,10 +183,237 @@ export async function reviewLeaveRequestAction(
   }
 }
 
+/**
+ * Statut de pointage déduit du type de congé/absence.
+ * - Les types « Absence » (justifiée ou non) → ABSENT : la justification ne
+ *   change pas le fait que l'employé était absent (elle reste en note).
+ * - Le retard → LATE.
+ * - Les congés planifiés (maladie, annuel, maternité, sans solde, exceptionnel)
+ *   → LEAVE.
+ */
+const STAFF_STATUS_BY_CODE: Record<string, 'ABSENT' | 'LATE' | 'LEAVE'> = {
+  LATE: 'LATE',
+  JUSTIFIED: 'ABSENT',
+  UNJUSTIFIED: 'ABSENT',
+  ANNUAL: 'LEAVE',
+  UNPAID: 'LEAVE',
+  MATERNITY: 'LEAVE',
+  SICK: 'LEAVE',
+  EXCEPTIONAL: 'LEAVE',
+};
+
+/**
+ * Reporte une absence/retard approuvé(e) dans le Pointage personnel : un
+ * enregistrement StaffAttendance par jour de la période (dimanche exclu), au
+ * statut déduit du type. Les jours verrouillés (déduction manuelle) sont
+ * préservés.
+ */
+async function syncStaffAttendanceFromLeave(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  userId: string,
+  leave: { personId: string; startDate: Date; endDate: Date; code: string; typeLabel: string },
+): Promise<void> {
+  const status = STAFF_STATUS_BY_CODE[leave.code] ?? 'ABSENT';
+  const note = `Congé approuvé : ${leave.typeLabel}`;
+  const d = new Date(
+    Date.UTC(leave.startDate.getUTCFullYear(), leave.startDate.getUTCMonth(), leave.startDate.getUTCDate()),
+  );
+  const last = new Date(
+    Date.UTC(leave.endDate.getUTCFullYear(), leave.endDate.getUTCMonth(), leave.endDate.getUTCDate()),
+  );
+  while (d <= last) {
+    if (d.getUTCDay() !== 0) {
+      const date = new Date(d);
+      const existing = await tx.staffAttendance.findUnique({
+        where: { personId_date: { personId: leave.personId, date } },
+        select: { id: true, deductionLocked: true },
+      });
+      if (existing) {
+        if (!existing.deductionLocked) {
+          await tx.staffAttendance.update({ where: { id: existing.id }, data: { status, note } });
+        }
+      } else {
+        await tx.staffAttendance.create({
+          data: { tenantId, personId: leave.personId, date, status, note, recordedByUserId: userId },
+        });
+      }
+    }
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+}
+
+/**
+ * Annule une demande d'absence et REVERSE tout ce qui en découle : suppression
+ * des remplacements/annulations dans l'EDT, notification de la présence du prof
+ * (remplaçants + parents + élèves), retrait des heures sup auto, et rétablissement
+ * de la présence dans le Pointage personnel.
+ */
 export async function cancelLeaveRequestAction(id: string): Promise<Result> {
   const s = await guard();
   if (!s) return { ok: false, error: 'Non autorisé' };
-  await withTenant(s.user.tenantId, (tx) => tx.leaveRequest.update({ where: { id }, data: { status: 'CANCELLED' } }));
-  revalidatePath('/admin/leave');
-  return { ok: true };
+  const tenantId = s.user.tenantId;
+  const fromUserId = s.user.id;
+  try {
+    await withTenant(tenantId, async (tx) => {
+      const leave = await tx.leaveRequest.findUnique({
+        where: { id },
+        include: { person: { select: { firstName: true, lastName: true, type: true } } },
+      });
+      if (!leave) throw new Error('Demande introuvable.');
+
+      await tx.leaveRequest.update({ where: { id }, data: { status: 'CANCELLED' } });
+
+      // Rétablit la présence : retire les pointages issus de cette absence
+      // (non verrouillés) sur la période.
+      await tx.staffAttendance.deleteMany({
+        where: {
+          personId: leave.personId,
+          date: { gte: leave.startDate, lte: leave.endDate },
+          note: { startsWith: 'Congé approuvé' },
+          deductionLocked: false,
+        },
+      });
+
+      if (leave.person.type === 'TEACHER') {
+        await revertTeacherSubstitutions(tx, {
+          tenantId,
+          fromUserId,
+          teacherId: leave.personId,
+          teacherName: `${leave.person.lastName} ${leave.person.firstName}`,
+          startDate: leave.startDate,
+          endDate: leave.endDate,
+        });
+      }
+
+      await logAudit(tx, {
+        tenantId,
+        userId: fromUserId,
+        action: 'cancel_leave',
+        entityType: 'LeaveRequest',
+        entityId: id,
+      });
+    });
+    revalidatePath('/admin/leave');
+    revalidatePath(`/admin/leave/${id}/remplacements`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
+  }
+}
+
+/**
+ * Reverse les remplacements/annulations d'un prof sur une période : notifie la
+ * présence (remplaçants + parents/élèves des classes concernées), retire les
+ * heures sup auto, puis SUPPRIME les overrides (EDT rétabli).
+ */
+async function revertTeacherSubstitutions(
+  tx: Prisma.TransactionClient,
+  args: { tenantId: string; fromUserId: string; teacherId: string; teacherName: string; startDate: Date; endDate: Date },
+): Promise<void> {
+  const { tenantId, fromUserId, teacherName } = args;
+  const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
+  if (!year) return;
+  const entries = await tx.timetableEntry.findMany({
+    where: { teacherId: args.teacherId, academicYearId: year.id },
+    select: { id: true },
+  });
+  const entryIds = entries.map((e) => e.id);
+  if (entryIds.length === 0) return;
+
+  const overrides = await tx.timetableOverride.findMany({
+    where: { entryId: { in: entryIds }, date: { gte: args.startDate, lte: args.endDate } },
+    include: {
+      entry: {
+        select: {
+          slot: { select: { startTime: true, endTime: true } },
+          subject: { select: { label: true } },
+          class: { select: { id: true, name: true } },
+        },
+      },
+      substituteTeacher: { select: { firstName: true, lastName: true } },
+    },
+  });
+  if (overrides.length === 0) return;
+
+  const locale = (await tx.tenant.findFirst({ select: { localeDefault: true } }))?.localeDefault ?? 'fr';
+  const items: NotifyItem[] = [];
+
+  // Cache parents/élèves par classe (une classe peut avoir plusieurs séances).
+  const familyByClass = new Map<
+    string,
+    { studentId: string; childName: string; parents: { userId: string | null; email: string | null; contacts: unknown }[]; studentUserId: string | null; studentEmail: string | null; studentContacts: unknown }[]
+  >();
+  async function familiesOf(classId: string) {
+    if (familyByClass.has(classId)) return familyByClass.get(classId)!;
+    const enrollments = await tx.enrollment.findMany({
+      where: { classId, status: 'ACTIVE' },
+      select: {
+        student: {
+          select: {
+            id: true, firstName: true, lastName: true, contacts: true,
+            userPersons: { select: { userId: true, user: { select: { email: true } } } },
+            relationsAsChild: { select: { parent: { select: { contacts: true, userPersons: { select: { userId: true, user: { select: { email: true } } } } } } } },
+          },
+        },
+      },
+    });
+    const rows = enrollments.map((e) => ({
+      studentId: e.student.id,
+      childName: `${e.student.firstName} ${e.student.lastName}`,
+      studentUserId: e.student.userPersons[0]?.userId ?? null,
+      studentEmail: e.student.userPersons[0]?.user?.email ?? null,
+      studentContacts: e.student.contacts,
+      parents: e.student.relationsAsChild.map((r) => ({
+        userId: r.parent.userPersons[0]?.userId ?? null,
+        email: r.parent.userPersons[0]?.user?.email ?? null,
+        contacts: r.parent.contacts,
+      })),
+    }));
+    familyByClass.set(classId, rows);
+    return rows;
+  }
+
+  for (const o of overrides) {
+    const dateLabel = fmtDate(o.date);
+    const slotLabel = `${o.entry.slot.startTime}–${o.entry.slot.endTime}`;
+    const subjectName = o.entry.subject?.label ?? '—';
+    const className = o.entry.class.name;
+
+    // Remplaçant : prévenu que son remplacement est annulé.
+    if (o.kind === 'SUBSTITUTION' && o.substituteTeacherId) {
+      const subUser = await tx.userPerson.findFirst({ where: { personId: o.substituteTeacherId }, select: { userId: true } });
+      const body = renderTemplate('substitution.reverted', { date: dateLabel, slot: slotLabel, subject: subjectName, class: className, teacher: teacherName }, locale);
+      if (subUser?.userId) {
+        await sendDirectMessage(tx, { tenantId, fromUserId, toUserId: subUser.userId, subject: `Remplacement annulé — ${dateLabel}`, body });
+      }
+    }
+
+    // Parents/élèves : seulement si l'override était APPROUVÉ (donc communiqué).
+    if (o.approvalStatus === 'APPROVED') {
+      const families = await familiesOf(o.entry.class.id);
+      for (const f of families) {
+        const data = { date: dateLabel, slot: slotLabel, subject: subjectName, child: f.childName };
+        const body = renderTemplate('substitution.maintained', data, locale);
+        const subject = `Cours maintenu — ${dateLabel}`;
+        for (const p of f.parents) {
+          if (p.userId) await sendDirectMessage(tx, { tenantId, fromUserId, toUserId: p.userId, subject, body });
+          items.push({ channel: 'EMAIL', recipient: emailRecipient(p.contacts, p.email), template: 'substitution.maintained', data, studentId: f.studentId, relatedType: 'TimetableOverride', relatedId: o.id });
+          items.push({ recipient: parentRecipient(p.contacts), template: 'substitution.maintained', data, studentId: f.studentId, relatedType: 'TimetableOverride', relatedId: o.id });
+        }
+        if (f.studentUserId) await sendDirectMessage(tx, { tenantId, fromUserId, toUserId: f.studentUserId, subject, body });
+        items.push({ channel: 'EMAIL', recipient: emailRecipient(f.studentContacts, f.studentEmail), template: 'substitution.maintained', data, studentId: f.studentId, relatedType: 'TimetableOverride', relatedId: o.id });
+      }
+    }
+
+    // Retire l'heure sup auto (DECLARED) liée à cet override.
+    await tx.overtimeEntry.deleteMany({ where: { source: 'SUBSTITUTION', sourceRef: o.id, status: 'DECLARED' } });
+  }
+
+  if (items.length) await sendNotifications(tx, tenantId, locale, items);
+
+  // Supprime les overrides → l'EDT ne montre plus de remplacement/annulation.
+  await tx.timetableOverride.deleteMany({
+    where: { entryId: { in: entryIds }, date: { gte: args.startDate, lte: args.endDate } },
+  });
 }

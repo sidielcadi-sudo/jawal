@@ -107,6 +107,14 @@ html[dir='rtl'] {
   border-color: rgb(var(--brand-700)) rgb(var(--brand-700)) #fff;
 }
 
+/* ─── Vue « emploi du temps du jour » : marqueur chevron ───
+   Chaque cours est une carte à bordure fine, repérée par un chevron en contour
+   (non rempli) dont le tracé porte la couleur de la matière. En RTL (arabe) la
+   pointe est retournée pour rester dirigée vers le cours. */
+[dir="rtl"] .edt-chevron {
+  transform: scaleX(-1);
+}
+
 body {
   @apply text-slate-900 antialiased;
   background-color: var(--color-bg); /* #F8F9FB — gris froid très léger */

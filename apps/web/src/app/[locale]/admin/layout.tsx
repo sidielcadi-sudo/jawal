@@ -83,7 +83,7 @@ export default async function AdminLayout({
               className="rounded-lg bg-brand-600 px-3 py-1.5 text-[13px] font-medium text-white hover:bg-brand-700"
             />
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/jawal-logo.png" alt="Jawal" className="h-9 w-9 object-contain" />
+            <img src="/jawal-logo.png" alt="LeadSchool" className="h-9 w-9 object-contain" />
           </div>
         </header>
         <main className="flex-1 overflow-y-auto print:overflow-visible">{children}</main>

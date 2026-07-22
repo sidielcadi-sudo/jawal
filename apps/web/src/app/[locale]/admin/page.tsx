@@ -193,12 +193,15 @@ export default async function AdminDashboard({
 
   return (
     <div className="px-3 py-3">
+      <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{t('bandTitle')}</h1>
+      </header>
       <div className="mb-4">
         <DashboardTabs locale={locale} showPilotage={!isVieScolaireOnly} />
       </div>
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <div>
-          <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+          <h2 className="text-base font-bold text-slate-900">{t('title')}</h2>
           <p className="mt-0.5 text-sm text-slate-600">
             {data.yearLabel} · {data.periodLabel}
           </p>
