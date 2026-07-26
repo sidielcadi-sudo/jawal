@@ -9,11 +9,11 @@
     "ios": "expo start --ios"
   },
   "dependencies": {
-    "expo": "^56.0.15",
-    "expo-asset": "~56.0.19",
-    "expo-constants": "~56.0.20",
+    "expo": "~56.0.17",
+    "expo-asset": "~56.0.21",
+    "expo-constants": "~56.0.22",
     "expo-device": "~56.0.4",
-    "expo-notifications": "~56.0.20",
+    "expo-notifications": "~56.0.22",
     "expo-secure-store": "~56.0.4",
     "expo-status-bar": "~56.0.4",
     "react": "19.2.3",

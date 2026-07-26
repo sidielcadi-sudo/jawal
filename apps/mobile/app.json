@@ -22,6 +22,9 @@
     },
     "android": {
       "package": "ma.jawal.parents"
-    }
+    },
+    "plugins": [
+      "expo-asset"
+    ]
   }
 }
