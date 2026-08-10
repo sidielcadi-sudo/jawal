@@ -7,8 +7,7 @@
     "title": "Bienvenue sur LeadSchool",
     "subtitle": "Gestion intégrée pour établissements primaires, secondaires et supérieurs.",
     "cta": {
-      "login": "Se connecter",
-      "demo": "Demander une démo"
+      "login": "Se connecter"
     }
   },
   "nav": {
@@ -124,7 +123,13 @@
         "present": "Présents",
         "absent": "Absents",
         "late": "Retards",
-        "excused": "Excusés"
+        "lateRate": "{rate} % des pointages",
+        "excused": "Excusés",
+        "absBreakdown": "Répartition des absences",
+        "absBreakdownEmpty": "Aucune absence sur la période.",
+        "absJustified": "Justifiées",
+        "absPending": "En attente de validation",
+        "absUnjustified": "Non justifiées"
       },
       "headcount": {
         "title": "Effectifs détaillés",
@@ -654,6 +659,71 @@
       "newAdmissionButton": "Nouvelle inscription",
       "reenrollButton": "Rattacher un élève existant",
       "bulkButton": "↻ Réinscrire en lot",
+      "massarButton": "⇩ Import MASSAR",
+      "importMassar": {
+        "title": "Import MASSAR",
+        "subtitle": "Importer un export CSV MASSAR : élèves, parents, classes et inscriptions.",
+        "breadcrumb": "Inscriptions",
+        "noYear": "Aucune année scolaire n'est définie pour cet établissement.",
+        "goToYears": "Créer une année",
+        "readError": "Lecture du fichier impossible.",
+        "help": {
+          "title": "Format attendu — CSV séparé par des virgules, encodé en UTF-8.",
+          "columns": "Colonnes reconnues :",
+          "massarId": "StudentID (code MASSAR) est obligatoire : il sert de clé, donc relancer le même fichier met à jour au lieu de créer des doublons.",
+          "level": "Level (« 4A ») donne le niveau par son nombre de tête ; le niveau doit déjà exister dans Paramétrage → Cursus.",
+          "class": "Les classes absentes sont créées automatiquement, avec le nom exact du fichier et une capacité de 30.",
+          "draft": "Les inscriptions sont créées au statut « En attente » : à valider ensuite manuellement.",
+          "schoolCode": "Seules les lignes dont CurrentSchoolCode vaut {code} seront importées ; les autres sont ignorées.",
+          "noSchoolCode": "Aucun code MASSAR n'est configuré sur cet établissement : toutes les lignes seront importées."
+        },
+        "input": {
+          "year": "Année scolaire cible",
+          "file": "Fichier CSV",
+          "paste": "…ou coller le contenu",
+          "preview": "Prévisualiser",
+          "previewing": "Analyse…"
+        },
+        "counter": {
+          "create": "À créer",
+          "update": "À mettre à jour",
+          "skipped": "Ignorées",
+          "error": "En erreur"
+        },
+        "status": {
+          "create": "Nouvel élève",
+          "update": "Mise à jour"
+        },
+        "col": {
+          "massarId": "Code MASSAR",
+          "name": "Nom (FR)",
+          "nameAr": "Nom (AR)",
+          "level": "Niveau",
+          "class": "Classe",
+          "status": "Statut"
+        },
+        "preview": {
+          "target": "Import sur l'année {year}.",
+          "filter": "Filtre établissement : {code}",
+          "classesToCreate": "{count} classe(s) seront créées :",
+          "newClass": "(nouvelle)",
+          "skippedHint": "Ignorée — établissement {code}",
+          "back": "Retour",
+          "commit": "Importer {count} élève(s)",
+          "committing": "Import en cours…"
+        },
+        "done": {
+          "title": "Import terminé",
+          "students": "{count} élève(s) créé(s) ou mis à jour",
+          "enrollments": "{count} inscription(s) créée(s)",
+          "classes": "{count} classe(s) créée(s)",
+          "parents": "{count} parent(s) créé(s)",
+          "skipped": "{count} ligne(s) ignorée(s) — autre établissement",
+          "errors": "{count} ligne(s) en erreur, non importées",
+          "draftHint": "Les inscriptions sont au statut « En attente ». Validez-les depuis la liste des inscriptions.",
+          "again": "Nouvel import"
+        }
+      },
       "empty": "Aucun dossier d'inscription pour cette année.",
       "yes": "Oui",
       "no": "Non",
@@ -779,6 +849,7 @@
         "subtitle": "Crée un dossier en brouillon. La validation génère l'échéancier et affecte une classe.",
         "student": "Élève",
         "studentPlaceholder": "Sélectionnez un élève…",
+        "noClass": "sans classe",
         "year": "Année scolaire",
         "level": "Niveau",
         "levelPlaceholder": "Sélectionnez un niveau…",
@@ -2564,6 +2635,7 @@
         },
         "cne": "CNE (code national d examen)",
         "codeMassar": "Code Massar",
+        "codeMassarHint": "Identifiant MASSAR de l'élève, unique dans l'établissement. Sert de clé à l'import MASSAR.",
         "imageRights": "Droit à l image",
         "exitRights": "Droit de sortie (0–9)",
         "dietInfo": "Régime alimentaire / allergies",
@@ -3045,6 +3117,8 @@
         "name": "Nom de l'établissement / groupe scolaire",
         "slug": "Identifiant de connexion (slug)",
         "slugHint": "Utilisé à la connexion. Non modifiable ici (contacter le support).",
+        "massarCode": "Code établissement (MASSAR)",
+        "massarCodeHint": "Code de l'établissement dans MASSAR (ex. CASA001). Sert à filtrer les lignes à l'import MASSAR : seules celles portant ce code sont importées. Laisser vide pour n'appliquer aucun filtre.",
         "localeDefault": "Langue par défaut",
         "locales": {
           "fr": "Français",

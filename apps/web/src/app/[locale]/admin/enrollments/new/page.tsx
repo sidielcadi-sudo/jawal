@@ -22,7 +22,7 @@ export default async function NewEnrollmentPage({
   const { students, years, levels } = await withTenant(
     session.user.tenantId,
     async (tx) => {
-      const [students, years, levels] = await Promise.all([
+      const [persons, years, levels, memberships] = await Promise.all([
         tx.person.findMany({
           where: { type: 'STUDENT', deletedAt: null },
           orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
@@ -36,7 +36,45 @@ export default async function NewEnrollmentPage({
           orderBy: { order: 'asc' },
           select: { id: true, label: true },
         }),
+        // Classe courante de chaque élève, pour lever l'ambiguïté entre
+        // homonymes dans la liste déroulante.
+        tx.studentClass.findMany({
+          where: { unenrolledAt: null, class: { deletedAt: null } },
+          select: {
+            studentId: true,
+            class: {
+              select: {
+                name: true,
+                academicYear: { select: { active: true, startDate: true } },
+              },
+            },
+          },
+        }),
       ]);
+
+      // Un élève peut avoir plusieurs affectations ouvertes (années successives) :
+      // on retient celle de l'année active, sinon la plus récente.
+      const classByStudent = new Map<string, { name: string; active: boolean; startDate: Date }>();
+      for (const m of memberships) {
+        const candidate = {
+          name: m.class.name,
+          active: m.class.academicYear.active,
+          startDate: m.class.academicYear.startDate,
+        };
+        const kept = classByStudent.get(m.studentId);
+        if (
+          !kept ||
+          (candidate.active && !kept.active) ||
+          (candidate.active === kept.active && candidate.startDate > kept.startDate)
+        ) {
+          classByStudent.set(m.studentId, candidate);
+        }
+      }
+
+      const students = persons.map((p) => ({
+        ...p,
+        className: classByStudent.get(p.id)?.name ?? null,
+      }));
       return { students, years, levels };
     },
   );
@@ -80,6 +118,7 @@ export default async function NewEnrollmentPage({
             {students.map((s) => (
               <option key={s.id} value={s.id}>
                 {s.lastName} {s.firstName}
+                {s.className ? ` — ${s.className}` : ` — ${t('new.noClass')}`}
               </option>
             ))}
           </select>

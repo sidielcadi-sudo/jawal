@@ -36,8 +36,23 @@ export default async function AdminCarnetPage({
     if (!classId) return { classList, students: [], classId, studentId: null, carnet: null };
 
     const scs = await tx.studentClass.findMany({
-      // Élèves actifs uniquement : exclut les radiés/supprimés du menu.
-      where: { classId, unenrolledAt: null, student: { deletedAt: null } },
+      // Élèves actifs uniquement. `unenrolledAt` ne suffit pas : le dossier
+      // peut avoir été radié (WITHDRAWN) ou clôturé (GRADUATED) alors que
+      // l'affectation de classe est restée ouverte. On exclut donc aussi les
+      // élèves dont le dossier de l'année en cours n'est plus actif.
+      where: {
+        classId,
+        unenrolledAt: null,
+        student: {
+          deletedAt: null,
+          enrollments: {
+            none: {
+              academicYearId: year.id,
+              status: { in: ['WITHDRAWN', 'GRADUATED'] },
+            },
+          },
+        },
+      },
       include: { student: { select: { id: true, firstName: true, lastName: true } } },
       orderBy: { student: { lastName: 'asc' } },
     });

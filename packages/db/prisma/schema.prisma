@@ -344,6 +344,9 @@ model Tenant {
   /// Groupe scolaire de rattachement (null = établissement autonome).
   groupId       String?       @map("group_id") @db.Uuid
   customDomain  String?       @unique @map("custom_domain")
+  /// Code établissement MASSAR (ex. « CASA001 »). Sert à filtrer les lignes
+  /// d'un export MASSAR multi-établissements à l'import.
+  massarCode    String?       @unique @map("massar_code")
   profile       TenantProfile @default(K12)
   status        TenantStatus  @default(TRIAL)
   localeDefault String        @default("fr") @map("locale_default")
@@ -539,6 +542,12 @@ model Person {
   serviceId               String?               @map("service_id") @db.Uuid
   firstName               String                @map("first_name")
   lastName                String                @map("last_name")
+  /// Nom et prénom en arabe (import MASSAR, documents et bulletins en AR).
+  firstNameAr             String?               @map("first_name_ar")
+  lastNameAr              String?               @map("last_name_ar")
+  /// Identifiant élève MASSAR (code massar). Sert de clé de rapprochement
+  /// pour rendre les imports rejouables sans créer de doublons.
+  massarId                String?               @map("massar_id")
   birthDate               DateTime?             @map("birth_date") @db.Date
   gender                  Gender?
   nationality             String?
@@ -627,6 +636,7 @@ model Person {
   /// Liens où cette personne est le parent/tuteur (TO = parent/guardian)
   relationsAsParent         PersonRelation[]            @relation("ParentRelations")
 
+  @@unique([tenantId, massarId])
   @@index([tenantId, type])
   @@index([tenantId, lastName, firstName])
   @@index([tenantId, roleId])
@@ -1002,6 +1012,8 @@ model Class {
   academicYearId String    @map("academic_year_id") @db.Uuid
   levelId        String    @map("level_id") @db.Uuid
   name           String // "1AC-A", "TD-Info-1"
+  /// Libellé arabe de la classe (import MASSAR, documents et bulletins en AR).
+  nameAr         String?   @map("name_ar")
   capacity       Int       @default(30)
   mainTeacherId  String?   @map("main_teacher_id") @db.Uuid
   /// Délégué de classe (élève), choisi par la Vie scolaire.

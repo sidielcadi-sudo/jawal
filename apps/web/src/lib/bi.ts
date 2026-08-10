@@ -224,8 +224,19 @@ export async function computeAcademicOverview(
   };
 }
 
+/** Répartition des absences par état de justification (pour le camembert). */
+export type AbsenceBreakdown = {
+  /** Justification déposée ET validée par la vie scolaire. */
+  justified: number;
+  /** Justification déposée, en attente de validation. */
+  pending: number;
+  /** Aucune justification, ou justification rejetée. */
+  unjustified: number;
+};
+
 /**
- * Taux de présence moyen sur les sessions finalisées d'une période.
+ * Taux de présence moyen sur les sessions finalisées d'une période, avec la
+ * répartition des absences par état de justification.
  */
 export async function computeAttendanceRate(
   tx: Tx,
@@ -237,11 +248,20 @@ export async function computeAttendanceRate(
   absentCount: number;
   lateCount: number;
   excusedCount: number;
+  absenceBreakdown: AbsenceBreakdown;
 }> {
+  const emptyBreakdown: AbsenceBreakdown = { justified: 0, pending: 0, unjustified: 0 };
+  const empty = {
+    rate: null,
+    totalRecords: 0,
+    presentCount: 0,
+    absentCount: 0,
+    lateCount: 0,
+    excusedCount: 0,
+    absenceBreakdown: emptyBreakdown,
+  };
   const period = await tx.period.findUnique({ where: { id: periodId } });
-  if (!period) {
-    return { rate: null, totalRecords: 0, presentCount: 0, absentCount: 0, lateCount: 0, excusedCount: 0 };
-  }
+  if (!period) return empty;
   const records = await tx.attendanceRecord.findMany({
     where: {
       session: {
@@ -249,25 +269,34 @@ export async function computeAttendanceRate(
         date: { gte: period.startDate, lte: period.endDate },
       },
     },
-    select: { status: true },
+    select: { status: true, justification: { select: { status: true } } },
   });
 
   const total = records.length;
-  if (total === 0) {
-    return { rate: null, totalRecords: 0, presentCount: 0, absentCount: 0, lateCount: 0, excusedCount: 0 };
-  }
+  if (total === 0) return empty;
   const present = records.filter((r) => r.status === 'PRESENT' || r.status === 'LATE' || r.status === 'EXCUSED').length;
-  const absent = records.filter((r) => r.status === 'ABSENT').length;
+  const absences = records.filter((r) => r.status === 'ABSENT');
   const late = records.filter((r) => r.status === 'LATE').length;
   const excused = records.filter((r) => r.status === 'EXCUSED').length;
+
+  // Une absence sans justification déposée, ou dont la justification a été
+  // rejetée, compte comme non justifiée.
+  const absenceBreakdown: AbsenceBreakdown = {
+    justified: absences.filter((r) => r.justification?.status === 'APPROVED').length,
+    pending: absences.filter((r) => r.justification?.status === 'PENDING').length,
+    unjustified: absences.filter(
+      (r) => !r.justification || r.justification.status === 'REJECTED',
+    ).length,
+  };
 
   return {
     rate: (present / total) * 100,
     totalRecords: total,
     presentCount: present,
-    absentCount: absent,
+    absentCount: absences.length,
     lateCount: late,
     excusedCount: excused,
+    absenceBreakdown,
   };
 }
 

@@ -13,7 +13,15 @@ export default async function EstablishmentPage({ params }: { params: Promise<{ 
 
   const tenant = await prismaAdmin.tenant.findUnique({
     where: { id: session.user.tenantId },
-    select: { name: true, slug: true, localeDefault: true, currency: true, timezone: true, logoFileId: true },
+    select: {
+      name: true,
+      slug: true,
+      localeDefault: true,
+      currency: true,
+      timezone: true,
+      logoFileId: true,
+      massarCode: true,
+    },
   });
   if (!tenant) return <p className="text-sm text-slate-500">—</p>;
 
@@ -28,6 +36,7 @@ export default async function EstablishmentPage({ params }: { params: Promise<{ 
           localeDefault: tenant.localeDefault,
           currency: tenant.currency,
           timezone: tenant.timezone,
+          massarCode: tenant.massarCode ?? '',
         }}
       />
       <LogoUploader hasLogo={Boolean(tenant.logoFileId)} />

@@ -62,7 +62,7 @@ type PersonInitial = {
   regime?: 'EXTERNE' | 'DEMI_PENSIONNAIRE' | 'INTERNE';
   usesTransport?: boolean;
   cne?: string;
-  codeMassar?: string;
+  massarId?: string;
   imageRights?: boolean;
   exitRights?: number;
   dietInfo?: string;
@@ -400,8 +400,15 @@ export function PersonForm({
             </Field>
           )}
           {type === 'STUDENT' && (
-            <Field label={t('codeMassar')}>
-              <input type="text" name="codeMassar" defaultValue={initial?.codeMassar ?? ''} placeholder="Massar" className={inputCls} />
+            <Field label={t('codeMassar')} error={fieldErrors.massarId}>
+              <input
+                type="text"
+                name="massarId"
+                defaultValue={initial?.massarId ?? ''}
+                placeholder="Massar"
+                className={inputCls}
+              />
+              <p className="mt-1 text-[11px] text-slate-400">{t('codeMassarHint')}</p>
             </Field>
           )}
           {type === 'STUDENT' && (

@@ -19,7 +19,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           className="mx-auto mb-6 h-20 w-auto object-contain"
         />
         {name && <p className="mb-1 text-lg font-bold text-white">{name}</p>}
-        <h1 className="text-3xl font-bold tracking-tight text-white">{t('title')}</h1>
+        <h1 className="text-3xl font-normal tracking-tight text-blue-950">{t('title')}</h1>
 
         <div className="mt-8 flex justify-center gap-3">
           <Link
@@ -27,12 +27,6 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
             className="rounded-lg bg-white px-6 py-2.5 text-sm font-semibold text-brand-600 shadow transition-colors hover:bg-white/90"
           >
             {t('cta.login')}
-          </Link>
-          <Link
-            href="/demo"
-            className="rounded-lg border border-white/40 px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-white/10"
-          >
-            {t('cta.demo')}
           </Link>
         </div>
 
@@ -46,9 +40,10 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
           </Link>
         </div>
 
-        {/* Logo LeadSchool à l'intérieur de la carte, agrandi */}
+        {/* Signature éditeur, juste au-dessus du logo LeadSchool */}
+        <p className="mt-8 text-xs font-medium text-white/80">Edited by LeadTech</p>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/jawal-logo.png" alt="LeadSchool" className="mx-auto mt-8 h-24 w-auto object-contain" />
+        <img src="/jawal-logo.png" alt="LeadSchool" className="mx-auto mt-2 h-24 w-auto object-contain" />
       </div>
     </main>
   );

@@ -174,11 +174,9 @@ function buildItems(locale: string, roleCodes: string[]): NavItem[] {
       match: (p, _s) => p.startsWith(`${prefix}/comptabilite`),
       roles: ['tenant_admin', 'direction', 'comptable'],
     },
-    {
-      href: `${prefix}/persons/import`,
-      labelKey: 'import',
-      match: (p, _s) => p.includes('/persons/import'),
-    },
+    // « Importer CSV » (persons/import) est retiré du menu : la page reste
+    // joignable par URL, mais l'import de référence est désormais
+    // « Import MASSAR », depuis la page Inscriptions.
     {
       href: `${prefix}/announcements`,
       labelKey: 'announcements',
@@ -216,6 +214,7 @@ const EMOJI: Record<string, string> = {
   classes: '🏫',
   finance: '💰',
   soutien: '📚',
+  competences: '🎯',
   carnet: '📒',
   justifications: '✅',
   transport: '🚍',
@@ -233,16 +232,12 @@ const EMOJI: Record<string, string> = {
 
 export function AdminSidebar({
   locale,
-  tenantName,
   roleCodes,
-  logoUrl,
   vieScolaireBadge = 0,
   multiSite = false,
 }: {
   locale: string;
-  tenantName: string;
   roleCodes: string[];
-  logoUrl?: string | null;
   vieScolaireBadge?: number;
   multiSite?: boolean;
 }) {
@@ -282,16 +277,9 @@ export function AdminSidebar({
         collapsed ? 'w-[4.75rem]' : 'w-60'
       }`}
     >
-      {/* En-tête : logo (déplié) + bouton réduire / agrandir */}
-      <div className={`mb-2 flex items-center px-1 ${collapsed ? 'justify-center' : 'justify-between'}`}>
-        {!collapsed && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={logoUrl ?? '/sesame-logo.png'}
-            alt={tenantName || 'Logo'}
-            className="h-11 w-auto object-contain"
-          />
-        )}
+      {/* En-tête : bouton réduire / agrandir. Le logo de l'établissement est
+          désormais affiché à l'extrême gauche de la bande d'en-tête. */}
+      <div className={`mb-2 flex items-center px-1 ${collapsed ? 'justify-center' : 'justify-end'}`}>
         <button
           type="button"
           onClick={toggle}

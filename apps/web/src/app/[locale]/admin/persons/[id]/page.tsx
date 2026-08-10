@@ -399,7 +399,6 @@ export default async function PersonDetailPage({
   // Champs élève additionnels stockés en metadata.
   const meta = (person.metadata ?? {}) as {
     cne?: string;
-    codeMassar?: string;
     imageRights?: boolean;
     exitRights?: number;
     dietInfo?: string;
@@ -552,6 +551,10 @@ export default async function PersonDetailPage({
                   .join(', ') || undefined
               }
             />
+            <Row
+              label={tForm('gender')}
+              value={person.gender ? tForm(`genders.${person.gender}`) : undefined}
+            />
             <Row label={tDetail('cin')} value={person.cin ?? undefined} />
             <Row label={tDetail('nationality')} value={person.nationality ?? undefined} />
           </dl>
@@ -588,7 +591,7 @@ export default async function PersonDetailPage({
             <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">{tForm('studentIdentity')}</h2>
             <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
               <Row label={tForm('cne')} value={meta.cne || undefined} />
-              <Row label={tForm('codeMassar')} value={meta.codeMassar || undefined} />
+              <Row label={tForm('codeMassar')} value={person.massarId ?? undefined} />
               <Row
                 label={tForm('regime.label')}
                 value={person.regime ? tForm(`regime.${person.regime}` as never) : undefined}

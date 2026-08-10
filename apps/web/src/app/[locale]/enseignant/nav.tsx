@@ -12,6 +12,7 @@ const EMOJI: Record<string, string> = {
   appel: '✅',
   cahier: '📓',
   notes: '📝',
+  competences: '🎯',
   carnet: '📒',
   classes: '🏫',
   leave: '🌴',

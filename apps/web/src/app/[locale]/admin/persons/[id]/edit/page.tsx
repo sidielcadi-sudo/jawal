@@ -174,13 +174,13 @@ export default async function EditPersonPage({
             gender: person.gender ?? undefined,
             nationality: person.nationality ?? undefined,
             cin: person.cin ?? undefined,
+            massarId: person.massarId ?? undefined,
             regime: person.regime ?? undefined,
             usesTransport: person.usesTransport,
             ...(() => {
               const m = (person.metadata ?? {}) as Record<string, unknown>;
               return {
                 cne: typeof m.cne === 'string' ? m.cne : undefined,
-                codeMassar: typeof m.codeMassar === 'string' ? m.codeMassar : undefined,
                 imageRights: typeof m.imageRights === 'boolean' ? m.imageRights : undefined,
                 exitRights: typeof m.exitRights === 'number' ? m.exitRights : undefined,
                 dietInfo: typeof m.dietInfo === 'string' ? m.dietInfo : undefined,

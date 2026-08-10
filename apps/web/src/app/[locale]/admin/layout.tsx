@@ -43,6 +43,7 @@ export default async function AdminLayout({
     : 0;
 
   const tAdmin = await getTranslations('admin');
+  const logoUrl = tenant?.logoFileId ? `/api/tenant/logo?v=${tenant.updatedAt.getTime()}` : null;
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#eef0f7] print:block print:h-auto print:overflow-visible print:bg-white">
@@ -50,9 +51,7 @@ export default async function AdminLayout({
       <div className="print:hidden">
         <AdminSidebar
           locale={locale}
-          tenantName={tenant?.name ?? ''}
           roleCodes={roleCodes}
-          logoUrl={tenant?.logoFileId ? `/api/tenant/logo?v=${tenant.updatedAt.getTime()}` : null}
           vieScolaireBadge={vieScolaireBadge}
           multiSite={session.user.sites.length > 1}
         />
@@ -65,8 +64,12 @@ export default async function AdminLayout({
               {tenant.name}
             </span>
           )}
-          {/* Gauche : sélecteur d'établissement (multi-sites) */}
-          <div className="flex items-center">
+          {/* Gauche : logo de l'établissement, puis sélecteur (multi-sites) */}
+          <div className="flex items-center gap-3">
+            {logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={logoUrl} alt={tenant?.name ?? ''} className="h-9 w-auto object-contain" />
+            )}
             <SiteSwitcher sites={session.user.sites} activeTenantId={session.user.tenantId} />
           </div>
           {/* Droite : messages, alertes, compte */}

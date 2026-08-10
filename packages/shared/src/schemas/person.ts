@@ -115,9 +115,11 @@ export const personCreateSchema = z.object({
   regime: regimeSchema.optional(),
   /// L'élève utilise-t-il le transport scolaire ? (STUDENT uniquement.)
   usesTransport: z.coerce.boolean().optional(),
+  /// Code élève MASSAR — colonne dédiée `Person.massarId`, unique par
+  /// établissement : c'est la clé de rapprochement de l'import MASSAR.
+  massarId: z.string().max(40).optional(),
   /// Champs élève additionnels (stockés en metadata, pas en colonnes) :
   cne: z.string().max(40).optional(), // Code National d'Examen
-  codeMassar: z.string().max(40).optional(), // Code Massar
   imageRights: z.coerce.boolean().optional(), // Droit à l'image
   exitRights: z.coerce.number().int().min(0).max(9).optional(), // Droit de sortie (0–9)
   dietInfo: z.string().max(2000).optional(), // Régime alimentaire / allergies (DP/interne)

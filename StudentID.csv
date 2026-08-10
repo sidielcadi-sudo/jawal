@@ -1,0 +1,21 @@
+StudentID,LastNameFr,FirstNameFr,LastNameAr,FirstNameAr,Gender,BirthDate,Level,ClassNameFr,ClassNameAr,CurrentSchoolCode,FatherNameFr,MotherNameFr,Phone1,Phone2,AddressFr,CityFr,AddressAr,CityAr
+2026-001,El Amrani,Yassine,العمري,ياسين,M,2010-05-12,4A,Quatrième A,الرابعة أ,CASA001,Mohamed,Latifa,0612345678,0623456789,12 Rue Hassan II,Casablanca,شارع الحسن الثاني 12,الدار البيضاء
+2026-002,Benali,Sara,بن علي,سارة,F,2011-09-20,5B,Cinquième B,الخامسة ب,RBT002,Ahmed,Fatima,0611111111,0622222222,45 Bd Zerktouni,Rabat,زنقة زرقطوني 45,الرباط
+2026-003,Kettani,Ghita,الكتاني,غيثة,F,2012-01-15,3C,Troisième C,الثالثة ج,CASA001,Hassan,Nadia,0633333333,0644444444,23 Rue Al Qods,Casablanca,زنقة القدس 23,الدار البيضاء
+2026-004,Tazi,Salma,التازي,سلمى,F,2011-03-10,2A,Deuxième A,الثانية أ,MAR001,Youssef,Samira,0655555555,0666666666,78 Rue Mohammed V,Marrakech,شارع محمد الخامس 78,مراكش
+2026-005,Idrissi,Nour,الإدريسي,نور,F,2010-11-25,6B,Sixième B,السادسة ب,FES001,Abdelkader,Karima,0677777777,0688888888,14 Rue Atlas,Fès,زنقة الأطلس 14,فاس
+2026-006,Hassani,Soufiane,الحسني,سفيان,M,2012-07-19,1C,Première C,الأولى ج,TNG001,Ali,Zahra,0699999999,0600000000,56 Rue Tanger,Tanger,زنقة طنجة 56,طنجة
+2026-007,Bennis,Amine,بنيس,أمين,M,2011-02-02,5A,Cinquième A,الخامسة أ,CASA001,Omar,Laila,0612121212,0623232323,34 Rue Anfa,Casablanca,زنقة أنفا 34,الدار البيضاء
+2026-008,Ouazzani,Lamia,الوزاني,لمياء,F,2010-06-30,4B,Quatrième B,الرابعة ب,RBT002,Mustapha,Houda,0634343434,0645454545,89 Rue Souissi,Rabat,زنقة السويسي 89,الرباط
+2026-009,El Fassi,Imane,الفاسي,إيمان,F,2012-09-14,2C,Deuxième C,الثانية ج,FES001,Khalid,Naima,0656565656,0667676767,22 Rue Sahrij,Fès,زنقة السهريج 22,فاس
+2026-010,Chraibi,Doha,الشرايبي,ضحى,F,2011-12-01,3A,Troisième A,الثالثة أ,CASA001,Abdelilah,Mouna,0678787878,0689898989,77 Rue Bourgogne,Casablanca,زنقة بورغون 77,الدار البيضاء
+2026-011,El Idrissi,Adam,الإدريسي,آدم,M,2010-04-18,6A,Sixième A,السادسة أ,TNG001,Saïd,Fatima,0610101010,0620202020,11 Rue Corniche,Tanger,كورنيش 11,طنجة
+2026-012,El Alaoui,Hiba,العلوي,هبة,F,2012-08-22,1A,Première A,الأولى أ,MAR001,Reda,Salwa,0630303030,0640404040,65 Rue Medina,Marrakech,زنقة المدينة 65,مراكش
+2026-013,El Mansouri,Youssef,المنصوري,يوسف,M,2011-05-05,2B,Deuxième B,الثانية ب,FES001,Abdelaziz,Sanaa,0650505050,0660606060,33 Rue Batha,Fès,زنقة البطحاء 33,فاس
+2026-014,El Ghazali,Rania,الغزالي,رانية,F,2010-10-10,4C,Quatrième C,الرابعة ج,CASA001,Idriss,Hajar,0670707070,0680808080,99 Rue Derb Omar,Casablanca,درب عمر 99,الدار البيضاء
+2026-015,El Khatib,Othmane,الخطيب,عثمان,M,2012-03-03,3B,Troisième B,الثالثة ب,RBT002,Abdelmajid,Latifa,0611112222,0622223333,12 Rue Agdal,Rabat,زنقة أكدال 12,الرباط
+2026-016,El Yousfi,Malak,اليوسفي,ملك,F,2011-07-07,5C,Cinquième C,الخامسة ج,TNG001,Ahmed,Zineb,0633334444,0644445555,44 Rue Kasbah,Tanger,زنقة القصبة 44,طنجة
+2026-017,El Baraka,Ayoub,البركة,أيوب,M,2010-01-01,6C,Sixième C,السادسة ج,MAR001,Mohamed,Imane,0655556666,0666667777,88 Rue Jamaa El Fna,Marrakech,ساحة جامع الفنا 88,مراكش
+2026-018,El Hadi,Salma,الهادي,سلمى,F,2012-02-14,2D,Deuxième D,الثانية د,FES001,Hicham,Khadija,0677778888,0688889999,21 Rue Bab Boujloud,Fès,باب بوجلود 21,فاس
+2026-019,El Chami,Anas,الشامي,أنس,M,2011-09-09,3D,Troisième D,الثالثة د,CASA001,Abdeljalil,Nadia,0612123434,0623234545,55 Rue Maarif,Casablanca,زنقة المعاريف 55,الدار البيضاء
+2026-020,El Idrissi,Meryem,الإدريسي,مريم,F,2010-12-12,4D,Quatrième D,الرابعة د,RBT002,Abdelkader,Fatima,0634345656,0645456767,66 Rue Hassan II,Rabat,شارع الحسن الثاني 66,الرباط

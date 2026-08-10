@@ -34,14 +34,10 @@ const GENERAL_EMOJI: Record<string, string> = {
 
 export function ParentSidebar({
   locale,
-  tenantName,
   children,
-  logoUrl,
 }: {
   locale: string;
-  tenantName: string;
   children: Child[];
-  logoUrl?: string | null;
 }) {
   const pathname = usePathname();
   const t = useTranslations('parent.nav');
@@ -88,15 +84,8 @@ export function ParentSidebar({
         collapsed ? 'w-[4.75rem]' : 'w-60'
       }`}
     >
-      <div className={`mb-2 flex items-center px-1 ${collapsed ? 'justify-center' : 'justify-between'}`}>
-        {!collapsed && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={logoUrl ?? '/sesame-logo.png'}
-            alt={tenantName || 'Logo'}
-            className="h-11 w-auto object-contain"
-          />
-        )}
+      {/* Le logo de l'établissement est affiché à gauche de la bande d'en-tête. */}
+      <div className={`mb-2 flex items-center px-1 ${collapsed ? 'justify-center' : 'justify-end'}`}>
         <button
           type="button"
           onClick={toggle}

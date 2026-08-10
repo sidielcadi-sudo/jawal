@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { installmentStepMonths } from '@/lib/fees';
 import { loadUnpaidByFamily } from '@/lib/unpaid';
+import { kpiTone } from '@/lib/kpi-tones';
 import { DistributionTabs } from './distribution';
 import { YearSelect } from './year-select';
 
@@ -522,16 +523,11 @@ export default async function FinanceDashboardPage({
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
           <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>
         </div>
-        {/* Sélecteur d'année centré (auto-submit, sans bouton) */}
-        <div className="pointer-events-none absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 lg:block">
-          <div className="pointer-events-auto">
-            <YearSelect years={data.years} selectedYearId={data.selectedYearId} />
-          </div>
-        </div>
+        {/* Sélecteur d'année (auto-submit, sans bouton) — dans le flux, juste
+            avant les boutons d'action : centré en absolu il recouvrait
+            « Dépenses » sur les écrans larges. */}
         <div className="flex flex-wrap items-center gap-2">
-          <div className="lg:hidden">
-            <YearSelect years={data.years} selectedYearId={data.selectedYearId} />
-          </div>
+          <YearSelect years={data.years} selectedYearId={data.selectedYearId} />
           <Link
             href={`/${locale}/admin/finance/expenses`}
             className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
@@ -559,24 +555,33 @@ export default async function FinanceDashboardPage({
         </div>
       </header>
 
+      {/* Bandeau d'indicateurs — un pastel clair distinct par carte. */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-        <Kpi label={t('kpi.totalDue')} value={`${formatNumber(data.totalDue)} ${data.currency}`} />
+        <Kpi
+          label={t('kpi.totalDue')}
+          value={`${formatNumber(data.totalDue)} ${data.currency}`}
+          toneIndex={0}
+        />
         <Kpi
           label={t('kpi.totalPaid')}
           value={`${formatNumber(data.totalPaid)} ${data.currency}`}
           color="emerald"
+          toneIndex={1}
         />
         <Kpi
           label={t('kpi.totalRemaining')}
           value={`${formatNumber(data.totalRemaining)} ${data.currency}`}
           color={data.totalRemaining > 0 ? 'red' : 'emerald'}
+          toneIndex={2}
         />
         <Kpi
           label={t('kpi.collectionRate')}
           value={`${data.collectionRate.toFixed(1)}%`}
           color={data.collectionRate >= 80 ? 'emerald' : data.collectionRate >= 50 ? 'amber' : 'red'}
+          toneIndex={3}
         />
         <Kpi
+          toneIndex={4}
           label={t('unpaid.familiesKpi')}
           value={String(data.unpaidFamiliesCount)}
           color={data.unpaidFamiliesCount > 0 ? 'red' : 'emerald'}
@@ -1407,24 +1412,36 @@ function addMonths(d: Date, n: number): Date {
   return x;
 }
 
+/**
+ * Carte d'indicateur. `toneIndex` applique un fond pastel clair distinct par
+ * carte (purement visuel) ; `color` continue de porter le signal (rouge =
+ * reste dû, vert = soldé…) sur la valeur, donc rien n'est perdu.
+ */
 function Kpi({
   label,
   value,
   color,
+  toneIndex,
 }: {
   label: string;
   value: string;
   color?: 'emerald' | 'red' | 'amber';
+  toneIndex?: number;
 }) {
   const colors: Record<string, string> = {
     emerald: 'text-emerald-700',
     red: 'text-red-700',
     amber: 'text-amber-700',
   };
+  const tone = toneIndex === undefined ? null : kpiTone(toneIndex);
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div className={`rounded-2xl border p-5 ${tone ? tone.card : 'border-slate-200 bg-white'}`}>
       <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
-      <div className={`mt-2 text-2xl font-semibold tabular-nums ${color ? colors[color] : 'text-slate-900'}`}>
+      <div
+        className={`mt-2 text-2xl font-semibold tabular-nums ${
+          color ? colors[color] : (tone?.value ?? 'text-slate-900')
+        }`}
+      >
         {value}
       </div>
     </div>

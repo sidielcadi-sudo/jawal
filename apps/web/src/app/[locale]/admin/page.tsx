@@ -14,6 +14,8 @@ import { listContractAlerts } from '@/lib/contract-alerts';
 import { contractStatusBadgeClass } from '@/lib/contract-status';
 import { isDirection, isVieScolaireOnly as checkVieScolaireOnly } from '@/lib/auth/rbac';
 import { computePilotage, type Kpi, type KpiStatus } from '@/lib/kpi-pilotage';
+import { BLUE_TONES, kpiTone, type KpiTone } from '@/lib/kpi-tones';
+import { AbsencePie } from './absence-pie';
 import { ContractAlertsActions } from './contract-alerts-actions';
 import { DashboardTabs } from './dashboard-tabs';
 import { PeriodSelect } from './period-select';
@@ -80,6 +82,7 @@ export default async function AdminDashboard({
             absentCount: 0,
             lateCount: 0,
             excusedCount: 0,
+            absenceBreakdown: { justified: 0, pending: 0, unjustified: 0 },
           }),
       periodId ? findAtRiskStudents(tx, periodId) : Promise.resolve([]),
     ]);
@@ -126,24 +129,29 @@ export default async function AdminDashboard({
   // « Vue d'ensemble » : cartes générales (tous les admins) + cartes de pilotage
   // (direction seulement), toutes au design des cartes pilotage. Le Recouvrement
   // n'apparaît qu'une fois (carte générale ci-dessous), pas en double.
+  // `tone` explicite = carte hors palette tournante. Total dû / Encaissé /
+  // Élèves partagent une famille de bleus pour se lire comme un même bloc.
   const overviewCards: Array<{
     key: string;
     label: string;
     value: string;
     status: KpiStatus;
     thresholds?: { green: string; orange: string; red: string };
+    tone?: KpiTone;
   }> = [
     {
       key: 'totalDue',
       label: t('kpi.totalDue'),
       value: `${data.finance.totalDue.toLocaleString(locale)} ${data.currency}`,
       status: 'na',
+      tone: BLUE_TONES.sky,
     },
     {
       key: 'collected',
       label: t('kpi.collected'),
       value: `${data.finance.totalPaid.toLocaleString(locale)} ${data.currency}`,
       status: 'na',
+      tone: BLUE_TONES.blue,
     },
     {
       key: 'toCollect',
@@ -156,6 +164,7 @@ export default async function AdminDashboard({
       label: t('kpi.students'),
       value: String(data.headcount.students),
       status: 'na',
+      tone: BLUE_TONES.indigo,
     },
     {
       key: 'averageGeneral',
@@ -187,7 +196,6 @@ export default async function AdminDashboard({
       { key: 'absenteeism', label: tp('kpi.absenteeism'), value: formatKpi(p.absenteeism), status: p.absenteeism.status, thresholds: THRESHOLDS.absenteeism },
       { key: 'teacherLoad', label: tp('kpi.teacherLoad'), value: formatKpi(p.teacherLoad), status: p.teacherLoad.status, thresholds: THRESHOLDS.teacherLoad },
       { key: 'satisfaction', label: tp('kpi.satisfaction'), value: formatKpi(p.satisfaction), status: p.satisfaction.status, thresholds: THRESHOLDS.satisfaction },
-      { key: 'conformiteMassar', label: tp('kpi.conformiteMassar'), value: formatKpi(p.conformiteMassar), status: p.conformiteMassar.status },
     );
   }
 
@@ -215,13 +223,14 @@ export default async function AdminDashboard({
           Le Pilotage est fusionné ici ; Recouvrement n'apparaît qu'une fois. */}
       <Category label={t('cat.overview')}>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {overviewCards.map((c) => (
+          {overviewCards.map((c, i) => (
             <PilotCard
               key={c.key}
               label={c.label}
               value={c.value}
               status={c.status}
               thresholds={c.thresholds}
+              tone={c.tone ?? kpiTone(i)}
             />
           ))}
         </div>
@@ -304,32 +313,53 @@ export default async function AdminDashboard({
             {data.attendance.totalRecords === 0 ? (
               <p className="text-sm text-slate-500">{t('attendance.empty')}</p>
             ) : (
-              <div className="grid grid-cols-4 gap-2 text-center text-xs">
-                <Counter
-                  label={t('attendance.present')}
-                  value={
-                    data.attendance.presentCount -
-                    data.attendance.lateCount -
-                    data.attendance.excusedCount
-                  }
-                  color="emerald"
-                />
-                <Counter
-                  label={t('attendance.absent')}
-                  value={data.attendance.absentCount}
-                  color="red"
-                />
-                <Counter
-                  label={t('attendance.late')}
-                  value={data.attendance.lateCount}
-                  color="amber"
-                />
-                <Counter
-                  label={t('attendance.excused')}
-                  value={data.attendance.excusedCount}
-                  color="blue"
-                />
-              </div>
+              <>
+                <div className="grid grid-cols-4 gap-2 text-center text-xs">
+                  <Counter
+                    label={t('attendance.present')}
+                    value={
+                      data.attendance.presentCount -
+                      data.attendance.lateCount -
+                      data.attendance.excusedCount
+                    }
+                    color="emerald"
+                  />
+                  <Counter
+                    label={t('attendance.absent')}
+                    value={data.attendance.absentCount}
+                    color="red"
+                  />
+                  {/* Retards : le compte, plus le taux rapporté aux pointages. */}
+                  <Counter
+                    label={t('attendance.late')}
+                    value={data.attendance.lateCount}
+                    color="amber"
+                    hint={t('attendance.lateRate', {
+                      rate: (
+                        (data.attendance.lateCount / data.attendance.totalRecords) *
+                        100
+                      ).toFixed(1),
+                    })}
+                  />
+                  <Counter
+                    label={t('attendance.excused')}
+                    value={data.attendance.excusedCount}
+                    color="blue"
+                  />
+                </div>
+                <div className="mt-5 border-t border-slate-100 pt-4">
+                  <AbsencePie
+                    breakdown={data.attendance.absenceBreakdown}
+                    labels={{
+                      justified: t('attendance.absJustified'),
+                      pending: t('attendance.absPending'),
+                      unjustified: t('attendance.absUnjustified'),
+                    }}
+                    title={t('attendance.absBreakdown')}
+                    emptyLabel={t('attendance.absBreakdownEmpty')}
+                  />
+                </div>
+              </>
             )}
           </div>
       </section>
@@ -604,25 +634,38 @@ function formatKpi(kpi: Kpi): string {
   }
 }
 
-/** Carte KPI au design « pilotage » (bordure + fond selon le statut). */
+/**
+ * Carte KPI au design « pilotage ».
+ *
+ * `tone` donne à chaque carte un fond pastel clair (purement visuel, pour les
+ * différencier d'un coup d'œil). L'état de santé du KPI reste porté par la
+ * pastille et par la couleur de la valeur — jamais par le fond seul. Sans
+ * `tone`, on retombe sur l'ancien fond coloré par statut.
+ */
 function PilotCard({
   label,
   value,
   status,
   thresholds,
+  tone,
 }: {
   label: string;
   value: string;
   status: KpiStatus;
   thresholds?: { green: string; orange: string; red: string };
+  tone?: KpiTone;
 }) {
   return (
-    <div className={`rounded-2xl border p-5 ${STATUS_CARD[status]}`}>
+    <div className={`rounded-2xl border p-5 ${tone ? tone.card : STATUS_CARD[status]}`}>
       <div className="flex items-center justify-between">
         <span className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</span>
         <span className={`h-2 w-2 rounded-full ${STATUS_DOT[status]}`} />
       </div>
-      <div className={`mt-2 text-3xl font-semibold tabular-nums ${STATUS_VALUE[status]}`}>
+      <div
+        className={`mt-2 text-3xl font-semibold tabular-nums ${
+          status === 'na' && tone ? tone.value : STATUS_VALUE[status]
+        }`}
+      >
         {value}
       </div>
       {thresholds && (
@@ -686,10 +729,12 @@ function Counter({
   label,
   value,
   color,
+  hint,
 }: {
   label: string;
   value: number;
   color: 'emerald' | 'red' | 'amber' | 'blue';
+  hint?: string;
 }) {
   const colors: Record<string, string> = {
     emerald: 'text-emerald-700',
@@ -701,6 +746,7 @@ function Counter({
     <div>
       <div className={`text-2xl font-semibold tabular-nums ${colors[color]}`}>{value}</div>
       <div className="text-xs text-slate-500">{label}</div>
+      {hint && <div className="text-[11px] tabular-nums text-slate-400">{hint}</div>}
     </div>
   );
 }

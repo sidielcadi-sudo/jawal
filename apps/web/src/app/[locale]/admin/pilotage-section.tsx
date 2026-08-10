@@ -64,7 +64,6 @@ export async function PilotageSection({ periodId }: { periodId: string | null })
     { kpi: kpis.collection, thresholdKey: 'collection' },
     { kpi: kpis.teacherLoad, thresholdKey: 'teacherLoad' },
     { kpi: kpis.satisfaction, thresholdKey: 'satisfaction' },
-    { kpi: kpis.conformiteMassar, thresholdKey: null },
   ];
   const maxLevel = Math.max(1, ...kpis.levelAverages.map((l) => l.average ?? 0), 20);
 

@@ -14,6 +14,14 @@ const schema = z.object({
   localeDefault: z.enum(['fr', 'ar']),
   currency: z.string().trim().min(1).max(8),
   timezone: z.string().trim().min(1).max(64),
+  // Code établissement MASSAR : facultatif, mais unique en base — il sert de
+  // filtre à l'import MASSAR. Vide = aucun filtrage.
+  massarCode: z
+    .string()
+    .trim()
+    .max(32)
+    .transform((v) => (v === '' ? null : v.toUpperCase()))
+    .nullable(),
 });
 
 /**
@@ -36,14 +44,29 @@ export async function updateEstablishmentAction(formData: FormData): Promise<Res
     localeDefault: get('localeDefault'),
     currency: get('currency'),
     timezone: get('timezone'),
+    massarCode: get('massarCode'),
   });
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalide' };
 
   const tenantId = session.user.tenantId;
   try {
+    // Le code MASSAR est unique tous établissements confondus : on rend le
+    // conflit explicite plutôt que de laisser remonter une erreur Prisma.
+    if (parsed.data.massarCode) {
+      const clash = await prismaAdmin.tenant.findFirst({
+        where: { massarCode: parsed.data.massarCode, id: { not: tenantId } },
+        select: { name: true },
+      });
+      if (clash) {
+        return {
+          ok: false,
+          error: `Le code « ${parsed.data.massarCode} » est déjà utilisé par « ${clash.name} ».`,
+        };
+      }
+    }
     const before = await prismaAdmin.tenant.findUnique({
       where: { id: tenantId },
-      select: { name: true, localeDefault: true, currency: true, timezone: true },
+      select: { name: true, localeDefault: true, currency: true, timezone: true, massarCode: true },
     });
     await prismaAdmin.tenant.update({ where: { id: tenantId }, data: parsed.data });
     await withTenant(tenantId, async (tx) => {

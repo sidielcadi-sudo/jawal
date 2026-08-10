@@ -119,6 +119,12 @@ export default async function EnrollmentsListPage({
             </button>
           </form>
           <Link
+            href={`/${locale}/admin/enrollments/import-massar`}
+            className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600"
+          >
+            {t('massarButton')}
+          </Link>
+          <Link
             href={`/${locale}/admin/enrollments/bulk-reenroll${currentYearId ? `?source=${currentYearId}` : ''}`}
             className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >

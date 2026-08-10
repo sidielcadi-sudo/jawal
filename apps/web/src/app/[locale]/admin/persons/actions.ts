@@ -257,6 +257,32 @@ function flatten<T>(parsed: z.SafeParseError<T>): Record<string, string> {
   return out;
 }
 
+/**
+ * Le code MASSAR est unique par établissement. On vérifie le conflit en amont
+ * pour rendre une erreur de champ lisible, plutôt que de laisser remonter la
+ * violation de contrainte Postgres depuis la transaction.
+ */
+async function massarIdConflict(
+  tenantId: string,
+  massarId: string | undefined,
+  excludePersonId?: string,
+): Promise<string | null> {
+  if (!massarId) return null;
+  const clash = await withTenant(tenantId, (tx) =>
+    tx.person.findFirst({
+      where: {
+        massarId,
+        deletedAt: null,
+        ...(excludePersonId ? { id: { not: excludePersonId } } : {}),
+      },
+      select: { firstName: true, lastName: true },
+    }),
+  );
+  return clash
+    ? `Le code Massar « ${massarId} » est déjà attribué à ${clash.lastName} ${clash.firstName}.`
+    : null;
+}
+
 function safeJson<T>(
   v: FormDataEntryValue | null,
   validator: (x: unknown) => x is T,
@@ -346,7 +372,7 @@ function formToInput(formData: FormData) {
     regime: get('regime'),
     usesTransport: formData.get('usesTransport') === 'on' || formData.get('usesTransport') === 'true',
     cne: get('cne'),
-    codeMassar: get('codeMassar'),
+    massarId: get('massarId'),
     imageRights: formData.get('imageRights') === 'on' || formData.get('imageRights') === 'true',
     exitRights: get('exitRights'),
     dietInfo: get('dietInfo'),
@@ -388,11 +414,14 @@ function formToInput(formData: FormData) {
   };
 }
 
-/** Champs élève additionnels rangés en metadata (clés définies uniquement). */
+/**
+ * Champs élève additionnels rangés en metadata (clés définies uniquement).
+ * Le code MASSAR n'y figure plus : il a sa colonne `massarId`, unique par
+ * établissement, qui sert de clé à l'import MASSAR.
+ */
 function buildStudentMeta(
   d: Partial<{
     cne: string;
-    codeMassar: string;
     imageRights: boolean;
     exitRights: number;
     dietInfo: string;
@@ -404,7 +433,6 @@ function buildStudentMeta(
   if (!isStudent) return {};
   const m: Record<string, unknown> = {};
   if (d.cne !== undefined) m.cne = d.cne;
-  if (d.codeMassar !== undefined) m.codeMassar = d.codeMassar;
   if (d.imageRights !== undefined) m.imageRights = d.imageRights;
   if (d.exitRights !== undefined) m.exitRights = d.exitRights;
   if (d.dietInfo !== undefined) m.dietInfo = d.dietInfo;
@@ -466,6 +494,11 @@ export async function createPersonAction(
 
   const tenantId = session.user.tenantId;
 
+  if (parsed.data.type === 'STUDENT') {
+    const conflict = await massarIdConflict(tenantId, parsed.data.massarId);
+    if (conflict) return { ok: false, error: conflict, fieldErrors: { massarId: conflict } };
+  }
+
   // roleId, hireDate, contractEndDate, contractType n'ont de sens que pour TEACHER/STAFF.
   const isEmployee = parsed.data.type === 'TEACHER' || parsed.data.type === 'STAFF';
   const isTeacher = parsed.data.type === 'TEACHER';
@@ -504,6 +537,9 @@ export async function createPersonAction(
         gender: parsed.data.gender,
         nationality: parsed.data.nationality,
         cin: parsed.data.cin,
+        // Code MASSAR : élèves seulement, et vide → null (la contrainte
+        // d'unicité tolère plusieurs NULL, pas plusieurs chaînes vides).
+        massarId: parsed.data.type === 'STUDENT' ? (parsed.data.massarId || null) : null,
         regime,
         usesTransport,
         contacts: parsed.data.contacts ?? {},
@@ -611,6 +647,9 @@ export async function updatePersonAction(id: string, formData: FormData): Promis
 
   const tenantId = session.user.tenantId;
 
+  const conflict = await massarIdConflict(tenantId, parsed.data.massarId, id);
+  if (conflict) return { ok: false, error: conflict, fieldErrors: { massarId: conflict } };
+
   await withTenant(tenantId, async (tx) => {
     const before = await tx.person.findUnique({ where: { id } });
     if (!before) throw new Error('Personne introuvable');
@@ -652,6 +691,7 @@ export async function updatePersonAction(id: string, formData: FormData): Promis
         gender: parsed.data.gender,
         nationality: parsed.data.nationality,
         cin: parsed.data.cin,
+        massarId: before.type === 'STUDENT' ? (parsed.data.massarId || null) : null,
         regime,
         usesTransport,
         contacts: parsed.data.contacts ?? before.contacts ?? undefined,

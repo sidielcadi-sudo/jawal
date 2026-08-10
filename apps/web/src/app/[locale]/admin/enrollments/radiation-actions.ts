@@ -335,6 +335,14 @@ export async function approveRadiationAction(id: string, comment?: string): Prom
         data: { status: 'WITHDRAWN', withdrawnAt: now, withdrawalReason: 'Radiation / transfert', archivedAt: now },
       });
 
+      // L'élève quitte l'établissement : on ferme ses affectations de classe
+      // encore ouvertes. Sans cela il resterait listé partout où l'on filtre
+      // sur `studentClass.unenrolledAt` (appel, carnet, notes…).
+      await tx.studentClass.updateMany({
+        where: { studentId: req.studentId, unenrolledAt: null },
+        data: { unenrolledAt: now },
+      });
+
       // Fermeture de l'espace de l'élève : désactiver les comptes utilisateurs liés.
       const studentUsers = await tx.userPerson.findMany({ where: { personId: req.studentId }, select: { userId: true } });
       if (studentUsers.length > 0) {

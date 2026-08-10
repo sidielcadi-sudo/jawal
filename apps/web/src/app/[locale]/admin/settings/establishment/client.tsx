@@ -20,7 +20,14 @@ const TIMEZONES = [
 export function EstablishmentForm({
   initial,
 }: {
-  initial: { name: string; localeDefault: string; currency: string; timezone: string; slug: string };
+  initial: {
+    name: string;
+    localeDefault: string;
+    currency: string;
+    timezone: string;
+    slug: string;
+    massarCode: string;
+  };
 }) {
   const t = useTranslations('admin.settings.establishment');
   const router = useRouter();
@@ -59,6 +66,19 @@ export function EstablishmentForm({
             className={`${inputCls} cursor-not-allowed bg-slate-50 font-mono text-slate-500`}
           />
           <p className="mt-1 text-[11px] text-slate-400">{t('slugHint')}</p>
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-700">{t('massarCode')}</label>
+          <input
+            type="text"
+            name="massarCode"
+            defaultValue={initial.massarCode}
+            maxLength={32}
+            placeholder="CASA001"
+            className={`${inputCls} font-mono uppercase`}
+          />
+          <p className="mt-1 text-[11px] text-slate-400">{t('massarCodeHint')}</p>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
