@@ -17,6 +17,36 @@ export async function getTeacherPersonId(tx: Tx, userId: string): Promise<string
 }
 
 /**
+ * Vrai si l'enseignant est celui affecté à ce cours de soutien. Garde d'accès
+ * du portail enseignant : un prof ne voit et ne saisit que ses propres cours.
+ * À appeler dans un `withTenant`.
+ */
+export async function teacherOwnsSupportCourse(
+  tx: Tx,
+  teacherId: string,
+  courseId: string,
+): Promise<boolean> {
+  const course = await tx.supportCourse.findFirst({
+    where: { id: courseId, teacherId },
+    select: { id: true },
+  });
+  return Boolean(course);
+}
+
+/** Idem, à partir d'une séance plutôt que du cours. */
+export async function teacherOwnsSupportSession(
+  tx: Tx,
+  teacherId: string,
+  sessionId: string,
+): Promise<boolean> {
+  const sess = await tx.supportSession.findFirst({
+    where: { id: sessionId, course: { teacherId } },
+    select: { id: true },
+  });
+  return Boolean(sess);
+}
+
+/**
  * Vrai si l'enseignant enseigne bien cette matière dans cette classe sur
  * l'année active — via une affectation (`TeacherAssignment`) OU une case d'EDT
  * (`TimetableEntry`). Garde d'accès pour la saisie des notes côté prof.

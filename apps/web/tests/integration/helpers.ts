@@ -113,8 +113,15 @@ export function mockNextEnv(session: {
   email: string;
   isSuperAdmin?: boolean;
   permissions?: string[];
+  /**
+   * Codes de rôle de l'utilisateur simulé. Nécessaire aux modules qui
+   * raisonnent par rôle et non par permission (soutien scolaire, vie
+   * scolaire…). Par défaut `tenant_admin`, soit l'ancien comportement.
+   */
+  roleCodes?: string[];
 }) {
   const perms = session.permissions ?? ['*'];
+  const roleCodes = session.roleCodes ?? ['tenant_admin'];
 
   vi.doMock('@/lib/auth', () => ({
     auth: vi.fn().mockResolvedValue({
@@ -136,6 +143,20 @@ export function mockNextEnv(session: {
         throw new Error(`Forbidden: missing permission "${perm}"`);
       }
     }),
+    currentUserRoleCodes: vi.fn().mockResolvedValue(roleCodes),
+    requireRoleCode: vi.fn(async (codes: string[]) => {
+      if (!roleCodes.some((c) => codes.includes(c))) {
+        throw new Error(`Forbidden: missing role among ${codes.join(', ')}`);
+      }
+    }),
+    isDirection: vi.fn().mockResolvedValue(
+      roleCodes.includes('tenant_admin') || roleCodes.includes('direction'),
+    ),
+    isVieScolaireOnly: vi.fn().mockResolvedValue(
+      roleCodes.includes('cpe') &&
+        !roleCodes.includes('tenant_admin') &&
+        !roleCodes.includes('direction'),
+    ),
   }));
 
   vi.doMock('next/headers', () => ({

@@ -110,6 +110,12 @@ export default async function PersonsListPage({
                 { firstName: { contains: search, mode: 'insensitive' } },
                 { lastName: { contains: search, mode: 'insensitive' } },
                 { cin: { contains: search, mode: 'insensitive' } },
+                // Noms arabes et code MASSAR : colonnes dédiées, donc
+                // réellement filtrables (contrairement aux champs restés en
+                // `metadata`, invisibles de la recherche).
+                { firstNameAr: { contains: search, mode: 'insensitive' } },
+                { lastNameAr: { contains: search, mode: 'insensitive' } },
+                { massarId: { contains: search, mode: 'insensitive' } },
               ],
             }
           : {}),

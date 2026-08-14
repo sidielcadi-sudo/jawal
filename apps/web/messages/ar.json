@@ -32,8 +32,8 @@
   },
   "login": {
     "title": "تسجيل الدخول",
+    "welcome": "مرحباً بكم في {app} !",
     "subtitle": "ولوج إلى فضائكم على LeadSchool",
-    "demoHint": "تجربة: admin@demo.jawal.ma / demo1234 (المعرف: demo)",
     "fields": {
       "tenantSlug": "معرّف المؤسسة",
       "email": "البريد الإلكتروني",
@@ -516,10 +516,7 @@
           "APPROVED": "مقبول",
           "REJECTED": "مرفوض"
         },
-        "noEvent": "لا يوجد تلميذ لهذه الحصة.",
-        "pickStudent": "اختر تلميذًا…",
-        "pickClassFirst": "اختر قسمًا أولًا.",
-        "noStudentEvent": "لا يوجد حدث لهذا التلميذ في هذا اليوم."
+        "noEvent": "لا يوجد تلميذ لهذه الحصة."
       }
     },
     "teacherDashboard": {
@@ -2334,6 +2331,12 @@
           "rank": "الترتيب {rank}",
           "status": {
             "DRAFT": "مسودة",
+            "DOCUMENTS_MANQUANTS": "وثائق ناقصة",
+            "DOSSIER_COMPLET": "ملف مكتمل",
+            "ACCEPTE": "مقبول",
+            "REFUSE": "مرفوض",
+            "INSCRIPTION_VALIDEE": "تسجيل مؤكد",
+            "AFFECTE": "مُسند",
             "ACTIVE": "مُسجل",
             "WITHDRAWN": "منسحب",
             "GRADUATED": "متخرج"
@@ -3690,11 +3693,19 @@
       "teachers": "الأساتذة",
       "classes": "الأقسام",
       "average": "المعدل",
-      "attendance": "المواظبة",
+      "successRate": "نسبة النجاح",
+      "attendance": "نسبة الحضور",
       "collection": "التحصيل",
       "remaining": "المتبقي للتحصيل",
       "total": "المجموع",
-      "note": "المعدل والمواظبة محسوبان على الفصل الحالي لكل مؤسسة (غير مجموعة)."
+      "note": "المعدل ونسبة النجاح ونسبة الحضور محسوبة على الفصل الحالي لكل مؤسسة — فهي غير قابلة للجمع.",
+      "charts": {
+        "collectionByCite": "نسبة التحصيل حسب المؤسسة",
+        "paidBySite": "المبالغ المحصلة حسب المؤسسة ({currency})",
+        "paidTrend": "التطور الشهري للمبالغ المحصلة ({currency})",
+        "collectionTrend": "التطور الشهري لنسبة التحصيل",
+        "empty": "لا توجد معطيات مالية لهذه السنة."
+      }
     },
     "transport": {
       "title": "النقل المدرسي",
@@ -5033,7 +5044,23 @@
       "leave": "العطل والغيابات",
       "messages": "الرسائل",
       "account": "حسابي",
-      "competences": "الكفايات"
+      "competences": "الكفايات",
+      "soutien": "الدعم المدرسي"
+    },
+    "soutien": {
+      "title": "دروس الدعم الخاصة بي",
+      "subtitle": "الحصص والمناداة والملاحظات الخاصة بدروس الدعم.",
+      "empty": "لم يُسند إليك أي درس دعم هذه السنة.",
+      "noTeacher": "حسابك غير مرتبط بأي بطاقة أستاذ. يرجى الاتصال بالإدارة.",
+      "archived": "مؤرشف",
+      "students": "تلميذ(ة)",
+      "sessions": "حصص",
+      "presenceRate": "الحضور",
+      "lastSession": "آخر حصة",
+      "noSession": "لا توجد حصص",
+      "attendanceTodo": "المناداة لم تُنجز",
+      "recommendedHint": "تلميذ(ة) موجّه(ة) إلى هذا الدرس من طرف الحياة المدرسية.",
+      "enrollmentHint": "تسجيل التلاميذ والتسعير من اختصاص الإدارة."
     },
     "notes": {
       "tabs": {

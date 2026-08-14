@@ -2,9 +2,14 @@
 
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
-import { requireRoleCode } from '@/lib/auth/rbac';
+import { currentUserRoleCodes, requireRoleCode } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
+import {
+  getTeacherPersonId,
+  teacherOwnsSupportCourse,
+  teacherOwnsSupportSession,
+} from '@/lib/teacher';
 import { sendNotifications, parentRecipient, emailRecipient, type NotifyItem } from '@/lib/notify';
 import { renderTemplate } from '@/lib/notify-templates';
 import { sendDirectMessage } from '@/lib/inapp-message';
@@ -56,6 +61,40 @@ async function guard() {
   if (!session?.user) return null;
   await requireRoleCode(SUPPORT_ROLES);
   return session;
+}
+
+/**
+ * Garde des actions **pédagogiques** (séances, appel, appréciations,
+ * ressources, compétences) : l'équipe encadrante, **ou** l'enseignant affecté
+ * au cours — c'est ce qui rend le portail enseignant possible sans dupliquer
+ * les actions. Le cadre (création de cours, affectation d'élèves, facturation)
+ * reste réservé à l'administration via `guard()`.
+ */
+async function guardPedagogy(target: { courseId: string } | { sessionId: string }) {
+  const session = await auth();
+  if (!session?.user) return null;
+  const codes = await currentUserRoleCodes();
+  if (codes.some((c) => SUPPORT_ROLES.includes(c))) return session;
+
+  const userId = session.user.id;
+  const owns = await withTenant(session.user.tenantId, async (tx) => {
+    const teacherId = await getTeacherPersonId(tx, userId);
+    if (!teacherId) return false;
+    return 'courseId' in target
+      ? teacherOwnsSupportCourse(tx, teacherId, target.courseId)
+      : teacherOwnsSupportSession(tx, teacherId, target.sessionId);
+  });
+  return owns ? session : null;
+}
+
+/** Rafraîchit les deux portails : la même séance est visible des deux côtés. */
+function revalidateSession(courseId: string, sessionId?: string) {
+  revalidatePath(`/admin/soutien/${courseId}`);
+  revalidatePath(`/enseignant/soutien/${courseId}`);
+  if (sessionId) {
+    revalidatePath(`/admin/soutien/${courseId}/seance/${sessionId}`);
+    revalidatePath(`/enseignant/soutien/${courseId}/seance/${sessionId}`);
+  }
 }
 
 /** Crée un cours de soutien (rattaché à l'année active). */
@@ -283,7 +322,7 @@ export async function unenrollSupportStudentAction(courseId: string, studentId: 
 
 /** Crée une séance datée (contenu/thème) pour un cours. */
 export async function createSupportSessionAction(courseId: string, fd: FormData): Promise<Result> {
-  const s = await guard();
+  const s = await guardPedagogy({ courseId });
   if (!s) return { ok: false, error: 'Non autorisé' };
   const dateStr = str(fd, 'date');
   if (!dateStr) return { ok: false, error: 'Date requise.' };
@@ -296,7 +335,7 @@ export async function createSupportSessionAction(courseId: string, fd: FormData)
       });
       return sess.id;
     });
-    revalidatePath(`/admin/soutien/${courseId}`);
+    revalidateSession(courseId);
     return { ok: true, id };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
@@ -305,14 +344,13 @@ export async function createSupportSessionAction(courseId: string, fd: FormData)
 
 /** Met à jour le thème/contenu d'une séance (utile si oublié à la création). */
 export async function updateSupportSessionTopicAction(sessionId: string, topic: string): Promise<Result> {
-  const s = await guard();
+  const s = await guardPedagogy({ sessionId });
   if (!s) return { ok: false, error: 'Non autorisé' };
   const courseId = await withTenant(s.user.tenantId, async (tx) => {
     const sess = await tx.supportSession.update({ where: { id: sessionId }, data: { topic: topic.trim() || null }, select: { supportCourseId: true } });
     return sess.supportCourseId;
   });
-  revalidatePath(`/admin/soutien/${courseId}/seance/${sessionId}`);
-  revalidatePath(`/admin/soutien/${courseId}`);
+  revalidateSession(courseId, sessionId);
   return { ok: true };
 }
 
@@ -321,7 +359,7 @@ export async function saveSupportAttendanceAction(
   sessionId: string,
   records: { studentId: string; present: boolean; appreciation: string }[],
 ): Promise<Result> {
-  const s = await guard();
+  const s = await guardPedagogy({ sessionId });
   if (!s) return { ok: false, error: 'Non autorisé' };
   const tenantId = s.user.tenantId;
   try {
@@ -381,8 +419,7 @@ export async function saveSupportAttendanceAction(
       }
       return sess.supportCourseId;
     });
-    revalidatePath(`/admin/soutien/${courseId}/seance/${sessionId}`);
-    revalidatePath(`/admin/soutien/${courseId}`);
+    revalidateSession(courseId, sessionId);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
@@ -391,7 +428,7 @@ export async function saveSupportAttendanceAction(
 
 /** Ajoute une ressource pédagogique (titre + lien) rattachée à une séance. */
 export async function addSupportResourceAction(sessionId: string, fd: FormData): Promise<Result> {
-  const s = await guard();
+  const s = await guardPedagogy({ sessionId });
   if (!s) return { ok: false, error: 'Non autorisé' };
   const title = str(fd, 'title');
   const url = str(fd, 'url');
@@ -404,19 +441,19 @@ export async function addSupportResourceAction(sessionId: string, fd: FormData):
     });
     return sess.supportCourseId;
   });
-  revalidatePath(`/admin/soutien/${courseId}/seance/${sessionId}`);
+  revalidateSession(courseId, sessionId);
   return { ok: true };
 }
 
 /** Supprime une ressource pédagogique. */
 export async function deleteSupportResourceAction(sessionId: string, id: string): Promise<Result> {
-  const s = await guard();
+  const s = await guardPedagogy({ sessionId });
   if (!s) return { ok: false, error: 'Non autorisé' };
   const courseId = await withTenant(s.user.tenantId, async (tx) => {
     const r = await tx.supportResource.delete({ where: { id }, select: { supportCourseId: true } });
     return r.supportCourseId;
   });
-  revalidatePath(`/admin/soutien/${courseId}/seance/${sessionId}`);
+  revalidateSession(courseId, sessionId);
   return { ok: true };
 }
 
@@ -424,7 +461,7 @@ export async function deleteSupportResourceAction(sessionId: string, id: string)
 
 /** Définit les compétences travaillées lors d'une séance de soutien. */
 export async function setSessionSkillsAction(sessionId: string, nodeIds: string[]): Promise<Result> {
-  const s = await guard();
+  const s = await guardPedagogy({ sessionId });
   if (!s) return { ok: false, error: 'Non autorisé' };
   const tenantId = s.user.tenantId;
   try {
@@ -443,7 +480,7 @@ export async function setSessionSkillsAction(sessionId: string, nodeIds: string[
       }
       return sess.supportCourseId;
     });
-    revalidatePath(`/admin/soutien/${courseId}/seance/${sessionId}`);
+    revalidateSession(courseId, sessionId);
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
@@ -460,7 +497,7 @@ export async function saveSessionCompetencyAction(
   nodeId: string,
   records: { studentId: string; masteryLevelId: string | null }[],
 ): Promise<Result & { saved?: number }> {
-  const s = await guard();
+  const s = await guardPedagogy({ sessionId });
   if (!s) return { ok: false, error: 'Non autorisé' };
   const tenantId = s.user.tenantId;
   const userId = s.user.id;
@@ -526,7 +563,7 @@ export async function saveSessionCompetencyAction(
       });
       return { courseId: sess.supportCourseId, saved: count };
     });
-    revalidatePath(`/admin/soutien/${courseId}/seance/${sessionId}`);
+    revalidateSession(courseId, sessionId);
     return { ok: true, saved };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };

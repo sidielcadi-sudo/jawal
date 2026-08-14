@@ -3,6 +3,10 @@ import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
+import {
+  ENROLLMENT_BADGE,
+  type EnrollmentStatusValue,
+} from '@/lib/enrollment-status';
 import { PersonActions } from './person-actions';
 import { ParentAccess } from './parent-access';
 import { TeacherAccess } from './teacher-access';
@@ -124,7 +128,7 @@ export default async function PersonDetailPage({
     levelLabel: string;
     className: string | null;
     classId: string | null;
-    status: 'DRAFT' | 'ACTIVE' | 'WITHDRAWN' | 'GRADUATED';
+    status: EnrollmentStatusValue;
     siblingRank: number | null;
     discountPct: number | null;
     enrolledAt: Date;
@@ -158,7 +162,7 @@ export default async function PersonDetailPage({
           levelLabel: r.level.label,
           className: liveClass?.name ?? null,
           classId: liveClass?.id ?? null,
-          status: r.status as 'DRAFT' | 'ACTIVE' | 'WITHDRAWN' | 'GRADUATED',
+          status: r.status,
           siblingRank: r.siblingRank,
           discountPct: r.discountPct !== null ? Number(r.discountPct) : null,
           enrolledAt: r.enrolledAt,
@@ -1297,21 +1301,11 @@ function Row({ label, value, mono, href }: { label: string; value?: string; mono
   );
 }
 
-function EnrollmentBadge({
-  status,
-  t,
-}: {
-  status: 'DRAFT' | 'ACTIVE' | 'WITHDRAWN' | 'GRADUATED';
-  t: (k: string) => string;
-}) {
-  const map = {
-    DRAFT: 'bg-amber-100 text-amber-700',
-    ACTIVE: 'bg-emerald-100 text-emerald-700',
-    WITHDRAWN: 'bg-red-100 text-red-700',
-    GRADUATED: 'bg-blue-100 text-blue-700',
-  } as const;
+function EnrollmentBadge({ status, t }: { status: EnrollmentStatusValue; t: (k: string) => string }) {
   return (
-    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${map[status]}`}>
+    <span
+      className={`rounded px-1.5 py-0.5 text-[10px] font-medium uppercase ${ENROLLMENT_BADGE[status]}`}
+    >
       {t(`enrollmentHistory.status.${status}`)}
     </span>
   );

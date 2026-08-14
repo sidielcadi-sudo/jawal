@@ -4,7 +4,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
-import { PortalAvatar as Avatar } from '@/components/portal-avatar';
 
 const EMOJI: Record<string, string> = {
   home: '🏠',
@@ -13,6 +12,7 @@ const EMOJI: Record<string, string> = {
   cahier: '📓',
   notes: '📝',
   competences: '🎯',
+  soutien: '📚',
   carnet: '📒',
   classes: '🏫',
   leave: '🌴',
@@ -21,11 +21,9 @@ const EMOJI: Record<string, string> = {
 
 export function TeacherSidebar({
   locale,
-  photoUrl,
   appelBadge = 0,
 }: {
   locale: string;
-  photoUrl?: string | null;
   appelBadge?: number;
 }) {
   const pathname = usePathname();
@@ -54,6 +52,7 @@ export function TeacherSidebar({
     { href: `${prefix}/cahier`, key: 'cahier', exact: false },
     { href: `${prefix}/notes`, key: 'notes', exact: false },
     { href: `${prefix}/competences`, key: 'competences', exact: false },
+    { href: `${prefix}/soutien`, key: 'soutien', exact: false },
     { href: `${prefix}/carnet`, key: 'carnet', exact: false },
     { href: `${prefix}/classes`, key: 'classes', exact: false },
     { href: `${prefix}/leave`, key: 'leave', exact: false },
@@ -74,16 +73,17 @@ export function TeacherSidebar({
         collapsed ? 'w-[4.75rem]' : 'w-60'
       }`}
     >
-      <div className="relative mb-2 flex min-h-[2.75rem] items-center justify-center px-1">
-        {!collapsed && <Avatar photoUrl={photoUrl} />}
+      {/* En-tête : bouton réduire / agrandir seul. L'avatar du professeur a
+          été retiré ; son identité figure déjà dans la bande d'en-tête. */}
+      <div
+        className={`mb-2 flex items-center px-1 ${collapsed ? 'justify-center' : 'justify-end'}`}
+      >
         <button
           type="button"
           onClick={toggle}
           title={collapsed ? 'Développer le menu' : 'Réduire le menu'}
           aria-label={collapsed ? 'Développer le menu' : 'Réduire le menu'}
-          className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg text-white/80 hover:bg-white/10 ${
-            collapsed ? '' : 'absolute end-0 top-1/2 -translate-y-1/2'
-          }`}
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-white/80 hover:bg-white/10"
         >
           <svg
             width="18"

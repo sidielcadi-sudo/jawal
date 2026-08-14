@@ -32,8 +32,8 @@
   },
   "login": {
     "title": "Connexion",
+    "welcome": "Bienvenue sur {app} !",
     "subtitle": "Accédez à votre espace LeadSchool",
-    "demoHint": "Démo : admin@demo.jawal.ma / demo1234 (slug : demo)",
     "fields": {
       "tenantSlug": "Identifiant de l'établissement",
       "email": "Adresse email",
@@ -464,6 +464,7 @@
           "exclEtab": "Ex Eta",
           "exclClasse": "Exc cla",
           "infirmerie": "Inf",
+          "ensMaison": "Ens mai",
           "presents": "Elv Pres",
           "elevesSansCours": "Elv sans cours",
           "appelsNonFaits": "ANF"
@@ -515,10 +516,7 @@
           "APPROVED": "Acceptée",
           "REJECTED": "Refusée"
         },
-        "noEvent": "Aucun élève pour ce créneau.",
-        "pickStudent": "Choisir un élève…",
-        "pickClassFirst": "Sélectionnez d'abord une classe.",
-        "noStudentEvent": "Aucun événement pour cet élève ce jour."
+        "noEvent": "Aucun élève pour ce créneau."
       }
     },
     "teacherDashboard": {
@@ -2333,6 +2331,12 @@
           "rank": "Rang {rank}",
           "status": {
             "DRAFT": "Brouillon",
+            "DOCUMENTS_MANQUANTS": "Documents manquants",
+            "DOSSIER_COMPLET": "Dossier complet",
+            "ACCEPTE": "Accepté",
+            "REFUSE": "Refusé",
+            "INSCRIPTION_VALIDEE": "Inscription validée",
+            "AFFECTE": "Affecté",
             "ACTIVE": "Inscrit",
             "WITHDRAWN": "Retiré",
             "GRADUATED": "Diplômé"
@@ -3689,11 +3693,19 @@
       "teachers": "Enseignants",
       "classes": "Classes",
       "average": "Moyenne",
-      "attendance": "Assiduité",
+      "successRate": "Taux de réussite",
+      "attendance": "Taux de présence",
       "collection": "Recouvrement",
       "remaining": "Reste à recouvrer",
       "total": "Total",
-      "note": "Moyenne et assiduité calculées sur le trimestre courant de chaque établissement (non additionnées)."
+      "note": "Moyenne, taux de réussite et taux de présence sont calculés sur le trimestre courant de chaque établissement — ils ne s'additionnent donc pas.",
+      "charts": {
+        "collectionByCite": "Taux de recouvrement par établissement",
+        "paidBySite": "Montants encaissés par établissement ({currency})",
+        "paidTrend": "Évolution mensuelle des montants encaissés ({currency})",
+        "collectionTrend": "Évolution mensuelle du taux de recouvrement",
+        "empty": "Aucune donnée financière sur cette année."
+      }
     },
     "transport": {
       "title": "Transport scolaire",
@@ -5032,7 +5044,23 @@
       "leave": "Congés & absences",
       "messages": "Messages",
       "account": "Mon compte",
-      "competences": "Compétences"
+      "competences": "Compétences",
+      "soutien": "Soutien scolaire"
+    },
+    "soutien": {
+      "title": "Mes cours de soutien",
+      "subtitle": "Séances, appel et appréciations de vos cours de soutien.",
+      "empty": "Aucun cours de soutien ne vous est affecté cette année.",
+      "noTeacher": "Votre compte n'est rattaché à aucune fiche enseignant. Contactez l'administration.",
+      "archived": "archivé",
+      "students": "élèves",
+      "sessions": "séances",
+      "presenceRate": "Présence",
+      "lastSession": "dernière",
+      "noSession": "aucune séance",
+      "attendanceTodo": "appel à faire",
+      "recommendedHint": "Élève orienté vers ce cours par la vie scolaire.",
+      "enrollmentHint": "L'inscription des élèves et la tarification sont gérées par l'administration."
     },
     "notes": {
       "tabs": {
