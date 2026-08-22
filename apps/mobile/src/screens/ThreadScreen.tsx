@@ -11,7 +11,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Header } from '../components/Header';
+import { AppHeader } from '../components/AppHeader';
+import { EmptyCard } from '../components/EmptyCard';
 import { useAuth } from '../auth';
 import { useNav } from '../navigation';
 import { api, ApiError, type ThreadMessage } from '../api';
@@ -67,7 +68,7 @@ export default function ThreadScreen({ conversationId, subject }: { conversation
 
   return (
     <View style={styles.container}>
-      <Header title={title} onBack={goBack} />
+      <AppHeader title={title} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -82,7 +83,7 @@ export default function ThreadScreen({ conversationId, subject }: { conversation
             keyExtractor={(m) => m.id}
             contentContainerStyle={{ padding: 16 }}
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
-            ListEmptyComponent={<Text style={styles.empty}>{error || 'Aucun message.'}</Text>}
+            ListEmptyComponent={<EmptyCard text={error || 'Aucun message.'} />}
             renderItem={({ item }) => (
               <View style={[styles.bubbleRow, item.mine ? styles.rowMine : styles.rowTheirs]}>
                 <View style={[styles.bubble, item.mine ? styles.bubbleMine : styles.bubbleTheirs]}>
@@ -126,7 +127,7 @@ const styles = StyleSheet.create({
   rowTheirs: { justifyContent: 'flex-start' },
   bubble: { maxWidth: '82%', borderRadius: 16, paddingHorizontal: 14, paddingVertical: 9 },
   bubbleMine: { backgroundColor: colors.brand, borderBottomRightRadius: 4 },
-  bubbleTheirs: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderBottomLeftRadius: 4 },
+  bubbleTheirs: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.brand200, borderBottomLeftRadius: 4 },
   meta: { fontSize: 10, marginBottom: 3 },
   metaMine: { color: 'rgba(255,255,255,0.8)' },
   metaTheirs: { color: colors.textMuted },
@@ -148,7 +149,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.brand200,
     paddingHorizontal: 14,
     paddingVertical: 9,
     fontSize: 15,

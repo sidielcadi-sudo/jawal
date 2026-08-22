@@ -37,6 +37,32 @@ export type Announcement = { id: string; title: string; body: string; publishedA
 export type Evaluation = { id: string; subject: string; label: string; date: string; maxValue: number; coefficient: number; value: number | null; classAverage: number | null };
 export type Lesson = { id: string; date: string; title: string; summary: string | null; subject: string | null; teacher: string | null };
 export type Homework = { id: string; dueDate: string | null; description: string; type: string; subject: string | null };
+/** Synthèse enfant — même forme que le tableau de bord du portail élève. */
+export type ChildDashboard = {
+  firstName: string;
+  lastName: string;
+  className: string | null;
+  attendanceRate: number | null;
+  generalAverage: number | null;
+  subjects: { label: string; avg: number | null }[];
+  carnetUnread: number;
+  recentCarnet: { id: string; type: string; content: string; occurredAt: string; authorName: string }[];
+  recentAbsences: { id: string; date: string; cat: string; className: string }[];
+};
+export type TimetableCourse = {
+  id: string;
+  startTime: string;
+  endTime: string;
+  subject: string | null;
+  teacher: string | null;
+  room: string | null;
+  isBreak: boolean;
+  /** Cours annulé (modification approuvée par la vie scolaire). */
+  cancelled: boolean;
+  /** Nom du professeur remplaçant, si remplacement approuvé. */
+  substituteName: string | null;
+};
+export type TimetableDay = { date: string; className: string | null; courses: TimetableCourse[] };
 export type CarnetEntry = { id: string; type: string; content: string; occurredAt: string; authorName: string; className: string | null; subjectLabel: string | null; parentReadAt: string | null };
 export type CarnetEvent = { id: string; date: string; category: string; className: string; justifStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | null };
 export type ConversationSummary = {
@@ -129,6 +155,15 @@ export const api = {
     request<CompetencyReport>(`/api/mobile/children/${childId}/competences`, { token }),
   upcoming: (token: string, childId: string) =>
     request<{ items: UpcomingExam[] }>(`/api/mobile/children/${childId}/upcoming`, { token }),
+  /** Synthèse de l'enfant (moyennes, présence, carnet) — comme le portail élève. */
+  dashboard: (token: string, childId: string) =>
+    request<ChildDashboard>(`/api/mobile/children/${childId}/dashboard`, { token }),
+  /** Cours du jour — équivalent de l'onglet « Aujourd'hui » du portail parent. */
+  timetable: (token: string, childId: string, date?: string) =>
+    request<TimetableDay>(
+      `/api/mobile/children/${childId}/timetable${date ? `?date=${date}` : ''}`,
+      { token },
+    ),
   registerPush: (token: string, expoToken: string, platform: 'ios' | 'android') =>
     request<{ ok: boolean }>('/api/mobile/push/register', { token, method: 'POST', body: { token: expoToken, platform } }),
   unregisterPush: (token: string, expoToken: string) =>

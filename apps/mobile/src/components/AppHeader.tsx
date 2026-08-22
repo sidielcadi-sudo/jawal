@@ -10,7 +10,7 @@ import { useNav } from '../navigation';
  * titre de la page, bouton accueil et bouton menu latéral avec pastille de
  * notifications. Affiché en haut de chaque écran principal.
  */
-export function AppHeader({ title }: { title: string }) {
+export function AppHeader({ title, right }: { title: string; right?: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   const { children, selectedChild, setSelectedId, openMenu, me } = useAppState();
   const { navigate, route, goBack, canGoBack } = useNav();
@@ -21,34 +21,27 @@ export function AppHeader({ title }: { title: string }) {
   const initials = selectedChild
     ? `${selectedChild.firstName[0] ?? ''}${selectedChild.lastName[0] ?? ''}`.toUpperCase()
     : '👤';
+  // Avec un seul enfant, rien à choisir : le sélecteur reste discret. Avec
+  // plusieurs, il devient une pastille cliquable bien identifiable.
+  const multi = children.length > 1;
 
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + 6 }]}>
       <View style={styles.row}>
-        {/* Avatar + sélecteur d'enfant */}
-        <TouchableOpacity
-          style={styles.selector}
-          onPress={() => children.length > 1 && setPickerOpen(true)}
-          activeOpacity={children.length > 1 ? 0.7 : 1}
-        >
+        {/* Bande parent : identité seule, sans sélecteur — celui-ci est
+            descendu à la ligne du dessous, à la place de l'ancien titre. */}
+        <View style={styles.parentBand}>
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
-          <View style={{ maxWidth: 150 }}>
-            <Text style={styles.parent} numberOfLines={1}>
-              {parentName}
-            </Text>
-            {selectedChild && (
-              <Text style={styles.child} numberOfLines={1}>
-                {selectedChild.firstName}
-                {selectedChild.className ? ` · ${selectedChild.className}` : ''}
-                {children.length > 1 ? '  ▾' : ''}
-              </Text>
-            )}
-          </View>
-        </TouchableOpacity>
+          <Text style={styles.parent} numberOfLines={1}>
+            {parentName}
+          </Text>
+        </View>
 
         <View style={{ flex: 1 }} />
+
+        {right}
 
         {/* Accueil */}
         <TouchableOpacity
@@ -76,9 +69,22 @@ export function AppHeader({ title }: { title: string }) {
         )}
       </View>
 
-      <Text style={styles.title} numberOfLines={1}>
-        {title}
-      </Text>
+      {/* À la place de l'ancien titre : le sélecteur d'enfant, plus grand,
+          avec sa flèche en orange. Sans enfant multiple, simple libellé. */}
+      <TouchableOpacity
+        style={styles.childLine}
+        onPress={() => multi && setPickerOpen(true)}
+        activeOpacity={multi ? 0.7 : 1}
+        accessibilityRole={multi ? 'button' : undefined}
+        accessibilityLabel={multi ? 'Changer d’enfant' : undefined}
+      >
+        <Text style={styles.childName} numberOfLines={1}>
+          {selectedChild
+            ? `${selectedChild.firstName}${selectedChild.className ? ` · ${selectedChild.className}` : ''}`
+            : title}
+        </Text>
+        {multi && <Text style={styles.childArrow}>▾</Text>}
+      </TouchableOpacity>
 
       {/* Sélecteur d'enfant (liste des enfants scolarisés) */}
       <Modal visible={pickerOpen} transparent animationType="fade" onRequestClose={() => setPickerOpen(false)}>
@@ -121,7 +127,17 @@ export function AppHeader({ title }: { title: string }) {
 const styles = StyleSheet.create({
   wrap: { backgroundColor: colors.brand, paddingHorizontal: 12, paddingBottom: 12 },
   row: { flexDirection: 'row', alignItems: 'center' },
-  selector: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 999, paddingRight: 8 },
+  /** Bande d'identité du parent : orange, coins peu arrondis. */
+  parentBand: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 9,
+    backgroundColor: colors.amber,
+    borderRadius: 8,
+    paddingLeft: 5,
+    paddingRight: 12,
+    paddingVertical: 5,
+  },
   avatar: {
     width: 34,
     height: 34,
@@ -131,10 +147,19 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   avatarText: { color: colors.white, fontWeight: '800', fontSize: 13 },
+  /** Ligne du sélecteur d'enfant, à la place de l'ancien titre. */
+  childLine: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+  },
+  childName: { color: colors.white, fontSize: 19, fontWeight: '700' },
+  childArrow: { color: colors.amber, fontSize: 20, fontWeight: '900', lineHeight: 22 },
   avatarDark: { backgroundColor: colors.brand },
   avatarTextDark: { color: colors.white, fontWeight: '800', fontSize: 13 },
-  parent: { color: colors.white, fontWeight: '800', fontSize: 14 },
-  child: { color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 1 },
+  parent: { color: colors.white, fontWeight: '800', fontSize: 15 },
   iconBtn: { padding: 6, marginLeft: 2 },
   icon: { color: colors.white, fontSize: 20 },
   backIcon: { color: colors.white, fontSize: 30, lineHeight: 30, fontWeight: '700' },
@@ -151,7 +176,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   badgeText: { color: colors.white, fontSize: 10, fontWeight: '800' },
-  title: { color: colors.white, fontSize: 16, fontWeight: '700', textAlign: 'center', marginTop: 8 },
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.35)', justifyContent: 'flex-start' },
   sheet: { backgroundColor: colors.card, margin: 12, marginTop: 90, borderRadius: 16, padding: 8 },
   sheetTitle: {
@@ -162,9 +186,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
   },
-  childRow: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 10, borderRadius: 12 },
-  childRowOn: { backgroundColor: '#EFF3FF' },
-  childRowName: { fontSize: 15, fontWeight: '700', color: colors.text },
-  childRowClass: { fontSize: 12, color: colors.textMuted, marginTop: 1 },
+  childRow: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 14 },
+  childRowOn: { backgroundColor: '#EFF3FF', borderWidth: 1, borderColor: colors.brand200 },
+  childRowName: { fontSize: 16, fontWeight: '700', color: colors.text },
+  childRowClass: { fontSize: 13, color: colors.textMuted, marginTop: 2 },
   check: { color: colors.brand, fontWeight: '900', fontSize: 16 },
 });

@@ -15,6 +15,7 @@ export default async function EstablishmentPage({ params }: { params: Promise<{ 
     where: { id: session.user.tenantId },
     select: {
       name: true,
+      nameAr: true,
       slug: true,
       localeDefault: true,
       currency: true,
@@ -32,6 +33,7 @@ export default async function EstablishmentPage({ params }: { params: Promise<{ 
       <EstablishmentForm
         initial={{
           name: tenant.name,
+          nameAr: tenant.nameAr ?? '',
           slug: tenant.slug,
           localeDefault: tenant.localeDefault,
           currency: tenant.currency,

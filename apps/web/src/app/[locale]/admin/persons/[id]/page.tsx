@@ -561,6 +561,36 @@ export default async function PersonDetailPage({
             />
             <Row label={tDetail('cin')} value={person.cin ?? undefined} />
             <Row label={tDetail('nationality')} value={person.nationality ?? undefined} />
+            {/* État civil arabe — n'apparaît que si renseigné. */}
+            <Row label={tForm('lastNameAr')} value={person.lastNameAr ?? undefined} />
+            <Row label={tForm('firstNameAr')} value={person.firstNameAr ?? undefined} />
+            <Row label={tForm('birthPlace')} value={person.birthPlace ?? undefined} />
+            <Row label={tForm('birthPlaceAr')} value={person.birthPlaceAr ?? undefined} />
+            <Row label={tForm('nationalityAr')} value={person.nationalityAr ?? undefined} />
+            <Row
+              label={tForm('addressAr')}
+              value={
+                [person.addressAr, person.cityAr].filter(Boolean).join('، ') || undefined
+              }
+            />
+            {/* Prénoms des parents : issus des fiches Parent rattachées ; le
+                champ libre de l'élève ne sert que de repli. */}
+            <Row
+              label={tForm('fatherFirstNameAr')}
+              value={
+                person.relationsAsChild.find((r) => r.type === 'FATHER')?.parent.firstNameAr ??
+                person.fatherFirstNameAr ??
+                undefined
+              }
+            />
+            <Row
+              label={tForm('motherFirstNameAr')}
+              value={
+                person.relationsAsChild.find((r) => r.type === 'MOTHER')?.parent.firstNameAr ??
+                person.motherFirstNameAr ??
+                undefined
+              }
+            />
           </dl>
         </section>
 

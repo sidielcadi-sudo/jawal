@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createPersonAction, updatePersonAction } from './actions';
 import { createAdmissionEnrollmentAction } from '../enrollments/admission-actions';
+import { ENROLLMENT_BADGE, type EnrollmentStatusValue } from '@/lib/enrollment-status';
 import {
   MultiPicker,
   DiplomasField,
@@ -25,7 +26,13 @@ type RoleOption = {
 };
 
 type ParentAddress = { line1?: string; city?: string; postalCode?: string; country?: string } | null;
-type ParentChild = { firstName: string; lastName: string; className: string | null };
+type ParentChild = {
+  firstName: string;
+  lastName: string;
+  className: string | null;
+  /** Statut du dossier le plus récent ; null si l'élève n'a jamais été inscrit. */
+  status?: EnrollmentStatusValue | null;
+};
 type ParentOption = {
   id: string;
   firstName: string;
@@ -59,6 +66,16 @@ type PersonInitial = {
   gender?: 'M' | 'F' | 'X';
   nationality?: string;
   cin?: string;
+  /** État civil bilingue. */
+  firstNameAr?: string;
+  lastNameAr?: string;
+  birthPlace?: string;
+  birthPlaceAr?: string;
+  nationalityAr?: string;
+  addressAr?: string;
+  cityAr?: string;
+  fatherFirstNameAr?: string;
+  motherFirstNameAr?: string;
   regime?: 'EXTERNE' | 'DEMI_PENSIONNAIRE' | 'INTERNE';
   usesTransport?: boolean;
   cne?: string;
@@ -131,6 +148,7 @@ export function PersonForm({
 }) {
   const t = useTranslations('admin.persons.form');
   const tRel = useTranslations('admin.persons.detail.relations');
+  const tStatus = useTranslations('admin.enrollments.status');
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState('');
@@ -298,7 +316,10 @@ export function PersonForm({
       <SectionCard title={t('section.identity')}>
         <div className="flex flex-col gap-5 sm:flex-row">
           <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
-          {lockType ? (
+          {/* Type : masqué dès qu'il est déjà déterminé (création d'un élève,
+              ou modification où il n'était de toute façon pas modifiable).
+              Le sélecteur ne sert qu'à créer un enseignant / personnel / parent. */}
+          {lockType || mode === 'edit' ? (
             <input type="hidden" name="type" value={type} />
           ) : (
             <Field label={t('type')} error={fieldErrors.type}>
@@ -308,7 +329,6 @@ export function PersonForm({
                 value={type}
                 onChange={(e) => setType(e.target.value as PersonType)}
                 className={inputCls}
-                disabled={mode === 'edit'}
               >
                 <option value="STUDENT">{t('types.STUDENT')}</option>
                 <option value="TEACHER">{t('types.TEACHER')}</option>
@@ -338,12 +358,22 @@ export function PersonForm({
             <p className="text-xs text-slate-500">{t('serviceDerivedHint')}</p>
           )}
 
+          {/* Grille à 2 colonnes : le champ français à gauche, son pendant
+              arabe en face à droite. Sexe et date de naissance ouvrent. */}
           <Field label={t('gender')} error={fieldErrors.gender}>
             <select name="gender" defaultValue={initial?.gender ?? ''} className={inputCls}>
               <option value="">—</option>
               <option value="M">{t('genders.M')}</option>
               <option value="F">{t('genders.F')}</option>
             </select>
+          </Field>
+          <Field label={t('birthDate')} error={fieldErrors.birthDate}>
+            <input
+              type="date"
+              name="birthDate"
+              defaultValue={initial?.birthDate ?? ''}
+              className={inputCls}
+            />
           </Field>
           <Field label={t('lastName')} error={fieldErrors.lastName}>
             <input
@@ -354,6 +384,9 @@ export function PersonForm({
               className={inputCls}
             />
           </Field>
+          <Field label={t('lastNameAr')}>
+            <input type="text" name="lastNameAr" dir="rtl" defaultValue={initial?.lastNameAr ?? ''} className={inputCls} />
+          </Field>
           <Field label={t('firstName')} error={fieldErrors.firstName}>
             <input
               type="text"
@@ -363,13 +396,14 @@ export function PersonForm({
               className={inputCls}
             />
           </Field>
-          <Field label={t('birthDate')} error={fieldErrors.birthDate}>
-            <input
-              type="date"
-              name="birthDate"
-              defaultValue={initial?.birthDate ?? ''}
-              className={inputCls}
-            />
+          <Field label={t('firstNameAr')}>
+            <input type="text" name="firstNameAr" dir="rtl" defaultValue={initial?.firstNameAr ?? ''} className={inputCls} />
+          </Field>
+          <Field label={t('birthPlace')}>
+            <input type="text" name="birthPlace" defaultValue={initial?.birthPlace ?? ''} className={inputCls} />
+          </Field>
+          <Field label={t('birthPlaceAr')}>
+            <input type="text" name="birthPlaceAr" dir="rtl" defaultValue={initial?.birthPlaceAr ?? ''} className={inputCls} />
           </Field>
           <Field label={t('nationality')}>
             <input
@@ -380,6 +414,38 @@ export function PersonForm({
               className={inputCls}
             />
           </Field>
+          <Field label={t('nationalityAr')}>
+            <input
+              type="text"
+              name="nationalityAr"
+              dir="rtl"
+              defaultValue={initial?.nationalityAr ?? ''}
+              placeholder="مغربية"
+              className={inputCls}
+            />
+          </Field>
+          {type === 'STUDENT' && (
+            <>
+              <Field label={t('fatherFirstNameAr')}>
+                <input
+                  type="text"
+                  name="fatherFirstNameAr"
+                  dir="rtl"
+                  defaultValue={initial?.fatherFirstNameAr ?? ''}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label={t('motherFirstNameAr')}>
+                <input
+                  type="text"
+                  name="motherFirstNameAr"
+                  dir="rtl"
+                  defaultValue={initial?.motherFirstNameAr ?? ''}
+                  className={inputCls}
+                />
+              </Field>
+            </>
+          )}
           <Field label={t('cin')}>
             <input
               type="text"
@@ -560,10 +626,21 @@ export function PersonForm({
                           {siblings.map((s, i) => (
                             <li
                               key={i}
-                              className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-700"
+                              className="flex items-center gap-1.5 rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-slate-700"
                             >
-                              {s.firstName} {s.lastName}
-                              {s.className ? ` · ${s.className}` : ` · ${tRel('siblingsNoClass')}`}
+                              <span>
+                                {s.firstName} {s.lastName}
+                                {s.className ? ` · ${s.className}` : ` · ${tRel('siblingsNoClass')}`}
+                              </span>
+                              {/* Statut du dossier : distingue un frère encore
+                                  inscrit d'un frère radié ou diplômé. */}
+                              {s.status && (
+                                <span
+                                  className={`rounded px-1 py-px text-[10px] font-medium uppercase ${ENROLLMENT_BADGE[s.status]}`}
+                                >
+                                  {tStatus(s.status)}
+                                </span>
+                              )}
                             </li>
                           ))}
                         </ul>
@@ -605,14 +682,9 @@ export function PersonForm({
               className={inputCls}
             />
           </Field>
-          <Field label={t('contactWhatsapp')}>
-            <input
-              type="tel"
-              name="contactWhatsapp"
-              defaultValue={initial?.contacts?.whatsapp ?? ''}
-              className={inputCls}
-            />
-          </Field>
+          {/* WhatsApp : plus de saisie séparée, c'est toujours le portable
+              renseigné ci-dessus (règle métier). */}
+          <p className="self-end text-xs text-slate-400 sm:col-span-2">{t('whatsappHint')}</p>
       </SectionCard>
 
       <SectionCard title={t('section.address')} bodyClass="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -665,6 +737,24 @@ export function PersonForm({
               className={inputCls}
             />
           </Field>
+          <Field label={t('addressAr')}>
+            <input
+              type="text"
+              name="addressAr"
+              dir="rtl"
+              defaultValue={initial?.addressAr ?? ''}
+              className={inputCls}
+            />
+          </Field>
+          <Field label={t('cityAr')}>
+            <input
+              type="text"
+              name="cityAr"
+              dir="rtl"
+              defaultValue={initial?.cityAr ?? ''}
+              className={inputCls}
+            />
+          </Field>
           <Field label={t('addressPostalCode')}>
             <input
               type="text"
@@ -674,15 +764,9 @@ export function PersonForm({
               className={inputCls}
             />
           </Field>
-          <Field label={t('addressCountry')}>
-            <input
-              type="text"
-              name="addressCountry"
-              value={address.country}
-              onChange={(e) => setAddress((a) => ({ ...a, country: e.target.value }))}
-              className={inputCls}
-            />
-          </Field>
+          {/* Pays : masqué et figé à « Maroc ». Conservé en champ caché pour
+              que l'action de sauvegarde continue de le recevoir. */}
+          <input type="hidden" name="addressCountry" value={address.country || 'Maroc'} readOnly />
       </SectionCard>
 
       {type === 'STUDENT' && mode === 'create' && (

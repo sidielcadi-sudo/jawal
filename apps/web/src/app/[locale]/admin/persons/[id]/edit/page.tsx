@@ -30,7 +30,10 @@ export default async function EditPersonPage({
         tx.person.findUnique({
           where: { id },
           include: {
-            relationsAsChild: true,
+            // Les fiches parent sont incluses : les prénoms du père et de la
+            // mère affichés sur la fiche élève en sont issus, plutôt que
+            // d'être ressaisis à la main.
+            relationsAsChild: { include: { parent: true } },
             contractFile: true,
             teacherSpecialties: true,
             teacherCycles: true,
@@ -52,10 +55,10 @@ export default async function EditPersonPage({
             lastName: true,
             address: true,
             relationsAsParent: {
-              // Fratrie = uniquement les élèves actifs de l'établissement.
-              where: {
-                child: { type: 'STUDENT', deletedAt: null, enrollments: { some: { status: 'ACTIVE' } } },
-              },
+              // Fratrie = tous les élèves rattachés, quel que soit leur statut :
+              // le statut est affiché en face de chacun (actif, retiré…), ce qui
+              // vaut mieux que de masquer silencieusement un frère radié.
+              where: { child: { type: 'STUDENT', deletedAt: null } },
               select: {
                 child: {
                   select: {
@@ -64,6 +67,12 @@ export default async function EditPersonPage({
                     studentClasses: {
                       where: { unenrolledAt: null },
                       select: { class: { select: { name: true } } },
+                      take: 1,
+                    },
+                    // Dossier le plus récent = statut courant de l'élève.
+                    enrollments: {
+                      orderBy: { academicYear: { startDate: 'desc' } },
+                      select: { status: true },
                       take: 1,
                     },
                   },
@@ -98,6 +107,7 @@ export default async function EditPersonPage({
             firstName: r.child.firstName,
             lastName: r.child.lastName,
             className: r.child.studentClasses[0]?.class.name ?? null,
+            status: r.child.enrollments[0]?.status ?? null,
           })),
         })),
         allSubjects,
@@ -174,6 +184,24 @@ export default async function EditPersonPage({
             gender: person.gender ?? undefined,
             nationality: person.nationality ?? undefined,
             cin: person.cin ?? undefined,
+            // État civil bilingue.
+            firstNameAr: person.firstNameAr ?? undefined,
+            lastNameAr: person.lastNameAr ?? undefined,
+            birthPlace: person.birthPlace ?? undefined,
+            birthPlaceAr: person.birthPlaceAr ?? undefined,
+            nationalityAr: person.nationalityAr ?? undefined,
+            addressAr: person.addressAr ?? undefined,
+            cityAr: person.cityAr ?? undefined,
+            // Prénoms des parents : la fiche Parent fait foi. Le champ libre
+            // ne sert que de repli quand aucun parent n'est encore rattaché.
+            fatherFirstNameAr:
+              person.relationsAsChild.find((r) => r.type === 'FATHER')?.parent.firstNameAr ??
+              person.fatherFirstNameAr ??
+              undefined,
+            motherFirstNameAr:
+              person.relationsAsChild.find((r) => r.type === 'MOTHER')?.parent.firstNameAr ??
+              person.motherFirstNameAr ??
+              undefined,
             massarId: person.massarId ?? undefined,
             regime: person.regime ?? undefined,
             usesTransport: person.usesTransport,

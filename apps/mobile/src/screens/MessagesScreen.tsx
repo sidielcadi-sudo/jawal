@@ -13,6 +13,8 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppHeader } from '../components/AppHeader';
+import { EmptyCard } from '../components/EmptyCard';
 import { Header } from '../components/Header';
 import { useAuth } from '../auth';
 import { useNav } from '../navigation';
@@ -52,9 +54,10 @@ export default function MessagesScreen() {
 
   return (
     <View style={styles.container}>
-      <Header
+      {/* Barre complète (sélecteur d'enfant, accueil, menu) comme sur les
+          autres écrans principaux — et non le simple bandeau titre+retour. */}
+      <AppHeader
         title="Messagerie"
-        onBack={goBack}
         right={
           <TouchableOpacity onPress={() => setComposing(true)} hitSlop={10} style={styles.newBtn}>
             <Text style={styles.newBtnText}>Nouveau</Text>
@@ -70,7 +73,7 @@ export default function MessagesScreen() {
           contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}
           refreshControl={<RefreshControl refreshing={false} onRefresh={load} tintColor={colors.brand} />}
           ListEmptyComponent={
-            <Text style={styles.empty}>{error || 'Aucune conversation. Touchez « Nouveau » pour écrire à l’école.'}</Text>
+            <EmptyCard text={error || 'Aucune conversation. Touchez « Nouveau » pour écrire à l’école.'} />
           }
           renderItem={({ item }) => (
             <TouchableOpacity
@@ -165,7 +168,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.brand200,
     padding: 14,
     marginBottom: 10,
   },
@@ -180,7 +183,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.brand200,
     paddingHorizontal: 12,
     paddingVertical: 10,
     fontSize: 15,

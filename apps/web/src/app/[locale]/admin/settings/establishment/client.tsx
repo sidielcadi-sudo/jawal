@@ -22,6 +22,7 @@ export function EstablishmentForm({
 }: {
   initial: {
     name: string;
+    nameAr: string;
     localeDefault: string;
     currency: string;
     timezone: string;
@@ -55,6 +56,19 @@ export function EstablishmentForm({
         <div>
           <label className="block text-xs font-medium text-slate-700">{t('name')}</label>
           <input type="text" name="name" required defaultValue={initial.name} maxLength={120} className={inputCls} />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-slate-700">{t('nameAr')}</label>
+          <input
+            type="text"
+            name="nameAr"
+            dir="rtl"
+            defaultValue={initial.nameAr}
+            maxLength={120}
+            className={inputCls}
+          />
+          <p className="mt-1 text-[11px] text-slate-400">{t('nameArHint')}</p>
         </div>
 
         <div>

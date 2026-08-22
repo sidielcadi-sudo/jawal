@@ -12,6 +12,24 @@ Consomme l'API `/api/mobile/*` de l'app web Next.js.
 - Sur votre téléphone : l'app **Expo Go** (App Store / Play Store). *(Ou un simulateur iOS/Android.)*
 - Le **téléphone et le PC sur le même Wi-Fi**.
 
+> ### ⚠️ Expo Go n'exécute qu'une seule version du SDK
+> Expo Go, tel qu'installé depuis le store, ne sait ouvrir qu'un projet dont le
+> **SDK correspond au sien**. Si le projet est sur un SDK plus ancien, Expo Go
+> affiche un écran bleu **« Something went wrong »** — sans rapport avec le code :
+> le bundle Metro compile parfaitement.
+>
+> Ce projet est actuellement en **SDK 57**. Pour vérifier et réaligner :
+> ```bash
+> npx expo-doctor                       # doit afficher 21/21
+> npx expo install expo@^57 --fix       # puis :
+> npx expo install --fix
+> ```
+> Pour confirmer que le problème est natif et non JavaScript, demandez le bundle
+> pendant que `expo start` tourne — un HTTP 200 innocente le code :
+> ```bash
+> curl "http://127.0.0.1:8081/index.bundle?platform=android&dev=true" -o /dev/null -w "%{http_code}\n"
+> ```
+
 ## 1) Installer
 ```bash
 cd apps/mobile

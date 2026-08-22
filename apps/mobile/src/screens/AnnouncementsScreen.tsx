@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Header } from '../components/Header';
+import { AppHeader } from '../components/AppHeader';
+import { EmptyCard } from '../components/EmptyCard';
 import { useAuth } from '../auth';
 import { useNav } from '../navigation';
 import { api, ApiError, type Announcement } from '../api';
@@ -35,7 +36,7 @@ export default function AnnouncementsScreen() {
 
   return (
     <View style={styles.container}>
-      <Header title="Annonces" onBack={goBack} />
+      <AppHeader title="Annonces" />
       {loading ? (
         <ActivityIndicator color={colors.brand} size="large" style={{ marginTop: 32 }} />
       ) : (
@@ -45,7 +46,7 @@ export default function AnnouncementsScreen() {
           contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 24 }}
           refreshControl={<RefreshControl refreshing={false} onRefresh={load} tintColor={colors.brand} />}
           ListEmptyComponent={
-            <Text style={styles.empty}>{error || 'Aucune annonce pour le moment.'}</Text>
+            <EmptyCard text={error || 'Aucune annonce pour le moment.'} />
           }
           renderItem={({ item }) => (
             <View style={styles.card}>
@@ -69,7 +70,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.brand200,
     padding: 16,
     marginBottom: 10,
   },

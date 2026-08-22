@@ -11,6 +11,13 @@ type Result = { ok: true } | { ok: false; error: string };
 
 const schema = z.object({
   name: z.string().trim().min(1).max(120),
+  /** Nom en arabe — facultatif, utilisé sur les documents et le portail AR. */
+  nameAr: z
+    .string()
+    .trim()
+    .max(120)
+    .transform((v) => (v === '' ? null : v))
+    .nullable(),
   localeDefault: z.enum(['fr', 'ar']),
   currency: z.string().trim().min(1).max(8),
   timezone: z.string().trim().min(1).max(64),
@@ -41,6 +48,7 @@ export async function updateEstablishmentAction(formData: FormData): Promise<Res
   };
   const parsed = schema.safeParse({
     name: get('name'),
+    nameAr: get('nameAr'),
     localeDefault: get('localeDefault'),
     currency: get('currency'),
     timezone: get('timezone'),
@@ -66,7 +74,7 @@ export async function updateEstablishmentAction(formData: FormData): Promise<Res
     }
     const before = await prismaAdmin.tenant.findUnique({
       where: { id: tenantId },
-      select: { name: true, localeDefault: true, currency: true, timezone: true, massarCode: true },
+      select: { name: true, nameAr: true, localeDefault: true, currency: true, timezone: true, massarCode: true },
     });
     await prismaAdmin.tenant.update({ where: { id: tenantId }, data: parsed.data });
     await withTenant(tenantId, async (tx) => {

@@ -111,6 +111,16 @@ export const personCreateSchema = z.object({
   gender: genderSchema.optional(),
   nationality: z.string().max(60).optional(),
   cin: z.string().max(40).optional(),
+  /// État civil bilingue — colonnes dédiées, saisies côté FR et côté AR.
+  firstNameAr: z.string().max(100).optional(),
+  lastNameAr: z.string().max(100).optional(),
+  birthPlace: z.string().max(120).optional(),
+  birthPlaceAr: z.string().max(120).optional(),
+  nationalityAr: z.string().max(60).optional(),
+  addressAr: z.string().max(200).optional(),
+  cityAr: z.string().max(120).optional(),
+  fatherFirstNameAr: z.string().max(100).optional(),
+  motherFirstNameAr: z.string().max(100).optional(),
   /// Régime de l'élève (STUDENT uniquement) : externe / demi-pensionnaire / interne.
   regime: regimeSchema.optional(),
   /// L'élève utilise-t-il le transport scolaire ? (STUDENT uniquement.)

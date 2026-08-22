@@ -223,6 +223,16 @@ export function LevelCreateForm({ cycles }: { cycles: { id: string; label: strin
         />
       </div>
       <div>
+        <label className="block text-xs font-medium text-slate-700">{t('labelAr')}</label>
+        <input
+          type="text"
+          name="labelAr"
+          dir="rtl"
+          placeholder="السادسة ابتدائي"
+          className={inputCls}
+        />
+      </div>
+      <div>
         <label className="block text-xs font-medium text-slate-700">{t('order')}</label>
         <input type="number" name="order" defaultValue={0} min={0} max={99} className={inputCls} />
       </div>
@@ -246,7 +256,7 @@ export function LevelRowActions({
   cycles,
 }: {
   id: string;
-  initial: { cycleId: string; code: string; label: string; order: number };
+  initial: { cycleId: string; code: string; label: string; labelAr?: string | null; order: number };
   cycles: CycleOption[];
 }) {
   const t = useTranslations('admin.settings.curriculum');
@@ -309,6 +319,16 @@ export function LevelRowActions({
           <div>
             <label className="block text-xs font-medium text-slate-700">{tForm('label')}</label>
             <input type="text" name="label" required defaultValue={initial.label} className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-700">{tForm('labelAr')}</label>
+            <input
+              type="text"
+              name="labelAr"
+              dir="rtl"
+              defaultValue={initial.labelAr ?? ''}
+              className={inputCls}
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700">{tForm('order')}</label>

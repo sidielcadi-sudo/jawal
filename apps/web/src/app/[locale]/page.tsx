@@ -7,7 +7,7 @@ export default async function HomePage({ params }: { params: Promise<{ locale: s
   setRequestLocale(locale);
 
   const t = await getTranslations('home');
-  const { name, logo } = await loadPreAuthBranding();
+  const { name, logo } = await loadPreAuthBranding(locale);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-white bg-[url('/login-bg.png')] bg-cover bg-center bg-no-repeat px-4 py-8">

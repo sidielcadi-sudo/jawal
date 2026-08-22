@@ -2676,7 +2676,17 @@
           "pai": "PAI (Projet d’Accueil Individualisé)",
           "medAuthorization": "Autorisation de prise de médicaments",
           "outingAuthorization": "Autorisation de sortie scolaire"
-        }
+        },
+        "lastNameAr": "Nom (arabe)",
+        "firstNameAr": "Prénom (arabe)",
+        "birthPlace": "Lieu de naissance",
+        "birthPlaceAr": "Lieu de naissance (arabe)",
+        "nationalityAr": "Nationalité (arabe)",
+        "addressAr": "Adresse (arabe)",
+        "cityAr": "Ville (arabe)",
+        "fatherFirstNameAr": "Prénom du père (arabe)",
+        "motherFirstNameAr": "Prénom de la mère (arabe)",
+        "whatsappHint": "Le numéro WhatsApp reprend automatiquement le portable ci-dessus."
       },
       "studentAccess": {
         "active": "Actif",
@@ -2801,7 +2811,11 @@
         "teachers": "Enseignants",
         "noTeacher": "Aucun prof affecté",
         "programmeEmpty": "Aucun programme défini pour ce niveau.",
-        "configureProgramme": "Configurer le programme"
+        "configureProgramme": "Configurer le programme",
+        "viewStudents": "Élèves",
+        "viewDetail": "Détail",
+        "levelLabel": "Niveau",
+        "yearLabel": "Année scolaire"
       }
     },
     "gradeBook": {
@@ -3141,7 +3155,9 @@
         },
         "save": "Enregistrer",
         "saving": "Enregistrement…",
-        "saved": "Modifications enregistrées."
+        "saved": "Modifications enregistrées.",
+        "nameAr": "Nom de l'établissement (arabe)",
+        "nameArHint": "Utilisé sur les documents et l'interface en arabe."
       },
       "attendanceReasons": {
         "title": "Motifs d'appel",
@@ -3282,7 +3298,8 @@
             "creating": "Création…",
             "save": "Enregistrer",
             "saving": "Enregistrement…",
-            "cancel": "Annuler"
+            "cancel": "Annuler",
+            "labelAr": "Libellé (arabe)"
           }
         },
         "levels": {
@@ -3307,7 +3324,8 @@
             "creating": "Création…",
             "save": "Enregistrer",
             "saving": "Enregistrement…",
-            "cancel": "Annuler"
+            "cancel": "Annuler",
+            "labelAr": "Libellé (arabe)"
           }
         }
       },

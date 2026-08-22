@@ -2676,7 +2676,17 @@
           "pai": "مشروع الاستقبال الفردي (PAI)",
           "medAuthorization": "الإذن بتناول الأدوية",
           "outingAuthorization": "الإذن بالخروج المدرسي"
-        }
+        },
+        "lastNameAr": "النسب (بالعربية)",
+        "firstNameAr": "الاسم (بالعربية)",
+        "birthPlace": "مكان الازدياد",
+        "birthPlaceAr": "مكان الازدياد (بالعربية)",
+        "nationalityAr": "الجنسية (بالعربية)",
+        "addressAr": "العنوان (بالعربية)",
+        "cityAr": "المدينة (بالعربية)",
+        "fatherFirstNameAr": "اسم الأب (بالعربية)",
+        "motherFirstNameAr": "اسم الأم (بالعربية)",
+        "whatsappHint": "رقم واتساب هو نفسه رقم الهاتف المحمول أعلاه."
       },
       "studentAccess": {
         "active": "مُفعّل",
@@ -2801,7 +2811,11 @@
         "teachers": "الأساتذة",
         "noTeacher": "لا يوجد أستاذ",
         "programmeEmpty": "لا يوجد برنامج محدد لهذا المستوى.",
-        "configureProgramme": "ضبط البرنامج"
+        "configureProgramme": "ضبط البرنامج",
+        "viewStudents": "التلاميذ",
+        "viewDetail": "التفاصيل",
+        "levelLabel": "المستوى",
+        "yearLabel": "السنة الدراسية"
       }
     },
     "gradeBook": {
@@ -3141,7 +3155,9 @@
         },
         "save": "حفظ",
         "saving": "جارٍ الحفظ…",
-        "saved": "تم حفظ التعديلات."
+        "saved": "تم حفظ التعديلات.",
+        "nameAr": "اسم المؤسسة (بالعربية)",
+        "nameArHint": "يُستعمل في الوثائق وفي الواجهة العربية."
       },
       "attendanceReasons": {
         "title": "أسباب المناداة",
@@ -3282,7 +3298,8 @@
             "creating": "جاري الإنشاء…",
             "save": "حفظ",
             "saving": "جاري الحفظ…",
-            "cancel": "إلغاء"
+            "cancel": "إلغاء",
+            "labelAr": "التسمية (بالعربية)"
           }
         },
         "levels": {
@@ -3307,7 +3324,8 @@
             "creating": "جاري الإنشاء…",
             "save": "حفظ",
             "saving": "جاري الحفظ…",
-            "cancel": "إلغاء"
+            "cancel": "إلغاء",
+            "labelAr": "التسمية (بالعربية)"
           }
         }
       },

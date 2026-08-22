@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from '../components/AppHeader';
+import { EmptyCard } from '../components/EmptyCard';
 import { PaymentWebView } from '../components/PaymentWebView';
 import { useAuth } from '../auth';
 import { useAppState } from '../app-state';
@@ -28,7 +29,7 @@ import {
   type SupportCourse,
   type CompetencyDomain,
 } from '../api';
-import { colors } from '../theme';
+import { colors, feeTone, levelFromGrade, mastery, toneFromFee } from '../theme';
 
 type Tab = 'notes' | 'cahier' | 'vie' | 'competences' | 'soutien' | 'scolarite';
 const TABS: { key: Tab; label: string }[] = [
@@ -117,7 +118,7 @@ function Loader() {
   return <ActivityIndicator color={colors.brand} size="large" style={{ marginTop: 40 }} />;
 }
 function Empty({ text }: { text: string }) {
-  return <Text style={styles.empty}>{text}</Text>;
+  return <EmptyCard text={text} />;
 }
 
 // ── Notes ───────────────────────────────────────────────────────────────────
@@ -135,21 +136,26 @@ function NotesTab({ childId }: { childId: string }) {
       {evals.length === 0 ? (
         <Empty text={error || 'Aucune note pour cette période.'} />
       ) : (
-        evals.map((e) => (
-          <View key={e.id} style={styles.card}>
-            <View style={styles.row}>
-              <Text style={styles.subject}>{e.subject}</Text>
-              <Text style={styles.grade}>
-                {e.value != null ? e.value : '—'}
-                <Text style={styles.gradeMax}> / {e.maxValue}</Text>
+        evals.map((e) => {
+          // Fond de carte selon le palier d'acquisition, comme les compétences.
+          const lvl = mastery[levelFromGrade(e.value ?? null, e.maxValue)];
+          return (
+            <View key={e.id} style={[styles.card, { backgroundColor: lvl.bg, borderColor: lvl.border }]}>
+              <View style={styles.row}>
+                <Text style={styles.subject}>{e.subject}</Text>
+                <Text style={[styles.grade, { color: lvl.text }]}>
+                  {e.value != null ? e.value : '—'}
+                  <Text style={styles.gradeMax}> / {e.maxValue}</Text>
+                </Text>
+              </View>
+              <Text style={styles.meta}>
+                {e.label} · coeff {e.coefficient} · {new Date(e.date).toLocaleDateString('fr-FR')}
+                {e.classAverage != null ? ` · moy. classe ${e.classAverage}` : ''}
               </Text>
+              {lvl.label ? <Text style={[styles.levelTag, { color: lvl.text }]}>{lvl.label}</Text> : null}
             </View>
-            <Text style={styles.meta}>
-              {e.label} · coeff {e.coefficient} · {new Date(e.date).toLocaleDateString('fr-FR')}
-              {e.classAverage != null ? ` · moy. classe ${e.classAverage}` : ''}
-            </Text>
-          </View>
-        ))
+          );
+        })
       )}
     </ScrollView>
   );
@@ -426,11 +432,6 @@ function SoutienTab({ childId }: { childId: string }) {
 }
 
 // ── Scolarité (échéancier + paiement en ligne) ──────────────────────────────
-const FEE_STATUS: Record<string, { label: string; color: string; bg: string }> = {
-  PENDING: { label: 'À payer', color: '#B45309', bg: '#FEF3C7' },
-  PARTIAL: { label: 'Partiel', color: '#1D4ED8', bg: '#DBEAFE' },
-  PAID: { label: 'Payé', color: '#047857', bg: '#D1FAE5' },
-};
 function ScolariteTab({ childId }: { childId: string }) {
   const { token, logout } = useAuth();
   const insets = useSafeAreaInsets();
@@ -492,7 +493,9 @@ function ScolariteTab({ childId }: { childId: string }) {
           <Empty text={error || 'Aucune échéance.'} />
         ) : (
           fees.map((f) => {
-            const st = FEE_STATUS[f.status];
+            // Fond de carte selon statut ET échéance : une échéance impayée
+            // dont la date est passée ressort en rouge, comme un retard.
+            const tone = feeTone[toneFromFee(f.status, f.dueDate, f.remaining)];
             const selectable = f.remaining > 0;
             const on = selected.has(f.id);
             return (
@@ -500,7 +503,7 @@ function ScolariteTab({ childId }: { childId: string }) {
                 key={f.id}
                 activeOpacity={selectable ? 0.7 : 1}
                 onPress={() => selectable && toggle(f.id)}
-                style={styles.card}
+                style={[styles.card, { backgroundColor: tone.bg, borderColor: tone.border }]}
               >
                 <View style={styles.row}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
@@ -511,8 +514,8 @@ function ScolariteTab({ childId }: { childId: string }) {
                     ) : null}
                     <Text style={styles.subject}>{f.label}</Text>
                   </View>
-                  <View style={[styles.feeBadge, { backgroundColor: st.bg }]}>
-                    <Text style={[styles.feeBadgeText, { color: st.color }]}>{st.label}</Text>
+                  <View style={[styles.feeBadge, { backgroundColor: colors.card }]}>
+                    <Text style={[styles.feeBadgeText, { color: tone.text }]}>{tone.label}</Text>
                   </View>
                 </View>
                 <Text style={styles.meta}>
@@ -570,7 +573,8 @@ const styles = StyleSheet.create({
   tabTextActive: { color: colors.brand },
   section: { fontSize: 13, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', marginBottom: 8 },
   empty: { color: colors.textMuted, textAlign: 'center', marginTop: 16, marginBottom: 8 },
-  card: { backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.border, padding: 14, marginBottom: 10 },
+  card: { backgroundColor: colors.card, borderRadius: 14, borderWidth: 1, borderColor: colors.brand200, padding: 14, marginBottom: 10 },
+  levelTag: { marginTop: 6, fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   subject: { fontSize: 15, fontWeight: '700', color: colors.text, flex: 1 },
   grade: { fontSize: 18, fontWeight: '800', color: colors.brand },
@@ -583,7 +587,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.brand200,
     padding: 18,
     marginBottom: 14,
     alignItems: 'center',
@@ -613,7 +617,7 @@ const styles = StyleSheet.create({
   // Compétences
   provBadge: { borderRadius: 6, backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 3 },
   provText: { fontSize: 10, fontWeight: '800', color: '#B45309', textTransform: 'uppercase' },
-  rateBox: { flex: 1, borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 10, alignItems: 'center' },
+  rateBox: { flex: 1, borderRadius: 12, borderWidth: 1, borderColor: colors.brand200, padding: 10, alignItems: 'center' },
   rateLabel: { fontSize: 11, color: colors.textMuted, textAlign: 'center' },
   rateValue: { fontSize: 22, fontWeight: '900', marginTop: 2 },
   progressTrack: { height: 6, borderRadius: 3, backgroundColor: '#F1F5F9', overflow: 'hidden', marginTop: 8 },

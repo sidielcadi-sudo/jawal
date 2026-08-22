@@ -369,6 +369,16 @@ function formToInput(formData: FormData) {
     gender: get('gender'),
     nationality: get('nationality'),
     cin: get('cin'),
+    // État civil bilingue (colonnes dédiées).
+    firstNameAr: get('firstNameAr'),
+    lastNameAr: get('lastNameAr'),
+    birthPlace: get('birthPlace'),
+    birthPlaceAr: get('birthPlaceAr'),
+    nationalityAr: get('nationalityAr'),
+    addressAr: get('addressAr'),
+    cityAr: get('cityAr'),
+    fatherFirstNameAr: get('fatherFirstNameAr'),
+    motherFirstNameAr: get('motherFirstNameAr'),
     regime: get('regime'),
     usesTransport: formData.get('usesTransport') === 'on' || formData.get('usesTransport') === 'true',
     cne: get('cne'),
@@ -381,8 +391,9 @@ function formToInput(formData: FormData) {
     contacts: {
       email: get('contactEmail'),
       phone: get('contactPhone'),
-      // Par défaut, le WhatsApp reprend le numéro de téléphone s'il n'est pas saisi.
-      whatsapp: get('contactWhatsapp') ?? get('contactPhone'),
+      // Règle métier : le WhatsApp EST le portable renseigné — plus de saisie
+      // séparée, donc plus de risque de divergence entre les deux numéros.
+      whatsapp: get('contactPhone'),
     },
     address: {
       line1: get('addressLine1'),
@@ -536,6 +547,16 @@ export async function createPersonAction(
         birthDate: parsed.data.birthDate,
         gender: parsed.data.gender,
         nationality: parsed.data.nationality,
+        // État civil bilingue (colonnes dédiées, saisies FR + AR).
+        firstNameAr: parsed.data.firstNameAr ?? null,
+        lastNameAr: parsed.data.lastNameAr ?? null,
+        birthPlace: parsed.data.birthPlace ?? null,
+        birthPlaceAr: parsed.data.birthPlaceAr ?? null,
+        nationalityAr: parsed.data.nationalityAr ?? null,
+        addressAr: parsed.data.addressAr ?? null,
+        cityAr: parsed.data.cityAr ?? null,
+        fatherFirstNameAr: parsed.data.fatherFirstNameAr ?? null,
+        motherFirstNameAr: parsed.data.motherFirstNameAr ?? null,
         cin: parsed.data.cin,
         // Code MASSAR : élèves seulement, et vide → null (la contrainte
         // d'unicité tolère plusieurs NULL, pas plusieurs chaînes vides).
@@ -690,6 +711,16 @@ export async function updatePersonAction(id: string, formData: FormData): Promis
         birthDate: parsed.data.birthDate,
         gender: parsed.data.gender,
         nationality: parsed.data.nationality,
+        // État civil bilingue (colonnes dédiées, saisies FR + AR).
+        firstNameAr: parsed.data.firstNameAr ?? null,
+        lastNameAr: parsed.data.lastNameAr ?? null,
+        birthPlace: parsed.data.birthPlace ?? null,
+        birthPlaceAr: parsed.data.birthPlaceAr ?? null,
+        nationalityAr: parsed.data.nationalityAr ?? null,
+        addressAr: parsed.data.addressAr ?? null,
+        cityAr: parsed.data.cityAr ?? null,
+        fatherFirstNameAr: parsed.data.fatherFirstNameAr ?? null,
+        motherFirstNameAr: parsed.data.motherFirstNameAr ?? null,
         cin: parsed.data.cin,
         massarId: before.type === 'STUDENT' ? (parsed.data.massarId || null) : null,
         regime,

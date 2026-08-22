@@ -3,6 +3,7 @@ import { TenantThemeStyle } from '@/components/tenant-theme-style';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { tenantDisplayName } from '@/lib/tenant-name';
 import { prismaAdmin, withTenant } from '@/lib/db';
 import { getParentChildren } from '@/lib/parent';
 import { countUnreadCarnet } from '@/lib/carnet';
@@ -30,7 +31,7 @@ export default async function ParentLayout({
   const [tenant, kids] = await Promise.all([
     prismaAdmin.tenant.findUnique({
       where: { id: tenantId },
-      select: { name: true, logoFileId: true, updatedAt: true },
+      select: { name: true, nameAr: true, logoFileId: true, updatedAt: true },
     }),
     withTenant(tenantId, async (tx) => {
       const list = await getParentChildren(tx, session.user.id);
@@ -47,6 +48,10 @@ export default async function ParentLayout({
 
   const t = await getTranslations('parent');
   const logoUrl = tenant?.logoFileId ? `/api/tenant/logo?v=${tenant.updatedAt.getTime()}` : null;
+
+  // Nom d'établissement selon la langue : `nameAr` en arabe, sinon le
+  // nom français (repli si l'arabe n'est pas renseigné).
+  const displayName = tenantDisplayName(locale, tenant?.name, tenant?.nameAr);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#eef0f7] print:block print:h-auto print:overflow-visible print:bg-white">
@@ -70,11 +75,11 @@ export default async function ParentLayout({
           {/* Logo de l'établissement — tout à fait à gauche de la bande */}
           {logoUrl && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={logoUrl} alt={tenant?.name ?? ''} className="me-auto h-9 w-auto object-contain" />
+            <img src={logoUrl} alt={displayName} className="me-auto h-9 w-auto object-contain" />
           )}
-          {tenant?.name && (
+          {displayName && (
             <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap bg-gradient-to-r from-brand-600 to-brand-800 bg-clip-text text-lg font-bold text-transparent">
-              {tenant.name}
+              {displayName}
             </span>
           )}
           <PortalHeaderIcons

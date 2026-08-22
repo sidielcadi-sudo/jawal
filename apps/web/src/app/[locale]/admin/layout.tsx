@@ -3,6 +3,7 @@ import { TenantThemeStyle } from '@/components/tenant-theme-style';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { tenantDisplayName } from '@/lib/tenant-name';
 import { currentUserRoleCodes } from '@/lib/auth/rbac';
 import { prismaAdmin, withTenant } from '@/lib/db';
 import { countMissingAppels } from '@/lib/teacher-attendance';
@@ -30,7 +31,7 @@ export default async function AdminLayout({
   const [tenant, roleCodes] = await Promise.all([
     prismaAdmin.tenant.findUnique({
       where: { id: session.user.tenantId },
-      select: { id: true, name: true, profile: true, logoFileId: true, updatedAt: true, timezone: true },
+      select: { id: true, name: true, nameAr: true, profile: true, logoFileId: true, updatedAt: true, timezone: true },
     }),
     currentUserRoleCodes(),
   ]);
@@ -44,6 +45,23 @@ export default async function AdminLayout({
 
   const tAdmin = await getTranslations('admin');
   const logoUrl = tenant?.logoFileId ? `/api/tenant/logo?v=${tenant.updatedAt.getTime()}` : null;
+
+  // Nom d'établissement selon la langue : `nameAr` en arabe, sinon le
+  // nom français (repli si l'arabe n'est pas renseigné).
+  const displayName = tenantDisplayName(locale, tenant?.name, tenant?.nameAr);
+
+  // Sélecteur multi-sites : les noms portés par le jeton de session sont
+  // français. On les relit en base pour disposer aussi de l'arabe — sinon il
+  // faudrait se reconnecter pour voir le changement.
+  const siteRows = await prismaAdmin.tenant.findMany({
+    where: { id: { in: session.user.sites.map((s) => s.tenantId) } },
+    select: { id: true, name: true, nameAr: true },
+  });
+  const siteNameById = new Map(siteRows.map((r) => [r.id, tenantDisplayName(locale, r.name, r.nameAr)]));
+  const sites = session.user.sites.map((s) => ({
+    tenantId: s.tenantId,
+    name: siteNameById.get(s.tenantId) || s.name,
+  }));
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#eef0f7] print:block print:h-auto print:overflow-visible print:bg-white">
@@ -59,18 +77,18 @@ export default async function AdminLayout({
 
       <div className="flex flex-1 flex-col overflow-hidden p-3 ps-0 print:overflow-visible print:p-0">
         <header className="relative z-10 mb-1 flex shrink-0 items-center justify-between gap-3 rounded-2xl bg-white px-5 py-2.5 shadow-sm print:hidden">
-          {tenant?.name && (
+          {displayName && (
             <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap bg-gradient-to-r from-brand-600 to-brand-800 bg-clip-text text-lg font-bold text-transparent">
-              {tenant.name}
+              {displayName}
             </span>
           )}
           {/* Gauche : logo de l'établissement, puis sélecteur (multi-sites) */}
           <div className="flex items-center gap-3">
             {logoUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={logoUrl} alt={tenant?.name ?? ''} className="h-9 w-auto object-contain" />
+              <img src={logoUrl} alt={displayName} className="h-9 w-auto object-contain" />
             )}
-            <SiteSwitcher sites={session.user.sites} activeTenantId={session.user.tenantId} />
+            <SiteSwitcher sites={sites} activeTenantId={session.user.tenantId} />
           </div>
           {/* Droite : messages, alertes, compte */}
           <div className="flex items-center gap-2">

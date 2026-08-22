@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "scheme": "jawalparents",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "runtimeVersion": {
       "policy": "appVersion"
     },
@@ -24,7 +23,9 @@
       "package": "ma.jawal.parents"
     },
     "plugins": [
-      "expo-asset"
+      "expo-asset",
+      "expo-secure-store",
+      "expo-status-bar"
     ]
   }
 }

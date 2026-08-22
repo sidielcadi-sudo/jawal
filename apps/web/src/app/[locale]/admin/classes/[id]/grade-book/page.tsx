@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ClassNav } from '../class-nav';
 import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
@@ -93,6 +94,7 @@ export default async function GradeBookPage({
             {cls.level.cycle.label} · {cls.level.label} · {cls.academicYear.label}
           </p>
         </div>
+        <ClassNav classId={id} locale={locale} />
       </header>
 
       <form method="get" className="mb-4 flex flex-wrap items-end gap-3">

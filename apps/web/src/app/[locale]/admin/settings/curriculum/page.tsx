@@ -135,7 +135,7 @@ export default async function CurriculumPage({
                       <td className="px-4 py-2 text-end">
                         <LevelRowActions
                           id={l.id}
-                          initial={{ cycleId: l.cycleId, code: l.code, label: l.label, order: l.order }}
+                          initial={{ cycleId: l.cycleId, code: l.code, label: l.label, labelAr: l.labelAr, order: l.order }}
                           cycles={cycles.map((c) => ({ id: c.id, label: c.label }))}
                         />
                       </td>

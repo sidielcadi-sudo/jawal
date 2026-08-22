@@ -17,7 +17,7 @@ export default async function LoginPage({
   const t = await getTranslations('login');
   const tApp = await getTranslations('app');
 
-  const { name, logo } = await loadPreAuthBranding();
+  const { name, logo } = await loadPreAuthBranding(locale);
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-brand-50 px-4 py-8">

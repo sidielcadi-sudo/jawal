@@ -3,6 +3,7 @@ import { TenantThemeStyle } from '@/components/tenant-theme-style';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { tenantDisplayName } from '@/lib/tenant-name';
 import { prismaAdmin, withTenant } from '@/lib/db';
 import { getTeacherPersonId } from '@/lib/teacher';
 import { countTeacherMissingAppels } from '@/lib/teacher-attendance';
@@ -30,7 +31,7 @@ export default async function TeacherLayout({
   const [tenant, teacherId] = await Promise.all([
     prismaAdmin.tenant.findUnique({
       where: { id: tenantId },
-      select: { name: true, logoFileId: true, updatedAt: true, timezone: true },
+      select: { name: true, nameAr: true, logoFileId: true, updatedAt: true, timezone: true },
     }),
     withTenant(tenantId, (tx) => getTeacherPersonId(tx, session.user.id)),
   ]);
@@ -43,6 +44,10 @@ export default async function TeacherLayout({
     : 0;
   const logoUrl = tenant?.logoFileId ? `/api/tenant/logo?v=${tenant.updatedAt.getTime()}` : null;
   const t = await getTranslations('enseignant');
+
+  // Nom d'établissement selon la langue : `nameAr` en arabe, sinon le
+  // nom français (repli si l'arabe n'est pas renseigné).
+  const displayName = tenantDisplayName(locale, tenant?.name, tenant?.nameAr);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#eef0f7] print:block print:h-auto print:overflow-visible print:bg-white">
@@ -61,9 +66,9 @@ export default async function TeacherLayout({
           )}
 
           {/* Titre — au centre de la bande */}
-          {tenant?.name && (
+          {displayName && (
             <span className="pointer-events-none absolute left-1/2 -translate-x-1/2 whitespace-nowrap bg-gradient-to-r from-brand-600 to-brand-800 bg-clip-text text-lg font-bold text-transparent">
-              {tenant.name}
+              {displayName}
             </span>
           )}
 

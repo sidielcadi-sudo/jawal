@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ClassNav } from '../class-nav';
 import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
@@ -244,6 +245,7 @@ export default async function ClassTimetablePage({
             {t('manageSlots')} →
           </Link>
         </div>
+        <ClassNav classId={id} locale={locale} />
       </header>
 
       {slots.length === 0 ? (

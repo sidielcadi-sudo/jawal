@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ClassNav } from '../class-nav';
 import { notFound, redirect } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
@@ -88,9 +89,12 @@ export default async function AttendancePage({
       </nav>
 
       <header className="mb-5">
-        <h1 className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 text-2xl font-semibold text-slate-900">
+        <header className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold text-slate-900">
           {t('title')} — {cls.name}
         </h1>
+        <ClassNav classId={id} locale={locale} />
+      </header>
         <p className="mt-1 text-sm text-slate-500">
           {cls.level.cycle.label} · {cls.level.label} · {cls.academicYear.label}
         </p>

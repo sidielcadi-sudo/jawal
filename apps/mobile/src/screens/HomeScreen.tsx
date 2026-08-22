@@ -4,9 +4,21 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth';
 import { useAppState } from '../app-state';
 import { useNav } from '../navigation';
-import { api, ApiError, type Homework, type UpcomingExam } from '../api';
+import {
+  api,
+  ApiError,
+  type ChildDashboard,
+  type Homework,
+  type TimetableDay,
+  type UpcomingExam,
+} from '../api';
 import { AppHeader } from '../components/AppHeader';
-import { colors } from '../theme';
+import { EmptyCard } from '../components/EmptyCard';
+import { Donut, avgColor } from '../components/Donut';
+import { colors, subjectColor } from '../theme';
+
+const DAY_MS = 86_400_000;
+const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
 /** Formate un ISO YYYY-MM-DD en libellé « lun. 21 juil. ». */
 function dayLabel(iso: string) {
@@ -26,6 +38,10 @@ export default function HomeScreen() {
 
   const [exams, setExams] = useState<UpcomingExam[]>([]);
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
+  const [timetable, setTimetable] = useState<TimetableDay | null>(null);
+  const [dash, setDash] = useState<ChildDashboard | null>(null);
+  /** Jour affiché par l'emploi du temps — navigable, comme sur le portail. */
+  const [edtDate, setEdtDate] = useState(() => ymd(new Date()));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -38,9 +54,14 @@ export default function HomeScreen() {
     }
     setError('');
     try {
-      const [up, cah] = await Promise.all([api.upcoming(token, childId), api.cahier(token, childId)]);
+      const [up, cah, d] = await Promise.all([
+        api.upcoming(token, childId),
+        api.cahier(token, childId),
+        api.dashboard(token, childId),
+      ]);
       setExams(up.items);
       setHomeworks(cah.homeworks);
+      setDash(d);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) return logout();
       setError(e instanceof ApiError ? e.message : 'Erreur inattendue.');
@@ -53,6 +74,20 @@ export default function HomeScreen() {
     setLoading(true);
     load();
   }, [load]);
+
+  // L'emploi du temps se recharge seul quand on change de jour : inutile de
+  // refaire tourner les DS et les devoirs, qui ne dépendent pas de la date.
+  useEffect(() => {
+    let cancelled = false;
+    if (!token || !childId) return;
+    api
+      .timetable(token, childId, edtDate)
+      .then((d) => !cancelled && setTimetable(d))
+      .catch(() => !cancelled && setTimetable(null));
+    return () => {
+      cancelled = true;
+    };
+  }, [token, childId, edtDate]);
 
   // Devoirs groupés par date d'échéance (les plus proches d'abord).
   const withDue = homeworks.filter((h) => h.dueDate);
@@ -73,7 +108,7 @@ export default function HomeScreen() {
         </View>
       ) : !selectedChild ? (
         <View style={styles.centered}>
-          <Text style={styles.empty}>Aucun enfant rattaché à ce compte.</Text>
+          <EmptyCard text="Aucun enfant rattaché à ce compte." />
         </View>
       ) : (
         <ScrollView
@@ -82,7 +117,155 @@ export default function HomeScreen() {
         >
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
+          {/* Carte d'accueil — reprise du « hero » du portail élève :
+              salutation, classe, deux boutons pilule, emblème à droite. */}
+          <View style={styles.hero}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.heroHello}>
+                Bonjour {dash?.firstName ?? selectedChild.firstName}
+              </Text>
+              <Text style={styles.heroClass}>
+                {dash?.className ?? selectedChild.className ?? 'Classe non renseignée'}
+              </Text>
+              <View style={styles.heroActions}>
+                <TouchableOpacity
+                  style={styles.pillPrimary}
+                  onPress={() => navigate({ name: 'child', tab: 'notes' })}
+                >
+                  <Text style={styles.pillPrimaryText}>Notes</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.pillGhost}
+                  onPress={() => navigate({ name: 'child', tab: 'cahier' })}
+                >
+                  <Text style={styles.pillGhostText}>Cahier</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+            <View style={styles.heroEmblem}>
+              <Text style={styles.heroEmblemText}>🎓</Text>
+            </View>
+          </View>
+
+          {/* Progression — anneaux identiques à ceux du portail élève. */}
+          {dash && (
+            <View style={styles.panel}>
+              <Text style={styles.panelTitle}>Progression</Text>
+              <View style={styles.donutGrid}>
+                <Donut
+                  pct={dash.generalAverage === null ? 0 : (dash.generalAverage / 20) * 100}
+                  color={avgColor(dash.generalAverage)}
+                  center={dash.generalAverage === null ? '—' : dash.generalAverage.toFixed(1)}
+                  label="Moyenne générale"
+                />
+                <Donut
+                  pct={dash.attendanceRate ?? 0}
+                  color={
+                    dash.attendanceRate === null
+                      ? '#CBD5E1'
+                      : dash.attendanceRate < 90
+                        ? '#D97706'
+                        : '#059669'
+                  }
+                  center={
+                    dash.attendanceRate === null ? '—' : `${Math.round(dash.attendanceRate)}%`
+                  }
+                  label="Taux de présence"
+                />
+                {dash.subjects
+                  .filter((s) => s.avg !== null)
+                  .map((s) => (
+                    <Donut
+                      key={s.label}
+                      pct={(s.avg! / 20) * 100}
+                      color={avgColor(s.avg)}
+                      center={s.avg!.toFixed(1)}
+                      label={s.label}
+                    />
+                  ))}
+              </View>
+            </View>
+          )}
+
+          {/* Emploi du temps du jour — même contenu que l'onglet
+              « Aujourd'hui » du portail parent : créneau, matière, professeur,
+              salle, et les annulations / remplacements approuvés. */}
+          <View style={styles.sectionHead}>
+            <Text style={styles.sectionTitle}>Emploi du temps</Text>
+            {edtDate !== ymd(new Date()) && (
+              <TouchableOpacity onPress={() => setEdtDate(ymd(new Date()))}>
+                <Text style={styles.seeAll}>Aujourd’hui</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Navigation par jour, comme l'onglet « Aujourd'hui » du portail. */}
+          <View style={styles.dayNav}>
+            <TouchableOpacity
+              style={styles.navBtn}
+              onPress={() => setEdtDate(ymd(new Date(new Date(`${edtDate}T00:00:00Z`).getTime() - DAY_MS)))}
+              hitSlop={8}
+              accessibilityLabel="Jour précédent"
+            >
+              <Text style={styles.navBtnText}>‹</Text>
+            </TouchableOpacity>
+            <Text style={styles.dayNavLabel}>{dayLabel(edtDate)}</Text>
+            <TouchableOpacity
+              style={styles.navBtn}
+              onPress={() => setEdtDate(ymd(new Date(new Date(`${edtDate}T00:00:00Z`).getTime() + DAY_MS)))}
+              hitSlop={8}
+              accessibilityLabel="Jour suivant"
+            >
+              <Text style={styles.navBtnText}>›</Text>
+            </TouchableOpacity>
+          </View>
+
+          {!timetable || timetable.courses.length === 0 ? (
+            <EmptyCard text="Aucun cours prévu ce jour." />
+          ) : (
+            timetable.courses.map((c) => (
+              <View
+                key={c.id}
+                style={[styles.courseRow, c.cancelled && styles.courseRowCancelled]}
+              >
+                <View style={styles.timeCol}>
+                  <Text style={styles.timeStart}>{c.startTime}</Text>
+                  <Text style={styles.timeEnd}>{c.endTime}</Text>
+                </View>
+                {/* Barre colorée par matière : une matière garde sa couleur
+                    d'un jour à l'autre, ce qui rend la journée lisible d'un
+                    coup d'œil. Rouge si annulé, gris si pause. */}
+                <View
+                  style={[
+                    styles.courseBar,
+                    { backgroundColor: subjectColor(c.subject) },
+                    c.isBreak && { backgroundColor: '#CBD5E1' },
+                    c.cancelled && { backgroundColor: colors.danger },
+                  ]}
+                />
+                <View style={{ flex: 1 }}>
+                  <Text
+                    style={[styles.courseSubject, c.cancelled && styles.strikethrough]}
+                    numberOfLines={1}
+                  >
+                    {c.isBreak ? 'Pause' : (c.subject ?? '—')}
+                  </Text>
+                  {!c.isBreak && (
+                    <Text style={styles.courseMeta} numberOfLines={1}>
+                      {[c.substituteName ?? c.teacher, c.room].filter(Boolean).join(' · ') || '—'}
+                    </Text>
+                  )}
+                  {c.cancelled && <Text style={styles.tagCancelled}>Cours annulé</Text>}
+                  {!c.cancelled && c.substituteName && (
+                    <Text style={styles.tagSubstitute}>Remplacement</Text>
+                  )}
+                </View>
+              </View>
+            ))
+          )}
+
           {/* Prochains DS */}
+          <View style={{ height: 22 }} />
           <View style={styles.sectionHead}>
             <Text style={styles.sectionTitle}>Prochains DS</Text>
             <TouchableOpacity onPress={() => navigate({ name: 'child', tab: 'notes' })}>
@@ -90,7 +273,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           {exams.length === 0 ? (
-            <Text style={styles.emptyLine}>Aucun contrôle programmé.</Text>
+            <EmptyCard text="Aucun contrôle programmé." />
           ) : (
             exams.slice(0, 3).map((e) => (
               <View key={e.id} style={styles.card}>
@@ -117,7 +300,7 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
           {days.length === 0 ? (
-            <Text style={styles.emptyLine}>Aucun devoir à venir.</Text>
+            <EmptyCard text="Aucun devoir à venir." />
           ) : (
             days.map((d) => (
               <View key={d} style={{ marginBottom: 12 }}>
@@ -160,7 +343,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.card,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.brand200,
     padding: 12,
     marginBottom: 8,
   },
@@ -185,4 +368,90 @@ const styles = StyleSheet.create({
   hwDesc: { fontSize: 13, color: colors.textMuted, marginTop: 1 },
   notDone: { backgroundColor: '#DBEAFE', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
   notDoneText: { fontSize: 11, fontWeight: '700', color: '#1D4ED8' },
+
+  /* ── Carte d'accueil et progression (langage du portail élève) ───────── */
+  hero: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: colors.brand100,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.brand200,
+    padding: 18,
+    marginBottom: 14,
+  },
+  heroHello: { fontSize: 21, fontWeight: '800', color: colors.text },
+  heroClass: { marginTop: 3, fontSize: 13, color: colors.textMuted },
+  heroActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  pillPrimary: { backgroundColor: colors.brand, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 7 },
+  pillPrimaryText: { color: colors.white, fontSize: 12, fontWeight: '700' },
+  pillGhost: {
+    backgroundColor: colors.card,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+  },
+  pillGhostText: { color: colors.text, fontSize: 12, fontWeight: '600' },
+  heroEmblem: {
+    width: 84,
+    height: 84,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroEmblemText: { fontSize: 40 },
+  panel: {
+    backgroundColor: colors.card,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: colors.brand200,
+    padding: 18,
+    marginBottom: 18,
+  },
+  panelTitle: { fontSize: 15, fontWeight: '800', color: colors.text, marginBottom: 14 },
+  donutGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between' },
+
+  /* ── Emploi du temps du jour ─────────────────────────────────────────── */
+  dayNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.brand200,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    marginBottom: 10,
+  },
+  navBtn: { width: 34, height: 34, borderRadius: 8, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.brand50 },
+  navBtnText: { fontSize: 22, lineHeight: 24, fontWeight: '800', color: colors.brand },
+  dayNavLabel: { flex: 1, textAlign: 'center', fontSize: 14, fontWeight: '800', color: colors.brandDark, textTransform: 'capitalize' },
+  todayLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, textTransform: 'capitalize' },
+  courseRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.brand200,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+  },
+  courseRowCancelled: { backgroundColor: '#FEF2F2', borderColor: '#FECACA' },
+  timeCol: { width: 46, alignItems: 'center' },
+  timeStart: { fontSize: 14, fontWeight: '800', color: colors.brandDark },
+  timeEnd: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
+  courseBar: { width: 4, alignSelf: 'stretch', borderRadius: 2, backgroundColor: colors.brand },
+  courseSubject: { fontSize: 14, fontWeight: '800', color: colors.text },
+  strikethrough: { textDecorationLine: 'line-through', color: '#B91C1C' },
+  courseMeta: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  tagCancelled: { marginTop: 3, fontSize: 11, fontWeight: '700', color: '#B91C1C' },
+  tagSubstitute: { marginTop: 3, fontSize: 11, fontWeight: '700', color: '#C2410C' },
 });

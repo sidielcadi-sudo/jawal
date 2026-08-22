@@ -54,10 +54,10 @@ export default async function NewPersonPage({
             lastName: true,
             address: true,
             relationsAsParent: {
-              // Fratrie = uniquement les élèves actifs de l'établissement.
-              where: {
-                child: { type: 'STUDENT', deletedAt: null, enrollments: { some: { status: 'ACTIVE' } } },
-              },
+              // Fratrie = tous les élèves rattachés, quel que soit leur statut :
+              // le statut est affiché en face de chacun (actif, retiré…), ce qui
+              // vaut mieux que de masquer silencieusement un frère radié.
+              where: { child: { type: 'STUDENT', deletedAt: null } },
               select: {
                 child: {
                   select: {
@@ -66,6 +66,12 @@ export default async function NewPersonPage({
                     studentClasses: {
                       where: { unenrolledAt: null },
                       select: { class: { select: { name: true } } },
+                      take: 1,
+                    },
+                    // Dossier le plus récent = statut courant de l'élève.
+                    enrollments: {
+                      orderBy: { academicYear: { startDate: 'desc' } },
+                      select: { status: true },
                       take: 1,
                     },
                   },
@@ -106,6 +112,7 @@ export default async function NewPersonPage({
             firstName: r.child.firstName,
             lastName: r.child.lastName,
             className: r.child.studentClasses[0]?.class.name ?? null,
+            status: r.child.enrollments[0]?.status ?? null,
           })),
         })),
         allSubjects,

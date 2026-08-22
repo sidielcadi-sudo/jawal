@@ -32,6 +32,8 @@ const levelSchema = z.object({
     .max(40)
     .regex(/^[a-z0-9-_]+$/, 'Minuscules, chiffres, - ou _ uniquement'),
   label: z.string().min(1).max(80),
+  /** Libellé arabe du niveau — facultatif. */
+  labelAr: z.string().max(80).transform((v) => (v === '' ? null : v)).nullable(),
   order: z.coerce.number().int().min(0).max(99).default(0),
 });
 
@@ -43,6 +45,7 @@ function input(formData: FormData) {
   return {
     code: get('code'),
     label: get('label'),
+    labelAr: get('labelAr'),
     order: get('order'),
     cycleId: get('cycleId'),
     periodKind: get('periodKind') || 'TRIMESTER',

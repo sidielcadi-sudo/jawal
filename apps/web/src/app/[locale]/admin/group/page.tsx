@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { computeHeadcount, computeAcademicOverview, computeAttendanceRate } from '@/lib/bi';
 import { pickPeriodId } from '@/lib/periods';
+import { tenantDisplayName } from '@/lib/tenant-name';
 import { BarChart, LineChart, siteColors, type Series } from './charts';
 
 type Row = {
@@ -69,7 +70,7 @@ export default async function GroupDashboard({
         const payments = await tx.payment.findMany({ select: { amount: true, paidAt: true } });
         const due = installments.reduce((s, i) => s + Number(i.amount), 0);
         const paid = payments.reduce((s, p) => s + Number(p.amount), 0);
-        const tenant = await tx.tenant.findFirst({ select: { currency: true } });
+        const tenant = await tx.tenant.findFirst({ select: { currency: true, name: true, nameAr: true } });
 
         // ── Séries mensuelles, calées sur le début de l'année scolaire ─────
         const start = year ? new Date(year.startDate) : new Date();
@@ -101,7 +102,8 @@ export default async function GroupDashboard({
         });
 
         return {
-          name: site.name,
+          // Nom localisé : en arabe on affiche `nameAr` quand il est saisi.
+          name: tenantDisplayName(locale, tenant?.name ?? site.name, tenant?.nameAr),
           students: headcount.students,
           teachers: headcount.teachers,
           classes: headcount.classes,

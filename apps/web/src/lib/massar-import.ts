@@ -94,6 +94,9 @@ type ParsedRow = {
   schoolCode: string;
   fatherName: string;
   motherName: string;
+  /** Colonnes arabes facultatives : absentes des exports MASSAR standards. */
+  fatherNameAr: string;
+  motherNameAr: string;
   phone1: string;
   phone2: string;
   addressFr: string;
@@ -272,6 +275,8 @@ export async function analyzeMassarCsv(
         schoolCode,
         fatherName: cell(cells, 'FatherNameFr'),
         motherName: cell(cells, 'MotherNameFr'),
+        fatherNameAr: cell(cells, 'FatherNameAr'),
+        motherNameAr: cell(cells, 'MotherNameAr'),
         phone1: cell(cells, 'Phone1'),
         phone2: cell(cells, 'Phone2'),
         addressFr: cell(cells, 'AddressFr'),
@@ -382,12 +387,19 @@ export async function runMassarImport(
         lastNameAr: r.lastNameAr || null,
         birthDate: r.birthDate,
         gender: r.gender,
+        // Le WhatsApp EST le portable (règle métier, cf. fiche personne).
         contacts: {
           ...asObject(existing?.contacts),
           phone: r.phone1 || undefined,
           phone2: r.phone2 || undefined,
+          whatsapp: r.phone1 || undefined,
         },
         address: { ...asObject(existing?.address), ...address },
+        // État civil bilingue : colonnes dédiées désormais, en plus du JSON.
+        addressAr: r.addressAr || null,
+        cityAr: r.cityAr || null,
+        fatherFirstNameAr: r.fatherNameAr || null,
+        motherFirstNameAr: r.motherNameAr || null,
         // Le code MASSAR lui-même vit dans la colonne `massarId` : rien à
         // dupliquer ici. On ne garde que le code établissement d'origine.
         metadata: {

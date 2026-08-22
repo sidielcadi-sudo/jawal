@@ -2,6 +2,7 @@ import 'server-only';
 import { prismaAdmin } from '@/lib/db';
 import { getObjectBuffer } from '@/lib/storage';
 import { getCurrentTenant } from '@/lib/tenant';
+import { tenantDisplayName } from '@/lib/tenant-name';
 
 /**
  * Logo de l'établissement encodé en data URI base64 — pour inlining dans les
@@ -35,23 +36,32 @@ export async function getTenantLogoDataUri(tenantId: string): Promise<string | n
  * tenant par sous-domaine ; à défaut (ex. localhost), prend le premier
  * établissement disposant d'un logo, puis le premier tout court.
  */
-export async function loadPreAuthBranding(): Promise<{ name: string | null; logo: string | null }> {
+export async function loadPreAuthBranding(
+  locale?: string,
+): Promise<{ name: string | null; logo: string | null }> {
   const ctx = await getCurrentTenant();
   let id = ctx?.id ?? null;
   let name = ctx?.name ?? null;
+  let nameAr: string | null = null;
   if (!id) {
     const first =
       (await prismaAdmin.tenant.findFirst({
         where: { logoFileId: { not: null } },
-        select: { id: true, name: true },
+        select: { id: true, name: true, nameAr: true },
       })) ??
       (await prismaAdmin.tenant.findFirst({
         orderBy: { createdAt: 'asc' },
-        select: { id: true, name: true },
+        select: { id: true, name: true, nameAr: true },
       }));
     id = first?.id ?? null;
     name = first?.name ?? null;
+    nameAr = first?.nameAr ?? null;
+  } else {
+    // `getCurrentTenant` ne remonte pas le nom arabe : on le complète ici.
+    nameAr =
+      (await prismaAdmin.tenant.findUnique({ where: { id }, select: { nameAr: true } }))?.nameAr ??
+      null;
   }
   const logo = id ? await getTenantLogoDataUri(id) : null;
-  return { name, logo };
+  return { name: locale ? tenantDisplayName(locale, name, nameAr) || null : name, logo };
 }

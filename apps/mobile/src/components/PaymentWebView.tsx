@@ -140,7 +140,12 @@ const styles = StyleSheet.create({
   doneBtn: { marginTop: 28, backgroundColor: colors.brand, borderRadius: 12, paddingHorizontal: 28, paddingVertical: 13 },
   doneBtnText: { color: colors.white, fontWeight: '800', fontSize: 15 },
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    // `StyleSheet.absoluteFillObject` a disparu des types RN 0.86 (SDK 57).
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
     backgroundColor: 'rgba(248,249,251,0.92)',
     alignItems: 'center',
     justifyContent: 'center',
