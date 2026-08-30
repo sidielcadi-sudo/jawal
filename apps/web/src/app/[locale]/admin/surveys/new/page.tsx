@@ -16,7 +16,7 @@ export default async function NewSurveyPage({ params }: { params: Promise<{ loca
       where: { active: true },
       include: { periods: { orderBy: { startDate: 'asc' } } },
     });
-    return (year?.periods ?? []).map((p) => ({ id: p.id, label: p.label }));
+    return (year?.periods ?? []).map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr }));
   });
 
   return (

@@ -7,6 +7,8 @@ import { computeStudentReport, computeClassBook, computeMention } from '@/lib/gr
 import { PrintButton } from './print-button';
 import { AppreciationEditor, CouncilEditor } from './editors';
 import { pickPeriodId } from '@/lib/periods';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
+import { PeriodButtons } from '@/components/period-buttons';
 
 export default async function BulletinPage({
   params,
@@ -32,7 +34,7 @@ export default async function BulletinPage({
         level: { include: { cycle: true } },
         students: {
           where: { unenrolledAt: null },
-          include: { student: { select: { id: true, firstName: true, lastName: true } } },
+          include: { student: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
         },
         mainTeacher: true,
       },
@@ -86,6 +88,8 @@ export default async function BulletinPage({
         id: sc.student.id,
         firstName: sc.student.firstName,
         lastName: sc.student.lastName,
+        firstNameAr: sc.student.firstNameAr,
+        lastNameAr: sc.student.lastNameAr,
       })),
       allSubjects,
     });
@@ -129,34 +133,13 @@ export default async function BulletinPage({
           </Link>
           <span className="mx-1.5">›</span>
           <Link href={`/${locale}/admin/classes/${id}`} className="hover:text-brand-700">
-            {cls.name}
+            {localizedLabel(locale, cls.name, cls.nameAr)}
           </Link>
           <span className="mx-1.5">›</span>
           <span>{t('title')}</span>
         </nav>
         <div className="flex flex-wrap items-end justify-between gap-3">
-          <form method="get" className="flex items-end gap-2">
-            <div>
-              <label className="block text-xs text-slate-600">{t('filter.period')}</label>
-              <select
-                name="period"
-                defaultValue={selectedPeriodId ?? ''}
-                className="mt-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm shadow-sm"
-              >
-                {periods.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <button
-              type="submit"
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              {t('filter.apply')}
-            </button>
-          </form>
+          <PeriodButtons periods={periods} selectedId={selectedPeriodId} locale={locale} />
           <div className="flex flex-wrap items-end gap-2">
             {selectedPeriodId && (
               <>
@@ -203,15 +186,15 @@ export default async function BulletinPage({
           <div>
             <span className="text-slate-500">{t('info.student')} :</span>{' '}
             <span className="font-semibold">
-              {student.lastName} {student.firstName}
+              {personDisplayName(locale, student)}
             </span>
           </div>
           <div>
             <span className="text-slate-500">{t('info.class')} :</span>{' '}
-            <span className="font-semibold">{cls.name}</span>
+            <span className="font-semibold">{localizedLabel(locale, cls.name, cls.nameAr)}</span>
             {cls.mainTeacher && (
               <span className="ms-2 text-xs text-slate-500">
-                · {t('info.mainTeacher')} : {cls.mainTeacher.lastName} {cls.mainTeacher.firstName}
+                · {t('info.mainTeacher')} : {personDisplayName(locale, cls.mainTeacher)}
               </span>
             )}
           </div>
@@ -223,7 +206,7 @@ export default async function BulletinPage({
           )}
           <div>
             <span className="text-slate-500">{t('info.level')} :</span>{' '}
-            {cls.level.cycle.label} — {cls.level.label}
+            {localizedLabel(locale, cls.level.cycle.label, cls.level.cycle.labelAr)} — {localizedLabel(locale, cls.level.label, cls.level.labelAr)}
           </div>
           <div>
             <span className="text-slate-500">{t('info.classSize')} :</span>{' '}

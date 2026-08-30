@@ -7,6 +7,8 @@ import { computeTeacherDashboard, computeClassProgression } from '@/lib/kpi-teac
 import { TeacherDashboardView } from '@/components/teacher-dashboard-view';
 import { pickPeriodId } from '@/lib/periods';
 import { ProgressionClassSelect } from './progression-class-select';
+import { localizedLabel } from '@/lib/localized-name';
+import { PeriodButtons } from '@/components/period-buttons';
 
 export default async function TeacherHomePage({
   params,
@@ -46,10 +48,10 @@ export default async function TeacherHomePage({
     const assigns = teacherId && activeYear
       ? await tx.teacherAssignment.findMany({
           where: { teacherId, academicYearId: activeYear.id },
-          select: { classId: true, class: { select: { name: true } } },
+          select: { classId: true, class: { select: { name: true, nameAr: true } } },
         })
       : [];
-    const classesList = [...new Map(assigns.map((a) => [a.classId, a.class.name])).entries()]
+    const classesList = [...new Map(assigns.map((a) => [a.classId, localizedLabel(locale, a.class.name, a.class.nameAr)])).entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
     const selectedClassId = classesList.find((c) => c.id === sp.class)?.id ?? classesList[0]?.id ?? null;
@@ -61,7 +63,7 @@ export default async function TeacherHomePage({
     return {
       hasTeacher: !!teacherId,
       yearLabel: activeYear?.label ?? '—',
-      periods: periods.map((p) => ({ id: p.id, label: p.label })),
+      periods: periods.map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr })),
       selectedPeriodId,
       dash,
       classesList,
@@ -81,28 +83,7 @@ export default async function TeacherHomePage({
           </p>
         </div>
         {data.periods.length > 0 && (
-          <form method="get" className="flex items-end gap-2">
-            <label className="block">
-              <span className="block text-xs text-slate-500">{t('period')}</span>
-              <select
-                name="period"
-                defaultValue={data.selectedPeriodId ?? ''}
-                className="mt-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm shadow-sm"
-              >
-                {data.periods.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="submit"
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              {t('apply')}
-            </button>
-          </form>
+          <PeriodButtons periods={data.periods} selectedId={data.selectedPeriodId} locale={locale} />
         )}
       </header>
 

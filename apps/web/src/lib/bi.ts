@@ -68,7 +68,7 @@ export async function computeAcademicOverview(
           weight: true,
           maxValue: true,
           classId: true,
-          class: { select: { name: true } },
+          class: { select: { name: true, nameAr: true } },
           subject: { select: { scale: true, coefficient: true } },
         },
       },
@@ -115,7 +115,7 @@ export async function computeAcademicOverview(
           maxValue: true,
           classId: true,
           subjectId: true,
-          class: { select: { name: true, levelId: true } },
+          class: { select: { name: true, nameAr: true, levelId: true } },
           subject: { select: { id: true, scale: true, coefficient: true } },
         },
       },
@@ -312,6 +312,8 @@ export async function findAtRiskStudents(
     studentId: string;
     firstName: string;
     lastName: string;
+    firstNameAr: string | null;
+    lastNameAr: string | null;
     classId: string | null;
     className: string | null;
     absenceRate: number | null;
@@ -452,10 +454,12 @@ export async function findAtRiskStudents(
       id: true,
       firstName: true,
       lastName: true,
+      firstNameAr: true,
+      lastNameAr: true,
       studentClasses: {
         where: { unenrolledAt: null },
         take: 1,
-        include: { class: { select: { id: true, name: true } } },
+        include: { class: { select: { id: true, name: true, nameAr: true } } },
       },
     },
   });
@@ -470,6 +474,8 @@ export async function findAtRiskStudents(
         studentId: c.studentId,
         firstName: p?.firstName ?? '',
         lastName: p?.lastName ?? '',
+        firstNameAr: p?.firstNameAr ?? null,
+        lastNameAr: p?.lastNameAr ?? null,
         classId: cls?.id ?? null,
         className: cls?.name ?? null,
         absenceRate: c.absenceRate,

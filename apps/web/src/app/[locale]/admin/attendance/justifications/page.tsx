@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { reviewJustificationFormAction } from './actions';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 export default async function JustificationsQueuePage({
   params,
@@ -27,11 +28,11 @@ export default async function JustificationsQueuePage({
         attendanceRecord: {
           include: {
             student: {
-              select: { id: true, firstName: true, lastName: true },
+              select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
             },
             session: {
               include: {
-                class: { select: { id: true, name: true } },
+                class: { select: { id: true, name: true, nameAr: true } },
               },
             },
           },
@@ -119,7 +120,7 @@ export default async function JustificationsQueuePage({
                         href={`/${locale}/admin/persons/${student.id}`}
                         className="font-semibold text-slate-900 hover:text-brand-700 hover:underline"
                       >
-                        {student.lastName} {student.firstName}
+                        {personDisplayName(locale, student)}
                       </Link>
                       <RecordStatusBadge status={status} t={t} />
                     </div>
@@ -128,7 +129,7 @@ export default async function JustificationsQueuePage({
                         href={`/${locale}/admin/classes/${cls.id}`}
                         className="hover:text-brand-700"
                       >
-                        {cls.name}
+                        {localizedLabel(locale, cls.name, cls.nameAr)}
                       </Link>
                       {' · '}
                       {new Date(date).toLocaleDateString(locale, {

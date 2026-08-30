@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { ExportButton } from '../comptabilite-client';
+import { personDisplayName } from '@/lib/localized-name';
 
 type Buckets = { current: number; b30: number; b60: number; b90: number; b90p: number };
 const empty = (): Buckets => ({ current: 0, b30: 0, b60: 0, b90: 0, b90p: 0 });
@@ -17,7 +18,7 @@ export default async function BalanceAgeePage({ params }: { params: Promise<{ lo
     const [unpaid, billedAgg] = await Promise.all([
       tx.installment.findMany({
         where: { status: { in: ['PENDING', 'PARTIAL'] } },
-        include: { payments: { select: { amount: true } }, student: { select: { id: true, firstName: true, lastName: true } } },
+        include: { payments: { select: { amount: true } }, student: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
       }),
       tx.installment.aggregate({ where: { status: { not: 'CANCELLED' } }, _sum: { amount: true } }),
     ]);
@@ -36,7 +37,7 @@ export default async function BalanceAgeePage({ params }: { params: Promise<{ lo
     if (remaining <= 0) continue;
     const age = Math.floor((today.getTime() - new Date(i.dueDate).getTime()) / dayMs);
     const key = age < 0 ? 'current' : age <= 30 ? 'b30' : age <= 60 ? 'b60' : age <= 90 ? 'b90' : 'b90p';
-    const row = byStudent.get(i.studentId) ?? { id: i.studentId, name: `${i.student.lastName} ${i.student.firstName}`, b: empty(), total: 0 };
+    const row = byStudent.get(i.studentId) ?? { id: i.studentId, name: personDisplayName(locale, i.student), b: empty(), total: 0 };
     row.b[key] += remaining;
     row.total += remaining;
     byStudent.set(i.studentId, row);

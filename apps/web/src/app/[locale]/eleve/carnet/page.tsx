@@ -4,6 +4,7 @@ import { withTenant } from '@/lib/db';
 import { getStudentPersonId } from '@/lib/student';
 import { loadStudentCarnet } from '@/lib/carnet';
 import { CarnetView } from '@/components/carnet/carnet-view';
+import { CarnetEventsTable } from '@/components/carnet/carnet-events-table';
 
 export default async function StudentCarnetPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -25,6 +26,20 @@ export default async function StudentCarnetPage({ params }: { params: Promise<{ 
       <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <h1 className="text-base font-bold text-slate-900">{t('carnetTitle')}</h1>
       </header>
+      <CarnetEventsTable
+        events={data.carnet.events.map((ev) => ({
+          id: ev.id,
+          date: ev.date.toISOString(),
+          category: ev.category,
+          className: ev.className,
+          justifStatus: ev.justifStatus,
+          periodLabel: ev.periodLabel,
+          subjectLabel: ev.subjectLabel,
+          teacherName: ev.teacherName,
+        }))}
+        locale={locale}
+      />
+
       <CarnetView
         studentId={data.studentId}
         entries={data.carnet.entries.map((e) => ({
@@ -36,13 +51,6 @@ export default async function StudentCarnetPage({ params }: { params: Promise<{ 
           authorRole: e.authorRole,
           className: e.className,
           subjectLabel: e.subjectLabel,
-        }))}
-        events={data.carnet.events.map((ev) => ({
-          id: ev.id,
-          date: ev.date.toISOString(),
-          category: ev.category,
-          className: ev.className,
-          justifStatus: ev.justifStatus,
         }))}
         allowedTypes={[]}
         canDelete={false}

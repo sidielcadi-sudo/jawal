@@ -28,11 +28,12 @@ export function CircularGauge({
   const stroke = 10;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (Math.min(pct, 100) / 100) * circumference;
-  const color = pct >= 100 ? '#10b981' : pct >= 95 ? '#f59e0b' : pct >= 80 ? '#fb923c' : '#ef4444';
+  // Capacité suffisante = vert ; léger dépassement = orange ; surcharge = rouge.
+  const color = pct <= 100 ? '#10b981' : pct <= 110 ? '#f59e0b' : '#ef4444';
   const bgColor = '#e2e8f0';
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="rounded-2xl border border-brand-200 bg-white p-5">
       <h3 className="text-sm font-semibold text-slate-700">{label}</h3>
       <div className="mt-3 flex items-center justify-center">
         <svg width="160" height="160" viewBox="0 0 160 160">
@@ -116,7 +117,7 @@ export function UtilizationCard({
   };
   const c = colorClasses[color]!;
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="rounded-2xl border border-brand-200 bg-white p-5">
       <h3 className="text-sm font-semibold text-slate-700">{t('utilization.title')}</h3>
       <div className="mt-3 flex items-baseline gap-3">
         <span className={`text-4xl font-bold ${c.text}`}>{pct}%</span>
@@ -198,7 +199,7 @@ export function ScoreCard({ score, t }: { score: number; t: T }) {
   const c = colorClasses[color]!;
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="rounded-2xl border border-brand-200 bg-white p-5">
       <h3 className="text-sm font-semibold text-slate-700">{t('score.title')}</h3>
       <div className="mt-3 flex items-baseline gap-3">
         <span className={`text-4xl font-bold ${c.text}`}>{score}%</span>
@@ -230,7 +231,7 @@ export function CoherenceCard({
   t: T;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="rounded-2xl border border-brand-200 bg-white p-5">
       <h3 className="text-sm font-semibold text-slate-700">{t('coherence.title')}</h3>
       <ul className="mt-3 space-y-2 text-sm">
         <Row
@@ -309,7 +310,7 @@ export function HorizontalBars({ title, bars }: { title: string; bars: Bar[] }) 
     blue: 'bg-blue-500',
   };
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="rounded-2xl border border-brand-200 bg-white p-5">
       <h3 className="text-sm font-semibold text-slate-700">{title}</h3>
       <div className="mt-3 space-y-2.5">
         {bars.map((b, i) => (
@@ -355,7 +356,7 @@ export function TeacherAvailabilityCard({
   t: T;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="rounded-2xl border border-brand-200 bg-white p-5">
       <h3 className="text-sm font-semibold text-slate-700">{t('teacherAvailability.title')}</h3>
       <ul className="mt-3 space-y-2 text-sm">
         <Row
@@ -498,7 +499,7 @@ export function ConflictsCard({
 }) {
   const total = teacher + room + cls;
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="rounded-2xl border border-brand-200 bg-white p-5">
       <h3 className="text-sm font-semibold text-slate-700">
         {t('conflicts.title')}
         {total === 0 && (
@@ -541,7 +542,7 @@ export function TeacherLoadCard({
 }) {
   const maxH = Math.max(...distribution.map((d) => d.weeklyHours), 1);
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+    <div className="rounded-2xl border border-brand-200 bg-white p-5">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-700">{t('teacherLoad.title')}</h3>
         <div className="flex gap-1.5 text-[10px]">
@@ -596,7 +597,7 @@ export function ScheduleCard({
   t: T;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="rounded-2xl border border-brand-200 bg-white p-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-slate-700">{t('schedule.title')}</h3>
         <span
@@ -630,7 +631,7 @@ export function PedagogicalCard({
   t: T;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+    <div className="rounded-2xl border border-brand-200 bg-white p-4">
       <h3 className="text-sm font-semibold text-slate-700">{t('pedagogical.title')}</h3>
       <div className="mt-3 grid grid-cols-3 gap-2 text-xs">
         <Stat label={t('pedagogical.ok')} value={ok} color="emerald" />

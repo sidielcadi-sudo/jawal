@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { AppelGrid } from '../appel-grid';
 import { LineEventButtons } from '../line-event-buttons';
+import { personDisplayName } from '@/lib/localized-name';
 
 const inputCls = 'rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm';
 type Direction = 'MORNING' | 'EVENING';
@@ -40,7 +41,7 @@ export default async function TransportAppelPage({
     const [assigned, appelSession] = await Promise.all([
       tx.studentTransport.findMany({
         where: { lineId, status: 'ACTIVE' },
-        include: { student: { select: { firstName: true, lastName: true } }, stop: { select: { name: true } } },
+        include: { student: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } }, stop: { select: { name: true } } },
         orderBy: { student: { lastName: 'asc' } },
       }),
       tx.transportAttendanceSession.findUnique({
@@ -53,7 +54,7 @@ export default async function TransportAppelPage({
       const rec = recByStudent.get(a.studentId);
       return {
         studentId: a.studentId,
-        name: `${a.student.lastName} ${a.student.firstName}`,
+        name: personDisplayName(locale, a.student),
         stopName: a.stop?.name ?? null,
         status: (rec?.status as never) ?? null,
         note: rec?.note ?? null,

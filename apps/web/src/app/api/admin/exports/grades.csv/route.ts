@@ -20,7 +20,7 @@ export async function GET(request: Request) {
       include: {
         students: {
           where: { unenrolledAt: null },
-          include: { student: { select: { id: true, firstName: true, lastName: true } } },
+          include: { student: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
         },
       },
     });
@@ -33,6 +33,8 @@ export async function GET(request: Request) {
         id: sc.student.id,
         firstName: sc.student.firstName,
         lastName: sc.student.lastName,
+        firstNameAr: sc.student.firstNameAr,
+        lastNameAr: sc.student.lastNameAr,
       })),
       allSubjects: subjects.map((s) => ({
         id: s.id,

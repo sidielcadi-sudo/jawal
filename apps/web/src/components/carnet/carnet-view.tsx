@@ -15,13 +15,6 @@ type Entry = {
   className: string | null;
   subjectLabel: string | null;
 };
-type Event = {
-  id: string;
-  date: string; // ISO
-  category: string;
-  className: string;
-  justifStatus: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
-};
 
 // Sections affichées (type d'entrée associé). Les 3 niveaux de gravité de la
 // vie scolaire — Remarque (Léger), Avertissement (Moyen), Exclusion (Grave) —
@@ -38,14 +31,12 @@ const SECTIONS = [
 export function CarnetView({
   studentId,
   entries,
-  events,
   allowedTypes,
   canDelete,
   locale,
 }: {
   studentId: string;
   entries: Entry[];
-  events: Event[];
   allowedTypes: string[];
   canDelete: boolean;
   locale: string;
@@ -69,59 +60,6 @@ export function CarnetView({
         />
       ))}
 
-      {/* Événements signalés dans les feuilles d'appel (dérivés, lecture seule) */}
-      <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
-        <div className="border-b border-slate-200 table-head px-4 py-2 text-sm font-semibold text-slate-700">
-          {t('eventsTitle')}
-        </div>
-        <table className="w-full text-sm">
-          <thead className="border-b border-slate-100 text-xs uppercase tracking-wide text-slate-400">
-            <tr>
-              <th className="px-4 py-2 text-start">{t('col.date')}</th>
-              <th className="px-4 py-2 text-start">{t('col.class')}</th>
-              <th className="px-4 py-2 text-start">{t('col.event')}</th>
-              <th className="px-4 py-2 text-start">{t('col.justif')}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {events.map((ev) => (
-              <tr key={ev.id}>
-                <td className="px-4 py-2 text-xs text-slate-600">{fmt(ev.date)}</td>
-                <td className="px-4 py-2 text-xs text-slate-600">{ev.className}</td>
-                <td className="px-4 py-2">
-                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-medium text-slate-700">
-                    {t(`eventCat.${ev.category}`)}
-                  </span>
-                </td>
-                <td className="px-4 py-2 text-xs">
-                  {ev.justifStatus ? (
-                    <span
-                      className={
-                        ev.justifStatus === 'APPROVED'
-                          ? 'text-emerald-700'
-                          : ev.justifStatus === 'REJECTED'
-                            ? 'text-red-700'
-                            : 'text-amber-700'
-                      }
-                    >
-                      {t(`justif.${ev.justifStatus}`)}
-                    </span>
-                  ) : (
-                    <span className="text-slate-400">—</span>
-                  )}
-                </td>
-              </tr>
-            ))}
-            {events.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-4 py-6 text-center text-xs text-slate-400">
-                  {t('noEvent')}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </section>
     </div>
   );
 }

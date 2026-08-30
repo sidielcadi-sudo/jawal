@@ -8,6 +8,7 @@ import { computeReports } from '@/lib/competency-report';
 import { ClassSynthesis } from '@/components/competences/class-synthesis';
 import { CompetencyRadar, CompetencyBars } from '@/components/competences/radar';
 import { BilanFilters, FreezeButton } from './client';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 export default async function CompetencesBilanPage({
   params,
@@ -33,7 +34,7 @@ export default async function CompetencesBilanPage({
 
     const classes = await tx.class.findMany({
       where: { academicYearId: year.id, deletedAt: null },
-      select: { id: true, name: true, levelId: true },
+      select: { id: true, name: true, nameAr: true, levelId: true },
       orderBy: { name: 'asc' },
     });
     if (classes.length === 0) return { empty: true as const };
@@ -45,7 +46,7 @@ export default async function CompetencesBilanPage({
 
     const scs = await tx.studentClass.findMany({
       where: { classId, unenrolledAt: null, student: { deletedAt: null, enrollments: { some: { status: 'ACTIVE' } } } },
-      include: { student: { select: { id: true, firstName: true, lastName: true } } },
+      include: { student: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
       orderBy: { student: { lastName: 'asc' } },
     });
     const studentIds = scs.map((s) => s.student.id);
@@ -77,16 +78,16 @@ export default async function CompetencesBilanPage({
           id: selectedStudentId,
           name: (() => {
             const s = scs.find((x) => x.student.id === selectedStudentId)!.student;
-            return `${s.lastName} ${s.firstName}`;
+            return personDisplayName(locale, s);
           })(),
           report: reports.get(selectedStudentId)!,
         }
       : null;
 
     return {
-      classes: classes.map((c) => ({ id: c.id, label: c.name })),
+      classes: classes.map((c) => ({ id: c.id, label: localizedLabel(locale, c.name, c.nameAr) })),
       classId,
-      periods: year.periods.map((p) => ({ id: p.id, label: p.label })),
+      periods: year.periods.map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr })),
       periodId,
       domains: domainNodes.map((d) => ({
         id: d.id,
@@ -95,7 +96,7 @@ export default async function CompetencesBilanPage({
       })),
       rows: scs.map((s) => ({
         studentId: s.student.id,
-        name: `${s.student.lastName} ${s.student.firstName}`,
+        name: personDisplayName(locale, s.student),
         report: reports.get(s.student.id)!,
       })),
       frozenAt: frozen ? frozen.generatedAt.toLocaleDateString(locale) : null,

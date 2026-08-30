@@ -4,6 +4,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { PublishButton, PayButton, CancelButton } from './detail-client';
+import { personDisplayName } from '@/lib/localized-name';
 
 const CONSENT_TONE: Record<string, string> = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -32,7 +33,7 @@ export default async function ExceptionalFeeDetailPage({
       tx.exceptionalFeeAssignment.findMany({
         where: { exceptionalFeeId: id },
         include: {
-          student: { select: { id: true, firstName: true, lastName: true } },
+          student: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
           installment: { include: { payments: { select: { id: true, amount: true } } } },
         },
         orderBy: { createdAt: 'asc' },
@@ -45,7 +46,7 @@ export default async function ExceptionalFeeDetailPage({
           name: true,
           students: {
             where: { unenrolledAt: null },
-            select: { student: { select: { id: true, firstName: true, lastName: true } } },
+            select: { student: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
           },
         },
       }),
@@ -100,7 +101,7 @@ export default async function ExceptionalFeeDetailPage({
         const amount = inst ? Number(inst.amount) : Number(fee.amount);
         return {
           assignmentId: a.id,
-          studentName: `${a.student.lastName} ${a.student.firstName}`,
+          studentName: personDisplayName(locale, a.student),
           className: studentClass.get(a.student.id) ?? '—',
           consent: a.consent,
           installmentId: inst?.id ?? null,

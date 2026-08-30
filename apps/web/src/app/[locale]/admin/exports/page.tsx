@@ -2,6 +2,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { GradesExportForm } from './client';
+import { localizedLabel } from '@/lib/localized-name';
 
 export default async function ExportsPage({
   params,
@@ -20,10 +21,13 @@ export default async function ExportsPage({
     });
     const classes = await tx.class.findMany({
       where: { deletedAt: null, ...(activeYear ? { academicYearId: activeYear.id } : {}) },
-      select: { id: true, name: true },
+      select: { id: true, name: true, nameAr: true },
       orderBy: { name: 'asc' },
     });
-    return { classes, periods: activeYear?.periods ?? [] };
+    return {
+      classes: classes.map((c) => ({ id: c.id, name: localizedLabel(locale, c.name, c.nameAr) })),
+      periods: activeYear?.periods ?? [],
+    };
   });
 
   return (
@@ -58,7 +62,7 @@ export default async function ExportsPage({
               <h2 className="text-base font-semibold text-slate-900">{t('grades.title')}</h2>
               <p className="mt-1 text-sm text-slate-500">{t('grades.description')}</p>
               <div className="mt-4">
-                <GradesExportForm classes={classes} periods={periods.map((p) => ({ id: p.id, label: p.label }))} />
+                <GradesExportForm classes={classes} periods={periods.map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr }))} />
               </div>
             </div>
           </div>

@@ -32,51 +32,62 @@ export default async function TimetableDashboardPage({
   const session = (await auth())!;
   const t = await getTranslations('admin.timetableDashboard');
 
-  const { years, currentYearId, kpis, subjectCoverage } = await withTenant(session.user.tenantId, async (tx) => {
-    const years = await tx.academicYear.findMany({
-      orderBy: { startDate: 'desc' },
-      select: { id: true, label: true, active: true },
-    });
-    const activeYear = years.find((y) => y.active);
-    const currentYearId = sp.year ?? activeYear?.id ?? years[0]?.id ?? null;
+  const { years, year, isArchive, kpis, subjectCoverage } = await withTenant(
+    session.user.tenantId,
+    async (tx) => {
+      const years = await tx.academicYear.findMany({
+        orderBy: { startDate: 'desc' },
+        select: { id: true, label: true, active: true, startDate: true, endDate: true },
+      });
+      // Par défaut l'année active. `?year=` ouvre une année passée en lecture
+      // seule ; on ne retombe jamais silencieusement sur la plus récente.
+      const active = years.find((y) => y.active) ?? null;
+      const requested = sp.year ? (years.find((y) => y.id === sp.year) ?? null) : null;
+      const year = requested ?? active;
+      if (!year) return { years, year: null, isArchive: false, kpis: null, subjectCoverage: [] };
 
-    if (!currentYearId) {
-      return { years, currentYearId: null, kpis: null, subjectCoverage: [] };
-    }
-    const kpis = await computeKpis(tx, session.user.tenantId, currentYearId);
-    const subjectCoverage = await loadSubjectCoverage(tx, currentYearId);
-    return { years, currentYearId, kpis, subjectCoverage };
-  });
+      const kpis = await computeKpis(tx, session.user.tenantId, year.id);
+      const subjectCoverage = await loadSubjectCoverage(tx, year.id);
+      return { years, year, isArchive: !year.active, kpis, subjectCoverage };
+    },
+  );
+  const activeYear = year;
 
   return (
     <div className="px-3 py-3">
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
-          <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>
+          <p className="mt-0.5 text-sm text-slate-600">
+            {t('subtitle')}
+            {activeYear &&
+              ` · ${activeYear.label} (${activeYear.startDate.toLocaleDateString(locale)} → ${activeYear.endDate.toLocaleDateString(locale)})`}
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <form className="flex items-center gap-2">
-            <label className="text-xs text-slate-500">{t('year')}</label>
-            <select
-              name="year"
-              defaultValue={currentYearId ?? ''}
-              className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-            >
-              {years.map((y) => (
-                <option key={y.id} value={y.id}>
-                  {y.label}
-                  {y.active ? ' ★' : ''}
-                </option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs hover:bg-slate-50"
-            >
-              {t('apply')}
-            </button>
-          </form>
+          {years.length > 1 && (
+            <form className="flex items-center gap-2">
+              <label className="text-xs text-slate-500">{t('history')}</label>
+              <select
+                name="year"
+                defaultValue={activeYear?.id ?? ''}
+                className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+              >
+                {years.map((y) => (
+                  <option key={y.id} value={y.id}>
+                    {y.label}
+                    {y.active ? ' ★' : ''}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="submit"
+                className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs hover:bg-slate-50"
+              >
+                {t('apply')}
+              </button>
+            </form>
+          )}
           <Link
             href={`/${locale}/admin/settings/timetable-slots`}
             className="text-brand-700 text-xs hover:underline"
@@ -92,6 +103,18 @@ export default async function TimetableDashboardPage({
         </div>
       </header>
 
+      {isArchive && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+          <span>🔒 {t('archiveNotice', { year: activeYear?.label ?? '' })}</span>
+          <Link
+            href={`/${locale}/admin/timetable`}
+            className="rounded-lg border border-amber-300 bg-white px-3 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100"
+          >
+            {t('backToActive')}
+          </Link>
+        </div>
+      )}
+
       {!kpis ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
           {t('noData')}
@@ -102,13 +125,13 @@ export default async function TimetableDashboardPage({
           <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <CircularGauge
               label={t('coverage.title')}
-              value={kpis.coverageHours.contractual}
-              max={kpis.coverageHours.expected}
+              value={kpis.coverageHours.expected}
+              max={kpis.coverageHours.contractual}
               pct={kpis.coverageHours.pct}
               unit="h"
               hint={t('coverage.hint', {
-                contractual: kpis.coverageHours.contractual,
                 expected: kpis.coverageHours.expected,
+                contractual: kpis.coverageHours.contractual,
               })}
               alert={
                 kpis.coverageHours.teachersWithoutContractual > 0
@@ -331,10 +354,11 @@ export default async function TimetableDashboardPage({
             </div>
           </section>
 
-          {/* Bouton générer en bas, centré */}
-          <div className="flex justify-center">
+          {/* Bouton générer en bas, centré — jamais sur une année archivée :
+              regénérer une grille close écraserait un historique. */}
+          <div className={`flex justify-center ${isArchive ? 'hidden' : ''}`}>
             <Link
-              href={`/${locale}/admin/timetable/generate${currentYearId ? `?year=${currentYearId}` : ''}`}
+              href={`/${locale}/admin/timetable/generate${activeYear ? `?year=${activeYear.id}` : ''}`}
               className="rounded-xl bg-emerald-600 px-8 py-3 text-base font-medium text-white shadow hover:bg-emerald-700"
             >
               ✨ {t('generateButton')}

@@ -75,6 +75,10 @@ export function CycleCreateForm() {
         <input type="text" name="label" required placeholder="Primaire" className={inputCls} />
       </div>
       <div>
+        <label className="block text-xs font-medium text-slate-700">{t('cycleLabelAr')}</label>
+        <input type="text" name="labelAr" dir="rtl" placeholder="التعليم الابتدائي" className={inputCls} />
+      </div>
+      <div>
         <label className="block text-xs font-medium text-slate-700">{t('order')}</label>
         <input type="number" name="order" defaultValue={0} min={0} max={99} className={inputCls} />
       </div>
@@ -99,7 +103,14 @@ export function CycleRowActions({
   initial,
 }: {
   id: string;
-  initial: { code: string; label: string; order: number; periodKind: string; roomMode: string };
+  initial: {
+    code: string;
+    label: string;
+    labelAr?: string | null;
+    order: number;
+    periodKind: string;
+    roomMode: string;
+  };
 }) {
   const t = useTranslations('admin.settings.curriculum');
   const tForm = useTranslations('admin.settings.curriculum.cycles.form');
@@ -151,6 +162,16 @@ export function CycleRowActions({
           <div>
             <label className="block text-xs font-medium text-slate-700">{tForm('label')}</label>
             <input type="text" name="label" required defaultValue={initial.label} className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-700">{tForm('cycleLabelAr')}</label>
+            <input
+              type="text"
+              name="labelAr"
+              dir="rtl"
+              defaultValue={initial.labelAr ?? ''}
+              className={inputCls}
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700">{tForm('order')}</label>

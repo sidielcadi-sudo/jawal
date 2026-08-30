@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { computeStudentFinance } from '@/lib/finance';
 import { GenerateForm, RecordPaymentButton, WaiveDebtButton } from './client';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 export default async function StudentFinancePage({
   params,
@@ -15,6 +16,8 @@ export default async function StudentFinancePage({
   setRequestLocale(locale);
   const t = await getTranslations('admin.studentFinance');
   const tPersons = await getTranslations('admin.persons');
+  const tForm = await getTranslations('admin.persons.form');
+  const tDetail = await getTranslations('admin.persons.detail');
   // Libellés des moyens de paiement (partagés avec la répartition Finances).
   const tMethod = await getTranslations('admin.finance.methods');
 
@@ -59,7 +62,7 @@ export default async function StudentFinancePage({
         </Link>
         <span className="mx-1.5">›</span>
         <Link href={`/${locale}/admin/persons/${id}`} className="hover:text-brand-700">
-          {student.lastName} {student.firstName}
+          {personDisplayName(locale, student)}
         </Link>
         <span className="mx-1.5">›</span>
         <span>{t('title')}</span>
@@ -67,13 +70,20 @@ export default async function StudentFinancePage({
 
       <header className="mb-6 overflow-hidden -mx-6 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3">
         <h1 className="text-2xl font-semibold text-slate-900">
-          {t('title')} — {student.lastName} {student.firstName}
+          {t('title')} — {personDisplayName(locale, student)}
         </h1>
         {enrollment && (
           <p className="mt-1 text-sm text-slate-500">
-            {enrollment.class.name} · {enrollment.class.level.label} · {enrollment.class.academicYear.label}
+            {localizedLabel(locale, enrollment.class.name, enrollment.class.nameAr)} · {localizedLabel(locale, enrollment.class.level.label, enrollment.class.level.labelAr)} · {enrollment.class.academicYear.label}
           </p>
         )}
+        {/* Même ligne d'identité que sur la fiche élève, pour reconnaître le
+            dossier sans remonter à la fiche. */}
+        <p className="mt-0.5 text-sm text-slate-500">
+          {tForm('types.STUDENT')}
+          {student.birthDate &&
+            ` · ${tDetail('bornOn', { date: new Date(student.birthDate).toLocaleDateString(locale) })}`}
+        </p>
       </header>
 
       <div className="grid grid-cols-3 gap-3">

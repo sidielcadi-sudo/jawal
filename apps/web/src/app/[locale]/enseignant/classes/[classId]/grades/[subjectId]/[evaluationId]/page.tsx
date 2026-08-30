@@ -6,6 +6,7 @@ import { withTenant } from '@/lib/db';
 import { getTeacherPersonId, teacherTeachesClassSubject } from '@/lib/teacher';
 import { GradeMatrix } from '@/app/[locale]/admin/classes/[id]/grades/[evaluationId]/grade-matrix';
 import { saveTeacherGradesAction } from '../actions';
+import { localizedLabel } from '@/lib/localized-name';
 
 export default async function TeacherEvaluationSheetPage({
   params,
@@ -25,7 +26,7 @@ export default async function TeacherEvaluationSheetPage({
 
     const ev = await tx.evaluation.findUnique({
       where: { id: evaluationId },
-      include: { class: { select: { name: true } }, subject: true, period: true },
+      include: { class: { select: { name: true, nameAr: true } }, subject: true, period: true },
     });
     if (!ev || ev.classId !== classId || ev.subjectId !== subjectId) return null;
 
@@ -45,6 +46,8 @@ export default async function TeacherEvaluationSheetPage({
           studentId: sc.studentId,
           firstName: sc.student.firstName,
           lastName: sc.student.lastName,
+          firstNameAr: sc.student.firstNameAr,
+          lastNameAr: sc.student.lastNameAr,
           value: g?.value ?? null,
           comment: g?.comment ?? null,
         };
@@ -64,7 +67,7 @@ export default async function TeacherEvaluationSheetPage({
         </Link>
         <span className="mx-1.5">›</span>
         <Link href={gradesBase} className="hover:text-brand-700">
-          {ev.class.name} · {ev.subject.label}
+          {localizedLabel(locale, ev.class.name, ev.class.nameAr)} · {localizedLabel(locale, ev.subject.label, ev.subject.labelAr)}
         </Link>
         <span className="mx-1.5">›</span>
         <span>{ev.label}</span>
@@ -73,7 +76,7 @@ export default async function TeacherEvaluationSheetPage({
       <header className="mb-6">
         <h1 className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 text-2xl font-semibold text-slate-900">{ev.label}</h1>
         <p className="mt-1 text-sm text-slate-500">
-          {ev.subject.label} · {ev.period.label} · {new Date(ev.date).toLocaleDateString(locale)} ·{' '}
+          {localizedLabel(locale, ev.subject.label, ev.subject.labelAr)} · {localizedLabel(locale, ev.period.label, ev.period.labelAr)} · {new Date(ev.date).toLocaleDateString(locale)} ·{' '}
           {tSheet('maxValue')}: <strong>/{ev.maxValue}</strong> · {tSheet('weight')}:{' '}
           <strong>×{ev.weight}</strong>
         </p>

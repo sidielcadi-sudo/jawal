@@ -178,7 +178,7 @@ export async function computeClassProgression(
   const periods = await tx.period.findMany({
     where: { academicYearId: year.id },
     orderBy: { startDate: 'asc' },
-    select: { id: true, label: true },
+    select: { id: true, label: true, labelAr: true },
   });
   const assigns = await tx.teacherAssignment.findMany({
     where: { teacherId, classId, academicYearId: year.id },
@@ -192,7 +192,7 @@ export async function computeClassProgression(
   });
   const students = scs.map((s) => s.student);
   if (periods.length === 0 || subjectIds.length === 0 || students.length === 0) {
-    return { periods: periods.map((p) => ({ id: p.id, label: p.label })), rows: [] };
+    return { periods: periods.map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr })), rows: [] };
   }
 
   const grades = await tx.grade.findMany({
@@ -244,7 +244,7 @@ export async function computeClassProgression(
     }),
   }));
 
-  return { periods: periods.map((p) => ({ id: p.id, label: p.label })), rows };
+  return { periods: periods.map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr })), rows };
 }
 
 const statusAverage = (v: number | null): KpiStatus =>
@@ -273,8 +273,8 @@ export async function computeTeacherDashboard(
           hoursPerWeek: true,
           subjectId: true,
           classId: true,
-          subject: { select: { label: true } },
-          class: { select: { name: true, levelId: true } },
+          subject: { select: { label: true, labelAr: true } },
+          class: { select: { name: true, nameAr: true, levelId: true } },
         },
       })
     : [];
@@ -309,7 +309,7 @@ export async function computeTeacherDashboard(
     ? await tx.period.findMany({
         where: { academicYearId: year.id },
         orderBy: { startDate: 'asc' },
-        select: { id: true, label: true },
+        select: { id: true, label: true, labelAr: true },
       })
     : [];
 

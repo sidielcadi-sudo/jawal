@@ -5,6 +5,7 @@ import { withTenant } from '@/lib/db';
 import { tallyAttendance } from '@/lib/attendance-category';
 import { countUnreadCarnet } from '@/lib/carnet';
 import { getParentChildren, getParentAnnouncements } from '@/lib/parent';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 export default async function ParentHomePage({
   params,
@@ -65,6 +66,7 @@ export default async function ParentHomePage({
         const installments = await tx.installment.findMany({
           where: { studentId: child.id, status: { not: 'CANCELLED' } },
           include: { payments: { select: { amount: true } } },
+          orderBy: { dueDate: 'asc' },
         });
         const due = installments.reduce((s, i) => s + Number(i.amount), 0);
         const paid = installments.reduce(
@@ -72,15 +74,45 @@ export default async function ParentHomePage({
           0,
         );
 
+        // Échéances non soldées : c'est le reste à payer ligne à ligne qui
+        // compte, pas le statut — un règlement partiel laisse la ligne ouverte.
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const pending = installments
+          .map((i) => ({
+            label: i.label,
+            dueDate: i.dueDate,
+            rest: Number(i.amount) - i.payments.reduce((ps, p) => ps + Number(p.amount), 0),
+          }))
+          .filter((i) => i.rest > 0.005);
+        const overdueCount = pending.filter((i) => i.dueDate < today).length;
+        const nextDue = pending[0] ?? null;
+
         const carnetUnread = await countUnreadCarnet(tx, child.id);
 
-        return { child, attendanceRate, absences, retards, remaining: Math.max(0, due - paid), carnetUnread };
+        return {
+          child,
+          attendanceRate,
+          absences,
+          retards,
+          remaining: Math.max(0, due - paid),
+          carnetUnread,
+          pendingCount: pending.length,
+          overdueCount,
+          next: nextDue
+            ? {
+                label: nextDue.label,
+                rest: nextDue.rest,
+                days: Math.round((nextDue.dueDate.getTime() - today.getTime()) / 86400000),
+              }
+            : null,
+        };
       }),
     );
 
     // 5 dernières notes (toutes les notes des enfants, plus récentes d'abord).
     const childIds = children.map((c) => c.id);
-    const nameById = new Map(children.map((c) => [c.id, `${c.firstName} ${c.lastName}`]));
+    const nameById = new Map(children.map((c) => [c.id, personDisplayName(locale, c, 'first-last')]));
     const latestGrades =
       childIds.length > 0 && activeYear
         ? await tx.grade.findMany({
@@ -91,13 +123,13 @@ export default async function ParentHomePage({
             },
             orderBy: { evaluation: { date: 'desc' } },
             take: 5,
-            include: { evaluation: { include: { subject: { select: { label: true } } } } },
+            include: { evaluation: { include: { subject: { select: { label: true, labelAr: true } } } } },
           })
         : [];
     const latestNotes = latestGrades.map((g) => ({
       id: g.id,
       childName: nameById.get(g.studentId) ?? '',
-      subject: g.evaluation.subject.label,
+      subject: localizedLabel(locale, g.evaluation.subject.label, g.evaluation.subject.labelAr),
       label: g.evaluation.label,
       value: g.value as number,
       max: g.evaluation.maxValue,
@@ -109,7 +141,7 @@ export default async function ParentHomePage({
       cards,
       announcements,
       latestNotes,
-      periods: periods.map((p) => ({ id: p.id, label: p.label })),
+      periods: periods.map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr })),
       selectedPeriodId: selectedPeriod?.id ?? null,
     };
   });
@@ -148,7 +180,7 @@ export default async function ParentHomePage({
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {data.cards.map(({ child, attendanceRate, absences, retards, remaining, carnetUnread }) => (
+          {data.cards.map(({ child, attendanceRate, absences, retards, remaining, carnetUnread, pendingCount, overdueCount, next }) => (
             <Link
               key={child.id}
               href={`/${locale}/parent/children/${child.id}`}
@@ -161,12 +193,17 @@ export default async function ParentHomePage({
                   </span>
                   <div>
                     <div className="text-base font-semibold text-slate-900">
-                      {child.firstName} {child.lastName}
+                      {personDisplayName(locale, child, 'first-last')}
                     </div>
                     {child.className && <div className="text-xs text-slate-400">{child.className}</div>}
                   </div>
                 </div>
                 <span className="flex items-center gap-2">
+                  {pendingCount > 0 && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-white px-2 py-0.5 text-xs font-medium text-red-700">
+                      {'⚠'} {t('pendingPayments', { count: pendingCount })}
+                    </span>
+                  )}
                   {carnetUnread > 0 && (
                     <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
                       {t('carnetUnread', { count: carnetUnread })}
@@ -193,6 +230,35 @@ export default async function ParentHomePage({
                   />
                 </div>
               </div>
+
+              {/* Échéances — l'alerte de dépassement passe en premier : c'est
+                  la seule information qui appelle une action immédiate. */}
+              {overdueCount > 0 && (
+                <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+                  {'❗'} {t('overdueAlert', { count: overdueCount })}
+                </p>
+              )}
+              {next && (
+                <div className="mt-2 flex items-center justify-between gap-2 rounded-xl border border-slate-100 px-3 py-2">
+                  <span className="min-w-0 truncate text-xs text-slate-600">{next.label}</span>
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="text-sm font-semibold tabular-nums text-slate-900">
+                      {next.rest.toLocaleString(locale, { maximumFractionDigits: 0 })}
+                    </span>
+                    <span
+                      className={
+                        next.days < 0
+                          ? 'rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-medium text-red-700'
+                          : 'rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-800'
+                      }
+                    >
+                      {next.days < 0
+                        ? t('lateBy', { days: -next.days })
+                        : t('dueIn', { days: next.days })}
+                    </span>
+                  </span>
+                </div>
+              )}
             </Link>
           ))}
         </div>
@@ -204,7 +270,13 @@ export default async function ParentHomePage({
           <ul className="divide-y divide-slate-100">
             {data.latestNotes.map((n) => (
               <li key={n.id} className="flex items-center justify-between gap-3 py-2.5">
-                <div className="min-w-0">
+                {/* Filet coloré : repère la matière d'un coup d'œil. */}
+                <span
+                  aria-hidden
+                  className="h-8 w-1 shrink-0 rounded-full"
+                  style={{ backgroundColor: subjectColor(n.subject) }}
+                />
+                <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-medium text-slate-800">
                     {n.subject}
                     <span className="ms-1.5 text-xs font-normal text-slate-400">{n.label}</span>
@@ -245,7 +317,7 @@ export default async function ParentHomePage({
               <li key={a.id} className="rounded-2xl border border-slate-100 p-4">
                 <div className="flex items-center justify-between gap-2">
                   <span className="font-medium text-slate-900">{a.title}</span>
-                  <span className="text-[11px] text-slate-400">
+                  <span className="shrink-0 text-sm font-semibold text-brand-600">
                     {a.publishedAt ? new Date(a.publishedAt).toLocaleDateString(locale) : ''}
                   </span>
                 </div>
@@ -257,6 +329,17 @@ export default async function ParentHomePage({
       </section>
     </div>
   );
+}
+
+/**
+ * Couleur de matière dérivée du libellé : stable d'un rendu à l'autre, et
+ * sans table à tenir à jour quand une matière est ajoutée.
+ */
+const SUBJECT_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#4a3aa7', '#0ea5e9', '#84cc16'];
+function subjectColor(label: string): string {
+  let h = 0;
+  for (let i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) >>> 0;
+  return SUBJECT_COLORS[h % SUBJECT_COLORS.length]!;
 }
 
 function Donut({ pct, color, center, label }: { pct: number; color: string; center: string; label: string }) {

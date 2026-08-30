@@ -9,6 +9,13 @@ export const subjectCreateSchema = z.object({
     .max(40)
     .regex(/^[a-z0-9-_]+$/, 'Minuscules, chiffres, - ou _ uniquement'),
   label: z.string().min(1).max(120),
+  /** Libellé arabe — facultatif, alimente les bulletins et l'interface AR. */
+  labelAr: z
+    .string()
+    .max(120)
+    .optional()
+    .transform((v) => (v ? v : null))
+    .nullable(),
   scale: z.coerce.number().min(1).max(1000).default(20),
   coefficient: z.coerce.number().min(0.1).max(20).default(1),
   order: z.coerce.number().int().min(0).max(99).default(0),

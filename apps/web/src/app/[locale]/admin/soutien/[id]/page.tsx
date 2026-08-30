@@ -7,6 +7,7 @@ import { withTenant } from '@/lib/db';
 import { CourseForm } from '../course-form';
 import { EnrollStudent, UnenrollButton } from '../enroll';
 import { CreateSessionForm, GenerateBillingButton } from '../pedagogy';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 export default async function SupportCourseDetailPage({
   params,
@@ -29,8 +30,8 @@ export default async function SupportCourseDetailPage({
 
     const [subjects, teachers, levels, rooms, enrollments] = await Promise.all([
       tx.subject.findMany({ orderBy: [{ order: 'asc' }, { label: 'asc' }], select: { id: true, label: true } }),
-      tx.person.findMany({ where: { type: 'TEACHER', deletedAt: null }, orderBy: [{ lastName: 'asc' }], select: { id: true, firstName: true, lastName: true } }),
-      tx.level.findMany({ orderBy: { order: 'asc' }, select: { id: true, label: true } }),
+      tx.person.findMany({ where: { type: 'TEACHER', deletedAt: null }, orderBy: [{ lastName: 'asc' }], select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } }),
+      tx.level.findMany({ orderBy: { order: 'asc' }, select: { id: true, label: true, labelAr: true } }),
       tx.room.findMany({ orderBy: { code: 'asc' }, select: { id: true, code: true, label: true } }),
       tx.supportEnrollment.findMany({
         where: { supportCourseId: id, status: 'ACTIVE', unenrolledAt: null },
@@ -63,26 +64,26 @@ export default async function SupportCourseDetailPage({
     const enrolledStudents = enrollments.length
       ? await tx.person.findMany({
           where: { id: { in: enrollments.map((e) => e.studentId) } },
-          select: { id: true, firstName: true, lastName: true, studentClasses: { where: { unenrolledAt: null }, select: { class: { select: { name: true } } }, take: 1 } },
+          select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, studentClasses: { where: { unenrolledAt: null }, select: { class: { select: { name: true, nameAr: true } } }, take: 1 } },
         })
       : [];
-    const nameById = new Map(enrolledStudents.map((s) => [s.id, { name: `${s.lastName} ${s.firstName}`, className: s.studentClasses[0]?.class.name ?? null }]));
+    const nameById = new Map(enrolledStudents.map((s) => [s.id, { name: personDisplayName(locale, s), className: localizedLabel(locale, s.studentClasses[0]?.class.name, s.studentClasses[0]?.class.nameAr) ?? null }]));
 
     // Élèves inscriptibles : élèves actifs non déjà inscrits à ce cours.
     const candidates = await tx.person.findMany({
       where: { type: 'STUDENT', deletedAt: null, enrollments: { some: { status: 'ACTIVE' } }, id: { notIn: [...enrolledIds] } },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-      select: { id: true, firstName: true, lastName: true },
+      select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
     });
 
     return {
       course,
       subjects,
-      teachers: teachers.map((p) => ({ id: p.id, label: `${p.lastName} ${p.firstName}` })),
+      teachers: teachers.map((p) => ({ id: p.id, label: personDisplayName(locale, p) })),
       levels,
       rooms: rooms.map((r) => ({ id: r.id, label: `${r.code} — ${r.label}` })),
       enrollments: enrollments.map((e) => ({ ...e, ...nameById.get(e.studentId) })),
-      candidates: candidates.map((s) => ({ id: s.id, label: `${s.lastName} ${s.firstName}` })),
+      candidates: candidates.map((s) => ({ id: s.id, label: personDisplayName(locale, s) })),
       subjectLabel: subjects.find((s) => s.id === course.subjectId)?.label ?? '—',
       hasYear: !!year,
       sessions: sessions.map((se) => ({

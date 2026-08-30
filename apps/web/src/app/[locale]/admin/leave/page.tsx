@@ -3,8 +3,8 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { can } from '@/lib/auth/rbac';
-import { computeLeaveBalance } from '@/lib/leave';
 import { SeedTypesButton, CreateRequestForm, RequestRowActions } from './leave-client';
+import { personDisplayName } from '@/lib/localized-name';
 
 const STATUS_BADGE: Record<string, string> = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -28,15 +28,31 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
       tx.person.findMany({
         where: { type: { in: ['STAFF', 'TEACHER'] }, deletedAt: null },
         orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-        select: { id: true, firstName: true, lastName: true, hireDate: true },
+        select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, hireDate: true },
       }),
       tx.leaveRequest.findMany({
         orderBy: { createdAt: 'desc' },
         take: 100,
-        include: { person: { select: { firstName: true, lastName: true, type: true } }, leaveType: { select: { labelFr: true, labelAr: true } } },
+        include: { person: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, type: true } }, leaveType: { select: { labelFr: true, labelAr: true } } },
       }),
     ]);
     const annual = types.find((t) => t.code === 'ANNUAL') ?? null;
+
+    // Absences du personnel sur l'année scolaire en cours : on compte les
+    // journées pointées ABSENT. EXCUSED et LEAVE sont exclus — un congé
+    // approuvé n'est pas une absence, il est déjà suivi plus haut.
+    const year = await tx.academicYear.findFirst({
+      where: { active: true },
+      select: { startDate: true, endDate: true },
+    });
+    const absenceByPerson = await tx.staffAttendance.groupBy({
+      by: ['personId', 'status'],
+      where: {
+        status: { in: ['ABSENT', 'LATE'] },
+        ...(year ? { date: { gte: year.startDate, lte: year.endDate } } : {}),
+      },
+      _count: { _all: true },
+    });
     const takenByPerson = annual
       ? await tx.leaveRequest.groupBy({
           by: ['personId'],
@@ -44,11 +60,22 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
           _sum: { days: true },
         })
       : [];
-    return { types, staff, requests, annual, takenByPerson };
+    return { types, staff, requests, annual, takenByPerson, absenceByPerson };
   });
 
-  const { types, staff, requests, annual, takenByPerson } = data;
-  const takenMap = new Map(takenByPerson.map((g) => [g.personId, g._sum.days ?? 0]));
+  const { types, staff, requests, annual, takenByPerson, absenceByPerson } = data;
+  const absMap = new Map<string, { absent: number; late: number }>();
+  for (const g of absenceByPerson) {
+    const cur = absMap.get(g.personId) ?? { absent: 0, late: 0 };
+    if (g.status === 'ABSENT') cur.absent += g._count._all;
+    else cur.late += g._count._all;
+    absMap.set(g.personId, cur);
+  }
+  // Le plus absent en tête : c'est ce que le bloc sert à repérer.
+  const absRows = staff
+    .map((sp) => ({ person: sp, ...(absMap.get(sp.id) ?? { absent: 0, late: 0 }) }))
+    .sort((a, b) => b.absent - a.absent || b.late - a.late);
+  const totalAbsent = absRows.reduce((n, r) => n + r.absent, 0);
   const typeLabel = (fr: string, ar: string) => (locale === 'ar' ? ar : fr);
 
   return (
@@ -77,7 +104,7 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
           <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
             <h2 className="mb-2 text-sm font-semibold text-slate-900">{t('newRequest')}</h2>
             <CreateRequestForm
-              staff={staff.map((s) => ({ id: s.id, label: `${s.lastName} ${s.firstName}` }))}
+              staff={staff.map((s) => ({ id: s.id, label: personDisplayName(locale, s) }))}
               types={types.map((t) => ({ id: t.id, label: typeLabel(t.labelFr, t.labelAr) }))}
             />
           </section>
@@ -101,7 +128,7 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
                   <tbody className="divide-y divide-slate-100">
                     {requests.map((r) => (
                       <tr key={r.id}>
-                        <td className="px-3 py-2.5 font-medium text-slate-800">{r.person.lastName} {r.person.firstName}</td>
+                        <td className="px-3 py-2.5 font-medium text-slate-800">{personDisplayName(locale, r.person)}</td>
                         <td className="px-3 py-2.5 text-xs text-slate-600">{typeLabel(r.leaveType.labelFr, r.leaveType.labelAr)}</td>
                         <td className="px-3 py-2.5 text-xs text-slate-500">
                           {new Date(r.startDate).toLocaleDateString(locale)} → {new Date(r.endDate).toLocaleDateString(locale)}
@@ -133,28 +160,39 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
               </div>
             </section>
 
-            {/* Soldes congé annuel */}
+            {/* Absences du personnel — jours pointés ABSENT sur l'année. */}
             <aside>
-              <h2 className="mb-2 text-base font-semibold text-slate-900">{t('balances')}</h2>
-              <div className="rounded-2xl border border-slate-200 bg-white p-4">
-                <p className="mb-2 text-[11px] text-slate-400">{t('balanceHint', { rate: annual?.accrualPerMonth ?? 1.5 })}</p>
+              <h2 className="mb-2 flex items-baseline justify-between gap-2 text-base font-semibold text-slate-900">
+                <span>{t('absencesTitle')}</span>
+                <span className="text-sm font-normal tabular-nums text-slate-500">
+                  {t('absencesTotal', { days: totalAbsent })}
+                </span>
+              </h2>
+              <div className="rounded-2xl border border-brand-200 bg-white p-4">
+                <p className="mb-2 text-[11px] text-slate-400">{t('absencesHint')}</p>
                 <ul className="divide-y divide-slate-100 text-sm">
-                  {staff.map((s) => {
-                    const bal = computeLeaveBalance({
-                      hireDate: s.hireDate,
-                      accrualPerMonth: annual?.accrualPerMonth ?? null,
-                      takenDays: takenMap.get(s.id) ?? 0,
-                    });
-                    return (
-                      <li key={s.id} className="flex items-center justify-between py-1.5">
-                        <span className="text-slate-700">{s.lastName} {s.firstName}</span>
-                        <span className={`tabular-nums font-medium ${bal.balance < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
-                          {bal.balance} {t('daysUnit')}
-                          <span className="ms-1 text-[11px] font-normal text-slate-400">({bal.acquired}−{bal.taken})</span>
+                  {absRows.map((r) => (
+                    <li key={r.person.id} className="flex items-center justify-between gap-2 py-1.5">
+                      <span className="min-w-0 truncate text-slate-700">
+                        {personDisplayName(locale, r.person)}
+                      </span>
+                      <span className="flex shrink-0 items-center gap-2">
+                        <span
+                          className={`tabular-nums font-medium ${r.absent > 0 ? 'text-red-600' : 'text-slate-400'}`}
+                        >
+                          {r.absent} {t('daysUnit')}
                         </span>
-                      </li>
-                    );
-                  })}
+                        {r.late > 0 && (
+                          <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
+                            {t('lateCount', { count: r.late })}
+                          </span>
+                        )}
+                      </span>
+                    </li>
+                  ))}
+                  {absRows.length === 0 && (
+                    <li className="py-4 text-center text-xs text-slate-400">{t('absencesEmpty')}</li>
+                  )}
                 </ul>
               </div>
             </aside>

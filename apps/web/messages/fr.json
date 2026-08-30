@@ -109,7 +109,11 @@
         "remaining": "Reste {amount} {currency}",
         "totalDue": "Total dû",
         "collected": "Encaissé",
-        "toCollect": "Reste à recouvrer"
+        "toCollect": "Reste à recouvrer",
+        "dueToDate": "Dû à date",
+        "paidToDate": "Encaissé à date",
+        "remainingToDate": "Reste à recouvrer à date",
+        "rateToDate": "Taux d’encaissement à date"
       },
       "academic": {
         "title": "Performance académique",
@@ -186,8 +190,8 @@
     },
     "dashboardTabs": {
       "pilotage": "Pilotage",
-      "cockpit": "Cockpit vie scolaire",
-      "journee": "Tableau de bord journalier"
+      "cockpit": "Vie scolaire",
+      "journee": "Présence/Absences"
     },
     "signOut": "Se déconnecter",
     "alerts": {
@@ -968,6 +972,13 @@
           "current": "Niveau / classe actuels",
           "decision": "Décision",
           "targetLevel": "Niveau cible"
+        },
+        "filter": {
+          "currentClass": "Classe actuelle",
+          "currentLevel": "Niveau actuel",
+          "allClasses": "Toutes les classes",
+          "allLevels": "Tous les niveaux",
+          "active": "{shown} ligne(s) affichée(s) sur {total}. « Appliquer à tous » ne porte que sur les lignes affichées ; les décisions des lignes masquées sont conservées et enregistrées."
         }
       },
       "pagination": {
@@ -1055,7 +1066,8 @@
           "waitingDirection": "En attente de la direction",
           "paidOn": "Remboursement payé"
         }
-      }
+      },
+      "timetableButton": "EDT"
     },
     "staffAttendance": {
       "title": "Pointage personnel",
@@ -1178,7 +1190,7 @@
       "generateButton": "Générer l'EDT",
       "coverage": {
         "title": "Couverture horaire profs",
-        "hint": "{contractual}h contractuelles / {expected}h à enseigner",
+        "hint": "{expected}h à enseigner / {contractual}h contractuelles",
         "warningMissing": "{count}/{total} profs sans heures contractuelles saisies"
       },
       "utilization": {
@@ -1273,7 +1285,10 @@
         "ok": "Classes OK",
         "overloaded": "Classes surchargées",
         "avg": "Heures hebdo moyennes"
-      }
+      },
+      "history": "Historique",
+      "archiveNotice": "Année {year} — consultation en lecture seule. La génération est réservée à l’année active.",
+      "backToActive": "Revenir à l’année active"
     },
     "timetable": {
       "title": "Emploi du temps",
@@ -2249,7 +2264,9 @@
         "class": "Classe",
         "allCycles": "Tous les cycles",
         "allLevels": "Tous les niveaux",
-        "allClasses": "Toutes les classes"
+        "allClasses": "Toutes les classes",
+        "status": "Statut",
+        "allStatuses": "Tous les statuts"
       },
       "pagination": {
         "page": "Page {page} sur {total}",
@@ -2394,7 +2411,11 @@
         "documents": "Documents officiels",
         "portalAccessStudent": "Accès portail élève",
         "employerInfo": "Informations employeur",
-        "view": "Consulter"
+        "view": "Consulter",
+        "arabicData": "Données en arabe",
+        "tabs": {
+          "fiche": "Fiche"
+        }
       },
       "parentAccess": {
         "active": "Actif",
@@ -2487,7 +2508,8 @@
           "skills": "Compétences pédagogiques",
           "hr": "Informations RH",
           "financial": "Données financières",
-          "admission": "Inscription"
+          "admission": "Inscription",
+          "arabicData": "Données en arabe (MASAR)"
         },
         "specialties": "Spécialités (matières maîtrisées)",
         "specialtiesHint": "Matières que cet enseignant est capable d'enseigner (distinct des affectations effectives de l'année).",
@@ -2686,7 +2708,24 @@
         "cityAr": "Ville (arabe)",
         "fatherFirstNameAr": "Prénom du père (arabe)",
         "motherFirstNameAr": "Prénom de la mère (arabe)",
-        "whatsappHint": "Le numéro WhatsApp reprend automatiquement le portable ci-dessus."
+        "whatsappHint": "Le numéro WhatsApp reprend automatiquement le portable ci-dessus.",
+        "tabs": {
+          "fr": "Données en français",
+          "ar": "Données en arabe"
+        },
+        "arabicDataHint": "État civil arabe attendu par MASAR. La saisie française reste dans l’autre onglet.",
+        "admissionLevelAr": "Niveau demandé (arabe)",
+        "levelArMissing": "Libellé arabe du niveau non renseigné (Paramétrage → Niveaux)",
+        "levelArPending": "Choisissez d’abord le niveau demandé",
+        "originSchoolAr": "Établissement d’origine (arabe)",
+        "parentsAr": "Parents / Tuteurs (arabe)",
+        "parentsArHint": "Rattachement repris automatiquement du bloc Parents / Tuteurs : un parent rattaché en français l’est aussi en arabe.",
+        "parentsArNone": "Aucun parent rattaché pour le moment.",
+        "parentArMissing": "Nom arabe absent de la fiche parent",
+        "fieldRequired": "Champ obligatoire",
+        "fixFields": "Certains champs obligatoires sont manquants.",
+        "cv": "CV",
+        "cvAfterCreate": "Le CV pourra être téléversé une fois la fiche enregistrée."
       },
       "studentAccess": {
         "active": "Actif",
@@ -3327,7 +3366,8 @@
             "cancel": "Annuler",
             "labelAr": "Libellé (arabe)"
           }
-        }
+        },
+        "cycleLabelAr": "Libellé (arabe)"
       },
       "programme": {
         "title": "Programme par niveau",
@@ -3393,8 +3433,10 @@
           "creating": "Création…",
           "save": "Enregistrer",
           "saving": "Enregistrement…",
-          "cancel": "Annuler"
-        }
+          "cancel": "Annuler",
+          "labelAr": "Libellé (arabe)"
+        },
+        "labelAr": "Libellé (arabe)"
       },
       "roles": {
         "tabs": {
@@ -3540,8 +3582,10 @@
           "creating": "Création…",
           "save": "Enregistrer",
           "saving": "Enregistrement…",
-          "cancel": "Annuler"
-        }
+          "cancel": "Annuler",
+          "labelAr": "Libellé (arabe)"
+        },
+        "labelAr": "Libellé (arabe)"
       },
       "users": {
         "table": {
@@ -3712,17 +3756,54 @@
       "classes": "Classes",
       "average": "Moyenne",
       "successRate": "Taux de réussite",
-      "attendance": "Taux de présence",
+      "attendance": "Présence",
       "collection": "Recouvrement",
       "remaining": "Reste à recouvrer",
       "total": "Total",
       "note": "Moyenne, taux de réussite et taux de présence sont calculés sur le trimestre courant de chaque établissement — ils ne s'additionnent donc pas.",
       "charts": {
         "collectionByCite": "Taux de recouvrement par établissement",
-        "paidBySite": "Montants encaissés par établissement ({currency})",
         "paidTrend": "Évolution mensuelle des montants encaissés ({currency})",
         "collectionTrend": "Évolution mensuelle du taux de recouvrement",
+        "empty": "Aucune donnée financière sur cette année.",
+        "dueAndPaidBySite": "Montants dus et encaissés par établissement ({currency})",
+        "due": "Dû",
+        "collected": "Encaissé"
+      },
+      "recovery": {
+        "sectionTitle": "Encaissement",
+        "tabAmounts": "Évolution mensuelle du recouvrement",
+        "tabRate": "Évolution mensuelle du taux de recouvrement",
+        "totalCollected": "Total encaissé",
+        "totalRemaining": "Reste total à recouvrer",
+        "collected": "Encaissé",
+        "remaining": "Reste à recouvrer",
+        "totalRate": "Taux global",
         "empty": "Aucune donnée financière sur cette année."
+      },
+      "attendanceBlock": {
+        "sectionTitle": "Présence / Absence",
+        "tabAbs": "Évol abs",
+        "tabAbsSite": "Évol abs étab",
+        "tabLate": "Évol retr",
+        "tabLateSite": "Évol retr étab",
+        "tabRate": "Évol tx abs",
+        "tabRateSite": "Évol tx abs étab",
+        "tabTopAbs": "Top 10 abs",
+        "tabTopLate": "Top 10 retar",
+        "present": "Présence",
+        "absJustified": "Absences justifiées",
+        "absUnjustified": "Absences non justifiées",
+        "lateJustified": "Retards justifiés",
+        "lateUnjustified": "Retards non justifiés",
+        "absenceRate": "Taux d'absence",
+        "absences": "Absences",
+        "lates": "Retards",
+        "student": "Élève",
+        "site": "Établissement",
+        "level": "Niveau",
+        "class": "Classe",
+        "empty": "Aucun pointage sur la période."
       }
     },
     "transport": {
@@ -3955,14 +4036,19 @@
         "substituteTbd": "À affecter",
         "empty": "Aucun remplacement sur la période."
       },
-      "choose": "Choisir"
+      "choose": "Choisir",
+      "absencesTitle": "Absences",
+      "absencesTotal": "{days} j au total",
+      "absencesHint": "Journées pointées « absent » sur l’année scolaire. Les congés approuvés et les absences excusées ne sont pas comptés.",
+      "absencesEmpty": "Aucun pointage sur l’année.",
+      "lateCount": "{count} retard(s)"
     },
     "overtime": {
       "title": "Heures supplémentaires",
       "subtitle": "Déclaration, validation RH→Direction→Compta, export paie.",
       "manual": "Saisie manuelle",
       "generate": "Générer depuis les remplacements",
-      "generated": "{n} heure(s) sup générée(s)",
+      "generated": "{n} déclaration(s) d’heures sup générée(s)",
       "employee": "Employé",
       "sourceLabel": "Source",
       "hours": "Heures",
@@ -4227,7 +4313,8 @@
         "topTitle": "Titres les plus demandés",
         "flopTitle": "Titres les moins demandés",
         "noFlop": "Tous les titres ont vendu."
-      }
+      },
+      "addCopy": "Ajouter l’exemplaire"
     },
     "comptabilite": {
       "title": "Comptabilité",
@@ -4797,7 +4884,11 @@
       "noAnnouncement": "Aucune annonce pour le moment.",
       "period": "Période",
       "retards": "Retards",
-      "latestNotes": "Dernières notes"
+      "latestNotes": "Dernières notes",
+      "pendingPayments": "{count} règlement(s) en attente",
+      "overdueAlert": "{count} échéance(s) ont dépassé la date limite de paiement.",
+      "lateBy": "En retard de {days} j",
+      "dueIn": "Dans {days} j"
     },
     "child": {
       "breadcrumbHome": "Accueil",
@@ -5442,7 +5533,10 @@
       "content": "Contenu",
       "class": "Classe",
       "event": "Événement",
-      "justif": "Justificatif"
+      "justif": "Justificatif",
+      "time": "Heure",
+      "teacherSubject": "Prof / Matière",
+      "student": "Élève"
     },
     "eventCat": {
       "ABSENT": "Absence",
@@ -5456,6 +5550,22 @@
       "PENDING": "En attente",
       "APPROVED": "Justifié",
       "REJECTED": "Refusé"
+    },
+    "eventsCount": "{count} événement(s)",
+    "pickStudentForEntries": "Choisissez un élève pour consulter et saisir son carnet.",
+    "filters": {
+      "level": "Niveau",
+      "class": "Classe",
+      "student": "Élève",
+      "allLevels": "Tous les niveaux",
+      "allClasses": "Toutes les classes",
+      "allStudents": "Tous les élèves",
+      "from": "Du",
+      "to": "Au",
+      "clearDates": "Effacer les dates"
     }
+  },
+  "common": {
+    "period": "Période"
   }
 }

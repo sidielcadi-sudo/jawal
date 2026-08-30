@@ -69,7 +69,7 @@ async function studentContext(tx: Tx, studentId: string): Promise<Ctx | null> {
   if (!year) return null;
   const sc = await tx.studentClass.findFirst({
     where: { studentId, unenrolledAt: null, class: { academicYearId: year.id } },
-    include: { class: { select: { id: true, name: true } } },
+    include: { class: { select: { id: true, name: true, nameAr: true } } },
   });
   return {
     yearId: year.id,
@@ -77,7 +77,7 @@ async function studentContext(tx: Tx, studentId: string): Promise<Ctx | null> {
     endDate: year.endDate,
     classId: sc?.class.id ?? null,
     className: sc?.class.name ?? null,
-    periods: year.periods.map((p) => ({ id: p.id, label: p.label })),
+    periods: year.periods.map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr })),
   };
 }
 
@@ -93,7 +93,7 @@ async function subjectAverages(
     where: { classId, periodId: { in: periodIds } },
     select: {
       subjectId: true,
-      subject: { select: { label: true } },
+      subject: { select: { label: true, labelAr: true } },
       maxValue: true,
       weight: true,
       optional: true,
@@ -160,7 +160,7 @@ export async function loadStudentDashboard(tx: Tx, studentId: string): Promise<S
           studentId,
           session: { finalizedAt: { not: null }, date: { gte: ctx.startDate, lte: ctx.endDate } },
         },
-        include: { session: { include: { class: { select: { name: true } } } } },
+        include: { session: { include: { class: { select: { name: true, nameAr: true } } } } },
         orderBy: { session: { date: 'desc' } },
       })
     : [];
@@ -239,7 +239,7 @@ export async function loadStudentNotes(tx: Tx, studentId: string): Promise<Stude
       optionalMode: true,
       periodId: true,
       subjectId: true,
-      subject: { select: { label: true } },
+      subject: { select: { label: true, labelAr: true } },
       grades: { select: { studentId: true, value: true } },
     },
   });

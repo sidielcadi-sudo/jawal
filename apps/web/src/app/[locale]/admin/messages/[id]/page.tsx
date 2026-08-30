@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { MessageReplyForm } from '../client';
 import { markConversationReadAction } from '../actions';
+import { personDisplayName } from '@/lib/localized-name';
 
 export default async function ConversationThreadPage({
   params,
@@ -37,12 +38,12 @@ export default async function ConversationThreadPage({
     const userIds = Array.from(new Set([...conv.participants.map((p) => p.userId), ...conv.messages.map((m) => m.senderUserId)]));
     const users = await tx.user.findMany({
       where: { id: { in: userIds } },
-      include: { userPersons: { include: { person: { select: { firstName: true, lastName: true } } } } },
+      include: { userPersons: { include: { person: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } } } },
     });
     const userLabel = new Map<string, string>();
     for (const u of users) {
       const p = u.userPersons[0]?.person;
-      userLabel.set(u.id, p ? `${p.lastName} ${p.firstName}` : u.email);
+      userLabel.set(u.id, p ? personDisplayName(locale, p) : u.email);
     }
 
     return { conv, userLabel };

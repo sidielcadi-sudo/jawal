@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { getTeacherPersonId } from '@/lib/teacher';
 import { CreateSessionForm } from '../../../admin/soutien/pedagogy';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 const DOW_ORDER = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
@@ -54,10 +55,12 @@ export default async function TeacherSupportCoursePage({
           select: {
             id: true,
             firstName: true,
+            firstNameAr: true,
             lastName: true,
+            lastNameAr: true,
             studentClasses: {
               where: { unenrolledAt: null },
-              select: { class: { select: { name: true } } },
+              select: { class: { select: { name: true, nameAr: true } } },
               take: 1,
             },
           },
@@ -109,8 +112,8 @@ export default async function TeacherSupportCoursePage({
       ),
       students: students.map((s) => ({
         id: s.id,
-        name: `${s.lastName} ${s.firstName}`,
-        className: s.studentClasses[0]?.class.name ?? null,
+        name: personDisplayName(locale, s),
+        className: localizedLabel(locale, s.studentClasses[0]?.class.name, s.studentClasses[0]?.class.nameAr) ?? null,
         recommended: recommendedById.get(s.id) ?? false,
       })),
       sessions: sessions.map((s) => ({

@@ -63,7 +63,7 @@ export async function generateTimetableAction(
     payload = await withTenant(tenantId, async (tx) => {
       const cls = await tx.class.findUnique({
         where: { id: classId },
-        select: { id: true, name: true, academicYearId: true, levelId: true },
+        select: { id: true, name: true, nameAr: true, academicYearId: true, levelId: true },
       });
       if (!cls) throw new Error('Classe introuvable.');
 
@@ -79,7 +79,7 @@ export async function generateTimetableAction(
       const assignments = await tx.teacherAssignment.findMany({
         where: { classId, academicYearId: cls.academicYearId },
         include: {
-          subject: { select: { id: true, label: true } },
+          subject: { select: { id: true, label: true, labelAr: true } },
           teacher: {
             select: {
               id: true,

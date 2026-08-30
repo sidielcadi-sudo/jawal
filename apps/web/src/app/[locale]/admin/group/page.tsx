@@ -5,7 +5,11 @@ import { withTenant } from '@/lib/db';
 import { computeHeadcount, computeAcademicOverview, computeAttendanceRate } from '@/lib/bi';
 import { pickPeriodId } from '@/lib/periods';
 import { tenantDisplayName } from '@/lib/tenant-name';
-import { BarChart, LineChart, siteColors, type Series } from './charts';
+import { BarChart, GroupedBarChart, siteColors, type Series } from './charts';
+import { AttendanceTabs, type SiteAttendance, type TopRow } from './attendance-tabs';
+import { EncaissementTabs, type RecoverySite } from './encaissement-tabs';
+import { monthlyAttendance, topStudents } from '@/lib/attendance-stats';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 type Row = {
   name: string;
@@ -32,6 +36,20 @@ type Row = {
   monthlyCollectionPct: (number | null)[];
   /** Début de l'année scolaire du site — sert à étiqueter les mois. */
   yearStart: Date | null;
+  /** Cumul encaissé et reste échu à la fin de chaque mois. */
+  monthlyCollectedCumul: number[];
+  monthlyRemainingCumul: number[];
+  /** Assiduité mensuelle et palmarès élèves. */
+  attendanceStats: {
+    present: number[];
+    absJustified: number[];
+    absUnjustified: number[];
+    lateJustified: number[];
+    lateUnjustified: number[];
+    absenceRate: (number | null)[];
+  };
+  topAbsences: TopRow[];
+  topLates: TopRow[];
 };
 
 /** Mois de l'année scolaire (10 mois à partir du mois de démarrage). */
@@ -101,9 +119,38 @@ export default async function GroupDashboard({
           return (paidToDate / dueToDate) * 100;
         });
 
+        // Cumuls de fin de mois : c'est la lecture qui a du sens pour un
+        // recouvrement (un mois isolé oscille au gré du calendrier d'échéances).
+        const monthlyCollectedCumul = Array.from({ length: MONTH_COUNT }, (_, k) =>
+          payments
+            .filter((p) => p.paidAt.getTime() < endOfMonth(k))
+            .reduce((s, p) => s + Number(p.amount), 0),
+        );
+        const monthlyRemainingCumul = Array.from({ length: MONTH_COUNT }, (_, k) => {
+          const limit = endOfMonth(k);
+          const dueToDate = installments
+            .filter((i) => i.dueDate.getTime() < limit)
+            .reduce((s, i) => s + Number(i.amount), 0);
+          return Math.max(0, dueToDate - monthlyCollectedCumul[k]!);
+        });
+
+        const siteName = tenantDisplayName(locale, tenant?.name ?? site.name, tenant?.nameAr);
+        const attendanceStats = await monthlyAttendance(tx, MONTH_COUNT, year ? new Date(year.startDate) : null);
+        const nameOf = (pp: {
+          firstName: string;
+          lastName: string;
+          firstNameAr: string | null;
+          lastNameAr: string | null;
+        }) => personDisplayName(locale, pp);
+        const labelOf = (l: string, la: string | null) => localizedLabel(locale, l, la);
+        const [topAbs, topLate] = await Promise.all([
+          topStudents(tx, 'ABSENCE', 10, locale, nameOf, labelOf),
+          topStudents(tx, 'LATE', 10, locale, nameOf, labelOf),
+        ]);
+
         return {
           // Nom localisé : en arabe on affiche `nameAr` quand il est saisi.
-          name: tenantDisplayName(locale, tenant?.name ?? site.name, tenant?.nameAr),
+          name: siteName,
           students: headcount.students,
           teachers: headcount.teachers,
           classes: headcount.classes,
@@ -118,6 +165,11 @@ export default async function GroupDashboard({
           monthlyPaid,
           monthlyCollectionPct,
           yearStart: year ? new Date(year.startDate) : null,
+          monthlyCollectedCumul,
+          monthlyRemainingCumul,
+          attendanceStats,
+          topAbsences: topAbs.map((r) => ({ ...r, siteName })),
+          topLates: topLate.map((r) => ({ ...r, siteName })),
         };
       }),
     ),
@@ -150,16 +202,53 @@ export default async function GroupDashboard({
     return d.toLocaleDateString(locale, { month: 'short', timeZone: 'UTC' });
   });
 
-  const paidSeries: Series[] = rows.map((r) => ({ name: r.name, values: r.monthlyPaid }));
-  const collectionSeries: Series[] = rows.map((r) => ({
+  const dueLabel = t('charts.due');
+  const paidLabel = t('charts.collected');
+  const amountSeries: Series[] = [
+    { name: dueLabel, values: rows.map((r) => r.due) },
+    { name: paidLabel, values: rows.map((r) => r.paid) },
+  ];
+  const amountColors = { [dueLabel]: '#3b82f6', [paidLabel]: '#9ca3af' };
+
+  const attendanceSites: SiteAttendance[] = rows.map((r) => ({
     name: r.name,
-    values: r.monthlyCollectionPct,
+    color: colors[r.name]!,
+    ...r.attendanceStats,
   }));
+  // Palmarès inter-établissements : on refusionne puis on retronque à 10.
+  const topAbsences = rows
+    .flatMap((r) => r.topAbsences)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+  const topLates = rows
+    .flatMap((r) => r.topLates)
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
+
+  const recoverySites: RecoverySite[] = rows.map((r) => ({
+    name: r.name,
+    color: colors[r.name]!,
+    collected: r.monthlyCollectedCumul,
+    remaining: r.monthlyRemainingCumul,
+    rate: r.monthlyCollectionPct,
+  }));
+  const recoveryTotal = {
+    collected: monthLabels.map((_, i) =>
+      rows.reduce((s, r) => s + (r.monthlyCollectedCumul[i] ?? 0), 0),
+    ),
+    remaining: monthLabels.map((_, i) =>
+      rows.reduce((s, r) => s + (r.monthlyRemainingCumul[i] ?? 0), 0),
+    ),
+  };
+  const recoveryRate = monthLabels.map((_, i) => {
+    const c = recoveryTotal.collected[i]!;
+    const r = recoveryTotal.remaining[i]!;
+    return c + r > 0 ? (c / (c + r)) * 100 : null;
+  });
 
   /** Montants en milliers : un axe à 6 chiffres est illisible. */
   const fmtK = (n: number) =>
     n >= 1000 ? `${(n / 1000).toLocaleString(locale, { maximumFractionDigits: 0 })}k` : String(Math.round(n));
-  const fmtPct = (n: number) => `${n.toFixed(0)}%`;
 
   return (
     <div className="px-3 py-3">
@@ -180,11 +269,12 @@ export default async function GroupDashboard({
           max={100}
           emptyLabel={t('charts.empty')}
         />
-        <BarChart
-          title={t('charts.paidBySite', { currency })}
-          rows={rows.map((r) => ({ name: r.name, value: r.paid }))}
-          colors={colors}
-          format={(n) => `${fmt(n)} ${currency}`}
+        <GroupedBarChart
+          title={t('charts.dueAndPaidBySite', { currency })}
+          labels={rows.map((r) => r.name)}
+          series={amountSeries}
+          colors={amountColors}
+          format={fmtK}
           emptyLabel={t('charts.empty')}
         />
       </div>
@@ -256,24 +346,22 @@ export default async function GroupDashboard({
 
       {/* Évolutions mensuelles */}
       <div className="grid grid-cols-1 gap-4">
-        <LineChart
-          title={t('charts.paidTrend', { currency })}
+        <EncaissementTabs
           labels={monthLabels}
-          series={paidSeries}
-          colors={colors}
-          format={fmtK}
-          emptyLabel={t('charts.empty')}
-        />
-        <LineChart
-          title={t('charts.collectionTrend')}
-          labels={monthLabels}
-          series={collectionSeries}
-          colors={colors}
-          format={fmtPct}
-          yMax={100}
-          emptyLabel={t('charts.empty')}
+          total={recoveryTotal}
+          sites={recoverySites}
+          totalRate={recoveryRate}
+          currency={currency}
+          locale={locale}
         />
       </div>
+
+      <AttendanceTabs
+        labels={monthLabels}
+        sites={attendanceSites}
+        topAbsences={topAbsences}
+        topLates={topLates}
+      />
     </div>
   );
 }

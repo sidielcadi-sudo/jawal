@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { getParentChildren } from '@/lib/parent';
 import { AggregatedReserve } from './aggregated-reserve';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 const COND: Record<string, string> = { NEW: 'condition.NEW', VERY_GOOD: 'condition.VERY_GOOD', GOOD: 'condition.GOOD', FAIR: 'condition.FAIR' };
 
@@ -36,7 +37,7 @@ export default async function ParentBourseAggregatedPage({
           OR: [{ status: 'FOR_SALE' }, { status: 'RESERVED', buyerId: { in: childIds } }],
           ...(sp.levelId ? { book: { levelId: sp.levelId } } : {}),
         },
-        include: { book: { select: { title: true, level: { select: { code: true } }, subject: { select: { label: true } } } } },
+        include: { book: { select: { title: true, level: { select: { code: true } }, subject: { select: { label: true, labelAr: true } } } } },
         orderBy: { code: 'asc' },
         take: 300,
       }),
@@ -48,7 +49,7 @@ export default async function ParentBourseAggregatedPage({
   });
 
   const { kids, levels, available, deposits, purchases, currency } = data;
-  const kidList = kids.map((k) => ({ id: k.id, name: `${k.firstName} ${k.lastName}` }));
+  const kidList = kids.map((k) => ({ id: k.id, name: personDisplayName(locale, k, 'first-last') }));
   const nameById = new Map(kidList.map((k) => [k.id, k.name]));
 
   return (
@@ -89,7 +90,7 @@ export default async function ParentBourseAggregatedPage({
                     const reservedChildId = c.status === 'RESERVED' ? c.buyerId : null;
                     return (
                       <tr key={c.id} className={reservedChildId ? 'bg-amber-50/40' : ''}>
-                        <td className="px-3 py-2 text-slate-800">{c.book.title}{c.book.subject && <span className="ms-1 text-xs text-slate-400">· {c.book.subject.label}</span>}</td>
+                        <td className="px-3 py-2 text-slate-800">{c.book.title}{c.book.subject && <span className="ms-1 text-xs text-slate-400">· {localizedLabel(locale, c.book.subject.label, c.book.subject.labelAr)}</span>}</td>
                         <td className="px-3 py-2 text-xs text-slate-600">{c.book.level?.code ?? '—'}</td>
                         <td className="px-3 py-2 text-xs text-slate-600">{tc(COND[c.condition])}</td>
                         <td className="px-3 py-2 text-end tabular-nums font-medium text-slate-900">{c.askPrice.toFixed(2)} {currency}</td>

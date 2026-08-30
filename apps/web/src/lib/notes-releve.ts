@@ -129,7 +129,7 @@ export async function loadClassSubjects(
 ): Promise<ClassSubject[]> {
   const select = {
     subjectId: true,
-    subject: { select: { label: true } },
+    subject: { select: { label: true, labelAr: true } },
     teacher: { select: { firstName: true, lastName: true } },
   } as const;
   const [assignments, entries] = await Promise.all([

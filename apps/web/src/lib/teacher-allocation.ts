@@ -54,7 +54,7 @@ export async function proposeAllocation(
 
   const classes = await tx.class.findMany({
     where: { id: { in: classIds }, academicYearId, deletedAt: null },
-    select: { id: true, name: true, levelId: true },
+    select: { id: true, name: true, nameAr: true, levelId: true },
   });
   const levelIds = [...new Set(classes.map((c) => c.levelId))];
 
@@ -64,7 +64,7 @@ export async function proposeAllocation(
       levelId: true,
       subjectId: true,
       weeklyHours: true,
-      subject: { select: { label: true } },
+      subject: { select: { label: true, labelAr: true } },
     },
   });
   const needsByLevel = new Map<string, typeof curriculum>();
@@ -138,7 +138,7 @@ export async function proposeAllocation(
       teacherId: true,
       hoursPerWeek: true,
       teacher: { select: { firstName: true, lastName: true } },
-      subject: { select: { label: true } },
+      subject: { select: { label: true, labelAr: true } },
     },
   });
   const pinnedSet = new Set(pinned.map((p) => keyOf(p.classId, p.subjectId)));

@@ -4,6 +4,7 @@ import { requireRoleCode } from '@/lib/auth/rbac';
 import { withTenant } from '@/lib/db';
 import { loadActiveFramework, loadMasteryScale } from '@/lib/competences';
 import { SubjectPicker, LevelPicker } from './client';
+import { localizedLabel } from '@/lib/localized-name';
 
 /**
  * Référentiel de compétences & aptitudes — administration (Paramétrage).
@@ -52,7 +53,7 @@ export default async function SettingsCompetencesPage({
       tx.subject.findMany({ orderBy: { label: 'asc' }, select: { id: true, label: true } }),
       tx.level.findMany({
         orderBy: [{ cycle: { order: 'asc' } }, { order: 'asc' }],
-        select: { id: true, label: true, cycle: { select: { label: true } } },
+        select: { id: true, label: true, labelAr: true, cycle: { select: { label: true, labelAr: true } } },
       }),
       loadMasteryScale(tx),
     ]);
@@ -79,7 +80,7 @@ export default async function SettingsCompetencesPage({
       framework,
       domains,
       subjects,
-      levels: levels.map((l) => ({ id: l.id, label: `${l.cycle.label} · ${l.label}` })),
+      levels: levels.map((l) => ({ id: l.id, label: `${localizedLabel(locale, l.cycle.label, l.cycle.labelAr)} · ${localizedLabel(locale, l.label, l.labelAr)}` })),
       scale,
       leafCount: nodes.filter((n) => n.isLeaf).length,
     };

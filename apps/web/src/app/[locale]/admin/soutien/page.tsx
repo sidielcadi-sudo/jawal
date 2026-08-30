@@ -5,6 +5,7 @@ import { requireRoleCode } from '@/lib/auth/rbac';
 import { withTenant } from '@/lib/db';
 import { CourseForm } from './course-form';
 import { SoutienTabs } from './tabs';
+import { personDisplayName } from '@/lib/localized-name';
 
 export default async function SoutienPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -17,8 +18,8 @@ export default async function SoutienPage({ params }: { params: Promise<{ locale
     const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
     const [subjects, teachers, levels, rooms, courses] = await Promise.all([
       tx.subject.findMany({ orderBy: [{ order: 'asc' }, { label: 'asc' }], select: { id: true, label: true } }),
-      tx.person.findMany({ where: { type: 'TEACHER', deletedAt: null }, orderBy: [{ lastName: 'asc' }], select: { id: true, firstName: true, lastName: true } }),
-      tx.level.findMany({ orderBy: { order: 'asc' }, select: { id: true, label: true } }),
+      tx.person.findMany({ where: { type: 'TEACHER', deletedAt: null }, orderBy: [{ lastName: 'asc' }], select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } }),
+      tx.level.findMany({ orderBy: { order: 'asc' }, select: { id: true, label: true, labelAr: true } }),
       tx.room.findMany({ orderBy: { code: 'asc' }, select: { id: true, code: true, label: true } }),
       tx.supportCourse.findMany({
         where: year ? { academicYearId: year.id } : undefined,
@@ -27,10 +28,10 @@ export default async function SoutienPage({ params }: { params: Promise<{ locale
       }),
     ]);
     const subjectById = new Map(subjects.map((s) => [s.id, s.label]));
-    const teacherById = new Map(teachers.map((p) => [p.id, `${p.lastName} ${p.firstName}`]));
+    const teacherById = new Map(teachers.map((p) => [p.id, personDisplayName(locale, p)]));
     return {
       subjects,
-      teachers: teachers.map((p) => ({ id: p.id, label: `${p.lastName} ${p.firstName}` })),
+      teachers: teachers.map((p) => ({ id: p.id, label: personDisplayName(locale, p) })),
       levels,
       rooms: rooms.map((r) => ({ id: r.id, label: `${r.code} — ${r.label}` })),
       courses: courses.map((c) => ({

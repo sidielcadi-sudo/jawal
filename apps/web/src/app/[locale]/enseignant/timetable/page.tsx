@@ -26,9 +26,9 @@ export default async function TeacherTimetablePage({
         ? await tx.timetableEntry.findMany({
             where: { teacherId, academicYearId: year.id },
             include: {
-              subject: { select: { label: true } },
-              class: { select: { name: true } },
-              room: { select: { code: true, label: true } },
+              subject: { select: { label: true, labelAr: true } },
+              class: { select: { name: true, nameAr: true } },
+              room: { select: { code: true, label: true, labelAr: true } },
             },
           })
         : [];
@@ -83,7 +83,7 @@ export default async function TeacherTimetablePage({
                     return (
                       <td key={d} className="border-b border-e border-slate-100 px-1.5 py-1.5 align-top">
                         {e ? (
-                          <div className="rounded-lg bg-brand-50 px-2 py-1.5">
+                          <div className="rounded-lg border border-brand-200 bg-brand-50 px-2 py-1.5">
                             <div className="font-medium text-brand-800">{e.subject?.label ?? '—'}</div>
                             <div className="text-[10px] text-slate-600">{e.class?.name ?? ''}</div>
                             {(e.room?.label || e.room?.code) && (

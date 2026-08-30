@@ -2,6 +2,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { DocCreateForm, DocRowActions, QuotaRow } from './client';
+import { localizedLabel } from '@/lib/localized-name';
 
 const PLACE_TAKEN = ['ACCEPTE', 'INSCRIPTION_VALIDEE', 'AFFECTE', 'ACTIVE'] as const;
 
@@ -46,7 +47,7 @@ export default async function AdmissionsSettingsPage({
       }
       return {
         docs,
-        levels: levelsRaw.map((l) => ({ id: l.id, label: `${l.cycle.label} — ${l.label}` })),
+        levels: levelsRaw.map((l) => ({ id: l.id, label: `${localizedLabel(locale, l.cycle.label, l.cycle.labelAr)} — ${localizedLabel(locale, l.label, l.labelAr)}` })),
         activeYear,
         quotaByLevel,
         takenByLevel,
@@ -83,7 +84,7 @@ export default async function AdmissionsSettingsPage({
                         {locale === 'ar' ? d.labelAr : d.labelFr}
                       </td>
                       <td className="px-4 py-2 text-xs text-slate-600">
-                        {d.level ? `${d.level.cycle.label} — ${d.level.label}` : t('doc.allLevels')}
+                        {d.level ? `${localizedLabel(locale, d.level.cycle.label, d.level.cycle.labelAr)} — ${localizedLabel(locale, d.level.label, d.level.labelAr)}` : t('doc.allLevels')}
                       </td>
                       <td className="px-4 py-2 text-center">
                         {d.required ? (

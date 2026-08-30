@@ -134,6 +134,9 @@ export const personCreateSchema = z.object({
   exitRights: z.coerce.number().int().min(0).max(9).optional(), // Droit de sortie (0–9)
   dietInfo: z.string().max(2000).optional(), // Régime alimentaire / allergies (DP/interne)
   originSchool: z.string().max(200).optional(), // Établissement d'origine
+  /// Établissement d'origine en arabe — exigé par MASAR, saisi dans l'onglet
+  /// « Données en arabe » du formulaire d'inscription.
+  originSchoolAr: z.string().max(200).optional(),
   repeating: z.coerce.boolean().optional(), // Redoublement
   contacts: z
     .object({

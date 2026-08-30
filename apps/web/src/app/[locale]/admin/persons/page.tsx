@@ -4,11 +4,29 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import type { Prisma } from '@/lib/db';
 import { Pagination } from '@/components/pagination';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 const PAGE_SIZE = 20;
 const VALID_TYPES = ['STUDENT', 'TEACHER', 'STAFF', 'PARENT'] as const;
 // Statuts d'inscription pour lesquels on dispose d'un libellé dédié (colonne Statut).
 const STUDENT_STATUSES = ['ACTIVE', 'WITHDRAWN', 'AFFECTE', 'INSCRIPTION_VALIDEE', 'GRADUATED'];
+/** Statuts d'emploi (TEACHER/STAFF) — colonne `Person.employmentStatus`. */
+const EMPLOYMENT_STATUSES = ['ACTIVE', 'SUSPENDED', 'RESIGNED', 'CONTRACT_END'] as const;
+const EMPLOYMENT_BADGE: Record<string, string> = {
+  ACTIVE: 'bg-emerald-100 text-emerald-800',
+  SUSPENDED: 'bg-amber-100 text-amber-800',
+  RESIGNED: 'bg-slate-200 text-slate-700',
+  CONTRACT_END: 'bg-red-100 text-red-800',
+};
+
+function EmploymentBadge({ status, label }: { status: string | null; label: string }) {
+  if (!status) return <span className="text-xs text-slate-400">—</span>;
+  return (
+    <span className={`rounded px-2 py-0.5 text-[11px] font-medium ${EMPLOYMENT_BADGE[status] ?? 'bg-slate-100 text-slate-700'}`}>
+      {label}
+    </span>
+  );
+}
 type PersonTypeLiteral = (typeof VALID_TYPES)[number];
 
 function isPersonType(value: string | undefined): value is PersonTypeLiteral {
@@ -28,6 +46,7 @@ export default async function PersonsListPage({
     service?: string;
     cycle?: string;
     level?: string;
+    status?: string;
     classId?: string;
   }>;
 }) {
@@ -52,6 +71,9 @@ export default async function PersonsListPage({
   const cycleFilter = isStudentView ? sp.cycle || '' : '';
   const levelFilter = isStudentView ? sp.level || '' : '';
   const classFilter = isStudentView ? sp.classId || '' : '';
+  // Statut : dossier d'inscription côté élève, statut d'emploi côté personnel.
+  const statusFilter = sp.status || '';
+  const isStaffView = isTeacherView || typeFilter === 'STAFF';
 
   type StudentRow = {
     className: string | null;
@@ -104,6 +126,14 @@ export default async function PersonsListPage({
               },
             }
           : {}),
+        // Élève : statut du dossier de l'année active. Personnel : colonne
+        // dédiée `employmentStatus`.
+        ...(statusFilter && isStudentView
+          ? { enrollments: { some: { academicYear: { active: true }, status: statusFilter as never } } }
+          : {}),
+        ...(statusFilter && isStaffView
+          ? { employmentStatus: statusFilter as never }
+          : {}),
         ...(search
           ? {
               OR: [
@@ -145,31 +175,31 @@ export default async function PersonsListPage({
       const [specs, asgs, entries] = await Promise.all([
         tx.teacherSpecialty.findMany({
           where: { teacherId: { in: ids } },
-          select: { teacherId: true, subject: { select: { label: true } } },
+          select: { teacherId: true, subject: { select: { label: true, labelAr: true } } },
         }),
         activeYear
           ? tx.teacherAssignment.findMany({
               where: { teacherId: { in: ids }, academicYearId: activeYear.id },
-              select: { teacherId: true, class: { select: { name: true } } },
+              select: { teacherId: true, class: { select: { name: true, nameAr: true } } },
             })
           : Promise.resolve([]),
         activeYear
           ? tx.timetableEntry.findMany({
               where: { teacherId: { in: ids }, academicYearId: activeYear.id },
-              select: { teacherId: true, class: { select: { name: true } } },
+              select: { teacherId: true, class: { select: { name: true, nameAr: true } } },
             })
           : Promise.resolve([]),
       ]);
       const specByT = new Map<string, Set<string>>();
       for (const s of specs) {
         if (!specByT.has(s.teacherId)) specByT.set(s.teacherId, new Set());
-        specByT.get(s.teacherId)!.add(s.subject.label);
+        specByT.get(s.teacherId)!.add(localizedLabel(locale, s.subject.label, s.subject.labelAr));
       }
       const clsByT = new Map<string, Set<string>>();
       for (const a of [...asgs, ...entries]) {
         if (a.teacherId === null) continue;
         if (!clsByT.has(a.teacherId)) clsByT.set(a.teacherId, new Set());
-        clsByT.get(a.teacherId)!.add(a.class.name);
+        clsByT.get(a.teacherId)!.add(localizedLabel(locale, a.class.name, a.class.nameAr));
       }
       for (const p of persons) {
         teacherExtras.set(p.id, {
@@ -197,7 +227,13 @@ export default async function PersonsListPage({
             select: {
               studentId: true,
               class: {
-                select: { name: true, mainTeacher: { select: { firstName: true, lastName: true } } },
+                select: {
+                  name: true,
+                  nameAr: true,
+                  mainTeacher: {
+                    select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
+                  },
+                },
               },
             },
           }),
@@ -206,7 +242,15 @@ export default async function PersonsListPage({
             select: {
               childId: true,
               type: true,
-              parent: { select: { firstName: true, lastName: true, contacts: true } },
+              parent: {
+                select: {
+                  firstName: true,
+                  lastName: true,
+                  firstNameAr: true,
+                  lastNameAr: true,
+                  contacts: true,
+                },
+              },
             },
           }),
           // Statut d'inscription de l'année active (Actif / Retiré…).
@@ -226,9 +270,9 @@ export default async function PersonsListPage({
         for (const e of enr) {
           const s = studentExtras.get(e.studentId);
           if (!s) continue;
-          s.className = e.class.name;
+          s.className = localizedLabel(locale, e.class.name, e.class.nameAr);
           s.mainTeacher = e.class.mainTeacher
-            ? `${e.class.mainTeacher.lastName} ${e.class.mainTeacher.firstName}`
+            ? personDisplayName(locale, e.class.mainTeacher)
             : null;
         }
         for (const r of rel) {
@@ -236,7 +280,7 @@ export default async function PersonsListPage({
           if (!s) continue;
           const c = r.parent.contacts as { phone?: string; email?: string } | null;
           const contact = c?.phone ?? c?.email ?? null;
-          const label = `${r.parent.lastName} ${r.parent.firstName}${contact ? ` · ${contact}` : ''}`;
+          const label = `${personDisplayName(locale, r.parent)}${contact ? ` · ${contact}` : ''}`;
           if (r.type === 'FATHER' && !s.father) s.father = label;
           else if (r.type === 'MOTHER' && !s.mother) s.mother = label;
         }
@@ -255,17 +299,25 @@ export default async function PersonsListPage({
           tx.cycle.findMany({ orderBy: { order: 'asc' }, select: { id: true, label: true } }),
           tx.level.findMany({
             orderBy: { order: 'asc' },
-            select: { id: true, cycleId: true, label: true },
+            select: { id: true, cycleId: true, label: true, labelAr: true },
           }),
           tx.class.findMany({
             where: { deletedAt: null, ...(activeYear ? { academicYearId: activeYear.id } : {}) },
             orderBy: { name: 'asc' },
-            select: { id: true, levelId: true, name: true },
+            select: { id: true, levelId: true, name: true, nameAr: true },
           }),
         ]);
         cycles = cyc;
-        levels = lvl;
-        classOptions = cls;
+        levels = lvl.map((l) => ({
+          id: l.id,
+          cycleId: l.cycleId,
+          label: localizedLabel(locale, l.label, l.labelAr),
+        }));
+        classOptions = cls.map((c) => ({
+          id: c.id,
+          levelId: c.levelId,
+          name: localizedLabel(locale, c.name, c.nameAr),
+        }));
       }
 
       return {
@@ -377,6 +429,25 @@ export default async function PersonsListPage({
             </select>
           </div>
         )}
+        {(isStudentView || isStaffView) && (
+          <div className="min-w-[160px]">
+            <label className="block text-xs font-medium text-slate-600">{t('filters.status')}</label>
+            <select
+              name="status"
+              defaultValue={statusFilter}
+              className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
+            >
+              <option value="">{t('filters.allStatuses')}</option>
+              {(isStudentView ? STUDENT_STATUSES : EMPLOYMENT_STATUSES).map((st) => (
+                <option key={st} value={st}>
+                  {isStudentView
+                    ? t(`studentStatus.${st}` as never)
+                    : tForm(`employmentStatus.${st}` as never)}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         {isStudentView && (
           <>
             <div className="min-w-[140px]">
@@ -462,6 +533,7 @@ export default async function PersonsListPage({
                   <th className="px-4 py-3 text-start">{t('table.specialties')}</th>
                   <th className="px-4 py-3 text-end">{t('table.weeklyHours')}</th>
                   <th className="px-4 py-3 text-start">{t('table.classes')}</th>
+                  <th className="px-4 py-3 text-start">{t('table.status')}</th>
                 </>
               ) : (
                 <>
@@ -500,7 +572,7 @@ export default async function PersonsListPage({
                       href={`${baseHref}/${p.id}`}
                       className="hover:text-brand-700 font-medium text-slate-900 hover:underline"
                     >
-                      {p.lastName} {p.firstName}
+                      {personDisplayName(locale, p)}
                     </Link>
                     {p.deletedAt && (
                       <span className="ms-2 rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">
@@ -553,6 +625,16 @@ export default async function PersonsListPage({
                           </td>
                           <td className="px-4 py-3 text-xs text-slate-600">
                             {extra && extra.classes.length > 0 ? extra.classes.join(' - ') : ''}
+                          </td>
+                          <td className="px-4 py-3">
+                            <EmploymentBadge
+                              status={p.employmentStatus}
+                              label={
+                                p.employmentStatus
+                                  ? tForm(`employmentStatus.${p.employmentStatus}` as never)
+                                  : '—'
+                              }
+                            />
                           </td>
                         </>
                       );

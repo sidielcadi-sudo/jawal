@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
@@ -7,6 +6,8 @@ import { PersonForm } from '../../person-form';
 import { HealthSection, type Health } from '../health-section';
 import { EditTabs } from './edit-tabs';
 import { ChangeStudentClass } from './change-class';
+import { localizedLabel } from '@/lib/localized-name';
+import { PersonHeader } from '../person-header';
 
 export default async function EditPersonPage({
   params,
@@ -53,6 +54,10 @@ export default async function EditPersonPage({
             id: true,
             firstName: true,
             lastName: true,
+            // État civil arabe : repris tel quel dans l'onglet « Données en
+            // arabe », un parent rattaché en français l'étant aussi en arabe.
+            firstNameAr: true,
+            lastNameAr: true,
             address: true,
             relationsAsParent: {
               // Fratrie = tous les élèves rattachés, quel que soit leur statut :
@@ -66,7 +71,7 @@ export default async function EditPersonPage({
                     lastName: true,
                     studentClasses: {
                       where: { unenrolledAt: null },
-                      select: { class: { select: { name: true } } },
+                      select: { class: { select: { name: true, nameAr: true } } },
                       take: 1,
                     },
                     // Dossier le plus récent = statut courant de l'élève.
@@ -86,7 +91,7 @@ export default async function EditPersonPage({
         tx.class.findMany({
           where: { deletedAt: null, ...(activeYear ? { academicYearId: activeYear.id } : {}) },
           orderBy: { name: 'asc' },
-          select: { id: true, name: true },
+          select: { id: true, name: true, nameAr: true },
         }),
         tx.room.findMany({ orderBy: { code: 'asc' } }),
       ]);
@@ -97,6 +102,8 @@ export default async function EditPersonPage({
           id: p.id,
           firstName: p.firstName,
           lastName: p.lastName,
+          firstNameAr: p.firstNameAr,
+          lastNameAr: p.lastNameAr,
           address: (p.address ?? null) as {
             line1?: string;
             city?: string;
@@ -106,7 +113,7 @@ export default async function EditPersonPage({
           children: p.relationsAsParent.map((r) => ({
             firstName: r.child.firstName,
             lastName: r.child.lastName,
-            className: r.child.studentClasses[0]?.class.name ?? null,
+            className: localizedLabel(locale, r.child.studentClasses[0]?.class.name, r.child.studentClasses[0]?.class.nameAr) ?? null,
             status: r.child.enrollments[0]?.status ?? null,
           })),
         })),
@@ -127,34 +134,18 @@ export default async function EditPersonPage({
     country?: string;
   };
 
-  const backHref = `/${locale}/admin/persons?type=${person.type}`;
-  const backLabel = t(`title.${person.type}` as never);
-
   return (
     <div className="mx-auto max-w-3xl px-6 py-8">
-      <nav className="mb-4 text-xs text-slate-500">
-        <Link href={backHref} className="hover:text-brand-700">
-          {backLabel}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <Link href={`/${locale}/admin/persons/${id}`} className="hover:text-brand-700">
-          {person.lastName} {person.firstName}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <span>{t('actions.edit')}</span>
-      </nav>
-
-      <div className="mb-4 overflow-hidden -mx-6 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3">
-        <h1 className="text-2xl font-semibold text-slate-900">
-          {t('actions.edit')} — {person.lastName} {person.firstName}
-        </h1>
-      </div>
+      <PersonHeader personId={id} locale={locale} active="edit" />
 
       {person.type === 'STUDENT' && (
         <div className="mb-4">
           <ChangeStudentClass
             studentId={person.id}
-            classes={allClasses}
+            classes={allClasses.map((c) => ({
+              id: c.id,
+              name: localizedLabel(locale, c.name, c.nameAr),
+            }))}
             currentClassId={person.studentClasses[0]?.classId ?? null}
           />
         </div>
@@ -192,16 +183,6 @@ export default async function EditPersonPage({
             nationalityAr: person.nationalityAr ?? undefined,
             addressAr: person.addressAr ?? undefined,
             cityAr: person.cityAr ?? undefined,
-            // Prénoms des parents : la fiche Parent fait foi. Le champ libre
-            // ne sert que de repli quand aucun parent n'est encore rattaché.
-            fatherFirstNameAr:
-              person.relationsAsChild.find((r) => r.type === 'FATHER')?.parent.firstNameAr ??
-              person.fatherFirstNameAr ??
-              undefined,
-            motherFirstNameAr:
-              person.relationsAsChild.find((r) => r.type === 'MOTHER')?.parent.firstNameAr ??
-              person.motherFirstNameAr ??
-              undefined,
             massarId: person.massarId ?? undefined,
             regime: person.regime ?? undefined,
             usesTransport: person.usesTransport,
@@ -213,12 +194,15 @@ export default async function EditPersonPage({
                 exitRights: typeof m.exitRights === 'number' ? m.exitRights : undefined,
                 dietInfo: typeof m.dietInfo === 'string' ? m.dietInfo : undefined,
                 originSchool: typeof m.originSchool === 'string' ? m.originSchool : undefined,
+                originSchoolAr:
+                  typeof m.originSchoolAr === 'string' ? m.originSchoolAr : undefined,
                 repeating: typeof m.repeating === 'boolean' ? m.repeating : undefined,
                 cnssNumber: typeof m.cnssNumber === 'string' ? m.cnssNumber : undefined,
                 amoNumber: typeof m.amoNumber === 'string' ? m.amoNumber : undefined,
                 employmentStatus: typeof m.employmentStatus === 'string' ? m.employmentStatus : undefined,
                 cinScanFileId: typeof m.cinScanFileId === 'string' ? m.cinScanFileId : null,
                 cnssAttestationFileId: typeof m.cnssAttestationFileId === 'string' ? m.cnssAttestationFileId : null,
+                cvFileId: typeof m.cvFileId === 'string' ? m.cvFileId : null,
               };
             })(),
             contacts,
@@ -276,7 +260,7 @@ export default async function EditPersonPage({
           availableParents={availableParents}
           allSubjects={allSubjects.map((s) => ({ id: s.id, label: s.label }))}
           allCycles={allCycles.map((c) => ({ id: c.id, label: c.label }))}
-          allClasses={allClasses.map((c) => ({ id: c.id, label: c.name }))}
+          allClasses={allClasses.map((c) => ({ id: c.id, label: localizedLabel(locale, c.name, c.nameAr) }))}
           rooms={rooms}
         />
       </div>

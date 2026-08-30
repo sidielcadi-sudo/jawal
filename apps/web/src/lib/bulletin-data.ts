@@ -54,13 +54,13 @@ export async function loadBulletinData(
     where: { id: opts.classId },
     include: {
       academicYear: { select: { label: true } },
-      level: { include: { cycle: { select: { label: true } } } },
-      mainTeacher: { select: { firstName: true, lastName: true } },
+      level: { include: { cycle: { select: { label: true, labelAr: true } } } },
+      mainTeacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
       students: {
         where: { unenrolledAt: null },
         include: {
           student: {
-            select: { id: true, firstName: true, lastName: true, birthDate: true, type: true },
+            select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, birthDate: true, type: true },
           },
         },
         orderBy: [{ student: { lastName: 'asc' } }, { student: { firstName: 'asc' } }],
@@ -94,7 +94,13 @@ export async function loadBulletinData(
   const classBook = await computeClassBook(tx, {
     classId: opts.classId,
     periodId: opts.periodId,
-    students: enrolled.map((s) => ({ id: s.id, firstName: s.firstName, lastName: s.lastName })),
+    students: enrolled.map((s) => ({
+      id: s.id,
+      firstName: s.firstName,
+      lastName: s.lastName,
+      firstNameAr: s.firstNameAr,
+      lastNameAr: s.lastNameAr,
+    })),
     allSubjects,
   });
 

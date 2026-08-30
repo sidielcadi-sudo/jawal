@@ -11,6 +11,7 @@ const inputCls =
 type SubjectData = {
   code: string;
   label: string;
+  labelAr?: string | null;
   scale: number;
   coefficient: number;
   order: number;
@@ -45,6 +46,10 @@ export function SubjectCreateForm() {
       <div>
         <label className="block text-xs font-medium text-slate-700">{t('label')}</label>
         <input type="text" name="label" required placeholder="Mathématiques" className={inputCls} />
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-slate-700">{t('labelAr')}</label>
+        <input type="text" name="labelAr" dir="rtl" placeholder="الرياضيات" className={inputCls} />
       </div>
       <div className="grid grid-cols-3 gap-2">
         <div>
@@ -160,6 +165,16 @@ export function SubjectRowActions({ id, initial }: { id: string; initial: Subjec
           <div>
             <label className="block text-xs font-medium text-slate-700">{t('form.label')}</label>
             <input type="text" name="label" required defaultValue={initial.label} className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-700">{t('form.labelAr')}</label>
+            <input
+              type="text"
+              name="labelAr"
+              dir="rtl"
+              defaultValue={initial.labelAr ?? ''}
+              className={inputCls}
+            />
           </div>
           <div className="grid grid-cols-3 gap-2">
             <div>

@@ -16,6 +16,8 @@ const cycleSchema = z.object({
     .max(40)
     .regex(/^[a-z0-9-_]+$/, 'Minuscules, chiffres, - ou _ uniquement'),
   label: z.string().min(1).max(80),
+  /** Libellé arabe — facultatif, sert aux bulletins et à l'interface AR. */
+  labelAr: z.string().max(80).transform((v) => (v === '' ? null : v)).nullable(),
   order: z.coerce.number().int().min(0).max(99).default(0),
   // Découpage périodique du cycle : trimestres ou semestres.
   periodKind: z.enum(['TRIMESTER', 'SEMESTER']).default('TRIMESTER'),

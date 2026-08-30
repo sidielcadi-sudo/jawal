@@ -5,6 +5,7 @@ import { withTenant } from '@/lib/db';
 import { pickPeriodId } from '@/lib/periods';
 import { loadActiveFramework, loadLeaves, loadMasteryScale } from '@/lib/competences';
 import { RemediationFilters, EnrollGroup } from './client';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 /**
  * Remédiation ciblée : on part d'une compétence pour obtenir la liste des
@@ -38,7 +39,7 @@ export default async function RemediationPage({
       loadMasteryScale(tx),
       tx.level.findMany({
         orderBy: [{ cycle: { order: 'asc' } }, { order: 'asc' }],
-        select: { id: true, label: true, cycle: { select: { label: true } } },
+        select: { id: true, label: true, labelAr: true, cycle: { select: { label: true, labelAr: true } } },
       }),
     ]);
     const nodeId = leaves.find((l) => l.id === sp.node)?.id ?? leaves[0]?.id ?? null;
@@ -58,8 +59,8 @@ export default async function RemediationPage({
         class: { academicYearId: year.id, deletedAt: null, ...(levelId ? { levelId } : {}) },
       },
       select: {
-        student: { select: { id: true, firstName: true, lastName: true } },
-        class: { select: { name: true } },
+        student: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
+        class: { select: { name: true, nameAr: true } },
       },
     });
     const studentIds = scs.map((s) => s.student.id);
@@ -85,8 +86,8 @@ export default async function RemediationPage({
           vals && vals.length ? Math.round(vals.reduce((a, b) => a + b, 0) / vals.length) : null;
         return {
           studentId: s.student.id,
-          name: `${s.student.lastName} ${s.student.firstName}`,
-          className: s.class.name,
+          name: personDisplayName(locale, s.student),
+          className: localizedLabel(locale, s.class.name, s.class.nameAr),
           value: consolidated,
         };
       })
@@ -140,9 +141,9 @@ export default async function RemediationPage({
             group: l.kind === 'TRANSVERSAL' ? t('tabTransversal') : l.domain,
           }))}
           nodeId={data.nodeId ?? ''}
-          periods={(data.periods ?? []).map((p) => ({ id: p.id, label: p.label }))}
+          periods={(data.periods ?? []).map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr }))}
           periodId={data.periodId ?? ''}
-          levels={data.levels.map((l) => ({ id: l.id, label: `${l.cycle.label} · ${l.label}` }))}
+          levels={data.levels.map((l) => ({ id: l.id, label: `${localizedLabel(locale, l.cycle.label, l.cycle.labelAr)} · ${localizedLabel(locale, l.label, l.labelAr)}` }))}
           levelId={data.levelId}
           scale={data.scale.map((m) => ({ value: m.value, label: m.label }))}
           maxValue={data.maxValue}

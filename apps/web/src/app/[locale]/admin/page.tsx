@@ -20,6 +20,7 @@ import { ContractAlertsActions } from './contract-alerts-actions';
 import { DashboardTabs } from './dashboard-tabs';
 import { PeriodSelect } from './period-select';
 import { TeacherKpisSection } from './teacher-kpis-section';
+import { personDisplayName } from '@/lib/localized-name';
 
 export default async function AdminDashboard({
   params,
@@ -88,16 +89,29 @@ export default async function AdminDashboard({
     ]);
 
     // Finance quick — agrégation côté base (évite de charger toutes les lignes).
-    const [dueAgg, paidAgg] = await Promise.all([
+    // « À date » : on ne retient que les échéances déjà tombées. C'est la
+    // mesure qui juge le recouvrement — le total inclut des échéances à venir,
+    // dont l'absence de paiement n'est pas un retard.
+    const [dueAgg, paidAgg, dueToDateAgg] = await Promise.all([
       tx.installment.aggregate({ _sum: { amount: true }, where: { status: { not: 'CANCELLED' } } }),
       tx.payment.aggregate({ _sum: { amount: true } }),
+      tx.installment.aggregate({
+        _sum: { amount: true },
+        where: { status: { not: 'CANCELLED' }, dueDate: { lte: new Date() } },
+      }),
     ]);
     const totalDue = Number(dueAgg._sum.amount ?? 0);
     const totalPaid = Number(paidAgg._sum.amount ?? 0);
+    const dueToDate = Number(dueToDateAgg._sum.amount ?? 0);
     const finance = {
       totalDue,
       totalPaid,
       totalRemaining: Math.max(0, totalDue - totalPaid),
+      dueToDate,
+      // Encaissé à date = tous les paiements reçus (un paiement est par
+      // définition déjà encaissé).
+      paidToDate: totalPaid,
+      remainingToDate: Math.max(0, dueToDate - totalPaid),
     };
 
     // KPI de pilotage (taux de réussite, absentéisme, charge prof, satisfaction,
@@ -108,7 +122,7 @@ export default async function AdminDashboard({
     return {
       yearLabel: activeYear?.label ?? '—',
       periodLabel: selectedPeriod?.label ?? '—',
-      periods: periods.map((p) => ({ id: p.id, label: p.label })),
+      periods: periods.map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr })),
       selectedPeriodId: periodId,
       headcount,
       academic,
@@ -131,34 +145,58 @@ export default async function AdminDashboard({
   // n'apparaît qu'une fois (carte générale ci-dessous), pas en double.
   // `tone` explicite = carte hors palette tournante. Total dû / Encaissé /
   // Élèves partagent une famille de bleus pour se lire comme un même bloc.
-  const overviewCards: Array<{
+  type OverviewCard = {
     key: string;
     label: string;
     value: string;
     status: KpiStatus;
     thresholds?: { green: string; orange: string; red: string };
     tone?: KpiTone;
-  }> = [
-    {
-      key: 'totalDue',
-      label: t('kpi.totalDue'),
-      value: `${data.finance.totalDue.toLocaleString(locale)} ${data.currency}`,
-      status: 'na',
-      tone: BLUE_TONES.sky,
-    },
-    {
-      key: 'collected',
-      label: t('kpi.collected'),
-      value: `${data.finance.totalPaid.toLocaleString(locale)} ${data.currency}`,
-      status: 'na',
-      tone: BLUE_TONES.blue,
-    },
+  };
+
+  const money = (n: number) => `${n.toLocaleString(locale)} ${data.currency}`;
+  const ratePct = (num: number, den: number) => (den > 0 ? `${((num / den) * 100).toFixed(1)}%` : '—');
+
+  // Ligne 1 — cumul de l'année : ce qui est dû en tout, ce qui est rentré.
+  const financeTotals: OverviewCard[] = [
+    { key: 'totalDue', label: t('kpi.totalDue'), value: money(data.finance.totalDue), status: 'na', tone: BLUE_TONES.sky },
+    { key: 'collected', label: t('kpi.collected'), value: money(data.finance.totalPaid), status: 'na', tone: BLUE_TONES.blue },
     {
       key: 'toCollect',
       label: t('kpi.toCollect'),
-      value: `${data.finance.totalRemaining.toLocaleString(locale)} ${data.currency}`,
+      value: money(data.finance.totalRemaining),
       status: data.finance.totalRemaining > 0 ? 'orange' : 'green',
     },
+    {
+      key: 'collection',
+      label: t('kpi.collectionRate'),
+      value: ratePct(data.finance.totalPaid, data.finance.totalDue),
+      status: colorToStatus(getCollectionColor(data.finance.totalPaid, data.finance.totalDue)),
+      thresholds: THRESHOLDS.collection,
+    },
+  ];
+
+  // Ligne 2 — à date : seules les échéances déjà tombées. C'est cette ligne qui
+  // dit s'il y a du retard ; la première mélange des échéances à venir.
+  const financeToDate: OverviewCard[] = [
+    { key: 'dueToDate', label: t('kpi.dueToDate'), value: money(data.finance.dueToDate), status: 'na', tone: BLUE_TONES.sky },
+    { key: 'paidToDate', label: t('kpi.paidToDate'), value: money(data.finance.paidToDate), status: 'na', tone: BLUE_TONES.blue },
+    {
+      key: 'remainingToDate',
+      label: t('kpi.remainingToDate'),
+      value: money(data.finance.remainingToDate),
+      status: data.finance.remainingToDate > 0 ? 'orange' : 'green',
+    },
+    {
+      key: 'rateToDate',
+      label: t('kpi.rateToDate'),
+      value: ratePct(data.finance.paidToDate, data.finance.dueToDate),
+      status: colorToStatus(getCollectionColor(data.finance.paidToDate, data.finance.dueToDate)),
+      thresholds: THRESHOLDS.collection,
+    },
+  ];
+
+  const overviewCards: OverviewCard[] = [
     {
       key: 'students',
       label: t('kpi.students'),
@@ -177,16 +215,6 @@ export default async function AdminDashboard({
       label: t('kpi.attendanceRate'),
       value: data.attendance.rate !== null ? `${data.attendance.rate.toFixed(1)}%` : '—',
       status: colorToStatus(getAttendanceColor(data.attendance.rate)),
-    },
-    {
-      key: 'collection',
-      label: t('kpi.collectionRate'),
-      value:
-        data.finance.totalDue > 0
-          ? `${((data.finance.totalPaid / data.finance.totalDue) * 100).toFixed(1)}%`
-          : '—',
-      status: colorToStatus(getCollectionColor(data.finance.totalPaid, data.finance.totalDue)),
-      thresholds: THRESHOLDS.collection,
     },
   ];
   if (direction && data.pilotage) {
@@ -222,17 +250,34 @@ export default async function AdminDashboard({
       {/* Vue d'ensemble — cartes générales + pilotage (direction), design pilotage.
           Le Pilotage est fusionné ici ; Recouvrement n'apparaît qu'une fois. */}
       <Category label={t('cat.overview')}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {overviewCards.map((c, i) => (
-            <PilotCard
-              key={c.key}
-              label={c.label}
-              value={c.value}
-              status={c.status}
-              thresholds={c.thresholds}
-              tone={c.tone ?? kpiTone(i)}
-            />
+        <div className="space-y-3">
+          {/* Deux lignes de quatre : le cumul de l'année, puis l'à-date. */}
+          {[financeTotals, financeToDate].map((row, ri) => (
+            <div key={ri} className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {row.map((c) => (
+                <PilotCard
+                  key={c.key}
+                  label={c.label}
+                  value={c.value}
+                  status={c.status}
+                  thresholds={c.thresholds}
+                  tone={c.tone}
+                />
+              ))}
+            </div>
           ))}
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            {overviewCards.map((c, i) => (
+              <PilotCard
+                key={c.key}
+                label={c.label}
+                value={c.value}
+                status={c.status}
+                thresholds={c.thresholds}
+                tone={c.tone ?? kpiTone(i)}
+              />
+            ))}
+          </div>
         </div>
       </Category>
 
@@ -410,7 +455,7 @@ export default async function AdminDashboard({
                       href={`/${locale}/admin/persons/${s.studentId}`}
                       className="font-medium text-slate-900 hover:text-brand-700 hover:underline"
                     >
-                      {s.lastName} {s.firstName}
+                      {personDisplayName(locale, s)}
                     </Link>
                   </td>
                   <td className="px-4 py-3 text-xs">
@@ -503,7 +548,7 @@ export default async function AdminDashboard({
                         href={`/${locale}/admin/persons/${a.personId}`}
                         className="font-medium text-slate-900 hover:text-brand-700 hover:underline"
                       >
-                        {a.lastName} {a.firstName}
+                        {personDisplayName(locale, a)}
                       </Link>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500">
@@ -656,20 +701,22 @@ function PilotCard({
   tone?: KpiTone;
 }) {
   return (
-    <div className={`rounded-2xl border p-5 ${tone ? tone.card : STATUS_CARD[status]}`}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</span>
-        <span className={`h-2 w-2 rounded-full ${STATUS_DOT[status]}`} />
+    <div className={`rounded-xl border p-3 ${tone ? tone.card : STATUS_CARD[status]}`}>
+      <div className="flex items-start justify-between gap-1.5">
+        <span className="text-[10px] font-medium uppercase leading-tight tracking-wide text-slate-500">
+          {label}
+        </span>
+        <span className={`mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full ${STATUS_DOT[status]}`} />
       </div>
       <div
-        className={`mt-2 text-3xl font-semibold tabular-nums ${
+        className={`mt-1 text-lg font-semibold tabular-nums ${
           status === 'na' && tone ? tone.value : STATUS_VALUE[status]
         }`}
       >
         {value}
       </div>
       {thresholds && (
-        <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-slate-500">
+        <div className="mt-1 flex flex-wrap gap-x-2 gap-y-0.5 text-[9px] text-slate-500">
           <span>🟢 {thresholds.green}</span>
           <span>🟠 {thresholds.orange}</span>
           <span>🔴 {thresholds.red}</span>

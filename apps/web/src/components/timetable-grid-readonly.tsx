@@ -42,7 +42,7 @@ export function TimetableGridReadonly({
   }
 
   return (
-    <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+    <div className="overflow-x-auto rounded-2xl border border-brand-200 bg-white">
       <table className="w-full border-collapse text-xs">
         <thead>
           <tr className="bg-slate-50">
@@ -73,7 +73,7 @@ export function TimetableGridReadonly({
                     className="border-b border-e border-slate-100 px-1.5 py-1.5 align-top"
                   >
                     {e ? (
-                      <div className="rounded-lg bg-brand-50 px-2 py-1.5">
+                      <div className="rounded-lg border border-brand-200 bg-brand-50 px-2 py-1.5">
                         <div className="font-medium text-brand-800">{e.subjectLabel ?? '—'}</div>
                         {e.teacherName && (
                           <div className="text-[10px] text-slate-600">{e.teacherName}</div>

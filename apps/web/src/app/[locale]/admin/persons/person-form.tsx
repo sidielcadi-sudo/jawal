@@ -37,11 +37,28 @@ type ParentOption = {
   id: string;
   firstName: string;
   lastName: string;
+  /** État civil arabe du parent : repris tel quel dans l'onglet « Données en arabe ». */
+  firstNameAr?: string | null;
+  lastNameAr?: string | null;
   address?: ParentAddress;
   children?: ParentChild[];
 };
 
 type ParentLink = { parentId: string; type: RelationType };
+
+/**
+ * Champs regroupés dans l'onglet « Données en arabe » (état civil MASAR).
+ * Sert à rouvrir le bon onglet quand la validation serveur pointe l'un d'eux.
+ */
+const AR_FIELDS = new Set([
+  'lastNameAr',
+  'firstNameAr',
+  'birthPlaceAr',
+  'nationalityAr',
+  'addressAr',
+  'cityAr',
+  'originSchoolAr',
+]);
 
 type ContractType = 'CDI' | 'CDD' | 'VACATAIRE' | 'STAGIAIRE' | 'AUTRE';
 type PayrollMethod = 'BANK_TRANSFER' | 'CHECK' | 'CASH' | 'OTHER';
@@ -74,8 +91,6 @@ type PersonInitial = {
   nationalityAr?: string;
   addressAr?: string;
   cityAr?: string;
-  fatherFirstNameAr?: string;
-  motherFirstNameAr?: string;
   regime?: 'EXTERNE' | 'DEMI_PENSIONNAIRE' | 'INTERNE';
   usesTransport?: boolean;
   cne?: string;
@@ -84,6 +99,7 @@ type PersonInitial = {
   exitRights?: number;
   dietInfo?: string;
   originSchool?: string;
+  originSchoolAr?: string;
   repeating?: boolean;
   contacts?: { email?: string; phone?: string; whatsapp?: string };
   address?: { line1?: string; city?: string; postalCode?: string; country?: string };
@@ -96,6 +112,7 @@ type PersonInitial = {
   employmentStatus?: string;
   cinScanFileId?: string | null;
   cnssAttestationFileId?: string | null;
+  cvFileId?: string | null;
   contractualHoursPerWeek?: number;
   homeRoomId?: string | null;
   photoFileId?: string | null;
@@ -143,7 +160,7 @@ export function PersonForm({
   admission?: {
     years: { id: string; label: string }[];
     defaultYearId: string;
-    levels: { id: string; label: string }[];
+    levels: { id: string; label: string; labelAr?: string | null }[];
   };
 }) {
   const t = useTranslations('admin.persons.form');
@@ -164,6 +181,14 @@ export function PersonForm({
   });
   const [stagedPhoto, setStagedPhoto] = useState<File | null>(null);
   const [stagedPhotoUrl, setStagedPhotoUrl] = useState<string | null>(null);
+  // Onglet de langue : la saisie se fait dans la langue de l'interface, et le
+  // second onglet regroupe les données de l'autre langue (état civil MASAR en
+  // arabe côté FR ; état civil français côté AR).
+  const isAr = locale === 'ar';
+  const [tab, setTab] = useState<'fr' | 'ar'>(isAr ? 'ar' : 'fr');
+  // Niveau demandé : suivi en état pour afficher son libellé arabe (MASAR)
+  // dans l'onglet « Données en arabe » sans ressaisie.
+  const [admissionLevelId, setAdmissionLevelId] = useState('');
 
   function onStagePhoto(file: File | null) {
     setStagedPhoto(file);
@@ -178,11 +203,35 @@ export function PersonForm({
     setFieldErrors({});
     // Nouvelle inscription : au moins un tuteur/parent rattaché est obligatoire.
     if (admission && mode === 'create' && !parents.some((p) => p.parentId)) {
+      setTab('fr');
       setError(t('guardianRequired'));
       return;
     }
     const formData = new FormData(e.currentTarget);
-    formData.set('parents', JSON.stringify(parents));
+    // Les lignes « parent » restées vides sont écartées : le schéma serveur
+    // attend des UUID, et une ligne ajoutée puis laissée en blanc ferait
+    // échouer toute la validation sans message exploitable.
+    formData.set('parents', JSON.stringify(parents.filter((p) => p.parentId)));
+
+    // Le formulaire est soumis sans validation native (noValidate) : les deux
+    // onglets restent montés en display:none pour ne pas perdre la saisie, et
+    // un champ obligatoire masqué bloquerait le navigateur sans message. On
+    // reprend donc à la main les seuls contrôles réellement bloquants.
+    const missing: Record<string, string> = {};
+    for (const k of ['lastName', 'firstName'] as const) {
+      const v = formData.get(k);
+      if (typeof v !== 'string' || !v.trim()) missing[k] = t('fieldRequired');
+    }
+    if (admission && !String(formData.get('admissionLevelId') ?? '').trim()) {
+      missing.admissionLevelId = t('fieldRequired');
+    }
+    if (Object.keys(missing).length > 0) {
+      setFieldErrors(missing);
+      setError(t('fixFields'));
+      // Ces champs vivent tous dans l'onglet « données en français ».
+      setTab('fr');
+      return;
+    }
     startTransition(async () => {
       const result =
         mode === 'create'
@@ -191,7 +240,13 @@ export function PersonForm({
 
       if (!result.ok) {
         setError(result.error);
-        if (result.fieldErrors) setFieldErrors(result.fieldErrors);
+        if (result.fieldErrors) {
+          setFieldErrors(result.fieldErrors);
+          // Un champ fautif situé dans l'onglet masqué resterait invisible :
+          // on ouvre l'onglet qui le porte.
+          const keys = Object.keys(result.fieldErrors);
+          if (keys.length > 0) setTab(keys.every((k) => AR_FIELDS.has(k)) ? 'ar' : 'fr');
+        }
         return;
       }
 
@@ -260,8 +315,47 @@ export function PersonForm({
     }
   }
 
+  // Miroir arabe du niveau demandé : c'est le libellé arabe du niveau
+  // (Level.labelAr) qui part vers MASAR, il n'est donc pas ressaisi.
+  const selectedLevel = admission?.levels.find((l) => l.id === admissionLevelId);
+  // Tuteurs rattachés côté français : l'onglet arabe n'a rien à rattacher de
+  // son côté, il reprend la même liste avec l'état civil arabe des parents.
+  const linkedParents = parents
+    .filter((pl) => pl.parentId)
+    .map((pl) => ({ link: pl, option: availableParents.find((ap) => ap.id === pl.parentId) }));
+  const langTabs: { key: 'fr' | 'ar'; label: string }[] = isAr
+    ? [
+        { key: 'ar', label: t('tabs.ar') },
+        { key: 'fr', label: t('tabs.fr') },
+      ]
+    : [
+        { key: 'fr', label: t('tabs.fr') },
+        { key: 'ar', label: t('tabs.ar') },
+      ];
+
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    // noValidate : les deux onglets restent montés (display:none) pour ne pas
+    // perdre la saisie en changeant de langue ; la validation native buterait
+    // sur un champ obligatoire masqué. Les contrôles sont repris dans onSubmit.
+    <form onSubmit={onSubmit} noValidate className="space-y-6">
+      <div className="flex gap-2 border-b border-slate-200">
+        {langTabs.map((lt) => (
+          <button
+            key={lt.key}
+            type="button"
+            onClick={() => setTab(lt.key)}
+            className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium transition-colors ${
+              tab === lt.key
+                ? 'border-brand-600 text-brand-700'
+                : 'border-transparent text-slate-500 hover:text-slate-700'
+            }`}
+          >
+            {lt.label}
+          </button>
+        ))}
+      </div>
+
+      <div className={`space-y-6 ${tab === 'fr' ? '' : 'hidden'}`}>
       {admission && (
         <SectionCard title={t('section.admission')} bodyClass="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label={t('admissionYear')}>
@@ -277,11 +371,14 @@ export function PersonForm({
               ))}
             </select>
           </Field>
-          <Field label={t('admissionLevel')}>
-            <select name="admissionLevelId" required defaultValue="" className={inputCls}>
-              <option value="" disabled>
-                —
-              </option>
+          <Field label={t('admissionLevel')} error={fieldErrors.admissionLevelId}>
+            <select
+              name="admissionLevelId"
+              value={admissionLevelId}
+              onChange={(e) => setAdmissionLevelId(e.target.value)}
+              className={inputCls}
+            >
+              <option value="">—</option>
               {admission.levels.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.label}
@@ -358,8 +455,8 @@ export function PersonForm({
             <p className="text-xs text-slate-500">{t('serviceDerivedHint')}</p>
           )}
 
-          {/* Grille à 2 colonnes : le champ français à gauche, son pendant
-              arabe en face à droite. Sexe et date de naissance ouvrent. */}
+          {/* État civil en français. Son pendant arabe (MASAR) est saisi dans
+              l'onglet « Données en arabe ». */}
           <Field label={t('gender')} error={fieldErrors.gender}>
             <select name="gender" defaultValue={initial?.gender ?? ''} className={inputCls}>
               <option value="">—</option>
@@ -384,9 +481,6 @@ export function PersonForm({
               className={inputCls}
             />
           </Field>
-          <Field label={t('lastNameAr')}>
-            <input type="text" name="lastNameAr" dir="rtl" defaultValue={initial?.lastNameAr ?? ''} className={inputCls} />
-          </Field>
           <Field label={t('firstName')} error={fieldErrors.firstName}>
             <input
               type="text"
@@ -396,14 +490,8 @@ export function PersonForm({
               className={inputCls}
             />
           </Field>
-          <Field label={t('firstNameAr')}>
-            <input type="text" name="firstNameAr" dir="rtl" defaultValue={initial?.firstNameAr ?? ''} className={inputCls} />
-          </Field>
           <Field label={t('birthPlace')}>
             <input type="text" name="birthPlace" defaultValue={initial?.birthPlace ?? ''} className={inputCls} />
-          </Field>
-          <Field label={t('birthPlaceAr')}>
-            <input type="text" name="birthPlaceAr" dir="rtl" defaultValue={initial?.birthPlaceAr ?? ''} className={inputCls} />
           </Field>
           <Field label={t('nationality')}>
             <input
@@ -414,38 +502,6 @@ export function PersonForm({
               className={inputCls}
             />
           </Field>
-          <Field label={t('nationalityAr')}>
-            <input
-              type="text"
-              name="nationalityAr"
-              dir="rtl"
-              defaultValue={initial?.nationalityAr ?? ''}
-              placeholder="مغربية"
-              className={inputCls}
-            />
-          </Field>
-          {type === 'STUDENT' && (
-            <>
-              <Field label={t('fatherFirstNameAr')}>
-                <input
-                  type="text"
-                  name="fatherFirstNameAr"
-                  dir="rtl"
-                  defaultValue={initial?.fatherFirstNameAr ?? ''}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label={t('motherFirstNameAr')}>
-                <input
-                  type="text"
-                  name="motherFirstNameAr"
-                  dir="rtl"
-                  defaultValue={initial?.motherFirstNameAr ?? ''}
-                  className={inputCls}
-                />
-              </Field>
-            </>
-          )}
           <Field label={t('cin')}>
             <input
               type="text"
@@ -459,6 +515,14 @@ export function PersonForm({
             <div className="sm:col-span-2">
               <DocUpload personId={initial.id} kind="cinScan" hasFile={!!initial.cinScanFileId} label={t('cinScan')} />
             </div>
+          )}
+          {showContractField && mode === 'edit' && initial?.id && (
+            <div className="sm:col-span-2">
+              <DocUpload personId={initial.id} kind="cv" hasFile={!!initial.cvFileId} label={t('cv')} />
+            </div>
+          )}
+          {showContractField && mode === 'create' && (
+            <p className="text-xs text-slate-500 sm:col-span-2">{t('cvAfterCreate')}</p>
           )}
           {type === 'STUDENT' && (
             <Field label={t('cne')}>
@@ -737,24 +801,6 @@ export function PersonForm({
               className={inputCls}
             />
           </Field>
-          <Field label={t('addressAr')}>
-            <input
-              type="text"
-              name="addressAr"
-              dir="rtl"
-              defaultValue={initial?.addressAr ?? ''}
-              className={inputCls}
-            />
-          </Field>
-          <Field label={t('cityAr')}>
-            <input
-              type="text"
-              name="cityAr"
-              dir="rtl"
-              defaultValue={initial?.cityAr ?? ''}
-              className={inputCls}
-            />
-          </Field>
           <Field label={t('addressPostalCode')}>
             <input
               type="text"
@@ -1003,6 +1049,140 @@ export function PersonForm({
           <DeductionsField initial={initial?.deductions ?? []} />
         </SectionCard>
       )}
+
+      </div>
+
+      {/* ── Onglet « Données en arabe » (MASAR) ───────────────────────────────
+          Toutes les données que MASAR attend en arabe sont regroupées ici :
+          plus aucune saisie arabe ne traîne dans le formulaire français. */}
+      <div className={`space-y-6 ${tab === 'ar' ? '' : 'hidden'}`} dir="rtl">
+        <SectionCard title={t('section.arabicData')} bodyClass="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <p className="text-xs text-slate-500 sm:col-span-2">{t('arabicDataHint')}</p>
+          {admission && (
+            <Field label={t('admissionLevelAr')}>
+              <input
+                type="text"
+                dir="rtl"
+                readOnly
+                value={selectedLevel?.labelAr?.trim() ?? ''}
+                placeholder={selectedLevel ? t('levelArMissing') : t('levelArPending')}
+                className={`${inputCls} bg-slate-50 text-slate-600`}
+              />
+            </Field>
+          )}
+          {type === 'STUDENT' && (
+            <Field label={t('originSchoolAr')} error={fieldErrors.originSchoolAr}>
+              <input
+                type="text"
+                name="originSchoolAr"
+                dir="rtl"
+                defaultValue={initial?.originSchoolAr ?? ''}
+                className={inputCls}
+              />
+            </Field>
+          )}
+          <Field label={t('lastNameAr')} error={fieldErrors.lastNameAr}>
+            <input
+              type="text"
+              name="lastNameAr"
+              dir="rtl"
+              defaultValue={initial?.lastNameAr ?? ''}
+              className={inputCls}
+            />
+          </Field>
+          <Field label={t('firstNameAr')} error={fieldErrors.firstNameAr}>
+            <input
+              type="text"
+              name="firstNameAr"
+              dir="rtl"
+              defaultValue={initial?.firstNameAr ?? ''}
+              className={inputCls}
+            />
+          </Field>
+          <Field label={t('birthPlaceAr')} error={fieldErrors.birthPlaceAr}>
+            <input
+              type="text"
+              name="birthPlaceAr"
+              dir="rtl"
+              defaultValue={initial?.birthPlaceAr ?? ''}
+              className={inputCls}
+            />
+          </Field>
+          {/* Nationalité : « مغربية » par défaut, cas de très loin le plus fréquent. */}
+          <Field label={t('nationalityAr')} error={fieldErrors.nationalityAr}>
+            <input
+              type="text"
+              name="nationalityAr"
+              dir="rtl"
+              defaultValue={initial?.nationalityAr ?? (mode === 'create' ? 'مغربية' : '')}
+              className={inputCls}
+            />
+          </Field>
+          <Field label={t('addressAr')} error={fieldErrors.addressAr}>
+            <input
+              type="text"
+              name="addressAr"
+              dir="rtl"
+              defaultValue={initial?.addressAr ?? ''}
+              className={inputCls}
+            />
+          </Field>
+          <Field label={t('cityAr')} error={fieldErrors.cityAr}>
+            <input
+              type="text"
+              name="cityAr"
+              dir="rtl"
+              defaultValue={initial?.cityAr ?? ''}
+              className={inputCls}
+            />
+          </Field>
+        </SectionCard>
+
+        {/* Parents / tuteurs : le rattachement est unique, fait dans l'onglet
+            français. Ici on n'en montre que l'état civil arabe — un parent
+            rattaché d'un côté l'est donc automatiquement de l'autre. */}
+        {showParentsField && (
+          <SectionCard title={t('parentsAr')}>
+            <p className="text-xs text-slate-500">{t('parentsArHint')}</p>
+            {linkedParents.length === 0 ? (
+              <p className="mt-2 text-xs text-slate-400">{t('parentsArNone')}</p>
+            ) : (
+              <ul className="mt-3 space-y-1.5">
+                {linkedParents.map(({ link, option }, idx) => {
+                  const lastAr = option?.lastNameAr?.trim();
+                  const firstAr = option?.firstNameAr?.trim();
+                  // On n'affiche l'arabe que s'il est complet : « النسب Prénom »
+                  // se lit mal et masquerait une fiche parent à moitié saisie.
+                  const nameAr = lastAr && firstAr ? `${lastAr} ${firstAr}` : null;
+                  return (
+                    <li
+                      key={idx}
+                      className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2"
+                    >
+                      <span
+                        className={
+                          nameAr ? 'text-sm font-medium text-slate-800' : 'text-sm text-slate-500'
+                        }
+                        dir={nameAr ? 'rtl' : 'ltr'}
+                      >
+                        {nameAr ?? `${option?.lastName ?? ''} ${option?.firstName ?? ''}`.trim()}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        {!nameAr && (
+                          <span className="text-[11px] text-amber-700">{t('parentArMissing')}</span>
+                        )}
+                        <span className="rounded border border-slate-200 bg-white px-2 py-0.5 text-xs text-slate-600">
+                          {tRel(link.type)}
+                        </span>
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </SectionCard>
+        )}
+      </div>
 
       {error && (
         <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">

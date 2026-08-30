@@ -6,6 +6,7 @@ import { withTenant } from '@/lib/db';
 import { loadParentChildContext } from '@/lib/parent';
 import { loadClassBulletin } from '@/lib/parent-bulletin';
 import { ChildTabs } from '../tabs';
+import { localizedLabel } from '@/lib/localized-name';
 
 export default async function ParentChildNotesPage({
   params,
@@ -41,7 +42,7 @@ export default async function ParentChildNotesPage({
               where: { classId: ctx.classId, periodId: selectedPeriod.id },
               orderBy: { date: 'desc' },
               include: {
-                subject: { select: { label: true } },
+                subject: { select: { label: true, labelAr: true } },
                 grades: { select: { studentId: true, value: true } },
               },
             })
@@ -51,7 +52,7 @@ export default async function ParentChildNotesPage({
             const classAvg = vals.length ? vals.reduce((s, x) => s + x, 0) / vals.length : null;
             return {
               id: e.id,
-              subject: e.subject.label,
+              subject: localizedLabel(locale, e.subject.label, e.subject.labelAr),
               label: e.label,
               date: e.date,
               max: e.maxValue,

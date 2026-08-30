@@ -50,8 +50,8 @@ export async function runAppelRemindersForTenant(
         id: true,
         classId: true,
         slot: { select: { startTime: true, endTime: true } },
-        subject: { select: { label: true } },
-        class: { select: { name: true } },
+        subject: { select: { label: true, labelAr: true } },
+        class: { select: { name: true, nameAr: true } },
         teacher: {
           select: {
             userPersons: { select: { userId: true, user: { select: { disabledAt: true } } } },

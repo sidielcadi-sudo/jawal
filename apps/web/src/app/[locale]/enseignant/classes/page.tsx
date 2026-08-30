@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { getTeacherPersonId } from '@/lib/teacher';
+import { localizedLabel } from '@/lib/localized-name';
 
 export default async function TeacherClassesPage({
   params,
@@ -25,8 +26,10 @@ export default async function TeacherClassesPage({
     const select = {
       classId: true,
       subjectId: true,
-      subject: { select: { label: true } },
-      class: { select: { name: true, level: { select: { label: true } } } },
+      subject: { select: { label: true, labelAr: true } },
+      class: {
+        select: { name: true, nameAr: true, level: { select: { label: true, labelAr: true } } },
+      },
     } as const;
     const [assignments, entries] = await Promise.all([
       tx.teacherAssignment.findMany({ where: { teacherId, academicYearId: year.id }, select }),
@@ -50,8 +53,8 @@ export default async function TeacherClassesPage({
         map.set(key, {
           classId: a.classId,
           subjectId: a.subjectId ?? null,
-          className: a.class.name,
-          levelLabel: a.class.level.label,
+          className: localizedLabel(locale, a.class.name, a.class.nameAr),
+          levelLabel: localizedLabel(locale, a.class.level.label, a.class.level.labelAr),
           subject: a.subject?.label ?? '—',
         });
       }

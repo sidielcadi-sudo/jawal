@@ -16,9 +16,9 @@ export default async function BoursePage({ params }: { params: Promise<{ locale:
     const [config, campaigns, books, subjects, levels, tenant] = await Promise.all([
       tx.bookExchangeConfig.findFirst(),
       tx.bookExchangeCampaign.findMany({ orderBy: [{ year: 'desc' }, { createdAt: 'desc' }], include: { _count: { select: { copies: true } } } }),
-      tx.book.findMany({ orderBy: { title: 'asc' }, include: { subject: { select: { label: true } }, level: { select: { code: true } }, _count: { select: { copies: true } } }, take: 300 }),
+      tx.book.findMany({ orderBy: { title: 'asc' }, include: { subject: { select: { label: true, labelAr: true } }, level: { select: { code: true } }, _count: { select: { copies: true } } }, take: 300 }),
       tx.subject.findMany({ orderBy: { label: 'asc' }, select: { id: true, label: true } }),
-      tx.level.findMany({ orderBy: { order: 'asc' }, select: { id: true, code: true, label: true } }),
+      tx.level.findMany({ orderBy: { order: 'asc' }, select: { id: true, code: true, label: true, labelAr: true } }),
       tx.tenant.findFirst({ select: { currency: true } }),
     ]);
     return { config, campaigns, books, subjects, levels, currency: tenant?.currency ?? 'MAD' };

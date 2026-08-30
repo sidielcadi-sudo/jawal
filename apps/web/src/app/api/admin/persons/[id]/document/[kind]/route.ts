@@ -7,7 +7,7 @@ import { putObject, deleteObject } from '@/lib/storage';
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10 Mo
 const ALLOWED_MIMES = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp']);
-const KINDS = new Set(['cinScan', 'cnssAttestation']);
+const KINDS = new Set(['cinScan', 'cnssAttestation', 'cv']);
 
 function metaKey(kind: string) {
   return `${kind}FileId`;

@@ -15,6 +15,7 @@ import {
 } from '@/lib/timetable-validation';
 import { TimetableGrid, type GridEntry, type GridSlot, type SubjectOpt, type TeacherOpt, type RoomOpt } from './grid';
 import { OverridesPanel } from './overrides';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 const DAYS: DayKey[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -43,11 +44,11 @@ export default async function ClassTimetablePage({
     const entries = await tx.timetableEntry.findMany({
       where: { classId: id, academicYearId: cls.academicYearId },
       include: {
-        subject: { select: { id: true, label: true } },
+        subject: { select: { id: true, label: true, labelAr: true } },
         teacher: {
-          select: { id: true, firstName: true, lastName: true, availability: true },
+          select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, availability: true },
         },
-        room: { select: { id: true, code: true, label: true } },
+        room: { select: { id: true, code: true, label: true, labelAr: true } },
       },
     });
 
@@ -62,12 +63,12 @@ export default async function ClassTimetablePage({
       include: {
         entry: {
           include: {
-            subject: { select: { label: true } },
-            teacher: { select: { firstName: true, lastName: true } },
+            subject: { select: { label: true, labelAr: true } },
+            teacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
             slot: { select: { startTime: true, endTime: true } },
           },
         },
-        substituteTeacher: { select: { firstName: true, lastName: true } },
+        substituteTeacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
         substituteRoom: { select: { label: true } },
         substituteSubject: { select: { label: true } },
       },
@@ -78,7 +79,7 @@ export default async function ClassTimetablePage({
     // les mêmes slots/days afin de détecter prof/salle déjà occupés ailleurs.
     const allEntriesYear = await tx.timetableEntry.findMany({
       where: { academicYearId: cls.academicYearId },
-      include: { class: { select: { name: true } } },
+      include: { class: { select: { name: true, nameAr: true } } },
     });
 
     const subjects = await tx.subject.findMany({ orderBy: { label: 'asc' } });
@@ -100,7 +101,7 @@ export default async function ClassTimetablePage({
   const lite: EntryLite[] = allEntriesYear.map((e) => ({
     id: e.id,
     classId: e.classId,
-    className: e.class.name,
+    className: localizedLabel(locale, e.class.name, e.class.nameAr),
     dayOfWeek: e.dayOfWeek as DayKey,
     slotId: e.slotId,
     teacherId: e.teacherId,
@@ -131,7 +132,7 @@ export default async function ClassTimetablePage({
     if (!isInAvailability(dk, slot.startTime, slot.endTime, av)) {
       availabilityWarnings.push({
         entryId: e.id,
-        teacherName: `${e.teacher.lastName} ${e.teacher.firstName}`,
+        teacherName: personDisplayName(locale, e.teacher),
         dayOfWeek: dk,
         slotLabel: `${slot.startTime}-${slot.endTime}`,
       });
@@ -152,7 +153,7 @@ export default async function ClassTimetablePage({
     subjectId: e.subjectId,
     subjectLabel: e.subject?.label ?? null,
     teacherId: e.teacherId,
-    teacherName: e.teacher ? `${e.teacher.lastName} ${e.teacher.firstName}` : null,
+    teacherName: e.teacher ? personDisplayName(locale, e.teacher) : null,
     roomId: e.roomId,
     roomLabel: e.room ? e.room.label : null,
     note: e.note,
@@ -161,7 +162,7 @@ export default async function ClassTimetablePage({
   const subjectOpts: SubjectOpt[] = subjects.map((s) => ({ id: s.id, label: s.label }));
   const teacherOpts: TeacherOpt[] = teachers.map((p) => ({
     id: p.id,
-    label: `${p.lastName} ${p.firstName}`,
+    label: personDisplayName(locale, p),
   }));
   const roomOpts: RoomOpt[] = rooms.map((r) => ({
     id: r.id,
@@ -194,7 +195,7 @@ export default async function ClassTimetablePage({
         ? { kind: 'CANCELLED', label: `${t('overrideCancelledTag')} · ${dateLabel}` }
         : {
             kind: 'SUBSTITUTION',
-            label: `${t('overrideSubTag')}${o.substituteTeacher ? ` · ${o.substituteTeacher.lastName} ${o.substituteTeacher.firstName}` : ''} · ${dateLabel}`,
+            label: `${t('overrideSubTag')}${o.substituteTeacher ? ` · ${personDisplayName(locale, o.substituteTeacher)}` : ''} · ${dateLabel}`,
           };
   }
 
@@ -207,7 +208,7 @@ export default async function ClassTimetablePage({
       reason: o.reason,
       entryLabel: `${t(`days.${o.entry.dayOfWeek as DayKey}`)} ${slot?.startTime ?? ''} — ${o.entry.subject?.label ?? '—'}`,
       substituteTeacher: o.substituteTeacher
-        ? `${o.substituteTeacher.lastName} ${o.substituteTeacher.firstName}`
+        ? personDisplayName(locale, o.substituteTeacher)
         : null,
       substituteRoom: o.substituteRoom?.label ?? null,
       substituteSubject: o.substituteSubject?.label ?? null,
@@ -222,7 +223,7 @@ export default async function ClassTimetablePage({
         </Link>
         <span className="mx-1.5">›</span>
         <Link href={`/${locale}/admin/classes/${cls.id}`} className="hover:text-brand-700">
-          {cls.name}
+          {localizedLabel(locale, cls.name, cls.nameAr)}
         </Link>
         <span className="mx-1.5">›</span>
         <span>{t('title')}</span>
@@ -231,10 +232,10 @@ export default async function ClassTimetablePage({
       <header className="-mx-4 sm:-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
-            {t('title')} — {cls.name}
+            {t('title')} — {localizedLabel(locale, cls.name, cls.nameAr)}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            {cls.level.cycle.label} · {cls.level.label} · {cls.academicYear.label}
+            {localizedLabel(locale, cls.level.cycle.label, cls.level.cycle.labelAr)} · {localizedLabel(locale, cls.level.label, cls.level.labelAr)} · {cls.academicYear.label}
           </p>
         </div>
         <div className="flex items-center gap-3">

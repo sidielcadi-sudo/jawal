@@ -7,6 +7,7 @@ import { loadUnpaidByFamily } from '@/lib/unpaid';
 import { kpiTone } from '@/lib/kpi-tones';
 import { DistributionTabs } from './distribution';
 import { YearSelect } from './year-select';
+import { personDisplayName } from '@/lib/localized-name';
 
 export default async function FinanceDashboardPage({
   params,
@@ -103,7 +104,7 @@ export default async function FinanceDashboardPage({
     const topUnpaid = topUnpaidIds.length
       ? await tx.person.findMany({
           where: { id: { in: topUnpaidIds } },
-          select: { id: true, firstName: true, lastName: true },
+          select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
         })
       : [];
 
@@ -133,7 +134,7 @@ export default async function FinanceDashboardPage({
                 }
               : {}),
           },
-          select: { id: true, firstName: true, lastName: true },
+          select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
         })
       : [];
     const statusRank = { LATE: 0, UPTODATE: 1, PAID: 2 } as const;
@@ -144,7 +145,7 @@ export default async function FinanceDashboardPage({
           remaining <= 0 ? 'PAID' : overdueByStudent.has(p.id) ? 'LATE' : 'UPTODATE';
         return {
           id: p.id,
-          name: `${p.lastName} ${p.firstName}`,
+          name: personDisplayName(locale, p),
           due: dueByStudent.get(p.id) ?? 0,
           remaining,
           status,

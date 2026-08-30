@@ -6,6 +6,8 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { computeClassBook } from '@/lib/grades';
 import { pickPeriodId } from '@/lib/periods';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
+import { PeriodButtons } from '@/components/period-buttons';
 
 export default async function GradeBookPage({
   params,
@@ -30,7 +32,7 @@ export default async function GradeBookPage({
         level: { include: { cycle: true } },
         students: {
           where: { unenrolledAt: null },
-          include: { student: { select: { id: true, firstName: true, lastName: true } } },
+          include: { student: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
           orderBy: { student: { lastName: 'asc' } },
         },
       },
@@ -54,6 +56,8 @@ export default async function GradeBookPage({
         id: sc.student.id,
         firstName: sc.student.firstName,
         lastName: sc.student.lastName,
+        firstNameAr: sc.student.firstNameAr,
+        lastNameAr: sc.student.lastNameAr,
       })),
       allSubjects: subjects.map((s) => ({
         id: s.id,
@@ -79,7 +83,7 @@ export default async function GradeBookPage({
         </Link>
         <span className="mx-1.5">›</span>
         <Link href={baseHref} className="hover:text-brand-700">
-          {cls.name}
+          {localizedLabel(locale, cls.name, cls.nameAr)}
         </Link>
         <span className="mx-1.5">›</span>
         <span>{t('title')}</span>
@@ -88,37 +92,18 @@ export default async function GradeBookPage({
       <header className="-mx-4 sm:-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
-            {t('title')} — {cls.name}
+            {t('title')} — {localizedLabel(locale, cls.name, cls.nameAr)}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            {cls.level.cycle.label} · {cls.level.label} · {cls.academicYear.label}
+            {localizedLabel(locale, cls.level.cycle.label, cls.level.cycle.labelAr)} · {localizedLabel(locale, cls.level.label, cls.level.labelAr)} · {cls.academicYear.label}
           </p>
         </div>
         <ClassNav classId={id} locale={locale} />
       </header>
 
-      <form method="get" className="mb-4 flex flex-wrap items-end gap-3">
-        <div>
-          <label className="block text-xs text-slate-600">{t('filter.period')}</label>
-          <select
-            name="period"
-            defaultValue={selectedPeriodId ?? ''}
-            className="mt-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm shadow-sm"
-          >
-            {periods.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.label}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button
-          type="submit"
-          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-        >
-          {t('filter.apply')}
-        </button>
-      </form>
+      <div className="mb-4">
+        <PeriodButtons periods={periods} selectedId={selectedPeriodId} locale={locale} />
+      </div>
 
       {!book || subjects.length === 0 ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
@@ -150,7 +135,7 @@ export default async function GradeBookPage({
               {book.rows.map((row) => (
                 <tr key={row.studentId} className="hover:bg-slate-50">
                   <td className="sticky left-0 z-10 bg-white px-4 py-2 font-medium text-slate-900 group-hover:bg-slate-50">
-                    {row.lastName} {row.firstName}
+                    {personDisplayName(locale, row)}
                   </td>
                   {row.subjects.map((s) => (
                     <td key={s.subjectId} className="px-3 py-2 text-end tabular-nums">

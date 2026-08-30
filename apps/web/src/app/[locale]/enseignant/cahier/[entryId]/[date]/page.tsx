@@ -13,6 +13,7 @@ import {
 import { CahierFrame } from '../../cahier-frame';
 import { LessonForm } from './lesson-form';
 import { ResourcesPanel } from './resources-panel';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -61,13 +62,13 @@ export default async function FillLessonPage({
       <header className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
         <h1 className="text-xl font-semibold text-slate-900">{entry.subject?.label ?? '—'}</h1>
         <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1.5 text-sm">
-          <Info label={t('info.class')} value={entry.class.name} />
+          <Info label={t('info.class')} value={localizedLabel(locale, entry.class.name, entry.class.nameAr)} />
           <Info label={t('info.date')} value={fmtDate} cap />
           <Info label={t('info.time')} value={`${entry.slot.startTime}–${entry.slot.endTime}`} />
           <Info label={t('info.room')} value={entry.room?.code ?? '—'} />
           <Info
             label={t('info.teacher')}
-            value={entry.teacher ? `${entry.teacher.firstName} ${entry.teacher.lastName}` : '—'}
+            value={entry.teacher ? personDisplayName(locale, entry.teacher, 'first-last') : '—'}
           />
         </dl>
       </header>

@@ -86,7 +86,7 @@ export async function confirmEventAction(id: string): Promise<Result> {
     const carnetId = await withTenant(tenantId, async (tx) => {
       const ev = await tx.attendanceEvent.findUnique({ where: { id } });
       if (!ev) throw new Error('Événement introuvable.');
-      const cls = await tx.class.findUnique({ where: { id: ev.classId }, select: { name: true } });
+      const cls = await tx.class.findUnique({ where: { id: ev.classId }, select: { name: true, nameAr: true } });
       const rec = await tx.attendanceRecord.findUnique({
         where: { id: ev.attendanceRecordId },
         select: { note: true },

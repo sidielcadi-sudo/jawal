@@ -328,7 +328,7 @@ export async function approveRadiationAction(id: string, comment?: string): Prom
 
       const enr = await tx.enrollment.findUnique({
         where: { id: req.enrollmentId },
-        select: { level: { select: { label: true } }, academicYear: { select: { label: true } } },
+        select: { level: { select: { label: true, labelAr: true } }, academicYear: { select: { label: true } } },
       });
       await tx.enrollment.update({
         where: { id: req.enrollmentId },

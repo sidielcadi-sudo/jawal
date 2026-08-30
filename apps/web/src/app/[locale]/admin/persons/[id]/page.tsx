@@ -7,14 +7,14 @@ import {
   ENROLLMENT_BADGE,
   type EnrollmentStatusValue,
 } from '@/lib/enrollment-status';
-import { PersonActions } from './person-actions';
+import { PersonHeader } from './person-header';
 import { ParentAccess } from './parent-access';
 import { TeacherAccess } from './teacher-access';
 import { StudentAccess } from './student-access';
 import { HealthSection, type Health } from './health-section';
 import { DocumentsPanel } from '@/components/documents-panel';
 import { pickPeriodId } from '@/lib/periods';
-import { computeContractStatus, contractStatusBadgeClass } from '@/lib/contract-status';
+import { personDisplayName, type BilingualNameFields, localizedLabel } from '@/lib/localized-name';
 import {
   categoryOf,
   tallyAttendance,
@@ -139,15 +139,15 @@ export default async function PersonDetailPage({
         where: { studentId: id },
         include: {
           academicYear: { select: { label: true } },
-          level: { select: { label: true } },
-          class: { select: { id: true, name: true } },
+          level: { select: { label: true, labelAr: true } },
+          class: { select: { id: true, name: true, nameAr: true } },
         },
         orderBy: { academicYear: { startDate: 'desc' } },
       });
       // Classe réelle courante = StudentClass active (unenrolledAt null) de l'année.
       const activeClasses = await tx.studentClass.findMany({
         where: { studentId: id, unenrolledAt: null },
-        select: { class: { select: { id: true, name: true, academicYearId: true } } },
+        select: { class: { select: { id: true, name: true, nameAr: true, academicYearId: true } } },
       });
       const classByYear = new Map(
         activeClasses.map((sc) => [sc.class.academicYearId, sc.class]),
@@ -159,7 +159,7 @@ export default async function PersonDetailPage({
         return {
           id: r.id,
           yearLabel: r.academicYear.label,
-          levelLabel: r.level.label,
+          levelLabel: localizedLabel(locale, r.level.label, r.level.labelAr),
           className: liveClass?.name ?? null,
           classId: liveClass?.id ?? null,
           status: r.status,
@@ -201,7 +201,7 @@ export default async function PersonDetailPage({
           },
         },
         include: {
-          session: { include: { class: { select: { name: true } } } },
+          session: { include: { class: { select: { name: true, nameAr: true } } } },
           justification: { select: { status: true } },
         },
         orderBy: { session: { date: 'desc' } },
@@ -218,7 +218,7 @@ export default async function PersonDetailPage({
           id: r.id,
           date: r.session.date,
           cat,
-          className: r.session.class.name,
+          className: localizedLabel(locale, r.session.class.name, r.session.class.nameAr),
           justificationStatus:
             (r.justification?.status as 'PENDING' | 'APPROVED' | 'REJECTED' | undefined) ?? null,
         }));
@@ -229,10 +229,8 @@ export default async function PersonDetailPage({
 
   // Vue famille — pour les parents : pour chaque enfant rattaché, agréger
   // classe actuelle, taux de présence et reste dû sur les échéances de l'année.
-  type FamilyChild = {
+  type FamilyChild = BilingualNameFields & {
     id: string;
-    firstName: string;
-    lastName: string;
     relation: string;
     className: string | null;
     classId: string | null;
@@ -255,7 +253,7 @@ export default async function PersonDetailPage({
             unenrolledAt: null,
             ...(activeYear ? { class: { academicYearId: activeYear.id } } : {}),
           },
-          include: { class: { select: { id: true, name: true } } },
+          include: { class: { select: { id: true, name: true, nameAr: true } } },
         });
 
         let attendanceRate: number | null = null;
@@ -292,8 +290,10 @@ export default async function PersonDetailPage({
           id: child.id,
           firstName: child.firstName,
           lastName: child.lastName,
+          firstNameAr: child.firstNameAr,
+          lastNameAr: child.lastNameAr,
           relation: r.type,
-          className: sc?.class.name ?? null,
+          className: localizedLabel(locale, sc?.class.name, sc?.class.nameAr) ?? null,
           classId: sc?.class.id ?? null,
           attendanceRate,
           absences,
@@ -343,7 +343,7 @@ export default async function PersonDetailPage({
   }
 
   // Fratrie déduite : autres élèves ayant au moins un parent en commun.
-  let siblings: { id: string; firstName: string; lastName: string }[] = [];
+  let siblings: (BilingualNameFields & { id: string })[] = [];
   if (person.type === 'STUDENT' && person.relationsAsChild.length > 0) {
     const parentIds = person.relationsAsChild.map((r) => r.parentId);
     siblings = await withTenant(tenantId, async (tx) => {
@@ -359,6 +359,8 @@ export default async function PersonDetailPage({
         id: r.child.id,
         firstName: r.child.firstName,
         lastName: r.child.lastName,
+        firstNameAr: r.child.firstNameAr,
+        lastNameAr: r.child.lastNameAr,
       }));
     });
   }
@@ -383,7 +385,7 @@ export default async function PersonDetailPage({
         : [];
       return {
         years: years.map((y) => ({ id: y.id, label: y.label })),
-        periods: periods.map((p) => ({ id: p.id, label: p.label })),
+        periods: periods.map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr })),
         // Trimestre en cours (défaut du panneau Documents).
         currentPeriodId: pickPeriodId(periods),
       };
@@ -417,16 +419,6 @@ export default async function PersonDetailPage({
   };
   const health: Health = meta.health ?? {};
 
-  // Breadcrumb dynamique : renvoie vers la liste filtrée selon le type.
-  const backHref = `/${locale}/admin/persons?type=${person.type}`;
-  const backLabel = t(`title.${person.type}` as never);
-
-  const roleLabel = person.role
-    ? locale === 'ar'
-      ? person.role.labelAr
-      : person.role.labelFr
-    : null;
-
   // Service : on privilégie le lien serviceRef (déduit du rôle) ; repli sur le
   // champ texte historique `service` si présent.
   const serviceLabel = person.serviceRef
@@ -438,105 +430,10 @@ export default async function PersonDetailPage({
       : null;
 
   const isEmployee = person.type === 'TEACHER' || person.type === 'STAFF';
-  const contract = isEmployee
-    ? computeContractStatus({
-        hireDate: person.hireDate,
-        contractEndDate: person.contractEndDate,
-      })
-    : null;
 
   return (
     <div className="px-3 py-3">
-      <div className="mb-6 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3">
-      <nav className="mb-2 text-xs text-slate-500">
-        <Link href={backHref} className="hover:text-brand-700">
-          {backLabel}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <span>
-          {person.lastName} {person.firstName}
-        </span>
-      </nav>
-
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="flex items-start gap-4">
-          {person.photoFileId ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={`/api/admin/persons/${person.id}/photo`}
-              alt=""
-              className="h-16 w-16 rounded-xl object-cover"
-            />
-          ) : (
-            <div className="grid h-16 w-16 place-items-center rounded-xl bg-slate-200 text-2xl font-semibold text-slate-600">
-              {(person.firstName[0] ?? '') + (person.lastName[0] ?? '')}
-            </div>
-          )}
-          <div>
-            <h1 className="text-2xl font-semibold text-slate-900">
-              {person.lastName} {person.firstName}
-              {person.deletedAt && (
-                <span className="ms-3 rounded bg-slate-200 px-2 py-0.5 align-middle text-xs text-slate-600">
-                  {t('archived')}
-                </span>
-              )}
-            </h1>
-            <p className="mt-1 text-sm text-slate-500">
-              {tForm(`types.${person.type}` as never)}
-              {roleLabel && ` · ${roleLabel}`}
-              {serviceLabel && ` · ${serviceLabel}`}
-              {person.birthDate &&
-                ` · ${tDetail('bornOn', { date: new Date(person.birthDate).toLocaleDateString(locale) })}`}
-            </p>
-            {contract && contract.status !== 'NO_CONTRACT' && (
-              <p className="mt-2">
-                <span
-                  className={`inline-block rounded px-2 py-0.5 text-xs font-medium ${contractStatusBadgeClass(contract.status)}`}
-                >
-                  {tDetail(`contractStatus.${contract.status}` as never)}
-                  {contract.daysToEnd !== null &&
-                  contract.status !== 'EXPIRED' &&
-                  contract.status !== 'ACTIVE'
-                    ? ` (${tDetail('inDays', { days: contract.daysToEnd })})`
-                    : ''}
-                  {contract.status === 'EXPIRED' && contract.daysToEnd !== null
-                    ? ` (${tDetail('daysAgo', { days: -contract.daysToEnd })})`
-                    : ''}
-                </span>
-              </p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          {person.type === 'STUDENT' && (
-            <Link
-              href={`/${locale}/admin/persons/${person.id}/finance`}
-              className="border-brand-300 text-brand-700 hover:bg-brand-50 rounded-lg border bg-white px-3 py-1.5 text-sm font-medium"
-            >
-              {tDetail('finance')}
-            </Link>
-          )}
-          {person.type === 'TEACHER' && (
-            <>
-              <Link
-                href={`/${locale}/admin/persons/${person.id}/dashboard`}
-                className="border-brand-300 bg-brand-50 text-brand-700 hover:bg-brand-100 rounded-lg border px-3 py-1.5 text-sm font-medium"
-              >
-                📊 {tDetail('dashboard')}
-              </Link>
-              <Link
-                href={`/${locale}/admin/persons/${person.id}/timetable`}
-                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-              >
-                {tDetail('timetable')}
-              </Link>
-            </>
-          )}
-          <PersonActions personId={person.id} isArchived={!!person.deletedAt} locale={locale} />
-        </div>
-      </header>
-      </div>
+      <PersonHeader personId={id} locale={locale} active="fiche" />
 
       <div className="grid grid-cols-1 items-start gap-6 md:grid-cols-3">
         {/* Colonne gauche (large) : un seul conteneur pour que l'aside se cale en haut */}
@@ -561,7 +458,17 @@ export default async function PersonDetailPage({
             />
             <Row label={tDetail('cin')} value={person.cin ?? undefined} />
             <Row label={tDetail('nationality')} value={person.nationality ?? undefined} />
-            {/* État civil arabe — n'apparaît que si renseigné. */}
+          </dl>
+        </section>
+
+        {/* État civil arabe — bloc à part, sur le modèle de « Coordonnées ».
+            Les prénoms des parents ne concernent que l'élève : sur une fiche
+            enseignant ou personnel ils n'ont pas d'objet. */}
+        <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white p-5">
+          <h2 className="-mx-5 -mt-5 mb-4 border-b border-slate-200 table-head px-5 py-3 text-sm font-semibold text-slate-700">
+            {tDetail('arabicData')}
+          </h2>
+          <dl className="mt-3 space-y-2 text-sm">
             <Row label={tForm('lastNameAr')} value={person.lastNameAr ?? undefined} />
             <Row label={tForm('firstNameAr')} value={person.firstNameAr ?? undefined} />
             <Row label={tForm('birthPlace')} value={person.birthPlace ?? undefined} />
@@ -569,28 +476,30 @@ export default async function PersonDetailPage({
             <Row label={tForm('nationalityAr')} value={person.nationalityAr ?? undefined} />
             <Row
               label={tForm('addressAr')}
-              value={
-                [person.addressAr, person.cityAr].filter(Boolean).join('، ') || undefined
-              }
+              value={[person.addressAr, person.cityAr].filter(Boolean).join('، ') || undefined}
             />
-            {/* Prénoms des parents : issus des fiches Parent rattachées ; le
-                champ libre de l'élève ne sert que de repli. */}
-            <Row
-              label={tForm('fatherFirstNameAr')}
-              value={
-                person.relationsAsChild.find((r) => r.type === 'FATHER')?.parent.firstNameAr ??
-                person.fatherFirstNameAr ??
-                undefined
-              }
-            />
-            <Row
-              label={tForm('motherFirstNameAr')}
-              value={
-                person.relationsAsChild.find((r) => r.type === 'MOTHER')?.parent.firstNameAr ??
-                person.motherFirstNameAr ??
-                undefined
-              }
-            />
+            {person.type === 'STUDENT' && (
+              <>
+                {/* Prénoms des parents : issus des fiches Parent rattachées ; le
+                    champ libre de l'élève ne sert que de repli (import MASSAR). */}
+                <Row
+                  label={tForm('fatherFirstNameAr')}
+                  value={
+                    person.relationsAsChild.find((r) => r.type === 'FATHER')?.parent.firstNameAr ??
+                    person.fatherFirstNameAr ??
+                    undefined
+                  }
+                />
+                <Row
+                  label={tForm('motherFirstNameAr')}
+                  value={
+                    person.relationsAsChild.find((r) => r.type === 'MOTHER')?.parent.firstNameAr ??
+                    person.motherFirstNameAr ??
+                    undefined
+                  }
+                />
+              </>
+            )}
           </dl>
         </section>
 
@@ -674,7 +583,7 @@ export default async function PersonDetailPage({
                         href={`/${locale}/admin/persons/${r.parent.id}`}
                         className="hover:text-brand-700 font-medium text-slate-900"
                       >
-                        {r.parent.lastName} {r.parent.firstName}
+                        {personDisplayName(locale, r.parent)}
                       </Link>
                       <span className="ms-1.5 text-xs text-slate-500">
                         ({tDetail(`relations.${r.type}` as never)})
@@ -695,7 +604,7 @@ export default async function PersonDetailPage({
                         href={`/${locale}/admin/persons/${s.id}`}
                         className="hover:text-brand-700 font-medium text-slate-900"
                       >
-                        {s.lastName} {s.firstName}
+                        {personDisplayName(locale, s)}
                       </Link>
                     </li>
                   ))}
@@ -797,9 +706,9 @@ export default async function PersonDetailPage({
                 <ul className="mt-2 space-y-1.5 text-sm">
                   {person.teacherAssignments.map((a) => (
                     <li key={a.id} className="rounded-lg border border-slate-100 px-3 py-1.5">
-                      <span className="font-medium text-slate-900">{a.subject.label}</span>
+                      <span className="font-medium text-slate-900">{localizedLabel(locale, a.subject.label, a.subject.labelAr)}</span>
                       <span className="ms-1.5 text-xs text-slate-500">
-                        · {a.class.name} · {a.academicYear.label}
+                        · {localizedLabel(locale, a.class.name, a.class.nameAr)} · {a.academicYear.label}
                         {a.hoursPerWeek ? ` · ${a.hoursPerWeek}h/sem` : ''}
                       </span>
                     </li>
@@ -824,7 +733,7 @@ export default async function PersonDetailPage({
                     key={s.id}
                     className="rounded bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-700"
                   >
-                    {s.subject.label}
+                    {localizedLabel(locale, s.subject.label, s.subject.labelAr)}
                   </span>
                 ))}
               </div>
@@ -840,7 +749,7 @@ export default async function PersonDetailPage({
                     key={c.id}
                     className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700"
                   >
-                    {c.cycle.label}
+                    {localizedLabel(locale, c.cycle.label, c.cycle.labelAr)}
                   </span>
                 ))}
               </div>
@@ -856,7 +765,7 @@ export default async function PersonDetailPage({
                     key={p.id}
                     className="bg-brand-100 text-brand-700 rounded px-2 py-0.5 text-xs font-medium"
                   >
-                    {p.class.name}
+                    {localizedLabel(locale, p.class.name, p.class.nameAr)}
                   </span>
                 ))}
               </div>
@@ -1086,7 +995,7 @@ export default async function PersonDetailPage({
                 <ul className="mt-2 space-y-1.5 text-sm">
                   {person.studentClasses.map((sc) => (
                     <li key={sc.id} className="rounded-lg border border-slate-100 px-3 py-1.5">
-                      <span className="font-medium text-slate-900">{sc.class.name}</span>
+                      <span className="font-medium text-slate-900">{localizedLabel(locale, sc.class.name, sc.class.nameAr)}</span>
                       <span className="ms-1.5 text-xs text-slate-500">
                         ({sc.class.academicYear.label})
                       </span>
@@ -1212,7 +1121,7 @@ export default async function PersonDetailPage({
                             href={`/${locale}/admin/persons/${child.id}`}
                             className="hover:text-brand-700 font-medium text-slate-900 hover:underline"
                           >
-                            {child.lastName} {child.firstName}
+                            {personDisplayName(locale, child)}
                           </Link>
                           <span className="ms-1.5 text-[10px] uppercase text-slate-400">
                             {tDetail(`relations.${child.relation}` as never)}

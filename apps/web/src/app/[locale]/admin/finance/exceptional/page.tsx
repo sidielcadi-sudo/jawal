@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { CreateFeeForm, FeeRowActions, FeeTypesManager } from './client';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 const STATUS_TONE: Record<string, string> = {
   DRAFT: 'bg-slate-100 text-slate-600',
@@ -41,9 +42,10 @@ export default async function ExceptionalFeesPage({
         select: {
           id: true,
           name: true,
+          nameAr: true,
           students: {
             where: { unenrolledAt: null },
-            select: { student: { select: { id: true, firstName: true, lastName: true } } },
+            select: { student: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
           },
         },
       }),
@@ -51,10 +53,10 @@ export default async function ExceptionalFeesPage({
     return {
       classes: classRows.map((c) => ({
         id: c.id,
-        name: c.name,
+        name: localizedLabel(locale, c.name, c.nameAr),
         students: c.students.map((sc) => ({
           id: sc.student.id,
-          name: `${sc.student.lastName} ${sc.student.firstName}`,
+          name: personDisplayName(locale, sc.student),
         })),
       })),
       fees: feeRows.map((f) => {

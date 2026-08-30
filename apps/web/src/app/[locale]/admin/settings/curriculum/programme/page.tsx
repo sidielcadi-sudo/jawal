@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { ProgrammeMatrix, ProgrammeAddRow } from './client';
+import { localizedLabel } from '@/lib/localized-name';
 
 export default async function ProgrammePage({
   params,
@@ -73,7 +74,7 @@ export default async function ProgrammePage({
                   : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
               ].join(' ')}
             >
-              {l.cycle.label} · {l.label}
+              {localizedLabel(locale, l.cycle.label, l.cycle.labelAr)} · {l.label}
             </Link>
           );
         })}
@@ -103,7 +104,7 @@ export default async function ProgrammePage({
                       id={e.id}
                       levelId={currentLevel.id}
                       subjectId={e.subjectId}
-                      subjectLabel={e.subject.label}
+                      subjectLabel={localizedLabel(locale, e.subject.label, e.subject.labelAr)}
                       weeklyHours={e.weeklyHours}
                       coefficient={e.coefficient}
                       order={e.order}

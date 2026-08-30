@@ -128,6 +128,132 @@ export function LineChart({
   );
 }
 
+/* ── Barres groupées (évolution mensuelle, comparaison de séries) ────────── */
+
+/**
+ * Histogramme à barres groupées, calqué sur celui de Finances › Revenus &
+ * encaissements (même géométrie 1000×300, même grille, mêmes tailles de
+ * police) pour que les deux écrans se lisent de la même façon.
+ *
+ * Une barre par série et par catégorie ; la couleur reste celle de la série
+ * (l'établissement, ou l'indicateur dû/encaissé), jamais son rang.
+ */
+export function GroupedBarChart({
+  labels,
+  series,
+  colors,
+  format,
+  yMax,
+  title,
+  emptyLabel,
+}: {
+  /** Catégories en abscisse : mois, ou noms d'établissement. */
+  labels: string[];
+  series: Series[];
+  /** Couleur par nom de série. */
+  colors: Record<string, string>;
+  format: (n: number) => string;
+  yMax?: number;
+  title: string;
+  emptyLabel: string;
+}) {
+  const flat = series.flatMap((s) => s.values.filter((v): v is number => v !== null));
+  const hasData = flat.length > 0;
+
+  const W = 1000;
+  const H = 300;
+  const padL = 48;
+  const padR = 8;
+  const padT = 12;
+  const padB = 30;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+  const baseY = padT + plotH;
+
+  const max = yMax ?? niceMax(Math.max(...(hasData ? flat : [1])));
+  const slotW = plotW / Math.max(1, labels.length);
+  const yFor = (v: number) => baseY - (v / max) * plotH;
+  const hFor = (v: number) => (v / max) * plotH;
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((f) => f * max);
+
+  // Largeur de barre : le groupe occupe 55 % du créneau, comme dans Finances.
+  const innerGap = 1.5;
+  const groupW = Math.min(slotW * 0.55, 220);
+  const barW = Math.max(1, (groupW - innerGap * (series.length - 1)) / Math.max(1, series.length));
+
+  return (
+    <figure className="rounded-2xl border border-brand-200 bg-white p-4">
+      <figcaption className="mb-3 text-sm font-semibold text-slate-800">{title}</figcaption>
+      {!hasData ? (
+        <p className="py-10 text-center text-sm text-slate-400">{emptyLabel}</p>
+      ) : (
+        <>
+          <div className="w-full">
+            <svg
+              viewBox={`0 0 ${W} ${H}`}
+              preserveAspectRatio="xMidYMid meet"
+              className="aspect-[10/3] w-full"
+              role="img"
+              aria-label={title}
+            >
+              {ticks.map((tk, i) => {
+                const yy = yFor(tk);
+                return (
+                  <g key={i}>
+                    <line x1={padL} y1={yy} x2={W - padR} y2={yy} stroke="#e2e8f0" strokeWidth={1} />
+                    <text x={padL - 6} y={yy + 3} textAnchor="end" fontSize={9} fill="#94a3b8">
+                      {format(tk)}
+                    </text>
+                  </g>
+                );
+              })}
+              <line x1={padL} y1={padT} x2={padL} y2={baseY} stroke="#cbd5e1" strokeWidth={1} />
+              <line x1={padL} y1={baseY} x2={W - padR} y2={baseY} stroke="#cbd5e1" strokeWidth={1} />
+
+              {labels.map((label, k) => {
+                const cx = padL + slotW * (k + 0.5);
+                const startX = cx - groupW / 2;
+                return (
+                  <g key={label + k}>
+                    {series.map((se, si) => {
+                      const v = se.values[k];
+                      if (v === null || v === undefined) return null;
+                      return (
+                        <rect
+                          key={se.name}
+                          x={startX + si * (barW + innerGap)}
+                          y={yFor(v)}
+                          width={barW}
+                          height={hFor(v)}
+                          rx={1.5}
+                          fill={colors[se.name]}
+                        >
+                          <title>{`${se.name} — ${label} : ${format(v)}`}</title>
+                        </rect>
+                      );
+                    })}
+                    <text
+                      x={cx}
+                      y={baseY + 14}
+                      textAnchor="middle"
+                      fontSize={9}
+                      fill="#64748b"
+                      className="capitalize"
+                    >
+                      {label}
+                    </text>
+                  </g>
+                );
+              })}
+            </svg>
+          </div>
+          <Legend series={series.map((se) => se.name)} colors={colors} />
+        </>
+      )}
+    </figure>
+  );
+}
+
 /* ── Barres (comparaison entre établissements) ──────────────────────────── */
 
 export function BarChart({

@@ -4,6 +4,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { ClassForm } from '../../class-form';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 export default async function EditClassPage({
   params,
@@ -30,8 +31,8 @@ export default async function EditClassPage({
     return {
       cls,
       years: years.map((y) => ({ id: y.id, label: y.label })),
-      levels: levels.map((l) => ({ id: l.id, label: `${l.cycle.label} — ${l.label}` })),
-      teachers: teachers.map((p) => ({ id: p.id, label: `${p.lastName} ${p.firstName}` })),
+      levels: levels.map((l) => ({ id: l.id, label: `${localizedLabel(locale, l.cycle.label, l.cycle.labelAr)} — ${localizedLabel(locale, l.label, l.labelAr)}` })),
+      teachers: teachers.map((p) => ({ id: p.id, label: personDisplayName(locale, p) })),
       rooms: rooms.map((r) => ({ id: r.id, label: `${r.code} — ${r.label}` })),
     };
   });
@@ -46,14 +47,14 @@ export default async function EditClassPage({
         </Link>
         <span className="mx-1.5">›</span>
         <Link href={`/${locale}/admin/classes/${id}`} className="hover:text-brand-700">
-          {cls.name}
+          {localizedLabel(locale, cls.name, cls.nameAr)}
         </Link>
         <span className="mx-1.5">›</span>
         <span>{t('actions.edit')}</span>
       </nav>
 
       <h1 className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 text-2xl font-semibold text-slate-900">
-        {t('actions.edit')} — {cls.name}
+        {t('actions.edit')} — {localizedLabel(locale, cls.name, cls.nameAr)}
       </h1>
 
       <div className="mt-6 rounded-2xl border border-slate-200 bg-white p-6">
@@ -66,7 +67,7 @@ export default async function EditClassPage({
           rooms={rooms}
           initial={{
             id: cls.id,
-            name: cls.name,
+            name: localizedLabel(locale, cls.name, cls.nameAr),
             capacity: cls.capacity,
             academicYearId: cls.academicYearId,
             levelId: cls.levelId,

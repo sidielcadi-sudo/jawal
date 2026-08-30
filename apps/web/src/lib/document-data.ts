@@ -91,7 +91,7 @@ export async function loadDocumentData(
     select: {
       classId: true,
       class: {
-        select: { name: true, level: { select: { label: true, cycle: { select: { label: true } } } } },
+        select: { name: true, level: { select: { label: true, cycle: { select: { label: true, labelAr: true } } } } },
       },
     },
   });

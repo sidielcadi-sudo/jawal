@@ -30,7 +30,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ childId: string
         id: true,
         label: true,
         date: true,
-        subject: { select: { label: true } },
+        subject: { select: { label: true, labelAr: true } },
       },
     });
 

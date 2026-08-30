@@ -4,6 +4,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { createEnrollmentAction } from '../actions';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 export default async function NewEnrollmentPage({
   params,
@@ -26,7 +27,7 @@ export default async function NewEnrollmentPage({
         tx.person.findMany({
           where: { type: 'STUDENT', deletedAt: null },
           orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-          select: { id: true, firstName: true, lastName: true },
+          select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
         }),
         tx.academicYear.findMany({
           orderBy: { startDate: 'desc' },
@@ -34,7 +35,7 @@ export default async function NewEnrollmentPage({
         }),
         tx.level.findMany({
           orderBy: { order: 'asc' },
-          select: { id: true, label: true },
+          select: { id: true, label: true, labelAr: true },
         }),
         // Classe courante de chaque élève, pour lever l'ambiguïté entre
         // homonymes dans la liste déroulante.
@@ -45,6 +46,7 @@ export default async function NewEnrollmentPage({
             class: {
               select: {
                 name: true,
+                nameAr: true,
                 academicYear: { select: { active: true, startDate: true } },
               },
             },
@@ -57,7 +59,7 @@ export default async function NewEnrollmentPage({
       const classByStudent = new Map<string, { name: string; active: boolean; startDate: Date }>();
       for (const m of memberships) {
         const candidate = {
-          name: m.class.name,
+          name: localizedLabel(locale, m.class.name, m.class.nameAr),
           active: m.class.academicYear.active,
           startDate: m.class.academicYear.startDate,
         };
@@ -117,7 +119,7 @@ export default async function NewEnrollmentPage({
             <option value="">{t('new.studentPlaceholder')}</option>
             {students.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.lastName} {s.firstName}
+                {personDisplayName(locale, s)}
                 {s.className ? ` — ${s.className}` : ` — ${t('new.noClass')}`}
               </option>
             ))}
@@ -149,7 +151,7 @@ export default async function NewEnrollmentPage({
             <option value="">{t('new.levelPlaceholder')}</option>
             {levels.map((l) => (
               <option key={l.id} value={l.id}>
-                {l.label}
+                {localizedLabel(locale, l.label, l.labelAr)}
               </option>
             ))}
           </select>

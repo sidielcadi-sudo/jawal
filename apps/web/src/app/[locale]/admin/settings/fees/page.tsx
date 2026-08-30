@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { refundableMap } from '@/lib/refund';
+import { localizedLabel } from '@/lib/localized-name';
 import {
   FeeCreateForm,
   FeeRowActions,
@@ -174,7 +175,7 @@ export default async function FeesPage({
               <FeeCreateForm
                 kind={kind}
                 years={years.map((y) => ({ id: y.id, label: y.label, active: y.active }))}
-                levels={levels.map((l) => ({ id: l.id, label: `${l.cycle.label} — ${l.label}` }))}
+                levels={levels.map((l) => ({ id: l.id, label: `${localizedLabel(locale, l.cycle.label, l.cycle.labelAr)} — ${localizedLabel(locale, l.label, l.labelAr)}` }))}
                 currency={currency}
               />
             </div>

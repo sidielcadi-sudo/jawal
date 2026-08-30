@@ -10,6 +10,7 @@ import {
   SessionTopicEditor,
 } from '../../../../../admin/soutien/attendance-form';
 import { ResourceManager } from '../../../../../admin/soutien/pedagogy';
+import { personDisplayName } from '@/lib/localized-name';
 import {
   SessionSkillPicker,
   SessionCompetencyGrid,
@@ -59,7 +60,7 @@ export default async function TeacherSupportSessionPage({
       ? await tx.person.findMany({
           where: { id: { in: enrollments.map((e) => e.studentId) } },
           orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-          select: { id: true, firstName: true, lastName: true },
+          select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
         })
       : [];
     const attendance = await tx.supportAttendance.findMany({ where: { sessionId } });
@@ -119,12 +120,12 @@ export default async function TeacherSupportSessionPage({
           ),
         ]),
       ),
-      studentList: students.map((s) => ({ studentId: s.id, name: `${s.lastName} ${s.firstName}` })),
+      studentList: students.map((s) => ({ studentId: s.id, name: personDisplayName(locale, s) })),
       rows: students.map((s) => {
         const a = attById.get(s.id);
         return {
           studentId: s.id,
-          name: `${s.lastName} ${s.firstName}`,
+          name: personDisplayName(locale, s),
           present: a?.present ?? true,
           appreciation: a?.appreciation ?? '',
         };

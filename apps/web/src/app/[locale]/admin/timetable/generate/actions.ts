@@ -107,7 +107,7 @@ export async function generateMultiTimetableAction(
       const assignments = await tx.teacherAssignment.findMany({
         where: { classId: { in: classIds }, academicYearId },
         include: {
-          subject: { select: { id: true, label: true } },
+          subject: { select: { id: true, label: true, labelAr: true } },
           teacher: {
             select: {
               id: true,
@@ -117,7 +117,7 @@ export async function generateMultiTimetableAction(
               metadata: true,
             },
           },
-          class: { select: { id: true, name: true, levelId: true } },
+          class: { select: { id: true, name: true, nameAr: true, levelId: true } },
         },
       });
 

@@ -5,6 +5,7 @@ import { getStudentPersonId } from '@/lib/student';
 import { upcomingOverridesForClass } from '@/lib/timetable-overrides';
 import { TimetableGridReadonly, type ReadonlyEntry } from '@/components/timetable-grid-readonly';
 import { UpcomingOverrides } from '@/components/upcoming-overrides';
+import { personDisplayName } from '@/lib/localized-name';
 
 const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
 
@@ -37,9 +38,9 @@ export default async function StudentTimetablePage({
         ? await tx.timetableEntry.findMany({
             where: { classId, academicYearId: year.id },
             include: {
-              subject: { select: { label: true } },
-              teacher: { select: { firstName: true, lastName: true } },
-              room: { select: { label: true } },
+              subject: { select: { label: true, labelAr: true } },
+              teacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
+              room: { select: { label: true, labelAr: true } },
             },
           })
         : [];
@@ -52,7 +53,7 @@ export default async function StudentTimetablePage({
     dayOfWeek: e.dayOfWeek,
     slotId: e.slotId,
     subjectLabel: e.subject?.label ?? null,
-    teacherName: e.teacher ? `${e.teacher.lastName} ${e.teacher.firstName}` : null,
+    teacherName: e.teacher ? personDisplayName(locale, e.teacher) : null,
     roomLabel: e.room?.label ?? null,
   }));
 

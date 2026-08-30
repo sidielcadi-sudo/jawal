@@ -12,6 +12,7 @@ import { RefundPanel } from './refund-panel';
 import { EcheancierTable } from './echeancier-table';
 import { RegimeEdit } from './regime-edit';
 import { SettleDebtsButton } from './settle-debts';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 export default async function EnrollmentDetailPage({
   params,
@@ -120,7 +121,7 @@ export default async function EnrollmentDetailPage({
         status: { in: ['PENDING', 'PARTIAL'] },
         dueDate: { lt: enrollment.academicYear.startDate },
       },
-      include: { payments: true, student: { select: { firstName: true, lastName: true } } },
+      include: { payments: true, student: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
       orderBy: { dueDate: 'asc' },
     });
 
@@ -207,7 +208,7 @@ export default async function EnrollmentDetailPage({
       }),
       tx.personRelation.findMany({
         where: { childId: enrollment.student.id },
-        include: { parent: { select: { id: true, firstName: true, lastName: true, contacts: true } } },
+        include: { parent: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, contacts: true } } },
       }),
     ]);
     const radiationRefund = radiationRequest
@@ -291,7 +292,7 @@ export default async function EnrollmentDetailPage({
     }));
   const classOptions = compatibleClasses.map((c) => ({
     id: c.id,
-    name: c.name,
+    name: localizedLabel(locale, c.name, c.nameAr),
     capacity: c.capacity,
     count: c._count.students,
   }));
@@ -340,17 +341,17 @@ export default async function EnrollmentDetailPage({
         </Link>
         <span className="mx-1.5">›</span>
         <span>
-          {enrollment.student.lastName} {enrollment.student.firstName}
+          {personDisplayName(locale, enrollment.student)}
         </span>
       </nav>
 
       <header className="-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
-            {enrollment.student.lastName} {enrollment.student.firstName}
+            {personDisplayName(locale, enrollment.student)}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            {enrollment.academicYear.label} · {enrollment.level.label}
+            {enrollment.academicYear.label} · {localizedLabel(locale, enrollment.level.label, enrollment.level.labelAr)}
             {enrollment.class && (
               <>
                 {' · '}
@@ -358,7 +359,7 @@ export default async function EnrollmentDetailPage({
                   href={`/${locale}/admin/classes/${enrollment.class.id}`}
                   className="hover:text-brand-700"
                 >
-                  {enrollment.class.name}
+                  {localizedLabel(locale, enrollment.class.name, enrollment.class.nameAr)}
                 </Link>
               </>
             )}
@@ -386,7 +387,7 @@ export default async function EnrollmentDetailPage({
               return (
                 <li key={g.id} className="flex items-center justify-between gap-2 rounded-xl border border-slate-100 bg-slate-50/60 px-3 py-2">
                   <Link href={`/${locale}/admin/persons/${g.parent.id}`} className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-slate-800 hover:text-brand-700">{g.parent.lastName} {g.parent.firstName}</span>
+                    <span className="block truncate text-sm font-medium text-slate-800 hover:text-brand-700">{personDisplayName(locale, g.parent)}</span>
                     <span className="text-[11px] text-slate-500">{t(`detail.relations.${g.type}` as never)}</span>
                   </Link>
                   <span className="shrink-0 text-end text-xs text-slate-500">
@@ -534,7 +535,7 @@ export default async function EnrollmentDetailPage({
                 key={i.id}
                 className="rounded border border-amber-200 bg-white px-1.5 py-0.5 text-[11px] text-amber-800"
               >
-                <strong>{i.student.lastName} {i.student.firstName}</strong> · {i.label} ·{' '}
+                <strong>{personDisplayName(locale, i.student)}</strong> · {i.label} ·{' '}
                 {new Date(i.dueDate).toLocaleDateString(locale)} · {Number(i.amount).toFixed(0)}{' '}
                 {tenant.currency}
               </li>

@@ -8,6 +8,8 @@ import { computeVieScolaire } from '@/lib/kpi-vie-scolaire';
 import type { KpiStatus } from '@/lib/kpi-pilotage';
 import { pickPeriodId } from '@/lib/periods';
 import { DashboardTabs } from '../dashboard-tabs';
+import { personDisplayName } from '@/lib/localized-name';
+import { PeriodButtons } from '@/components/period-buttons';
 
 const TEXT: Record<KpiStatus, string> = {
   green: 'text-emerald-600',
@@ -47,7 +49,7 @@ export default async function VieScolairePage({
     const selectedPeriodId = pickPeriodId(periods, sp.period);
     const vs = await computeVieScolaire(tx, selectedPeriodId, session.user.id);
     return {
-      periods: periods.map((p) => ({ id: p.id, label: p.label })),
+      periods: periods.map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr })),
       selectedPeriodId,
       vs,
     };
@@ -70,28 +72,7 @@ export default async function VieScolairePage({
           <p className="mt-0.5 text-sm text-slate-600">{today}</p>
         </div>
         {data.periods.length > 0 && (
-          <form method="get" className="flex items-end gap-2">
-            <label className="block">
-              <span className="block text-xs text-slate-500">{t('period')}</span>
-              <select
-                name="period"
-                defaultValue={data.selectedPeriodId ?? ''}
-                className="mt-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm shadow-sm"
-              >
-                {data.periods.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button
-              type="submit"
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              {t('apply')}
-            </button>
-          </form>
+          <PeriodButtons periods={data.periods} selectedId={data.selectedPeriodId} locale={locale} />
         )}
       </header>
 
@@ -195,7 +176,7 @@ export default async function VieScolairePage({
                     href={`/${locale}/admin/persons/${s.studentId}`}
                     className="truncate font-medium text-slate-800 hover:text-brand-700 hover:underline"
                   >
-                    {s.lastName} {s.firstName}
+                    {personDisplayName(locale, s)}
                     {s.className && (
                       <span className="ms-1 text-xs text-slate-400">· {s.className}</span>
                     )}

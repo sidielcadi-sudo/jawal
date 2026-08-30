@@ -49,6 +49,7 @@ export default async function RoomsPage({ params }: { params: Promise<{ locale: 
                       initial={{
                         code: r.code,
                         label: r.label,
+                        labelAr: r.labelAr,
                         capacity: r.capacity,
                         equipment: r.equipment.join(', '),
                       }}

@@ -6,6 +6,7 @@ import { withTenant } from '@/lib/db';
 import { RunWorkflowButtons } from '../../runs-client';
 import { JournalExportButton } from '../../journal-export';
 import { buildJournal, journalTotals, type AccountMapping } from '@/lib/payroll-journal';
+import { personDisplayName } from '@/lib/localized-name';
 
 export default async function PayrollRunDetail({ params }: { params: Promise<{ locale: string; id: string }> }) {
   const { locale, id } = await params;
@@ -17,7 +18,7 @@ export default async function PayrollRunDetail({ params }: { params: Promise<{ l
   const data = await withTenant(session.user.tenantId, async (tx) => {
     const run = await tx.payrollRun.findUnique({
       where: { id },
-      include: { payslips: { include: { person: { select: { firstName: true, lastName: true, serviceRef: { select: { labelFr: true } } } } }, orderBy: { person: { lastName: 'asc' } } } },
+      include: { payslips: { include: { person: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, serviceRef: { select: { labelFr: true } } } } }, orderBy: { person: { lastName: 'asc' } } } },
     });
     const config = await tx.payrollConfig.findFirst({ orderBy: { effectiveFrom: 'desc' }, select: { accountMapping: true } });
     return { run, config };
@@ -96,7 +97,7 @@ export default async function PayrollRunDetail({ params }: { params: Promise<{ l
               const b = p.breakdown as { cnss: number; amo: number };
               return (
                 <tr key={p.id}>
-                  <td className="px-3 py-2 font-medium text-slate-800">{p.person.lastName} {p.person.firstName}</td>
+                  <td className="px-3 py-2 font-medium text-slate-800">{personDisplayName(locale, p.person)}</td>
                   <td className="px-3 py-2 text-end tabular-nums text-slate-700">{fmt(p.brut)}</td>
                   <td className="px-3 py-2 text-end tabular-nums text-slate-500">{fmt(b.cnss ?? 0)}</td>
                   <td className="px-3 py-2 text-end tabular-nums text-slate-500">{fmt(b.amo ?? 0)}</td>

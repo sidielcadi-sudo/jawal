@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
+import { personDisplayName } from '@/lib/localized-name';
 
 const MONTHS_FR = [
   'Janvier',
@@ -53,7 +54,9 @@ export default async function MonthlyStaffAttendancePage({
         select: {
           id: true,
           firstName: true,
+          firstNameAr: true,
           lastName: true,
+          lastNameAr: true,
           type: true,
           grossSalary: true,
           netSalary: true,
@@ -106,7 +109,7 @@ export default async function MonthlyStaffAttendancePage({
         </Link>
         <span className="mx-1.5">›</span>
         <Link href={`/${locale}/admin/persons/${person.id}`} className="hover:text-brand-700">
-          {person.lastName} {person.firstName}
+          {personDisplayName(locale, person)}
         </Link>
         <span className="mx-1.5">›</span>
         <span>{t('monthly.title')}</span>
@@ -115,7 +118,7 @@ export default async function MonthlyStaffAttendancePage({
       <header className="-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
-            {person.lastName} {person.firstName}
+            {personDisplayName(locale, person)}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
             {locale === 'ar'

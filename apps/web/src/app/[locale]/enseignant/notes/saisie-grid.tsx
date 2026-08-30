@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { computeAverage20, type AverageItem } from '@/lib/grade-average';
+import { personDisplayName } from '@/lib/localized-name';
 import {
   createDevoirAction,
   updateDevoirAction,
@@ -11,7 +12,7 @@ import {
   saveNotesMatrixAction,
 } from './actions';
 
-type Student = { id: string; firstName: string; lastName: string };
+type Student = { id: string; firstName: string; lastName: string; firstNameAr: string | null; lastNameAr: string | null };
 type Devoir = {
   id: string;
   label: string;
@@ -230,7 +231,7 @@ export function SaisieGrid({
             {students.map((s) => (
               <tr key={s.id} className="hover:bg-slate-50/60">
                 <td className="sticky start-0 z-10 max-w-[12rem] truncate bg-white px-3 py-1.5 text-slate-800">
-                  {s.lastName} {s.firstName}
+                  {personDisplayName(locale, s)}
                 </td>
                 <td className="px-3 py-1.5 text-center font-semibold tabular-nums text-brand-700">
                   {moyennes[s.id] === null ? '—' : fmt2(moyennes[s.id]!)}

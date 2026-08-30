@@ -5,6 +5,8 @@ import { getTeacherPersonId, teacherTeachesClassSubject } from '@/lib/teacher';
 import { loadReleveRows, loadClassSubjects, type ReleveRow } from '@/lib/notes-releve';
 import { AppreciationCell } from './appreciation-cell';
 import { pickPeriod } from '@/lib/periods';
+import { localizedLabel } from '@/lib/localized-name';
+import { PeriodButtons } from '@/components/period-buttons';
 
 export default async function RelevePage({
   params,
@@ -28,12 +30,12 @@ export default async function RelevePage({
     if (!teacherId || !year) return null;
 
     // Classes du prof (via affectations + EDT).
-    const sel = { classId: true, class: { select: { name: true } } } as const;
+    const sel = { classId: true, class: { select: { name: true, nameAr: true } } } as const;
     const [a, e] = await Promise.all([
       tx.teacherAssignment.findMany({ where: { teacherId, academicYearId: year.id }, select: sel }),
       tx.timetableEntry.findMany({ where: { teacherId, academicYearId: year.id }, select: sel }),
     ]);
-    const classes = [...new Map([...a, ...e].map((x) => [x.classId, x.class.name])).entries()]
+    const classes = [...new Map([...a, ...e].map((x) => [x.classId, localizedLabel(locale, x.class.name, x.class.nameAr)])).entries()]
       .map(([id, name]) => ({ id, name }))
       .sort((x, y) => x.name.localeCompare(y.name));
     const classId = classes.find((c) => c.id === sp.class)?.id ?? classes[0]?.id ?? null;
@@ -57,19 +59,15 @@ export default async function RelevePage({
 
   return (
     <div>
+      <div className="mb-3">
+        <PeriodButtons periods={periods} selectedId={periodId} locale={locale} />
+      </div>
       <form method="get" className="mb-4 flex flex-wrap items-center gap-3">
         <span className="text-sm font-medium text-slate-700">{t('releve.title')}</span>
         <select name="class" defaultValue={classId ?? ''} className="rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm">
           {classes.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
-            </option>
-          ))}
-        </select>
-        <select name="period" defaultValue={periodId ?? ''} className="rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm">
-          {periods.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label}
             </option>
           ))}
         </select>

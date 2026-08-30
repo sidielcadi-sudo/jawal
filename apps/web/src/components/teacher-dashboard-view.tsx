@@ -61,21 +61,6 @@ export async function TeacherDashboardView({ dash }: { dash: TeacherDashboard })
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      {/* Progression du programme — N/A */}
-      <Section title={`🔸 ${t('program.title')}`}>
-        <Field label={t('program.progress')}>
-          <div className="mt-1">
-            <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
-              <div className={`h-full ${BAR.na}`} style={{ width: '0%' }} />
-            </div>
-            <span className="mt-1 block text-xs italic text-slate-400">{t('na')}</span>
-          </div>
-        </Field>
-        <Field label={t('program.chapters')}>
-          <span className="text-slate-400">{t('na')}</span>
-        </Field>
-      </Section>
-
       {/* Évaluation & notes */}
       <Section title={`🔸 ${t('eval.title')}`}>
         <div className="flex flex-wrap items-center gap-5">
@@ -127,6 +112,21 @@ export async function TeacherDashboardView({ dash }: { dash: TeacherDashboard })
             )}
           </div>
         </div>
+      </Section>
+
+      {/* Progression du programme — N/A */}
+      <Section title={`🔸 ${t('program.title')}`}>
+        <Field label={t('program.progress')}>
+          <div className="mt-1">
+            <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
+              <div className={`h-full ${BAR.na}`} style={{ width: '0%' }} />
+            </div>
+            <span className="mt-1 block text-xs italic text-slate-400">{t('na')}</span>
+          </div>
+        </Field>
+        <Field label={t('program.chapters')}>
+          <span className="text-slate-400">{t('na')}</span>
+        </Field>
       </Section>
 
       {/* Présence & discipline */}
@@ -303,7 +303,7 @@ function MiniKpi({
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-5">
+    <section className="rounded-2xl border border-brand-200 bg-white p-5">
       <h2 className="mb-3 text-sm font-semibold text-slate-700">{title}</h2>
       <div className="space-y-3">{children}</div>
     </section>

@@ -4,6 +4,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { loadParentChildContext } from '@/lib/parent';
+import { personDisplayName } from '@/lib/localized-name';
 
 export default async function ParentChildLayout({
   children,
@@ -41,7 +42,7 @@ export default async function ParentChildLayout({
         </div>
         <div>
           <h1 className="text-base font-bold text-slate-900">
-            {ctx.child.firstName} {ctx.child.lastName}
+            {personDisplayName(locale, ctx.child, 'first-last')}
           </h1>
           <p className="mt-0.5 text-sm text-slate-600">
             {ctx.className

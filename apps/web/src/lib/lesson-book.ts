@@ -93,8 +93,8 @@ export async function getTeacherWeekSessions(
     },
     include: {
       slot: { select: { startTime: true, endTime: true, order: true } },
-      subject: { select: { label: true } },
-      class: { select: { name: true } },
+      subject: { select: { label: true, labelAr: true } },
+      class: { select: { name: true, nameAr: true } },
       room: { select: { code: true } },
     },
   });
@@ -145,10 +145,10 @@ export async function getSessionForTeacher(
     where: { id: entryId },
     include: {
       slot: { select: { startTime: true, endTime: true } },
-      subject: { select: { label: true } },
-      class: { select: { id: true, name: true } },
+      subject: { select: { label: true, labelAr: true } },
+      class: { select: { id: true, name: true, nameAr: true } },
       room: { select: { code: true } },
-      teacher: { select: { firstName: true, lastName: true } },
+      teacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
     },
   });
   if (!entry || entry.teacherId !== teacherId) return null;
@@ -262,8 +262,8 @@ export async function getClassLessonBook(
       entry: {
         include: {
           slot: { select: { startTime: true, endTime: true } },
-          subject: { select: { label: true } },
-          teacher: { select: { firstName: true, lastName: true } },
+          subject: { select: { label: true, labelAr: true } },
+          teacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
         },
       },
       homeworks: { orderBy: { order: 'asc' } },
@@ -281,7 +281,7 @@ export async function getClassUpcomingHomeworks(tx: Tx, classId: string, sinceDa
     take: 50,
     include: {
       lessonEntry: {
-        include: { entry: { include: { subject: { select: { label: true } } } } },
+        include: { entry: { include: { subject: { select: { label: true, labelAr: true } } } } },
       },
     },
   });
@@ -325,8 +325,8 @@ export async function getUnfilledSessionsForTeacher(
     },
     include: {
       slot: { select: { startTime: true, endTime: true } },
-      subject: { select: { label: true } },
-      class: { select: { name: true } },
+      subject: { select: { label: true, labelAr: true } },
+      class: { select: { name: true, nameAr: true } },
     },
   });
   if (entries.length === 0) return [];

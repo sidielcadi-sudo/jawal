@@ -4,11 +4,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
+import { personDisplayName } from '@/lib/localized-name';
 
 type Child = {
   id: string;
   firstName: string;
   lastName: string;
+  firstNameAr: string | null;
+  lastNameAr: string | null;
   className: string | null;
   unread?: number;
   pendingFees?: number;
@@ -136,7 +139,7 @@ export function ParentSidebar({
               <li key={c.id}>
                 <Link
                   href={`${base}/cahier`}
-                  title={collapsed ? `${c.firstName} ${c.lastName}` : undefined}
+                  title={collapsed ? personDisplayName(locale, c, 'first-last') : undefined}
                   className={rowCls(isActiveChild)}
                 >
                   <span
@@ -149,7 +152,7 @@ export function ParentSidebar({
                   {!collapsed && (
                     <span className="flex min-w-0 flex-1 flex-col">
                       <span className="flex items-center gap-1.5 truncate">
-                        {c.firstName} {c.lastName}
+                        {personDisplayName(locale, c, 'first-last')}
                         {total > 0 && (
                           <span className="inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-semibold text-white">
                             {total}

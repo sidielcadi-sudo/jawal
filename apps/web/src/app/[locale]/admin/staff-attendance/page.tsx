@@ -40,6 +40,8 @@ export default async function StaffAttendancePage({
           personId: p.id,
           firstName: p.firstName,
           lastName: p.lastName,
+          firstNameAr: p.firstNameAr,
+          lastNameAr: p.lastNameAr,
           type: p.type as 'TEACHER' | 'STAFF',
           roleLabelFr: p.role?.labelFr ?? null,
           roleLabelAr: p.role?.labelAr ?? null,

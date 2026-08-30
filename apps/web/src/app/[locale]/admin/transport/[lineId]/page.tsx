@@ -12,6 +12,7 @@ import {
   unassignStudentAction,
 } from '../actions';
 import { TRANSPORT_DAYS } from '../constants';
+import { personDisplayName, type BilingualPerson } from '@/lib/localized-name';
 
 const inputCls =
   'rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
@@ -37,13 +38,13 @@ export default async function TransportLinePage({
       tx.person.findMany({
         where: { type: 'STAFF', deletedAt: null },
         orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-        select: { id: true, firstName: true, lastName: true },
+        select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
       }),
       tx.transportZone.findMany({ orderBy: { order: 'asc' }, select: { id: true, name: true, annualAmount: true } }),
       tx.studentTransport.findMany({
         where: { lineId },
         include: {
-          student: { select: { firstName: true, lastName: true } },
+          student: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
           stop: { select: { name: true } },
           zone: { select: { name: true, annualAmount: true } },
         },
@@ -51,7 +52,7 @@ export default async function TransportLinePage({
       tx.person.findMany({
         where: { type: 'STUDENT', deletedAt: null, transportAssignment: { is: null } },
         orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-        select: { id: true, firstName: true, lastName: true },
+        select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
       }),
       tx.tenant.findFirst({ select: { currency: true } }),
     ]);
@@ -59,7 +60,7 @@ export default async function TransportLinePage({
   });
   if (!data) notFound();
   const { line, buses, staff, zones, assigned, unassigned, currency } = data;
-  const staffName = (s: { lastName: string; firstName: string }) => `${s.lastName} ${s.firstName}`;
+  const staffName = (s: BilingualPerson) => personDisplayName(locale, s);
   const dayLabel = (d: string) => t(`days.${d}`);
 
   return (
@@ -272,7 +273,7 @@ export default async function TransportLinePage({
                 const pickups = Array.isArray(a.authorizedPickups) ? a.authorizedPickups.length : 0;
                 return (
                   <tr key={a.id}>
-                    <td className="px-3 py-2 font-medium text-slate-800">{a.student.lastName} {a.student.firstName}</td>
+                    <td className="px-3 py-2 font-medium text-slate-800">{personDisplayName(locale, a.student)}</td>
                     <td className="px-3 py-2 text-xs text-slate-600">{a.stop?.name ?? '—'}</td>
                     <td className="px-3 py-2 text-xs text-slate-600">
                       {a.zone ? `${a.zone.name} · ${Number(a.zone.annualAmount).toLocaleString(locale)} ${currency}` : '—'}

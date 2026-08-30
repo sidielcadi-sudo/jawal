@@ -4,6 +4,7 @@ import { withTenant } from '@/lib/db';
 import { requirePermission } from '@/lib/auth/rbac';
 import { dowOf, toDateStr } from '@/lib/lesson-book';
 import { EventRowActions, JustifReview } from './client';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 const STATUSES = ['PENDING', 'CONFIRMED', 'JUSTIFIED', 'CANCELLED'] as const;
 
@@ -28,7 +29,7 @@ export default async function AbsenceManagementPage({
     const classes = year
       ? await tx.class.findMany({
           where: { academicYearId: year.id, deletedAt: null },
-          select: { id: true, name: true },
+          select: { id: true, name: true, nameAr: true },
           orderBy: { name: 'asc' },
         })
       : [];
@@ -36,12 +37,14 @@ export default async function AbsenceManagementPage({
       where: { status: status as never, ...(sp.class ? { classId: sp.class } : {}) },
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       include: {
-        student: { select: { firstName: true, lastName: true } },
+        student: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
         session: { select: { periodLabel: true } },
       },
       take: 300,
     });
-    const classMap = new Map(classes.map((c) => [c.id, c.name]));
+    const classMap = new Map(
+      classes.map((c) => [c.id, localizedLabel(locale, c.name, c.nameAr)]),
+    );
     const eventClassIds = [...new Set(events.map((e) => e.classId))];
 
     // Séance (heures dans periodLabel) → matière + prof via l'entrée d'EDT
@@ -54,8 +57,8 @@ export default async function AbsenceManagementPage({
               classId: true,
               dayOfWeek: true,
               slot: { select: { startTime: true, endTime: true } },
-              subject: { select: { label: true } },
-              teacher: { select: { firstName: true, lastName: true } },
+              subject: { select: { label: true, labelAr: true } },
+              teacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
             },
           })
         : [];
@@ -63,7 +66,7 @@ export default async function AbsenceManagementPage({
     for (const en of entries) {
       entryMap.set(`${en.classId}|${en.dayOfWeek}|${en.slot.startTime}-${en.slot.endTime}`, {
         subject: en.subject?.label ?? null,
-        teacher: en.teacher ? `${en.teacher.lastName} ${en.teacher.firstName}` : null,
+        teacher: en.teacher ? personDisplayName(locale, en.teacher) : null,
       });
     }
 
@@ -72,11 +75,11 @@ export default async function AbsenceManagementPage({
       eventClassIds.length > 0
         ? await tx.class.findMany({
             where: { id: { in: eventClassIds } },
-            select: { id: true, delegate: { select: { firstName: true, lastName: true } } },
+            select: { id: true, delegate: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
           })
         : [];
     const delegateByClass = new Map(
-      clsRows.map((c) => [c.id, c.delegate ? `${c.delegate.lastName} ${c.delegate.firstName}` : null]),
+      clsRows.map((c) => [c.id, c.delegate ? personDisplayName(locale, c.delegate) : null]),
     );
 
     // Observations du prof (carnet OBSERVATION/ENCOURAGEMENT + note d'appel)
@@ -135,7 +138,7 @@ export default async function AbsenceManagementPage({
         return {
           id: e.id,
           classId: e.classId,
-          student: `${e.student.lastName} ${e.student.firstName}`,
+          student: personDisplayName(locale, e.student),
           className: classMap.get(e.classId) ?? '—',
           date: e.date.toISOString(),
           sessionLabel: periodLabel.replace('-', ' → '),
@@ -200,7 +203,7 @@ export default async function AbsenceManagementPage({
           <option value="">{t('allClasses')}</option>
           {data.classes.map((c) => (
             <option key={c.id} value={c.id}>
-              {c.name}
+              {localizedLabel(locale, c.name, c.nameAr)}
             </option>
           ))}
         </select>

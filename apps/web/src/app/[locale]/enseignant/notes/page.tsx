@@ -4,6 +4,8 @@ import { withTenant } from '@/lib/db';
 import { getTeacherPersonId } from '@/lib/teacher';
 import { SaisieGrid } from './saisie-grid';
 import { pickPeriodId } from '@/lib/periods';
+import { localizedLabel } from '@/lib/localized-name';
+import { PeriodButtons } from '@/components/period-buttons';
 
 export default async function NotesSaisiePage({
   params,
@@ -30,8 +32,8 @@ export default async function NotesSaisiePage({
     const select = {
       classId: true,
       subjectId: true,
-      subject: { select: { label: true } },
-      class: { select: { name: true } },
+      subject: { select: { label: true, labelAr: true } },
+      class: { select: { name: true, nameAr: true } },
     } as const;
     const [assignments, entries] = await Promise.all([
       tx.teacherAssignment.findMany({ where: { teacherId, academicYearId: year.id }, select }),
@@ -47,7 +49,7 @@ export default async function NotesSaisiePage({
       if (!services.has(key))
         services.set(key, {
           classId: a.classId,
-          className: a.class.name,
+          className: localizedLabel(locale, a.class.name, a.class.nameAr),
           subjectId: a.subjectId,
           subjectLabel: a.subject?.label ?? '—',
         });
@@ -76,7 +78,7 @@ export default async function NotesSaisiePage({
 
     const students = await tx.studentClass.findMany({
       where: { classId, unenrolledAt: null },
-      include: { student: { select: { id: true, firstName: true, lastName: true } } },
+      include: { student: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
       orderBy: { student: { lastName: 'asc' } },
     });
     const devoirs = await tx.evaluation.findMany({
@@ -98,6 +100,8 @@ export default async function NotesSaisiePage({
           id: s.student.id,
           firstName: s.student.firstName,
           lastName: s.student.lastName,
+          firstNameAr: s.student.firstNameAr,
+          lastNameAr: s.student.lastNameAr,
         })),
         devoirs: devoirs.map((d) => ({
           id: d.id,
@@ -124,6 +128,9 @@ export default async function NotesSaisiePage({
   return (
     <div>
       {/* Sélecteurs */}
+      <div className="mb-3">
+        <PeriodButtons periods={periods} selectedId={periodId} locale={locale} />
+      </div>
       <form method="get" className="mb-4 flex flex-wrap items-center gap-3">
         <span className="text-sm font-medium text-slate-700">{t('saisieTitle')}</span>
         <select
@@ -134,17 +141,6 @@ export default async function NotesSaisiePage({
           {classes.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name}
-            </option>
-          ))}
-        </select>
-        <select
-          name="period"
-          defaultValue={periodId ?? ''}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm"
-        >
-          {periods.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.label}
             </option>
           ))}
         </select>

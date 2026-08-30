@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
+import { personDisplayName } from '@/lib/localized-name';
 
 export default async function TransportIncidentsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -16,7 +17,7 @@ export default async function TransportIncidentsPage({ params }: { params: Promi
     tx.transportAttendanceRecord.findMany({
       where: { status: 'INCIDENT', recordedAt: { gte: since } },
       include: {
-        student: { select: { firstName: true, lastName: true } },
+        student: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
         session: { include: { line: { select: { name: true } } } },
       },
       orderBy: { recordedAt: 'desc' },
@@ -54,7 +55,7 @@ export default async function TransportIncidentsPage({ params }: { params: Promi
                   </span>
                 </td>
                 <td className="px-4 py-2.5 text-xs text-slate-600">{i.session.line.name}</td>
-                <td className="px-4 py-2.5 font-medium text-slate-800">{i.student.lastName} {i.student.firstName}</td>
+                <td className="px-4 py-2.5 font-medium text-slate-800">{personDisplayName(locale, i.student)}</td>
                 <td className="px-4 py-2.5 text-slate-700">{i.note ?? '—'}</td>
               </tr>
             ))}

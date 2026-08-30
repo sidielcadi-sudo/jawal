@@ -24,7 +24,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ childId: string
 
     const year = await tx.academicYear.findFirst({
       where: { active: true },
-      select: { periods: { orderBy: { startDate: 'asc' }, select: { id: true, label: true, startDate: true, endDate: true } } },
+      select: { periods: { orderBy: { startDate: 'asc' }, select: { id: true, label: true, labelAr: true, startDate: true, endDate: true } } },
     });
     const periods = year?.periods ?? [];
     const now = new Date();
@@ -41,7 +41,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ childId: string
         date: true,
         maxValue: true,
         weight: true,
-        subject: { select: { label: true } },
+        subject: { select: { label: true, labelAr: true } },
         grades: { select: { studentId: true, value: true } },
       },
     });
@@ -60,7 +60,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ childId: string
         classAverage: avg,
       };
     });
-    return { periods: periods.map((p) => ({ id: p.id, label: p.label })), periodId, evaluations };
+    return { periods: periods.map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr })), periodId, evaluations };
   });
 
   if (data === 'forbidden') return Response.json({ error: 'Accès refusé.' }, { status: 403 });

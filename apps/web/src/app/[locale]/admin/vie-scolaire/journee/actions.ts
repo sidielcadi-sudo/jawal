@@ -103,7 +103,7 @@ export async function notifyAppelAction(input: {
         select: { id: true, email: true },
       });
       if (!teacher) throw new Error('Compte enseignant introuvable.');
-      const cls = await tx.class.findUnique({ where: { id: classId }, select: { name: true } });
+      const cls = await tx.class.findUnique({ where: { id: classId }, select: { name: true, nameAr: true } });
       const className = cls?.name ?? '';
       const subject = `Appel à faire — ${className}`;
       const body =

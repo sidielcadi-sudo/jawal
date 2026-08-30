@@ -4,10 +4,12 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import type { DayKey } from '@/lib/timetable-conflicts';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 import {
   computeAssignmentDeltas,
   slotDurationMinutes,
 } from '@/lib/timetable-validation';
+import { PersonHeader } from '../person-header';
 
 const DAYS: DayKey[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -28,7 +30,7 @@ export default async function TeacherTimetablePage({
   const data = await withTenant(session.user.tenantId, async (tx) => {
     const teacher = await tx.person.findUnique({
       where: { id },
-      select: { id: true, firstName: true, lastName: true, type: true },
+      select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, type: true },
     });
     if (!teacher) return null;
 
@@ -46,9 +48,9 @@ export default async function TeacherTimetablePage({
       ? await tx.timetableEntry.findMany({
           where: { teacherId: id, academicYearId: yearId },
           include: {
-            subject: { select: { id: true, label: true } },
-            class: { select: { id: true, name: true } },
-            room: { select: { id: true, code: true, label: true } },
+            subject: { select: { id: true, label: true, labelAr: true } },
+            class: { select: { id: true, name: true, nameAr: true } },
+            room: { select: { id: true, code: true, label: true, labelAr: true } },
             slot: { select: { id: true, startTime: true, endTime: true } },
           },
         })
@@ -58,8 +60,8 @@ export default async function TeacherTimetablePage({
       ? await tx.teacherAssignment.findMany({
           where: { teacherId: id, academicYearId: yearId },
           include: {
-            subject: { select: { id: true, label: true } },
-            class: { select: { id: true, name: true } },
+            subject: { select: { id: true, label: true, labelAr: true } },
+            class: { select: { id: true, name: true, nameAr: true } },
           },
         })
       : [];
@@ -88,8 +90,8 @@ export default async function TeacherTimetablePage({
   // Pour le rendu, on enrichit avec les labels
   const subjectLabels = new Map(
     assignments.map((a) => [`${a.subjectId}|${a.classId}`, {
-      subject: a.subject.label,
-      className: a.class.name,
+      subject: localizedLabel(locale, a.subject.label, a.subject.labelAr),
+      className: localizedLabel(locale, a.class.name, a.class.nameAr),
     }]),
   );
   // Pour les deltas « extra » sans assignment, on lookup via entries
@@ -98,7 +100,7 @@ export default async function TeacherTimetablePage({
       .filter((e) => e.subject && e.classId)
       .map((e) => [`${e.subjectId}|${e.classId}`, {
         subject: e.subject?.label ?? '—',
-        className: e.class.name,
+        className: localizedLabel(locale, e.class.name, e.class.nameAr),
       }]),
   );
 
@@ -112,25 +114,12 @@ export default async function TeacherTimetablePage({
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-      <nav className="mb-3 text-xs text-slate-500">
-        <Link
-          href={`/${locale}/admin/persons?type=TEACHER`}
-          className="hover:text-brand-700"
-        >
-          {t('breadcrumbTeachers')}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <Link href={`/${locale}/admin/persons/${id}`} className="hover:text-brand-700">
-          {teacher.lastName} {teacher.firstName}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <span>{t('title')}</span>
-      </nav>
+      <PersonHeader personId={id} locale={locale} active="timetable" />
 
       <header className="-mx-4 sm:-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-5 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
-            {t('teacherWeek')} — {teacher.lastName} {teacher.firstName}
+            {t('teacherWeek')}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
             {t('teacherWeekSummary', {
@@ -282,10 +271,10 @@ export default async function TeacherTimetablePage({
                               href={`/${locale}/admin/classes/${e.class.id}`}
                               className="mt-0.5 block text-slate-600 hover:text-brand-700"
                             >
-                              {e.class.name}
+                              {localizedLabel(locale, e.class.name, e.class.nameAr)}
                             </Link>
                             {e.room && (
-                              <div className="text-slate-500">📍 {e.room.label}</div>
+                              <div className="text-slate-500">📍 {localizedLabel(locale, e.room.label, e.room.labelAr)}</div>
                             )}
                           </div>
                         ) : (

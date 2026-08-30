@@ -9,6 +9,7 @@ import { getStudentPersonId } from '@/lib/student';
 import { StudentSidebar } from './nav';
 import { SignOutButton } from '../admin/sign-out-button';
 import { PortalHeaderIcons } from '@/components/portal-header-icons';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 export default async function StudentLayout({
   children,
@@ -36,13 +37,13 @@ export default async function StudentLayout({
       if (!studentId) return null;
       const p = await tx.person.findUnique({
         where: { id: studentId },
-        select: { firstName: true, lastName: true },
+        select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
       });
       const sc = await tx.studentClass.findFirst({
         where: { studentId, unenrolledAt: null, class: { academicYear: { active: true } } },
-        select: { class: { select: { name: true } } },
+        select: { class: { select: { name: true, nameAr: true } } },
       });
-      return p ? { name: `${p.firstName} ${p.lastName}`, className: sc?.class.name ?? null } : null;
+      return p ? { name: personDisplayName(locale, p, 'first-last'), className: localizedLabel(locale, sc?.class.name, sc?.class.nameAr) ?? null } : null;
     }),
   ]);
 

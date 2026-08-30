@@ -2,6 +2,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { InviteUserForm, UserActions } from './client';
+import { personDisplayName } from '@/lib/localized-name';
 
 export default async function UsersPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -17,7 +18,7 @@ export default async function UsersPage({ params }: { params: Promise<{ locale: 
         orderBy: { createdAt: 'desc' },
         include: {
           userRoles: { include: { role: { select: { code: true, label: true } } } },
-          userPersons: { include: { person: { select: { firstName: true, lastName: true, type: true } } } },
+          userPersons: { include: { person: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, type: true } } } },
         },
       }),
       tx.role.findMany({ where: { code: { notIn: ['parent', 'eleve'] } }, orderBy: { code: 'asc' } }),
@@ -64,7 +65,7 @@ export default async function UsersPage({ params }: { params: Promise<{ locale: 
                       )}
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-600">
-                      {person ? `${person.lastName} ${person.firstName}` : '—'}
+                      {person ? personDisplayName(locale, person) : '—'}
                     </td>
                     <td className="px-4 py-3 text-xs">
                       {u.userRoles.length === 0 ? (

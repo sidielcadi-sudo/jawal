@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
+import { localizedLabel } from '@/lib/localized-name';
 
 type ClassRow = {
   classId: string;
@@ -63,9 +64,9 @@ export default async function AdminAttendancePage({
         const records = sess?.records ?? [];
         return {
           classId: cls.id,
-          name: cls.name,
-          levelLabel: cls.level.label,
-          cycleLabel: cls.level.cycle.label,
+          name: localizedLabel(locale, cls.name, cls.nameAr),
+          levelLabel: localizedLabel(locale, cls.level.label, cls.level.labelAr),
+          cycleLabel: localizedLabel(locale, cls.level.cycle.label, cls.level.cycle.labelAr),
           enrolled: cls.students.length,
           sessionId: sess?.id ?? null,
           finalized: !!sess?.finalizedAt,

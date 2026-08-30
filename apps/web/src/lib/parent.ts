@@ -1,12 +1,11 @@
 import 'server-only';
 import type { Prisma } from '@/lib/db';
+import type { BilingualNameFields } from '@/lib/localized-name';
 
 type Tx = Prisma.TransactionClient;
 
-export type ParentChild = {
+export type ParentChild = BilingualNameFields & {
   id: string;
-  firstName: string;
-  lastName: string;
   /** Lien déclaré (FATHER/MOTHER/…) ou null si rattachement direct. */
   relation: string | null;
   className: string | null;
@@ -59,12 +58,14 @@ export async function getParentChildren(tx: Tx, userId: string): Promise<ParentC
       id: true,
       firstName: true,
       lastName: true,
+      firstNameAr: true,
+      lastNameAr: true,
       studentClasses: {
         where: {
           unenrolledAt: null,
           ...(activeYear ? { class: { academicYearId: activeYear.id } } : {}),
         },
-        select: { class: { select: { id: true, name: true, levelId: true } } },
+        select: { class: { select: { id: true, name: true, nameAr: true, levelId: true } } },
         take: 1,
       },
     },
@@ -77,6 +78,8 @@ export async function getParentChildren(tx: Tx, userId: string): Promise<ParentC
       id: s.id,
       firstName: s.firstName,
       lastName: s.lastName,
+      firstNameAr: s.firstNameAr,
+      lastNameAr: s.lastNameAr,
       relation: relById.get(s.id) ?? null,
       className: sc?.name ?? null,
       classId: sc?.id ?? null,
@@ -100,7 +103,7 @@ export async function parentCanAccessChild(
 }
 
 export type ParentChildContext = {
-  child: { id: string; firstName: string; lastName: string };
+  child: BilingualNameFields & { id: string };
   classId: string | null;
   className: string | null;
   cycleLabel: string | null;
@@ -121,7 +124,7 @@ export async function loadParentChildContext(
   if (!(await parentCanAccessChild(tx, userId, childId))) return null;
   const child = await tx.person.findUnique({
     where: { id: childId },
-    select: { id: true, firstName: true, lastName: true },
+    select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
   });
   if (!child) return null;
 
@@ -139,7 +142,7 @@ export async function loadParentChildContext(
         where: { studentId: childId, unenrolledAt: null, class: { academicYearId: year.id } },
         select: {
           class: {
-            select: { id: true, name: true, level: { select: { cycle: { select: { label: true } } } } },
+            select: { id: true, name: true, level: { select: { cycle: { select: { label: true, labelAr: true } } } } },
           },
         },
       })

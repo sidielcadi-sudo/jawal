@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { AnnouncementCreateForm, AnnouncementRowActions } from './client';
+import { localizedLabel } from '@/lib/localized-name';
 
 export default async function AnnouncementsPage({
   params,
@@ -22,15 +23,19 @@ export default async function AnnouncementsPage({
       }),
       tx.class.findMany({
         where: { deletedAt: null },
-        select: { id: true, name: true },
+        select: { id: true, name: true, nameAr: true },
         orderBy: { name: 'asc' },
       }),
       tx.level.findMany({
-        select: { id: true, label: true },
+        select: { id: true, label: true, labelAr: true },
         orderBy: { order: 'asc' },
       }),
     ]);
-    return { announcements, classes, levels };
+    return {
+      announcements,
+      classes: classes.map((c) => ({ id: c.id, name: localizedLabel(locale, c.name, c.nameAr) })),
+      levels: levels.map((l) => ({ id: l.id, label: localizedLabel(locale, l.label, l.labelAr) })),
+    };
   });
 
   return (

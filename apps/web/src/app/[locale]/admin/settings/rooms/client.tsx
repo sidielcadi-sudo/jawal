@@ -8,7 +8,13 @@ import { createRoomAction, deleteRoomAction, updateRoomAction } from './actions'
 const inputCls =
   'mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
 
-type RoomData = { code: string; label: string; capacity: number; equipment: string };
+type RoomData = {
+  code: string;
+  label: string;
+  labelAr?: string | null;
+  capacity: number;
+  equipment: string;
+};
 
 export function RoomCreateForm() {
   const t = useTranslations('admin.settings.rooms.form');
@@ -39,6 +45,10 @@ export function RoomCreateForm() {
       <div>
         <label className="block text-xs font-medium text-slate-700">{t('label')}</label>
         <input type="text" name="label" required placeholder="Salle A101" className={inputCls} />
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-slate-700">{t('labelAr')}</label>
+        <input type="text" name="labelAr" dir="rtl" placeholder="قاعة A101" className={inputCls} />
       </div>
       <div>
         <label className="block text-xs font-medium text-slate-700">{t('capacity')}</label>
@@ -132,6 +142,16 @@ export function RoomActions({ id, initial }: { id: string; initial: RoomData }) 
           <div>
             <label className="block text-xs font-medium text-slate-700">{t('form.label')}</label>
             <input type="text" name="label" required defaultValue={initial.label} className={inputCls} />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-700">{t('form.labelAr')}</label>
+            <input
+              type="text"
+              name="labelAr"
+              dir="rtl"
+              defaultValue={initial.labelAr ?? ''}
+              className={inputCls}
+            />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-700">{t('form.capacity')}</label>

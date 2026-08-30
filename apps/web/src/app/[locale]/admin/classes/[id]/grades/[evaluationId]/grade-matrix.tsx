@@ -2,12 +2,15 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
+import { personDisplayName } from '@/lib/localized-name';
 
 type Row = {
   studentId: string;
   firstName: string;
   lastName: string;
+  firstNameAr: string | null;
+  lastNameAr: string | null;
   value: number | null;
   comment: string | null;
 };
@@ -16,6 +19,8 @@ type EditRow = {
   studentId: string;
   firstName: string;
   lastName: string;
+  firstNameAr: string | null;
+  lastNameAr: string | null;
   text: string;
   comment: string | null;
 };
@@ -43,6 +48,7 @@ export function GradeMatrix({
   onSave: (fd: FormData) => Promise<{ ok: boolean; error?: string }>;
 }) {
   const t = useTranslations('admin.grades.sheet');
+  const locale = useLocale();
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [rows, setRows] = useState<EditRow[]>(() =>
@@ -50,6 +56,8 @@ export function GradeMatrix({
       studentId: r.studentId,
       firstName: r.firstName,
       lastName: r.lastName,
+      firstNameAr: r.firstNameAr,
+      lastNameAr: r.lastNameAr,
       text: r.value === null ? '' : String(r.value),
       comment: r.comment,
     })),
@@ -127,7 +135,7 @@ export function GradeMatrix({
             {rows.map((r) => (
               <tr key={r.studentId}>
                 <td className="px-4 py-2 font-medium text-slate-900">
-                  {r.lastName} {r.firstName}
+                  {personDisplayName(locale, r)}
                 </td>
                 <td className="px-4 py-2 text-end">
                   <div className="flex items-center justify-end gap-1">

@@ -281,7 +281,7 @@ export async function loadSlotDetail(
     where: { date: dateObj, periodLabel, ...(classId ? { classId } : {}) },
     select: {
       classId: true,
-      class: { select: { name: true } },
+      class: { select: { name: true, nameAr: true } },
       records: {
         ...(studentId ? { where: { studentId } } : {}),
         select: {
@@ -313,7 +313,7 @@ export async function loadSlotDetail(
       },
       select: {
         classId: true,
-        subject: { select: { label: true } },
+        subject: { select: { label: true, labelAr: true } },
         teacher: { select: { firstName: true, lastName: true } },
       },
     });
@@ -404,8 +404,8 @@ export async function loadMissingAppels(
     select: {
       id: true,
       classId: true,
-      class: { select: { name: true } },
-      subject: { select: { label: true } },
+      class: { select: { name: true, nameAr: true } },
+      subject: { select: { label: true, labelAr: true } },
       teacherId: true,
       teacher: { select: { firstName: true, lastName: true } },
     },
@@ -472,7 +472,7 @@ export async function listEnrolledStudents(
     where: { unenrolledAt: null, class: { academicYearId: year.id } },
     select: {
       student: { select: { id: true, firstName: true, lastName: true } },
-      class: { select: { name: true } },
+      class: { select: { name: true, nameAr: true } },
     },
     orderBy: [{ student: { lastName: 'asc' } }, { student: { firstName: 'asc' } }],
   });

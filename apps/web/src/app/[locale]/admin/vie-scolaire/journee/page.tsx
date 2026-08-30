@@ -19,6 +19,12 @@ import {
 import { DashboardTabs } from '../../dashboard-tabs';
 import { StudentSearch } from './student-search';
 import { RaCheckbox, MotifPicker, NotifyAppelButton, type Reason } from './row-actions';
+import { JourneeTabs } from './attendance-tabs';
+import { monthlyAttendance, topStudents } from '@/lib/attendance-stats';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
+
+/** Mois de l'année scolaire couverts par les onglets d'évolution. */
+const MONTH_COUNT = 10;
 
 // Colonnes du tableau, dans l'ordre Pronote. `data` = alimentée ; `placeholder`
 // = grisée (modèle à venir) ; `convocations` = compteur niveau jour.
@@ -85,11 +91,14 @@ export default async function VieScolaireBoardPage({
 
   const data = await withTenant(session.user.tenantId, async (tx) => {
     const date = explicitDate ?? (await latestAppelDate(tx)) ?? toDateStr(new Date());
-    const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
+    const year = await tx.academicYear.findFirst({
+      where: { active: true },
+      select: { id: true, startDate: true },
+    });
     const classList = year
       ? await tx.class.findMany({
           where: { academicYearId: year.id, deletedAt: null },
-          select: { id: true, name: true },
+          select: { id: true, name: true, nameAr: true },
           orderBy: { name: 'asc' },
         })
       : [];
@@ -120,11 +129,36 @@ export default async function VieScolaireBoardPage({
       detail = { rows, periodLabel: sp.slot, col };
     }
 
-    return { date, classList, classId, students, studentId, studentName, reasons, board, detail, missing };
+    // Onglets d'analyse : évolution mensuelle et palmarès, sur l'année active.
+    const monthly = await monthlyAttendance(tx, MONTH_COUNT, year ? new Date(year.startDate) : null);
+    const nameOf = (pp: {
+      firstName: string;
+      lastName: string;
+      firstNameAr: string | null;
+      lastNameAr: string | null;
+    }) => personDisplayName(locale, pp);
+    const labelOf = (l: string, la: string | null) => localizedLabel(locale, l, la);
+    const [topAbsences, topLates] = await Promise.all([
+      topStudents(tx, 'ABSENCE', 10, locale, nameOf, labelOf),
+      topStudents(tx, 'LATE', 10, locale, nameOf, labelOf),
+    ]);
+    const monthStart = year ? new Date(year.startDate) : new Date();
+    const monthLabels = Array.from({ length: MONTH_COUNT }, (_, k) =>
+      new Date(
+        Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + k, 1),
+      ).toLocaleDateString(locale, { month: 'short', timeZone: 'UTC' }),
+    );
+
+    return {
+      date, classList, classId, students, studentId, studentName, reasons, board, detail, missing,
+      monthly, monthLabels, topAbsences, topLates,
+    };
   });
 
-  const { date, classList, classId, students, studentId, studentName, reasons, board, detail, missing } =
-    data;
+  const {
+    date, classList, classId, students, studentId, studentName, reasons, board, detail, missing,
+    monthly, monthLabels, topAbsences, topLates,
+  } = data;
   const dateLabel = new Date(`${date}T00:00:00`).toLocaleDateString(locale, { dateStyle: 'full' });
 
   const qs = (over: Record<string, string | undefined>) => {
@@ -148,10 +182,13 @@ export default async function VieScolaireBoardPage({
       <div className="mb-4">
         <DashboardTabs locale={locale} showPilotage={showPilotage} />
       </div>
-      <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
-        <h2 className="text-base font-bold text-slate-900">{t('title')}</h2>
-      </header>
-
+      <JourneeTabs
+        labels={monthLabels}
+        monthly={monthly}
+        topAbsences={topAbsences}
+        topLates={topLates}
+        board={
+          <>
       {/* Barre d'outils : date, classe, élève */}
       <div className="mt-4 flex flex-wrap items-center gap-3">
         <div className="flex items-center gap-1">
@@ -237,6 +274,9 @@ export default async function VieScolaireBoardPage({
           slotFmtLabel={slotLabel(detail.periodLabel)}
         />
       )}
+          </>
+        }
+      />
     </div>
   );
 }

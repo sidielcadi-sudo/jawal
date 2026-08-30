@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { SubjectCreateForm, SubjectRowActions } from './client';
+import { localizedLabel } from '@/lib/localized-name';
 
 export default async function SubjectsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -55,7 +56,7 @@ export default async function SubjectsPage({ params }: { params: Promise<{ local
                             key={c.id}
                             href={`/${locale}/admin/settings/curriculum/programme?level=${c.levelId}`}
                             className="rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 hover:bg-brand-100 hover:text-brand-700"
-                            title={`${c.level.label} · coef ${c.coefficient} · ${c.weeklyHours}h/sem`}
+                            title={`${localizedLabel(locale, c.level.label, c.level.labelAr)} · coef ${c.coefficient} · ${c.weeklyHours}h/sem`}
                           >
                             {c.level.code} ×{c.coefficient}
                             <span className="ms-1 text-slate-500">({c.weeklyHours}h)</span>
@@ -71,6 +72,7 @@ export default async function SubjectsPage({ params }: { params: Promise<{ local
                       initial={{
                         code: s.code,
                         label: s.label,
+                        labelAr: s.labelAr,
                         scale: s.scale,
                         coefficient: s.coefficient,
                         order: s.order,

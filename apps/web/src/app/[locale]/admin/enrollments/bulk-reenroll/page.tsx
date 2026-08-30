@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { proposeNextLevel } from '@/lib/level-progression';
 import { BulkReenrollSheet, type Row, type YearOpt, type LevelOpt } from './sheet';
+import { localizedLabel } from '@/lib/localized-name';
 
 export default async function BulkReenrollPage({
   params,
@@ -42,14 +43,14 @@ export default async function BulkReenrollPage({
       const targetYearId = sp.target ?? targetCandidate?.id ?? null;
 
       const levelsRaw = await tx.level.findMany({
-        include: { cycle: { select: { id: true, order: true, label: true } } },
+        include: { cycle: { select: { id: true, order: true, label: true, labelAr: true } } },
         orderBy: [{ cycle: { order: 'asc' } }, { order: 'asc' }],
       });
       const levels: LevelOpt[] = levelsRaw.map((l) => ({
         id: l.id,
-        label: l.label,
+        label: localizedLabel(locale, l.label, l.labelAr),
         cycleId: l.cycleId,
-        cycleLabel: l.cycle.label,
+        cycleLabel: localizedLabel(locale, l.cycle.label, l.cycle.labelAr),
         order: l.order,
         cycle: { id: l.cycle.id, order: l.cycle.order },
       }));
@@ -62,9 +63,9 @@ export default async function BulkReenrollPage({
             status: { in: ['ACTIVE', 'DRAFT'] },
           },
           include: {
-            student: { select: { id: true, firstName: true, lastName: true } },
-            level: { select: { label: true, cycleId: true } },
-            class: { select: { name: true } },
+            student: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
+            level: { select: { label: true, labelAr: true, cycleId: true } },
+            class: { select: { name: true, nameAr: true } },
           },
           orderBy: [{ status: 'asc' }, { student: { lastName: 'asc' } }],
         });
@@ -91,9 +92,11 @@ export default async function BulkReenrollPage({
             studentId: e.studentId,
             firstName: e.student.firstName,
             lastName: e.student.lastName,
+            firstNameAr: e.student.firstNameAr,
+            lastNameAr: e.student.lastNameAr,
             currentLevelId: e.levelId,
-            currentLevelLabel: e.level.label,
-            currentClassName: e.class?.name ?? null,
+            currentLevelLabel: localizedLabel(locale, e.level.label, e.level.labelAr),
+            currentClassName: e.class ? localizedLabel(locale, e.class.name, e.class.nameAr) : null,
             currentStatus: e.status as 'ACTIVE' | 'DRAFT',
             suggestedNextLevelId: suggested?.id ?? null,
             suggestedNextLevelLabel: suggestedFull?.label ?? null,

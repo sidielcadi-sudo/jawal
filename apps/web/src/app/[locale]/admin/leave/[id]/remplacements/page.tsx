@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { isDirection } from '@/lib/auth/rbac';
 import { withTenant } from '@/lib/db';
 import { SubstituteSelect, ValidateSubstitutionButton, ApprovalCell } from '../../substitute-select';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 const DOW_CODES = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
 
@@ -35,7 +36,7 @@ export default async function RemplacementsPage({
   const data = await withTenant(session.user.tenantId, async (tx) => {
     const leave = await tx.leaveRequest.findUnique({
       where: { id },
-      include: { person: { select: { id: true, firstName: true, lastName: true, type: true } }, leaveType: { select: { labelFr: true } } },
+      include: { person: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, type: true } }, leaveType: { select: { labelFr: true } } },
     });
     if (!leave) return null;
 
@@ -50,8 +51,8 @@ export default async function RemplacementsPage({
       where: { teacherId: leave.personId, academicYearId: year.id, slot: { isBreak: false } },
       include: {
         slot: { select: { id: true, startTime: true, endTime: true, order: true } },
-        class: { select: { name: true } },
-        subject: { select: { id: true, label: true } },
+        class: { select: { name: true, nameAr: true } },
+        subject: { select: { id: true, label: true, labelAr: true } },
         room: { select: { id: true, code: true } },
       },
     });
@@ -73,7 +74,7 @@ export default async function RemplacementsPage({
 
     // Profs + qualification (TeacherAssignment) + congés approuvés (exclusion).
     const [teachers, assignments, approvedLeaves, existingOverrides] = await Promise.all([
-      tx.person.findMany({ where: { type: 'TEACHER', deletedAt: null }, select: { id: true, firstName: true, lastName: true } }),
+      tx.person.findMany({ where: { type: 'TEACHER', deletedAt: null }, select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } }),
       tx.teacherAssignment.findMany({ where: { academicYearId: year.id }, select: { teacherId: true, subjectId: true } }),
       tx.leaveRequest.findMany({ where: { status: 'APPROVED', startDate: { lte: leave.endDate }, endDate: { gte: leave.startDate } }, select: { personId: true, startDate: true, endDate: true } }),
       tx.timetableOverride.findMany({ where: { entryId: { in: teacherEntries.map((e) => e.id) }, date: { gte: leave.startDate, lte: leave.endDate } }, select: { entryId: true, date: true, kind: true, substituteTeacherId: true, validatedAt: true, approvalStatus: true, approvalComment: true } }),
@@ -102,7 +103,7 @@ export default async function RemplacementsPage({
           dateStr: d.toISOString().slice(0, 10),
           slotOrder: e.slot.order,
           slotLabel: `${e.slot.startTime}–${e.slot.endTime}`,
-          className: e.class.name,
+          className: localizedLabel(locale, e.class.name, e.class.nameAr),
           subjectId: e.subjectId,
           subjectName: e.subject?.label ?? '—',
           roomCode: e.room?.code ?? null,
@@ -128,7 +129,7 @@ export default async function RemplacementsPage({
       const qSet = s.subjectId ? qualifiedBySubject.get(s.subjectId) ?? new Set<string>() : new Set<string>();
       const cands = teachers
         .filter((te) => te.id !== leave.personId && !busySet.has(te.id) && !leaveSet.has(te.id))
-        .map((te) => ({ id: te.id, name: `${te.lastName} ${te.firstName}`, qualified: qSet.has(te.id) }));
+        .map((te) => ({ id: te.id, name: personDisplayName(locale, te), qualified: qSet.has(te.id) }));
       candidatesByKey.set(`${s.entryId}|${s.dateStr}`, cands);
     }
 
@@ -162,7 +163,7 @@ export default async function RemplacementsPage({
       </nav>
 
       <h1 className="mb-1 text-base font-bold text-slate-900">
-        {ts('title')} — {leave.person.lastName} {leave.person.firstName}
+        {ts('title')} — {personDisplayName(locale, leave.person)}
       </h1>
       <p className="mb-3 text-xs text-slate-500">
         {leave.leaveType.labelFr} · {new Date(leave.startDate).toLocaleDateString(locale)} → {new Date(leave.endDate).toLocaleDateString(locale)}

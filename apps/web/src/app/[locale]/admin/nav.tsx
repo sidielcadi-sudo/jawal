@@ -219,7 +219,7 @@ const EMOJI: Record<string, string> = {
   justifications: '✅',
   transport: '🚍',
   staffAttendance: '🕒',
-  leave: '🌴',
+  leave: '🏖️',
   overtime: '⏱️',
   payroll: '💵',
   comptabilite: '🧮',

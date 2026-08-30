@@ -327,8 +327,8 @@ async function revertTeacherSubstitutions(
       entry: {
         select: {
           slot: { select: { startTime: true, endTime: true } },
-          subject: { select: { label: true } },
-          class: { select: { id: true, name: true } },
+          subject: { select: { label: true, labelAr: true } },
+          class: { select: { id: true, name: true, nameAr: true } },
         },
       },
       substituteTeacher: { select: { firstName: true, lastName: true } },

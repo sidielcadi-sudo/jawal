@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import type { AttendanceStatusInput } from '@jawal/shared';
 import { reopenSessionAction, saveAttendanceAction } from './actions';
+import { personDisplayName } from '@/lib/localized-name';
 import {
   reviewJustificationAction,
   submitJustificationAction,
@@ -21,6 +22,8 @@ type AttendanceRow = {
   studentId: string;
   firstName: string;
   lastName: string;
+  firstNameAr: string | null;
+  lastNameAr: string | null;
   status: AttendanceStatusInput;
   lateMinutes: number | null;
   note: string | null;
@@ -181,7 +184,7 @@ export function AttendanceCallSheet({
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-slate-900">
-                  {r.lastName} {r.firstName}
+                  {personDisplayName(locale, r)}
                 </div>
                 {r.status === 'LATE' && (
                   <div className="mt-1 flex items-center gap-2 text-xs text-amber-700">

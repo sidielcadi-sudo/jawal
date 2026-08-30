@@ -85,14 +85,17 @@ function hhmmToMin(s: string): number {
 
 export type KpiResult = {
   /**
-   * KPI 1 — Couverture horaire profs (capacité contractuelle ≥ demande)
-   * pct est CAPÉ à 100% : si la capacité dépasse la demande, on affiche 100%.
-   * Vert si pct=100, amber si 90-99, rouge si <90.
+   * KPI 1 — Couverture horaire profs : part de la capacité contractuelle
+   * effectivement couverte par les heures à enseigner (à enseigner ÷
+   * contractuelles). 100 % = capacité pleinement employée ; en dessous, une
+   * partie des heures payées n'est pas affectée.
+   * Non capé : au-delà de 100 % la demande dépasse la capacité, et c'est
+   * précisément ce qu'il faut voir. L'anneau, lui, s'arrête au tour complet.
    */
   coverageHours: {
     expected: number; // somme TeacherAssignment.hoursPerWeek
     contractual: number; // somme Person.contractualHoursPerWeek (TEACHER)
-    pct: number; // min(100, contractual/expected × 100)
+    pct: number; // expected/contractual × 100 (peut dépasser 100 = surcharge)
     teachersWithoutContractual: number; // alerte : profs avec valeur null
     totalTeachers: number;
   };
@@ -204,7 +207,7 @@ export async function computeKpis(
       hoursPerWeek: true,
       subjectId: true,
       classId: true,
-      subject: { select: { label: true } },
+      subject: { select: { label: true, labelAr: true } },
     },
   });
 
@@ -231,7 +234,7 @@ export async function computeKpis(
     (t) => t.contractualHoursPerWeek === null || t.contractualHoursPerWeek === undefined,
   ).length;
   const coveragePct =
-    expectedHours > 0 ? Math.min(100, Math.round((contractualHours / expectedHours) * 100)) : 100;
+    contractualHours > 0 ? Math.round((expectedHours / contractualHours) * 100) : 0;
   // Taux d'utilisation prévisionnel — non capé, peut dépasser 100%
   const utilizationPct =
     contractualHours > 0 ? Math.round((expectedHours / contractualHours) * 100) : 0;
@@ -240,7 +243,7 @@ export async function computeKpis(
   const classes = await tx.class.findMany({
     where: { academicYearId, deletedAt: null },
     include: {
-      level: { select: { label: true, cycleId: true } },
+      level: { select: { label: true, labelAr: true, cycleId: true } },
       _count: { select: { teacherAssignments: true, students: true } },
     },
   });
@@ -319,7 +322,7 @@ export async function computeKpis(
   // Σ (heures hebdo du programme × nombre de classes du niveau). Les matières de
   // labo/info/EPS sont mappées vers leur salle ; les autres → salles standard (STD).
   const curriculumForRooms = await tx.curriculumSubject.findMany({
-    select: { levelId: true, weeklyHours: true, subject: { select: { label: true } } },
+    select: { levelId: true, weeklyHours: true, subject: { select: { label: true, labelAr: true } } },
   });
   const classCountByLevelRooms = new Map<string, number>();
   for (const c of classes)
@@ -451,7 +454,7 @@ export async function computeKpis(
       dayOfWeek: true,
       teacherId: true,
       roomId: true,
-      subject: { select: { label: true } },
+      subject: { select: { label: true, labelAr: true } },
     },
   });
   const slotById = new Map(slots.map((s) => [s.id, s]));
@@ -538,7 +541,11 @@ export async function computeKpis(
   }
 
   // ─── Score global (pondération) ──────────────────────────────
-  const coverageScore = coveragePct; // 0-100
+  // Le score global attend « plus haut = mieux » sur 0-100. Or depuis
+  // l'inversion du ratio, un coveragePct élevé signale une surcharge : on le
+  // retourne. Capacité suffisante (≤ 100 %) = 100 ; au-delà, le score décroît
+  // d'un point par point de dépassement.
+  const coverageScore = coveragePct <= 100 ? 100 : Math.max(0, 200 - coveragePct);
   const classRoomsScore = classRoomsPct; // 0-100
   const teacherAvScore =
     totalSlotCells > 0

@@ -5,6 +5,7 @@ import { withTenant } from '@/lib/db';
 import { DeleteButton } from '../bourse-client';
 import { AddCopyForm } from '../deposit-client';
 import { removeCopyAction } from '../deposit-actions';
+import { personDisplayName } from '@/lib/localized-name';
 
 const inputCls = 'rounded-lg border border-slate-300 px-3 py-2 text-sm';
 const STATUS_BADGE: Record<string, string> = {
@@ -31,7 +32,7 @@ export default async function DepotPage({
   const data = await withTenant(session.user.tenantId, async (tx) => {
     const [campaigns, students, books, config, tenant] = await Promise.all([
       tx.bookExchangeCampaign.findMany({ where: { status: 'OPEN' }, orderBy: [{ year: 'desc' }] }),
-      tx.person.findMany({ where: { type: 'STUDENT', deletedAt: null }, orderBy: [{ lastName: 'asc' }], select: { id: true, firstName: true, lastName: true } }),
+      tx.person.findMany({ where: { type: 'STUDENT', deletedAt: null }, orderBy: [{ lastName: 'asc' }], select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } }),
       tx.book.findMany({ orderBy: { title: 'asc' }, select: { id: true, title: true, priceNew: true, priceBourseDefault: true }, take: 500 }),
       tx.bookExchangeConfig.findFirst({ select: { pricingByCondition: true } }),
       tx.tenant.findFirst({ select: { currency: true } }),
@@ -69,7 +70,7 @@ export default async function DepotPage({
         <label className="text-xs font-medium text-slate-600"><span className="mb-1 block">{t('depot.seller')}</span>
           <select name="sellerId" defaultValue={sellerId} className={inputCls}>
             <option value="">—</option>
-            {students.map((s) => <option key={s.id} value={s.id}>{s.lastName} {s.firstName}</option>)}
+            {students.map((s) => <option key={s.id} value={s.id}>{personDisplayName(locale, s)}</option>)}
           </select>
         </label>
         <button className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">{t('depot.load')}</button>

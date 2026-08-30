@@ -5,6 +5,8 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { EvaluationCreateForm, EvaluationRowActions } from './client';
+import { localizedLabel } from '@/lib/localized-name';
+import { PeriodButtons } from '@/components/period-buttons';
 
 export default async function ClassGradesPage({
   params,
@@ -65,7 +67,7 @@ export default async function ClassGradesPage({
         </Link>
         <span className="mx-1.5">›</span>
         <Link href={`/${locale}/admin/classes/${id}`} className="hover:text-brand-700">
-          {cls.name}
+          {localizedLabel(locale, cls.name, cls.nameAr)}
         </Link>
         <span className="mx-1.5">›</span>
         <span>{t('title')}</span>
@@ -74,10 +76,10 @@ export default async function ClassGradesPage({
       <header className="-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
-            {t('title')} — {cls.name}
+            {t('title')} — {localizedLabel(locale, cls.name, cls.nameAr)}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            {cls.level.cycle.label} · {cls.level.label} · {cls.academicYear.label}
+            {localizedLabel(locale, cls.level.cycle.label, cls.level.cycle.labelAr)} · {localizedLabel(locale, cls.level.label, cls.level.labelAr)} · {cls.academicYear.label}
           </p>
         </div>
         <ClassNav classId={id} locale={locale} />
@@ -96,6 +98,14 @@ export default async function ClassGradesPage({
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <section className="lg:col-span-2">
+            <div className="mb-3">
+              <PeriodButtons
+                periods={periods}
+                selectedId={sp.period ?? null}
+                locale={locale}
+                allLabel={t('filter.allPeriods')}
+              />
+            </div>
             <form method="get" className="mb-3 flex flex-wrap items-end gap-3">
               <div>
                 <label className="block text-xs text-slate-600">{t('filter.subject')}</label>
@@ -108,21 +118,6 @@ export default async function ClassGradesPage({
                   {subjects.map((s) => (
                     <option key={s.id} value={s.id}>
                       {s.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-xs text-slate-600">{t('filter.period')}</label>
-                <select
-                  name="period"
-                  defaultValue={sp.period ?? ''}
-                  className="mt-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm shadow-sm"
-                >
-                  <option value="">{t('filter.allPeriods')}</option>
-                  {periods.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.label}
                     </option>
                   ))}
                 </select>
@@ -164,8 +159,8 @@ export default async function ClassGradesPage({
                             /{e.maxValue} · ×{e.weight}
                           </div>
                         </td>
-                        <td className="px-4 py-3 text-xs text-slate-600">{e.subject.label}</td>
-                        <td className="px-4 py-3 text-xs text-slate-600">{e.period.label}</td>
+                        <td className="px-4 py-3 text-xs text-slate-600">{localizedLabel(locale, e.subject.label, e.subject.labelAr)}</td>
+                        <td className="px-4 py-3 text-xs text-slate-600">{localizedLabel(locale, e.period.label, e.period.labelAr)}</td>
                         <td className="px-4 py-3 text-xs text-slate-600">
                           {new Date(e.date).toLocaleDateString(locale)}
                         </td>
@@ -204,7 +199,7 @@ export default async function ClassGradesPage({
                 <EvaluationCreateForm
                   classId={id}
                   subjects={subjects.map((s) => ({ id: s.id, label: s.label, scale: s.scale }))}
-                  periods={periods.map((p) => ({ id: p.id, label: p.label }))}
+                  periods={periods.map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr }))}
                   defaultSubjectId={sp.subject}
                   defaultPeriodId={sp.period}
                 />

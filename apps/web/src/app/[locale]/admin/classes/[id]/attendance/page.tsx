@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { getOrCreateAttendanceSessionAction } from './actions';
 import { AttendanceCallSheet } from './call-sheet';
+import { localizedLabel } from '@/lib/localized-name';
 
 export default async function AttendancePage({
   params,
@@ -82,7 +83,7 @@ export default async function AttendancePage({
         </Link>
         <span className="mx-1.5">›</span>
         <Link href={`/${locale}/admin/classes/${id}`} className="hover:text-brand-700">
-          {cls.name}
+          {localizedLabel(locale, cls.name, cls.nameAr)}
         </Link>
         <span className="mx-1.5">›</span>
         <span>{t('callOf', { date: new Date(date).toLocaleDateString(locale) })}</span>
@@ -91,12 +92,12 @@ export default async function AttendancePage({
       <header className="mb-5">
         <header className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-slate-900">
-          {t('title')} — {cls.name}
+          {t('title')} — {localizedLabel(locale, cls.name, cls.nameAr)}
         </h1>
         <ClassNav classId={id} locale={locale} />
       </header>
         <p className="mt-1 text-sm text-slate-500">
-          {cls.level.cycle.label} · {cls.level.label} · {cls.academicYear.label}
+          {localizedLabel(locale, cls.level.cycle.label, cls.level.cycle.labelAr)} · {localizedLabel(locale, cls.level.label, cls.level.labelAr)} · {cls.academicYear.label}
         </p>
         {finalizedAt && (
           <div className="mt-3 rounded-lg border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">

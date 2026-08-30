@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { Pagination } from '@/components/pagination';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 const PAGE_SIZE = 20;
 
@@ -46,9 +47,17 @@ export default async function EnrollmentsListPage({
               ...(filterStatus !== 'ALL' ? { status: filterStatus } : {}),
             },
             include: {
-              student: { select: { id: true, firstName: true, lastName: true } },
-              level: { select: { label: true } },
-              class: { select: { id: true, name: true } },
+              student: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  firstNameAr: true,
+                  lastNameAr: true,
+                },
+              },
+              level: { select: { label: true, labelAr: true } },
+              class: { select: { id: true, name: true, nameAr: true } },
             },
             orderBy: [{ student: { lastName: 'asc' } }, { student: { firstName: 'asc' } }],
             skip: (page - 1) * PAGE_SIZE,
@@ -119,12 +128,6 @@ export default async function EnrollmentsListPage({
             </button>
           </form>
           <Link
-            href={`/${locale}/admin/enrollments/import-massar`}
-            className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600"
-          >
-            {t('massarButton')}
-          </Link>
-          <Link
             href={`/${locale}/admin/enrollments/bulk-reenroll${currentYearId ? `?source=${currentYearId}` : ''}`}
             className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
@@ -141,6 +144,18 @@ export default async function EnrollmentsListPage({
             className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
           >
             + {t('newAdmissionButton')}
+          </Link>
+          <Link
+            href={`/${locale}/admin/enrollments/import-massar`}
+            className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-white hover:bg-amber-600"
+          >
+            {t('massarButton')}
+          </Link>
+          <Link
+            href={`/${locale}/admin/timetable`}
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700"
+          >
+            {t('timetableButton')}
           </Link>
         </div>
       </header>
@@ -217,17 +232,19 @@ export default async function EnrollmentsListPage({
                       href={`/${locale}/admin/persons/${e.student.id}`}
                       className="font-medium text-slate-900 hover:text-brand-700"
                     >
-                      {e.student.lastName} {e.student.firstName}
+                      {personDisplayName(locale, e.student)}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-600">{e.level.label}</td>
+                  <td className="px-4 py-3 text-xs text-slate-600">
+                    {localizedLabel(locale, e.level.label, e.level.labelAr)}
+                  </td>
                   <td className="px-4 py-3 text-xs text-slate-700">
                     {e.class ? (
                       <Link
                         href={`/${locale}/admin/classes/${e.class.id}`}
                         className="hover:text-brand-700"
                       >
-                        {e.class.name}
+                        {localizedLabel(locale, e.class.name, e.class.nameAr)}
                       </Link>
                     ) : (
                       <span className="text-slate-400">—</span>

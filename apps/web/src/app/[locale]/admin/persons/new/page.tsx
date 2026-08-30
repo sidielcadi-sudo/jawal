@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { PersonForm } from '../person-form';
+import { localizedLabel } from '@/lib/localized-name';
 
 export default async function NewPersonPage({
   params,
@@ -52,6 +53,10 @@ export default async function NewPersonPage({
             id: true,
             firstName: true,
             lastName: true,
+            // État civil arabe : repris tel quel dans l'onglet « Données en
+            // arabe », un parent rattaché en français l'étant aussi en arabe.
+            firstNameAr: true,
+            lastNameAr: true,
             address: true,
             relationsAsParent: {
               // Fratrie = tous les élèves rattachés, quel que soit leur statut :
@@ -65,7 +70,7 @@ export default async function NewPersonPage({
                     lastName: true,
                     studentClasses: {
                       where: { unenrolledAt: null },
-                      select: { class: { select: { name: true } } },
+                      select: { class: { select: { name: true, nameAr: true } } },
                       take: 1,
                     },
                     // Dossier le plus récent = statut courant de l'élève.
@@ -85,7 +90,7 @@ export default async function NewPersonPage({
         tx.class.findMany({
           where: { deletedAt: null, ...(activeYear ? { academicYearId: activeYear.id } : {}) },
           orderBy: { name: 'asc' },
-          select: { id: true, name: true },
+          select: { id: true, name: true, nameAr: true },
         }),
         tx.room.findMany({ orderBy: { code: 'asc' } }),
       ]);
@@ -102,6 +107,8 @@ export default async function NewPersonPage({
           id: p.id,
           firstName: p.firstName,
           lastName: p.lastName,
+          firstNameAr: p.firstNameAr,
+          lastNameAr: p.lastNameAr,
           address: (p.address ?? null) as {
             line1?: string;
             city?: string;
@@ -111,7 +118,7 @@ export default async function NewPersonPage({
           children: p.relationsAsParent.map((r) => ({
             firstName: r.child.firstName,
             lastName: r.child.lastName,
-            className: r.child.studentClasses[0]?.class.name ?? null,
+            className: localizedLabel(locale, r.child.studentClasses[0]?.class.name, r.child.studentClasses[0]?.class.nameAr) ?? null,
             status: r.child.enrollments[0]?.status ?? null,
           })),
         })),
@@ -120,7 +127,13 @@ export default async function NewPersonPage({
         allClasses: classes,
         rooms: roomList.map((r) => ({ id: r.id, label: `${r.code} — ${r.label}` })),
         activeYearId: activeYear?.id ?? years.find((y) => y.active)?.id ?? years[0]?.id ?? null,
-        levels: levels.map((l) => ({ id: l.id, label: `${l.cycle.label} — ${l.label}` })),
+        // labelAr : c'est ce libellé qui part vers MASAR, affiché tel quel
+        // dans l'onglet « Données en arabe ».
+        levels: levels.map((l) => ({
+          id: l.id,
+          label: `${localizedLabel(locale, l.cycle.label, l.cycle.labelAr)} — ${localizedLabel(locale, l.label, l.labelAr)}`,
+          labelAr: l.labelAr,
+        })),
         years: years.map((y) => ({ id: y.id, label: y.label })),
       };
     },
@@ -160,7 +173,7 @@ export default async function NewPersonPage({
         <PersonForm
           mode="create"
           locale={locale}
-          lockType={defaultType === 'STUDENT'}
+          lockType
           admission={
             isAdmission && activeYearId
               ? { years, defaultYearId: activeYearId, levels }
@@ -176,7 +189,7 @@ export default async function NewPersonPage({
           availableParents={availableParents}
           allSubjects={allSubjects.map((s) => ({ id: s.id, label: s.label }))}
           allCycles={allCycles.map((c) => ({ id: c.id, label: c.label }))}
-          allClasses={allClasses.map((c) => ({ id: c.id, label: c.name }))}
+          allClasses={allClasses.map((c) => ({ id: c.id, label: localizedLabel(locale, c.name, c.nameAr) }))}
           rooms={rooms}
         />
       </div>

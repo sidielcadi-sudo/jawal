@@ -8,6 +8,7 @@ import { loadActiveFramework } from '@/lib/competences';
 import { computeReports } from '@/lib/competency-report';
 import { ClassSynthesis } from '@/components/competences/class-synthesis';
 import { CompetencyRadar, CompetencyBars } from '@/components/competences/radar';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 /** Synthèse de classe côté enseignant (lecture seule : le gel reste à la direction). */
 export default async function TeacherBilanPage({
@@ -36,7 +37,7 @@ export default async function TeacherBilanPage({
     const framework = await loadActiveFramework(tx);
     if (!framework) return null;
 
-    const select = { classId: true, class: { select: { name: true, levelId: true } } } as const;
+    const select = { classId: true, class: { select: { name: true, nameAr: true, levelId: true } } } as const;
     const [assignments, entries] = await Promise.all([
       tx.teacherAssignment.findMany({ where: { teacherId, academicYearId: year.id }, select }),
       tx.timetableEntry.findMany({ where: { teacherId, academicYearId: year.id }, select }),
@@ -45,7 +46,7 @@ export default async function TeacherBilanPage({
       ...new Map(
         [...assignments, ...entries].map((a) => [
           a.classId,
-          { id: a.classId, label: a.class.name, levelId: a.class.levelId },
+          { id: a.classId, label: localizedLabel(locale, a.class.name, a.class.nameAr), levelId: a.class.levelId },
         ]),
       ).values(),
     ].sort((a, b) => a.label.localeCompare(b.label));
@@ -58,7 +59,7 @@ export default async function TeacherBilanPage({
 
     const scs = await tx.studentClass.findMany({
       where: { classId, unenrolledAt: null, student: { deletedAt: null, enrollments: { some: { status: 'ACTIVE' } } } },
-      include: { student: { select: { id: true, firstName: true, lastName: true } } },
+      include: { student: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
       orderBy: { student: { lastName: 'asc' } },
     });
     const studentIds = scs.map((s) => s.student.id);
@@ -79,7 +80,7 @@ export default async function TeacherBilanPage({
     return {
       classes,
       classId,
-      periods: year.periods.map((p) => ({ id: p.id, label: p.label })),
+      periods: year.periods.map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr })),
       periodId,
       domains: domainNodes.map((d) => ({
         id: d.id,
@@ -88,14 +89,14 @@ export default async function TeacherBilanPage({
       })),
       rows: scs.map((s) => ({
         studentId: s.student.id,
-        name: `${s.student.lastName} ${s.student.firstName}`,
+        name: personDisplayName(locale, s.student),
         report: reports.get(s.student.id)!,
       })),
       selected: selectedId
         ? {
             name: (() => {
               const s = scs.find((x) => x.student.id === selectedId)!.student;
-              return `${s.lastName} ${s.firstName}`;
+              return personDisplayName(locale, s);
             })(),
             report: reports.get(selectedId)!,
           }

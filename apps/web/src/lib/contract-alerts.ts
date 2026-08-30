@@ -3,11 +3,10 @@ import type { ContractType } from '@jawal/db';
 import { withTenant, prismaAdmin } from '@/lib/db';
 import { safeSendEmail } from '@/lib/email';
 import { computeContractStatus, ALERT_THRESHOLDS_DAYS } from '@/lib/contract-status';
+import type { BilingualNameFields } from '@/lib/localized-name';
 
-export type ContractAlert = {
+export type ContractAlert = BilingualNameFields & {
   personId: string;
-  firstName: string;
-  lastName: string;
   type: 'TEACHER' | 'STAFF';
   contractType: ContractType | null;
   endDate: Date;
@@ -38,6 +37,8 @@ export async function listContractAlerts(tenantId: string): Promise<ContractAler
         personId: p.id,
         firstName: p.firstName,
         lastName: p.lastName,
+        firstNameAr: p.firstNameAr,
+        lastNameAr: p.lastNameAr,
         type: p.type as 'TEACHER' | 'STAFF',
         contractType: p.contractType,
         endDate: p.contractEndDate!,

@@ -13,6 +13,7 @@ import { computeReports, rateColor } from '@/lib/competency-report';
 import { pickPeriodId } from '@/lib/periods';
 import { ChildTabs } from '../tabs';
 import { JustifyButton } from '../justify-button';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
 const DOW_CODES = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
@@ -57,9 +58,9 @@ export default async function ParentChildVieScolairePage({
         ? await tx.timetableEntry.findMany({
             where: { classId: ctx.classId, academicYearId: ctx.year.id },
             include: {
-              subject: { select: { label: true } },
-              teacher: { select: { firstName: true, lastName: true } },
-              room: { select: { label: true } },
+              subject: { select: { label: true, labelAr: true } },
+              teacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
+              room: { select: { label: true, labelAr: true } },
             },
           })
         : [];
@@ -73,9 +74,9 @@ export default async function ParentChildVieScolairePage({
             where: { classId: ctx.classId, academicYearId: ctx.year.id, dayOfWeek: dayCode },
             include: {
               slot: { select: { startTime: true, endTime: true, order: true, isBreak: true } },
-              subject: { select: { label: true } },
-              teacher: { select: { firstName: true, lastName: true } },
-              room: { select: { label: true, code: true } },
+              subject: { select: { label: true, labelAr: true } },
+              teacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
+              room: { select: { label: true, labelAr: true, code: true } },
             },
             orderBy: { slot: { order: 'asc' } },
           })
@@ -88,7 +89,7 @@ export default async function ParentChildVieScolairePage({
               date: new Date(`${selectedDate}T00:00:00.000Z`),
               approvalStatus: 'APPROVED',
             },
-            include: { substituteTeacher: { select: { firstName: true, lastName: true } } },
+            include: { substituteTeacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
           })
         : [];
 
@@ -114,7 +115,7 @@ export default async function ParentChildVieScolairePage({
             },
             include: {
               attendanceRecord: { select: { id: true, note: true } },
-              session: { select: { periodLabel: true, class: { select: { name: true } } } },
+              session: { select: { periodLabel: true, class: { select: { name: true, nameAr: true } } } },
             },
             orderBy: { date: 'desc' },
             take: 50,
@@ -134,8 +135,8 @@ export default async function ParentChildVieScolairePage({
         ? await tx.teacherAssignment.findMany({
             where: { classId: ctx.classId, academicYearId: ctx.year.id },
             include: {
-              subject: { select: { label: true } },
-              teacher: { select: { firstName: true, lastName: true } },
+              subject: { select: { label: true, labelAr: true } },
+              teacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
             },
             orderBy: { subject: { label: 'asc' } },
           })
@@ -145,7 +146,7 @@ export default async function ParentChildVieScolairePage({
         ? (
             await tx.class.findUnique({
               where: { id: ctx.classId },
-              select: { mainTeacher: { select: { firstName: true, lastName: true } } },
+              select: { mainTeacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
             })
           )?.mainTeacher ?? null
         : null;
@@ -187,9 +188,9 @@ export default async function ParentChildVieScolairePage({
         const subjById = new Map(subjects.map((s) => [s.id, s.label]));
         const teacherIds = [...new Set(enrollments.map((e) => e.course.teacherId).filter((x): x is string => !!x))];
         const teachers = teacherIds.length
-          ? await tx.person.findMany({ where: { id: { in: teacherIds } }, select: { id: true, firstName: true, lastName: true } })
+          ? await tx.person.findMany({ where: { id: { in: teacherIds } }, select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } })
           : [];
-        const teacherById = new Map(teachers.map((p) => [p.id, `${p.lastName} ${p.firstName}`]));
+        const teacherById = new Map(teachers.map((p) => [p.id, personDisplayName(locale, p)]));
         const courseIds = enrollments.map((e) => e.supportCourseId);
         const sessions = await tx.supportSession.findMany({ where: { supportCourseId: { in: courseIds } }, orderBy: { date: 'desc' }, select: { id: true, supportCourseId: true, date: true, topic: true } });
         const attendance = await tx.supportAttendance.findMany({ where: { studentId: childId, session: { supportCourseId: { in: courseIds } } }, select: { sessionId: true, present: true, appreciation: true } });
@@ -322,7 +323,7 @@ export default async function ParentChildVieScolairePage({
     dayOfWeek: e.dayOfWeek,
     slotId: e.slotId,
     subjectLabel: e.subject?.label ?? null,
-    teacherName: e.teacher ? `${e.teacher.lastName} ${e.teacher.firstName}` : null,
+    teacherName: e.teacher ? personDisplayName(locale, e.teacher) : null,
     roomLabel: e.room?.label ?? null,
   }));
 
@@ -334,13 +335,13 @@ export default async function ParentChildVieScolairePage({
       startTime: e.slot.startTime,
       endTime: e.slot.endTime,
       subject: e.subject?.label ?? null,
-      teacher: e.teacher ? `${e.teacher.lastName} ${e.teacher.firstName}` : null,
+      teacher: e.teacher ? personDisplayName(locale, e.teacher) : null,
       room: e.room?.label ?? e.room?.code ?? null,
       isBreak: e.slot.isBreak,
       cancelled: ov?.kind === 'CANCELLED',
       substituteName:
         ov?.kind === 'SUBSTITUTION' && ov.substituteTeacher
-          ? `${ov.substituteTeacher.lastName} ${ov.substituteTeacher.firstName}`
+          ? personDisplayName(locale, ov.substituteTeacher)
           : null,
     };
   });
@@ -771,7 +772,7 @@ export default async function ParentChildVieScolairePage({
           {data.mainTeacher && (
             <div className="border-b border-slate-100 bg-brand-50 px-4 py-2.5 text-sm">
               <span className="font-medium text-brand-800">{t('equipe.mainTeacher')} :</span>{' '}
-              {data.mainTeacher.lastName} {data.mainTeacher.firstName}
+              {personDisplayName(locale, data.mainTeacher)}
             </div>
           )}
           {data.team.length === 0 ? (
@@ -787,9 +788,9 @@ export default async function ParentChildVieScolairePage({
               <tbody className="divide-y divide-slate-100">
                 {data.team.map((a) => (
                   <tr key={a.id}>
-                    <td className="px-4 py-2 font-medium text-slate-800">{a.subject.label}</td>
+                    <td className="px-4 py-2 font-medium text-slate-800">{localizedLabel(locale, a.subject.label, a.subject.labelAr)}</td>
                     <td className="px-4 py-2 text-slate-600">
-                      {a.teacher.lastName} {a.teacher.firstName}
+                      {personDisplayName(locale, a.teacher)}
                     </td>
                   </tr>
                 ))}

@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import type { Prisma } from '@/lib/db';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 export default async function ClassesListPage({
   params,
@@ -96,7 +97,7 @@ export default async function ClassesListPage({
             <option value="">{t('filters.allLevels')}</option>
             {levels.map((l) => (
               <option key={l.id} value={l.id}>
-                {l.label}
+                {localizedLabel(locale, l.label, l.labelAr)}
               </option>
             ))}
           </select>
@@ -143,7 +144,7 @@ export default async function ClassesListPage({
                       href={`${baseHref}/${c.id}`}
                       className="font-medium text-slate-900 hover:text-brand-700 hover:underline"
                     >
-                      {c.name}
+                      {localizedLabel(locale, c.name, c.nameAr)}
                     </Link>
                     {c.deletedAt && (
                       <span className="ms-2 rounded bg-slate-200 px-1.5 py-0.5 text-xs text-slate-600">
@@ -151,11 +152,11 @@ export default async function ClassesListPage({
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs">{c.level.label}</td>
+                  <td className="px-4 py-3 text-xs">{localizedLabel(locale, c.level.label, c.level.labelAr)}</td>
                   <td className="px-4 py-3 text-xs text-slate-600">{c.academicYear.label}</td>
                   <td className="px-4 py-3 text-xs text-slate-600">
                     {c.mainTeacher
-                      ? `${c.mainTeacher.lastName} ${c.mainTeacher.firstName}`
+                      ? personDisplayName(locale, c.mainTeacher)
                       : '—'}
                   </td>
                   <td className="px-4 py-3 text-end">

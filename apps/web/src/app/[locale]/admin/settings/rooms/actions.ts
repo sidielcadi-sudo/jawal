@@ -12,6 +12,13 @@ type Result = { ok: true } | { ok: false; error: string };
 const roomSchema = z.object({
   code: z.string().min(1).max(40),
   label: z.string().min(1).max(120),
+  /** Libellé arabe — facultatif, alimente les bulletins et l'interface AR. */
+  labelAr: z
+    .string()
+    .max(120)
+    .optional()
+    .transform((v) => (v ? v : null))
+    .nullable(),
   capacity: z.coerce.number().int().min(0).max(2000).default(0),
   equipment: z.string().optional(),
 });
@@ -24,6 +31,7 @@ function input(formData: FormData) {
   return {
     code: get('code'),
     label: get('label'),
+    labelAr: get('labelAr'),
     capacity: get('capacity'),
     equipment: get('equipment'),
   };

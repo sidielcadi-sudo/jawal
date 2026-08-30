@@ -529,6 +529,14 @@ enum StudentRegime {
   INTERNE // interne (hébergé)
 }
 
+/// Statut d'emploi d'un enseignant ou d'un membre du personnel.
+enum EmploymentStatus {
+  ACTIVE
+  SUSPENDED
+  RESIGNED
+  CONTRACT_END
+}
+
 model Person {
   competencyReports CompetencyReport[] @relation("StudentCompetencyReports")
   competencyAssessments CompetencyAssessment[] @relation("StudentCompetencyAssessments")
@@ -578,6 +586,9 @@ model Person {
   /// Date de sortie / fin de contrat. Null = encore en poste.
   contractEndDate         DateTime?             @map("contract_end_date") @db.Date
   contractType            ContractType?         @map("contract_type")
+  /// Statut d'emploi (TEACHER/STAFF) : ACTIVE, SUSPENDED, RESIGNED, CONTRACT_END.
+  /// Colonne dédiée — la liste Enseignants s'y filtre et l'affiche en colonne.
+  employmentStatus        EmploymentStatus?     @map("employment_status")
   /// Volume horaire contractuel hebdomadaire (TEACHER uniquement).
   /// Indépendant des heures réellement enseignées (TeacherAssignment) et
   /// des disponibilités horaires (availability). Sert au KPI de couverture
@@ -940,6 +951,8 @@ model Period {
   academicYearId String     @map("academic_year_id") @db.Uuid
   kind           PeriodKind
   label          String // "Trimestre 1", "Semestre 2"
+  /// Libellé arabe de la période (ex. « الأسدس الأول »).
+  labelAr        String?    @map("label_ar")
   startDate      DateTime   @map("start_date") @db.Date
   endDate        DateTime   @map("end_date") @db.Date
 
@@ -956,6 +969,8 @@ model Cycle {
   tenantId  String   @map("tenant_id") @db.Uuid
   code      String // "primaire", "college", "lycee", "licence", "master"
   label     String
+  /// Libellé arabe du cycle (ex. « التعليم الإعدادي »).
+  labelAr   String?  @map("label_ar")
   order     Int      @default(0)
   /// Réglages spécifiques au cycle (JSON). Overrides les défauts du tenant.
   /// Structure : { "timetable": TimetableSettings }
@@ -1081,6 +1096,8 @@ model Room {
   tenantId  String   @map("tenant_id") @db.Uuid
   code      String // "A101", "Labo-Info-2"
   label     String
+  /// Libellé arabe de la salle (ex. « مختبر العلوم »).
+  labelAr   String?  @map("label_ar")
   capacity  Int      @default(0)
   equipment String[] @default([])
   createdAt DateTime @default(now()) @map("created_at")
@@ -1330,6 +1347,8 @@ model Subject {
   tenantId    String   @map("tenant_id") @db.Uuid
   code        String // "math", "fr", "ar"
   label       String
+  /// Libellé arabe de la matière (ex. « الرياضيات »).
+  labelAr     String?  @map("label_ar")
   scale       Float    @default(20) // /20 par défaut (peut être 10, 100, etc.)
   coefficient Float    @default(1.0)
   order       Int      @default(0)
@@ -2238,6 +2257,11 @@ model Installment {
   waivedReason      String?           @map("waived_reason")
   waivedByUserId    String?           @map("waived_by_user_id") @db.Uuid
   waivedAt          DateTime?         @map("waived_at")
+  /// Relances de paiement déjà envoyées pour cette échéance (J-3 puis J-1).
+  /// Colonnes dédiées plutôt qu'un compteur : le job tourne une fois par jour
+  /// et doit rester idempotent s'il est relancé.
+  reminder3dSentAt  DateTime?         @map("reminder_3d_sent_at")
+  reminder1dSentAt  DateTime?         @map("reminder_1d_sent_at")
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
 

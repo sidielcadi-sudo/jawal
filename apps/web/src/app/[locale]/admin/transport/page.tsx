@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { CreateForm, DeleteButton } from './transport-client';
+import { personDisplayName } from '@/lib/localized-name';
 import {
   createZoneAction,
   deleteZoneAction,
@@ -36,8 +37,8 @@ export default async function TransportPage({ params }: { params: Promise<{ loca
         orderBy: { name: 'asc' },
         include: {
           bus: { select: { number: true } },
-          driver: { select: { firstName: true, lastName: true } },
-          attendant: { select: { firstName: true, lastName: true } },
+          driver: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
+          attendant: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
           _count: { select: { stops: true, studentTransports: true } },
         },
       }),
@@ -159,8 +160,8 @@ export default async function TransportPage({ params }: { params: Promise<{ loca
                       {!l.active && <span className="ms-2 rounded bg-slate-200 px-1.5 py-0.5 text-[10px] text-slate-600">{t('inactive')}</span>}
                     </td>
                     <td className="px-4 py-2.5 text-xs text-slate-600">{l.bus?.number ?? '—'}</td>
-                    <td className="px-4 py-2.5 text-xs text-slate-600">{l.driver ? `${l.driver.lastName} ${l.driver.firstName}` : '—'}</td>
-                    <td className="px-4 py-2.5 text-xs text-slate-600">{l.attendant ? `${l.attendant.lastName} ${l.attendant.firstName}` : '—'}</td>
+                    <td className="px-4 py-2.5 text-xs text-slate-600">{l.driver ? personDisplayName(locale, l.driver) : '—'}</td>
+                    <td className="px-4 py-2.5 text-xs text-slate-600">{l.attendant ? personDisplayName(locale, l.attendant) : '—'}</td>
                     <td className="px-4 py-2.5 text-end tabular-nums text-slate-600">{l._count.stops}</td>
                     <td className="px-4 py-2.5 text-end">
                       <DeleteButton onDelete={deleteLineAction.bind(null, l.id)} />

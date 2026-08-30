@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { listContractAlerts } from '@/lib/contract-alerts';
+import { personDisplayName } from '@/lib/localized-name';
 
 const MONTHS_FR = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -39,7 +40,9 @@ export default async function StaffAttendanceSynthesePage({
       select: {
         id: true,
         firstName: true,
+        firstNameAr: true,
         lastName: true,
+        lastNameAr: true,
         type: true,
         role: { select: { labelFr: true, labelAr: true } },
         staffAttendance: {
@@ -81,7 +84,7 @@ export default async function StaffAttendanceSynthesePage({
       }
       return {
         personId: p.id,
-        name: `${p.lastName} ${p.firstName}`,
+        name: personDisplayName(locale, p),
         roleLabel: locale === 'ar' ? p.role?.labelAr ?? null : p.role?.labelFr ?? null,
         ...agg,
       };
@@ -221,7 +224,7 @@ export default async function StaffAttendanceSynthesePage({
                   href={`/${locale}/admin/persons/${a.personId}`}
                   className="font-medium text-slate-800 hover:text-brand-700 hover:underline"
                 >
-                  {a.lastName} {a.firstName}
+                  {personDisplayName(locale, a)}
                 </Link>
                 <span className="flex items-center gap-3">
                   <span className="text-xs text-slate-500">

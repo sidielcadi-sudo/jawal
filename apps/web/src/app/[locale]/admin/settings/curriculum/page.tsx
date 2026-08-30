@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { CycleCreateForm, LevelCreateForm, CycleRowActions, LevelRowActions } from './client';
+import { localizedLabel } from '@/lib/localized-name';
 
 function periodKindOf(settings: unknown): 'TRIMESTER' | 'SEMESTER' {
   const v = (settings as { periodKind?: string } | null)?.periodKind;
@@ -71,7 +72,14 @@ export default async function CurriculumPage({
                         <td className="px-4 py-2 text-end">
                           <CycleRowActions
                             id={c.id}
-                            initial={{ code: c.code, label: c.label, order: c.order, periodKind: pk, roomMode: rm }}
+                            initial={{
+                              code: c.code,
+                              label: c.label,
+                              labelAr: c.labelAr,
+                              order: c.order,
+                              periodKind: pk,
+                              roomMode: rm,
+                            }}
                           />
                         </td>
                       </tr>
@@ -128,7 +136,7 @@ export default async function CurriculumPage({
                 <tbody className="divide-y divide-slate-100">
                   {levels.map((l) => (
                     <tr key={l.id}>
-                      <td className="px-4 py-2 text-xs text-slate-600">{l.cycle.label}</td>
+                      <td className="px-4 py-2 text-xs text-slate-600">{localizedLabel(locale, l.cycle.label, l.cycle.labelAr)}</td>
                       <td className="px-4 py-2 font-mono text-xs">{l.code}</td>
                       <td className="px-4 py-2 font-medium text-slate-900">{l.label}</td>
                       <td className="px-4 py-2 text-end text-xs text-slate-500">{l.order}</td>

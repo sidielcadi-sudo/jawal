@@ -2,6 +2,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { CreateOvertimeForm, GenerateButton, WorkflowButtons, ExportCsvButton } from './overtime-client';
+import { personDisplayName } from '@/lib/localized-name';
 
 const STATUS_BADGE: Record<string, string> = {
   DECLARED: 'bg-slate-100 text-slate-600',
@@ -28,9 +29,9 @@ export default async function OvertimePage({ params }: { params: Promise<{ local
       (await tx.academicYear.findFirst({ orderBy: { startDate: 'desc' } }));
 
     const [staff, entries, teachers, schedEntries] = await Promise.all([
-      tx.person.findMany({ where: { type: { in: ['STAFF', 'TEACHER'] }, deletedAt: null }, orderBy: [{ lastName: 'asc' }], select: { id: true, firstName: true, lastName: true } }),
-      tx.overtimeEntry.findMany({ orderBy: { date: 'desc' }, take: 200, include: { person: { select: { firstName: true, lastName: true } } } }),
-      tx.person.findMany({ where: { type: 'TEACHER', deletedAt: null, contractualHoursPerWeek: { not: null } }, select: { id: true, firstName: true, lastName: true, contractualHoursPerWeek: true } }),
+      tx.person.findMany({ where: { type: { in: ['STAFF', 'TEACHER'] }, deletedAt: null }, orderBy: [{ lastName: 'asc' }], select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } }),
+      tx.overtimeEntry.findMany({ orderBy: { date: 'desc' }, take: 200, include: { person: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } } }),
+      tx.person.findMany({ where: { type: 'TEACHER', deletedAt: null, contractualHoursPerWeek: { not: null } }, select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, contractualHoursPerWeek: true } }),
       year
         ? tx.timetableEntry.findMany({ where: { academicYearId: year.id, teacherId: { not: null }, slot: { isBreak: false } }, select: { teacherId: true, slot: { select: { startTime: true, endTime: true } } } })
         : Promise.resolve([] as { teacherId: string | null; slot: { startTime: string; endTime: string } }[]),
@@ -46,7 +47,7 @@ export default async function OvertimePage({ params }: { params: Promise<{ local
       .map((te) => {
         const scheduled = Math.round((sched.get(te.id) ?? 0) * 100) / 100;
         const quota = te.contractualHoursPerWeek ?? 0;
-        return { name: `${te.lastName} ${te.firstName}`, scheduled, quota, over: Math.round((scheduled - quota) * 100) / 100 };
+        return { name: personDisplayName(locale, te), scheduled, quota, over: Math.round((scheduled - quota) * 100) / 100 };
       })
       .filter((x) => x.over > 0)
       .sort((a, b) => b.over - a.over);
@@ -56,7 +57,7 @@ export default async function OvertimePage({ params }: { params: Promise<{ local
 
   const { staff, entries, overQuota } = data;
   const csvRows = entries.map((e) => [
-    `${e.person.lastName} ${e.person.firstName}`,
+    personDisplayName(locale, e.person),
     new Date(e.date).toISOString().slice(0, 10),
     e.hours,
     t(`source.${e.source}`),
@@ -79,7 +80,7 @@ export default async function OvertimePage({ params }: { params: Promise<{ local
       {/* Saisie manuelle */}
       <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
         <h2 className="mb-2 text-sm font-semibold text-slate-900">{t('manual')}</h2>
-        <CreateOvertimeForm staff={staff.map((s) => ({ id: s.id, label: `${s.lastName} ${s.firstName}` }))} />
+        <CreateOvertimeForm staff={staff.map((s) => ({ id: s.id, label: personDisplayName(locale, s) }))} />
       </section>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -101,7 +102,7 @@ export default async function OvertimePage({ params }: { params: Promise<{ local
               <tbody className="divide-y divide-slate-100">
                 {entries.map((e) => (
                   <tr key={e.id}>
-                    <td className="px-3 py-2 font-medium text-slate-800">{e.person.lastName} {e.person.firstName}</td>
+                    <td className="px-3 py-2 font-medium text-slate-800">{personDisplayName(locale, e.person)}</td>
                     <td className="px-3 py-2 text-xs text-slate-500">{new Date(e.date).toLocaleDateString(locale)}</td>
                     <td className="px-3 py-2 text-end tabular-nums text-slate-700">{e.hours} h</td>
                     <td className="px-3 py-2 text-xs text-slate-600">{t(`source.${e.source}`)}</td>

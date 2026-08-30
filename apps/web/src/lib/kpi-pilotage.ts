@@ -100,7 +100,7 @@ async function computeLevelAverages(tx: Tx, periodId: string): Promise<LevelAver
           maxValue: true,
           classId: true,
           subjectId: true,
-          class: { select: { levelId: true, level: { select: { label: true, order: true } } } },
+          class: { select: { levelId: true, level: { select: { label: true, labelAr: true, order: true } } } },
           subject: { select: { scale: true, coefficient: true } },
         },
       },

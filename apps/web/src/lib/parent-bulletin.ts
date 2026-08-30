@@ -33,7 +33,7 @@ export async function loadClassBulletin(
     where: { classId, periodId },
     select: {
       maxValue: true,
-      subject: { select: { label: true } },
+      subject: { select: { label: true, labelAr: true } },
       grades: { select: { studentId: true, value: true } },
     },
   });

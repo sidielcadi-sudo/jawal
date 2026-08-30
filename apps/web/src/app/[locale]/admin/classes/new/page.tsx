@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { ClassForm } from '../class-form';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 export default async function NewClassPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -30,8 +31,8 @@ export default async function NewClassPage({ params }: { params: Promise<{ local
           label: `${y.label}${y.active ? ' (actif)' : ''}`,
           isDefault: y.active,
         })),
-        levels: levels.map((l) => ({ id: l.id, label: `${l.cycle.label} — ${l.label}` })),
-        teachers: teachers.map((p) => ({ id: p.id, label: `${p.lastName} ${p.firstName}` })),
+        levels: levels.map((l) => ({ id: l.id, label: `${localizedLabel(locale, l.cycle.label, l.cycle.labelAr)} — ${localizedLabel(locale, l.label, l.labelAr)}` })),
+        teachers: teachers.map((p) => ({ id: p.id, label: personDisplayName(locale, p) })),
         rooms: rooms.map((r) => ({ id: r.id, label: `${r.code} — ${r.label}` })),
         activeYearId: activeYear?.id,
       };

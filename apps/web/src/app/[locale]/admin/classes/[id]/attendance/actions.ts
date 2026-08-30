@@ -46,6 +46,8 @@ export async function getOrCreateAttendanceSessionAction(
       studentId: string;
       firstName: string;
       lastName: string;
+      firstNameAr: string | null;
+      lastNameAr: string | null;
       status: AttendanceStatusInput;
       lateMinutes: number | null;
       note: string | null;
@@ -131,7 +133,11 @@ export async function getOrCreateAttendanceSessionAction(
     // 4. Lecture des records actuels (avec les noms d'élèves)
     const records = await tx.attendanceRecord.findMany({
       where: { sessionId: attSession.id },
-      include: { student: { select: { firstName: true, lastName: true } } },
+      include: {
+        student: {
+          select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
+        },
+      },
       orderBy: { student: { lastName: 'asc' } },
     });
 
@@ -144,6 +150,8 @@ export async function getOrCreateAttendanceSessionAction(
         studentId: r.studentId,
         firstName: r.student.firstName,
         lastName: r.student.lastName,
+        firstNameAr: r.student.firstNameAr,
+        lastNameAr: r.student.lastNameAr,
         status: r.status as AttendanceStatusInput,
         lateMinutes: r.lateMinutes,
         note: r.note,

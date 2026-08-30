@@ -144,14 +144,14 @@ export async function analyzeMassarCsv(
     if (!year) return { ok: false, error: 'Année scolaire introuvable.' };
 
     const levels = await tx.level.findMany({
-      select: { id: true, label: true, order: true },
+      select: { id: true, label: true, labelAr: true, order: true },
       orderBy: { order: 'asc' },
     });
     const levelByOrder = new Map(levels.map((l) => [l.order, l]));
 
     const classes = await tx.class.findMany({
       where: { academicYearId: year.id, deletedAt: null },
-      select: { id: true, name: true },
+      select: { id: true, name: true, nameAr: true },
     });
     const classNames = new Set(classes.map((c) => c.name.trim().toLowerCase()));
 
@@ -341,7 +341,7 @@ export async function runMassarImport(
     // Cache des classes de l'année cible, alimenté au fil des créations.
     const existingClasses = await tx.class.findMany({
       where: { academicYearId: yearId, deletedAt: null },
-      select: { id: true, name: true },
+      select: { id: true, name: true, nameAr: true },
     });
     const classByName = new Map(existingClasses.map((c) => [c.name.trim().toLowerCase(), c.id]));
 

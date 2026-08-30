@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import type { DayKey } from '@/lib/timetable-conflicts';
 import { PrintButton } from '../../../../print-button';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 const DAYS: DayKey[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -30,9 +31,9 @@ export default async function ClassTimetablePrintPage({
     const entries = await tx.timetableEntry.findMany({
       where: { classId: id, academicYearId: cls.academicYearId },
       include: {
-        subject: { select: { label: true } },
-        teacher: { select: { firstName: true, lastName: true } },
-        room: { select: { code: true, label: true } },
+        subject: { select: { label: true, labelAr: true } },
+        teacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
+        room: { select: { code: true, label: true, labelAr: true } },
       },
     });
     const tenant = await tx.tenant.findFirstOrThrow();
@@ -52,10 +53,10 @@ export default async function ClassTimetablePrintPage({
             {tenant.name}
           </div>
           <h1 className="mt-1 text-xl font-semibold text-slate-900">
-            {t('title')} — {cls.name}
+            {t('title')} — {localizedLabel(locale, cls.name, cls.nameAr)}
           </h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            {cls.level.cycle.label} · {cls.level.label} · {cls.academicYear.label}
+            {localizedLabel(locale, cls.level.cycle.label, cls.level.cycle.labelAr)} · {localizedLabel(locale, cls.level.label, cls.level.labelAr)} · {cls.academicYear.label}
           </p>
         </div>
         <PrintButton labelPrint={t('print')} />
@@ -101,10 +102,10 @@ export default async function ClassTimetablePrintPage({
                         <div className="font-semibold">{e.subject?.label ?? '—'}</div>
                         {e.teacher && (
                           <div className="text-slate-600">
-                            {e.teacher.lastName} {e.teacher.firstName}
+                            {personDisplayName(locale, e.teacher)}
                           </div>
                         )}
-                        {e.room && <div className="text-slate-500">{e.room.label}</div>}
+                        {e.room && <div className="text-slate-500">{localizedLabel(locale, e.room.label, e.room.labelAr)}</div>}
                       </>
                     ) : (
                       <span className="text-slate-300">—</span>

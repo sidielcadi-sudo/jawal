@@ -4,6 +4,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { bulkReenrollAction } from '../actions';
+import { personDisplayName } from '@/lib/localized-name';
 
 export type YearOpt = { id: string; label: string; active: boolean };
 export type LevelOpt = {
@@ -19,6 +20,8 @@ export type Row = {
   studentId: string;
   firstName: string;
   lastName: string;
+  firstNameAr: string | null;
+  lastNameAr: string | null;
   currentLevelId: string;
   currentLevelLabel: string;
   currentClassName: string | null;
@@ -77,6 +80,36 @@ export function BulkReenrollSheet({
     return initial;
   });
 
+  // Filtres de confort : ils ne portent que sur l'affichage et sur la portée
+  // des boutons « appliquer à tous ». Les décisions des lignes masquées sont
+  // conservées et partent quand même à l'enregistrement.
+  const [classFilter, setClassFilter] = useState('');
+  const [levelFilter, setLevelFilter] = useState('');
+
+  const classOptions = useMemo(
+    () =>
+      [...new Set(rows.map((r) => r.currentClassName).filter((c): c is string => !!c))].sort((a, b) =>
+        a.localeCompare(b),
+      ),
+    [rows],
+  );
+  const levelOptions = useMemo(() => {
+    const seen = new Map<string, string>();
+    for (const r of rows) if (!seen.has(r.currentLevelId)) seen.set(r.currentLevelId, r.currentLevelLabel);
+    return [...seen].map(([id, label]) => ({ id, label }));
+  }, [rows]);
+
+  const visibleRows = useMemo(
+    () =>
+      rows.filter(
+        (r) =>
+          (!classFilter || r.currentClassName === classFilter) &&
+          (!levelFilter || r.currentLevelId === levelFilter),
+      ),
+    [rows, classFilter, levelFilter],
+  );
+  const filtered = visibleRows.length !== rows.length;
+
   const counts = useMemo(() => {
     let reenroll = 0;
     let repeat = 0;
@@ -95,10 +128,11 @@ export function BulkReenrollSheet({
     setItems((prev) => ({ ...prev, [id]: { ...prev[id]!, ...patch } }));
 
   const applyAll = (decision: Decision) => {
+    const scope = new Set(visibleRows.map((r) => r.sourceEnrollmentId));
     setItems((prev) => {
       const next: Record<string, ItemState> = {};
       for (const id of Object.keys(prev)) {
-        next[id] = { ...prev[id]!, decision };
+        next[id] = scope.has(id) ? { ...prev[id]!, decision } : prev[id]!;
       }
       return next;
     });
@@ -195,6 +229,43 @@ export function BulkReenrollSheet({
             <KpiBox label={t('counter.skip')} value={counts.skip} color="slate" />
           </div>
 
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Field label={t('filter.currentClass')}>
+              <select
+                value={classFilter}
+                onChange={(e) => setClassFilter(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="">{t('filter.allClasses')}</option>
+                {classOptions.map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label={t('filter.currentLevel')}>
+              <select
+                value={levelFilter}
+                onChange={(e) => setLevelFilter(e.target.value)}
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+              >
+                <option value="">{t('filter.allLevels')}</option>
+                {levelOptions.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.label}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+
+          {filtered && (
+            <p className="mt-2 text-xs text-amber-700">
+              {t('filter.active', { shown: visibleRows.length, total: rows.length })}
+            </p>
+          )}
+
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
             <span className="text-slate-500">{t('applyAll')} :</span>
             <button
@@ -239,7 +310,7 @@ export function BulkReenrollSheet({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {rows.map((r) => {
+                {visibleRows.map((r) => {
                   const state = items[r.sourceEnrollmentId]!;
                   const disabled = !!r.existingTargetStatus;
                   return (
@@ -249,7 +320,7 @@ export function BulkReenrollSheet({
                     >
                       <td className="px-3 py-2">
                         <div className="font-medium text-slate-900">
-                          {r.lastName} {r.firstName}
+                          {personDisplayName(locale, r)}
                         </div>
                         {r.existingTargetStatus && (
                           <div className="mt-0.5 text-[10px] text-amber-700">

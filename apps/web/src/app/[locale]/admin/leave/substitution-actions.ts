@@ -108,9 +108,9 @@ export async function assignSubstituteAction(
           id: true,
           subjectId: true,
           slot: { select: { startTime: true, endTime: true } },
-          subject: { select: { label: true } },
+          subject: { select: { label: true, labelAr: true } },
           room: { select: { code: true } },
-          class: { select: { id: true, name: true } },
+          class: { select: { id: true, name: true, nameAr: true } },
         },
       });
       if (!entry) throw new Error('Séance introuvable.');
@@ -322,9 +322,9 @@ const OVERRIDE_DETAIL = {
   entry: {
     select: {
       slot: { select: { startTime: true, endTime: true } },
-      subject: { select: { label: true } },
+      subject: { select: { label: true, labelAr: true } },
       room: { select: { code: true } },
-      class: { select: { id: true, name: true } },
+      class: { select: { id: true, name: true, nameAr: true } },
     },
   },
 } satisfies Prisma.TimetableOverrideSelect;

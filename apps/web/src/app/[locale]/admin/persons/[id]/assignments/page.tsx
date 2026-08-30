@@ -4,6 +4,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { AssignmentCreateForm, AssignmentRowActions } from './client';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 export default async function AssignmentsPage({
   params,
@@ -55,7 +56,7 @@ export default async function AssignmentsPage({
         </Link>
         <span className="mx-1.5">›</span>
         <Link href={`/${locale}/admin/persons/${id}`} className="hover:text-brand-700">
-          {teacher.lastName} {teacher.firstName}
+          {personDisplayName(locale, teacher)}
         </Link>
         <span className="mx-1.5">›</span>
         <span>{tA('title')}</span>
@@ -63,7 +64,7 @@ export default async function AssignmentsPage({
 
       <h1 className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 text-2xl font-semibold text-slate-900">{tA('title')}</h1>
       <p className="mt-1 text-sm text-slate-500">
-        {tA('subtitle', { name: `${teacher.lastName} ${teacher.firstName}` })}
+        {tA('subtitle', { name: personDisplayName(locale, teacher) })}
       </p>
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
@@ -82,8 +83,8 @@ export default async function AssignmentsPage({
               <tbody className="divide-y divide-slate-100">
                 {assignments.map((a) => (
                   <tr key={a.id}>
-                    <td className="px-4 py-3 font-medium text-slate-900">{a.subject.label}</td>
-                    <td className="px-4 py-3 text-slate-700">{a.class.name}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{localizedLabel(locale, a.subject.label, a.subject.labelAr)}</td>
+                    <td className="px-4 py-3 text-slate-700">{localizedLabel(locale, a.class.name, a.class.nameAr)}</td>
                     <td className="px-4 py-3 text-xs text-slate-500">{a.academicYear.label}</td>
                     <td className="px-4 py-3 text-end text-xs text-slate-500">
                       {a.hoursPerWeek ? `${a.hoursPerWeek} h` : '—'}
@@ -115,7 +116,7 @@ export default async function AssignmentsPage({
                 subjects={subjects.map((s) => ({ id: s.id, label: s.label }))}
                 classes={classes.map((c) => ({
                   id: c.id,
-                  name: c.name,
+                  name: localizedLabel(locale, c.name, c.nameAr),
                   academicYearId: c.academicYearId,
                   academicYearLabel: c.academicYear.label,
                 }))}

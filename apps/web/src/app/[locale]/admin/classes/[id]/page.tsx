@@ -7,6 +7,7 @@ import { ClassActions } from './class-actions';
 import { ClassNav } from './class-nav';
 import { EnrollmentManager } from './enrollment-manager';
 import { DelegateSelect } from './delegate-select';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 export default async function ClassDetailPage({
   params,
@@ -84,13 +85,13 @@ export default async function ClassDetailPage({
           {t('title')}
         </Link>
         <span className="mx-1.5">›</span>
-        <span>{cls.name}</span>
+        <span>{localizedLabel(locale, cls.name, cls.nameAr)}</span>
       </nav>
 
       <header className="-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">
-            {cls.name}
+            {localizedLabel(locale, cls.name, cls.nameAr)}
             {cls.deletedAt && (
               <span className="ms-3 rounded bg-slate-200 px-2 py-0.5 align-middle text-xs text-slate-600">
                 {t('archived')}
@@ -98,9 +99,9 @@ export default async function ClassDetailPage({
             )}
           </h1>
           <p className="mt-1 text-sm text-slate-500">
-            {cls.level.cycle.label} — {cls.level.label} · {cls.academicYear.label}
+            {localizedLabel(locale, cls.level.cycle.label, cls.level.cycle.labelAr)} — {localizedLabel(locale, cls.level.label, cls.level.labelAr)} · {cls.academicYear.label}
             {cls.mainTeacher
-              ? ` · ${tDetail('mainTeacher')} : ${cls.mainTeacher.lastName} ${cls.mainTeacher.firstName}`
+              ? ` · ${tDetail('mainTeacher')} : ${personDisplayName(locale, cls.mainTeacher)}`
               : ''}
           </p>
         </div>
@@ -136,7 +137,7 @@ export default async function ClassDetailPage({
                         href={`/${locale}/admin/persons/${sc.student.id}`}
                         className="hover:text-brand-700 hover:underline"
                       >
-                        {sc.student.lastName} {sc.student.firstName}
+                        {personDisplayName(locale, sc.student)}
                       </Link>
                     </td>
                     <td className="px-4 py-2 text-xs text-slate-600">
@@ -174,7 +175,7 @@ export default async function ClassDetailPage({
                 classId={cls.id}
                 students={availableStudents.map((s) => ({
                   id: s.id,
-                  label: `${s.lastName} ${s.firstName}`,
+                  label: personDisplayName(locale, s),
                 }))}
                 disabled={
                   !!cls.deletedAt || cls.students.length >= cls.capacity
@@ -195,7 +196,7 @@ export default async function ClassDetailPage({
                 delegateId={cls.delegateId}
                 students={cls.students.map((sc) => ({
                   id: sc.student.id,
-                  label: `${sc.student.lastName} ${sc.student.firstName}`,
+                  label: personDisplayName(locale, sc.student),
                 }))}
                 disabled={!!cls.deletedAt}
               />
@@ -263,7 +264,7 @@ export default async function ClassDetailPage({
                 const noTeacher = subjectAssignments.length === 0;
                 return (
                   <tr key={c.id}>
-                    <td className="px-4 py-3 font-medium text-slate-900">{c.subject.label}</td>
+                    <td className="px-4 py-3 font-medium text-slate-900">{localizedLabel(locale, c.subject.label, c.subject.labelAr)}</td>
                     <td className="px-4 py-3 text-end tabular-nums">×{c.coefficient}</td>
                     <td className="px-4 py-3 text-end tabular-nums">{c.weeklyHours} h</td>
                     <td className="px-4 py-3 text-end">
@@ -283,7 +284,7 @@ export default async function ClassDetailPage({
                       {subjectAssignments.length === 0
                         ? tDetail('noTeacher')
                         : subjectAssignments
-                            .map((a) => `${a.teacher.lastName} ${a.teacher.firstName}`)
+                            .map((a) => personDisplayName(locale, a.teacher))
                             .join(', ')}
                     </td>
                   </tr>

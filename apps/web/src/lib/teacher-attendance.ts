@@ -121,8 +121,8 @@ export async function getTeacherWeekAppel(
     },
     include: {
       slot: { select: { startTime: true, endTime: true } },
-      subject: { select: { label: true } },
-      class: { select: { id: true, name: true } },
+      subject: { select: { label: true, labelAr: true } },
+      class: { select: { id: true, name: true, nameAr: true } },
       room: { select: { code: true } },
     },
   });
@@ -171,6 +171,8 @@ export type AppelRow = {
   studentId: string;
   firstName: string;
   lastName: string;
+  firstNameAr: string | null;
+  lastNameAr: string | null;
   status: AttendanceStatusInput;
   lateMinutes: number | null;
   lateReasonId: string | null;
@@ -218,14 +220,24 @@ export async function loadTeacherAppel(
     where: { id: entryId },
     include: {
       slot: { select: { startTime: true, endTime: true } },
-      subject: { select: { label: true } },
+      subject: { select: { label: true, labelAr: true } },
       class: {
         select: {
           id: true,
           name: true,
           students: {
             where: { unenrolledAt: null },
-            select: { student: { select: { id: true, firstName: true, lastName: true } } },
+            select: {
+              student: {
+                select: {
+                  id: true,
+                  firstName: true,
+                  lastName: true,
+                  firstNameAr: true,
+                  lastNameAr: true,
+                },
+              },
+            },
             orderBy: { student: { lastName: 'asc' } },
           },
         },
@@ -273,6 +285,8 @@ export async function loadTeacherAppel(
     return {
       studentId: student.id,
       firstName: student.firstName,
+      firstNameAr: student.firstNameAr,
+      lastNameAr: student.lastNameAr,
       lastName: student.lastName,
       status: (r?.status ?? 'PRESENT') as AttendanceStatusInput,
       lateMinutes: r?.lateMinutes ?? null,

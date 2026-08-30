@@ -29,7 +29,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ childId: strin
       orderBy: { approvedAt: 'desc' },
       include: {
         student: { select: { firstName: true, lastName: true, birthDate: true, cin: true } },
-        enrollment: { include: { level: { select: { label: true } }, academicYear: { select: { label: true } } } },
+        enrollment: { include: { level: { select: { label: true, labelAr: true } }, academicYear: { select: { label: true } } } },
       },
     });
   });

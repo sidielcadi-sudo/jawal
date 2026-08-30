@@ -1,5 +1,6 @@
 import 'server-only';
 import type { Prisma } from '@/lib/db';
+import type { BilingualNameFields } from '@/lib/localized-name';
 
 /**
  * Modèle de calcul des moyennes :
@@ -197,7 +198,7 @@ export async function computeClassBook(
   params: {
     classId: string;
     periodId: string;
-    students: { id: string; firstName: string; lastName: string }[];
+    students: (BilingualNameFields & { id: string })[];
     allSubjects: SubjectMeta[];
   },
 ): Promise<{
@@ -205,6 +206,8 @@ export async function computeClassBook(
     studentId: string;
     firstName: string;
     lastName: string;
+    firstNameAr: string | null;
+    lastNameAr: string | null;
     subjects: SubjectStat[];
     generalAverage: number | null;
     generalRank: number | null;
@@ -239,6 +242,8 @@ export async function computeClassBook(
       studentId: s.id,
       firstName: s.firstName,
       lastName: s.lastName,
+      firstNameAr: s.firstNameAr,
+      lastNameAr: s.lastNameAr,
       subjects,
       generalAverage,
       generalRank: null as number | null,

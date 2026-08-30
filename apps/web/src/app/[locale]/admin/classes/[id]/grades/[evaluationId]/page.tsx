@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { GradeMatrix } from './grade-matrix';
 import { saveGradesAction } from '../actions';
+import { localizedLabel } from '@/lib/localized-name';
 
 export default async function EvaluationSheetPage({
   params,
@@ -22,7 +23,7 @@ export default async function EvaluationSheetPage({
     const ev = await tx.evaluation.findUnique({
       where: { id: evaluationId },
       include: {
-        class: { select: { id: true, name: true } },
+        class: { select: { id: true, name: true, nameAr: true } },
         subject: true,
         period: true,
       },
@@ -49,6 +50,8 @@ export default async function EvaluationSheetPage({
           studentId: sc.studentId,
           firstName: sc.student.firstName,
           lastName: sc.student.lastName,
+          firstNameAr: sc.student.firstNameAr,
+          lastNameAr: sc.student.lastNameAr,
           value: g?.value ?? null,
           comment: g?.comment ?? null,
         };
@@ -67,7 +70,7 @@ export default async function EvaluationSheetPage({
         </Link>
         <span className="mx-1.5">›</span>
         <Link href={`/${locale}/admin/classes/${id}`} className="hover:text-brand-700">
-          {ev.class.name}
+          {localizedLabel(locale, ev.class.name, ev.class.nameAr)}
         </Link>
         <span className="mx-1.5">›</span>
         <Link href={`/${locale}/admin/classes/${id}/grades`} className="hover:text-brand-700">
@@ -80,7 +83,7 @@ export default async function EvaluationSheetPage({
       <header className="mb-6">
         <h1 className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 text-2xl font-semibold text-slate-900">{ev.label}</h1>
         <p className="mt-1 text-sm text-slate-500">
-          {ev.subject.label} · {ev.period.label} ·{' '}
+          {localizedLabel(locale, ev.subject.label, ev.subject.labelAr)} · {localizedLabel(locale, ev.period.label, ev.period.labelAr)} ·{' '}
           {new Date(ev.date).toLocaleDateString(locale)} ·{' '}
           {t('sheet.maxValue')}:{' '}<strong>/{ev.maxValue}</strong> ·{' '}
           {t('sheet.weight')}:{' '}<strong>×{ev.weight}</strong>

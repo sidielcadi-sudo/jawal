@@ -57,7 +57,7 @@ export async function changeStudentClassAction(
 
       const current = await tx.studentClass.findFirst({
         where: { studentId, unenrolledAt: null },
-        select: { id: true, classId: true, class: { select: { name: true } } },
+        select: { id: true, classId: true, class: { select: { name: true, nameAr: true } } },
       });
       if (current?.classId === classId) return; // déjà dans cette classe
 
@@ -377,8 +377,9 @@ function formToInput(formData: FormData) {
     nationalityAr: get('nationalityAr'),
     addressAr: get('addressAr'),
     cityAr: get('cityAr'),
-    fatherFirstNameAr: get('fatherFirstNameAr'),
-    motherFirstNameAr: get('motherFirstNameAr'),
+    // fatherFirstNameAr / motherFirstNameAr ne sont plus saisis : les parents
+    // sont rattachés via le bloc « Parents / Tuteurs ». Les colonnes restent
+    // alimentées par l'import MASSAR et sont préservées à la mise à jour.
     regime: get('regime'),
     usesTransport: formData.get('usesTransport') === 'on' || formData.get('usesTransport') === 'true',
     cne: get('cne'),
@@ -387,6 +388,7 @@ function formToInput(formData: FormData) {
     exitRights: get('exitRights'),
     dietInfo: get('dietInfo'),
     originSchool: get('originSchool'),
+    originSchoolAr: get('originSchoolAr'),
     repeating: formData.get('repeating') === 'on' || formData.get('repeating') === 'true',
     contacts: {
       email: get('contactEmail'),
@@ -437,6 +439,7 @@ function buildStudentMeta(
     exitRights: number;
     dietInfo: string;
     originSchool: string;
+    originSchoolAr: string;
     repeating: boolean;
   }>,
   isStudent: boolean,
@@ -448,6 +451,7 @@ function buildStudentMeta(
   if (d.exitRights !== undefined) m.exitRights = d.exitRights;
   if (d.dietInfo !== undefined) m.dietInfo = d.dietInfo;
   if (d.originSchool !== undefined) m.originSchool = d.originSchool;
+  if (d.originSchoolAr !== undefined) m.originSchoolAr = d.originSchoolAr;
   if (d.repeating !== undefined) m.repeating = d.repeating;
   return m;
 }
@@ -480,14 +484,13 @@ function buildHealthMeta(formData: FormData, isStudent: boolean): Record<string,
 
 /** Champs RH employeur (TEACHER/STAFF) rangés en metadata. */
 function buildEmployeeMeta(
-  d: Partial<{ cnssNumber: string; amoNumber: string; employmentStatus: string }>,
+  d: Partial<{ cnssNumber: string; amoNumber: string }>,
   isEmployee: boolean,
 ): Record<string, unknown> {
   if (!isEmployee) return {};
   const m: Record<string, unknown> = {};
   if (d.cnssNumber !== undefined) m.cnssNumber = d.cnssNumber;
   if (d.amoNumber !== undefined) m.amoNumber = d.amoNumber;
-  if (d.employmentStatus !== undefined) m.employmentStatus = d.employmentStatus;
   return m;
 }
 
@@ -555,8 +558,6 @@ export async function createPersonAction(
         nationalityAr: parsed.data.nationalityAr ?? null,
         addressAr: parsed.data.addressAr ?? null,
         cityAr: parsed.data.cityAr ?? null,
-        fatherFirstNameAr: parsed.data.fatherFirstNameAr ?? null,
-        motherFirstNameAr: parsed.data.motherFirstNameAr ?? null,
         cin: parsed.data.cin,
         // Code MASSAR : élèves seulement, et vide → null (la contrainte
         // d'unicité tolère plusieurs NULL, pas plusieurs chaînes vides).
@@ -569,6 +570,7 @@ export async function createPersonAction(
         contractEndDate,
         contractType,
         contractualHoursPerWeek,
+        employmentStatus: isEmployee ? (parsed.data.employmentStatus ?? 'ACTIVE') : null,
         experienceYears: isEmployee ? (parsed.data.experienceYears ?? null) : null,
         availability: isEmployee ? (parsed.data.availability ?? {}) : {},
         rib: isEmployee ? (parsed.data.rib ?? null) : null,
@@ -719,8 +721,10 @@ export async function updatePersonAction(id: string, formData: FormData): Promis
         nationalityAr: parsed.data.nationalityAr ?? null,
         addressAr: parsed.data.addressAr ?? null,
         cityAr: parsed.data.cityAr ?? null,
-        fatherFirstNameAr: parsed.data.fatherFirstNameAr ?? null,
-        motherFirstNameAr: parsed.data.motherFirstNameAr ?? null,
+        // Prénoms des parents en arabe : plus saisis (bloc « Parents /
+        // Tuteurs »), donc conservés tels que l'import MASSAR les a posés.
+        fatherFirstNameAr: parsed.data.fatherFirstNameAr ?? before.fatherFirstNameAr,
+        motherFirstNameAr: parsed.data.motherFirstNameAr ?? before.motherFirstNameAr,
         cin: parsed.data.cin,
         massarId: before.type === 'STUDENT' ? (parsed.data.massarId || null) : null,
         regime,
@@ -731,6 +735,7 @@ export async function updatePersonAction(id: string, formData: FormData): Promis
         contractEndDate,
         contractType,
         contractualHoursPerWeek,
+        employmentStatus: isEmployee ? (parsed.data.employmentStatus ?? 'ACTIVE') : null,
         experienceYears: isEmployee ? (parsed.data.experienceYears ?? null) : null,
         availability:
           isEmployee && parsed.data.availability !== undefined

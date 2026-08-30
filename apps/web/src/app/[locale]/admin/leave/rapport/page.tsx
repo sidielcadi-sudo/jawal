@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { requireRoleCode } from '@/lib/auth/rbac';
 import { withTenant } from '@/lib/db';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 function ymd(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -38,12 +39,12 @@ export default async function RemplacementsReportPage({
         entry: {
           select: {
             slot: { select: { startTime: true, endTime: true } },
-            class: { select: { name: true } },
-            subject: { select: { label: true } },
-            teacher: { select: { firstName: true, lastName: true } },
+            class: { select: { name: true, nameAr: true } },
+            subject: { select: { label: true, labelAr: true } },
+            teacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
           },
         },
-        substituteTeacher: { select: { firstName: true, lastName: true } },
+        substituteTeacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
       },
       orderBy: { date: 'asc' },
     });
@@ -65,12 +66,12 @@ export default async function RemplacementsReportPage({
     id: o.id,
     date: ymd(o.date),
     slot: `${o.entry.slot.startTime}–${o.entry.slot.endTime}`,
-    className: o.entry.class.name,
+    className: localizedLabel(locale, o.entry.class.name, o.entry.class.nameAr),
     subject: o.entry.subject?.label ?? '—',
-    absent: o.entry.teacher ? `${o.entry.teacher.lastName} ${o.entry.teacher.firstName}` : '—',
+    absent: o.entry.teacher ? personDisplayName(locale, o.entry.teacher) : '—',
     kind: o.kind === 'CANCELLED' ? 'CANCELLED' : ('SUBSTITUTION' as const),
     substitute: o.substituteTeacher
-      ? `${o.substituteTeacher.lastName} ${o.substituteTeacher.firstName}`
+      ? personDisplayName(locale, o.substituteTeacher)
       : null,
   }));
 

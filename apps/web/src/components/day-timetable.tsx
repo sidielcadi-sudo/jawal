@@ -74,7 +74,7 @@ export function DayTimetable({
           <li
             key={i}
             className={`relative flex items-center gap-3 rounded-xl border py-2 pe-3 ps-2 ${
-              c.cancelled ? 'border-red-200 bg-red-50' : 'border-slate-200 bg-white'
+              c.cancelled ? 'border-red-200 bg-red-50' : 'border-brand-200 bg-white'
             }`}
           >
             <div className="w-14 shrink-0 text-xs text-slate-500">

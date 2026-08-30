@@ -6,11 +6,14 @@ import { useTranslations } from 'next-intl';
 import type { StaffAttendanceStatusInput } from '@jawal/shared';
 import { computeStaffDeduction } from '@/lib/staff-attendance-deduction';
 import { saveStaffAttendanceAction } from './actions';
+import { personDisplayName } from '@/lib/localized-name';
 
 export type StaffRow = {
   personId: string;
   firstName: string;
   lastName: string;
+  firstNameAr: string | null;
+  lastNameAr: string | null;
   type: 'TEACHER' | 'STAFF';
   roleLabelFr: string | null;
   roleLabelAr: string | null;
@@ -184,7 +187,7 @@ export function StaffAttendanceSheet({
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="font-medium text-slate-900">
-                        {r.lastName} {r.firstName}
+                        {personDisplayName(locale, r)}
                       </div>
                       <div className="text-xs text-slate-500">
                         {isRtl ? r.roleLabelAr ?? '—' : r.roleLabelFr ?? '—'}

@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { SellButton } from '../sell-client';
+import { personDisplayName } from '@/lib/localized-name';
 
 const inputCls = 'rounded-lg border border-slate-300 px-3 py-2 text-sm';
 
@@ -24,7 +25,7 @@ export default async function VentePage({
     const [campaigns, levels, students, tenant] = await Promise.all([
       tx.bookExchangeCampaign.findMany({ where: { status: 'OPEN' }, orderBy: [{ year: 'desc' }] }),
       tx.level.findMany({ orderBy: { order: 'asc' }, select: { id: true, code: true } }),
-      tx.person.findMany({ where: { type: 'STUDENT', deletedAt: null }, orderBy: [{ lastName: 'asc' }], select: { id: true, firstName: true, lastName: true } }),
+      tx.person.findMany({ where: { type: 'STUDENT', deletedAt: null }, orderBy: [{ lastName: 'asc' }], select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } }),
       tx.tenant.findFirst({ select: { currency: true } }),
     ]);
     const campaignId = sp.campaignId || campaigns[0]?.id || '';
@@ -37,7 +38,7 @@ export default async function VentePage({
             ...(sp.levelId ? { book: { levelId: sp.levelId } } : {}),
             ...(q ? { OR: [{ code: { contains: q, mode: 'insensitive' } }, { book: { title: { contains: q, mode: 'insensitive' } } }] } : {}),
           },
-          include: { book: { select: { title: true, level: { select: { code: true } } } }, seller: { select: { firstName: true, lastName: true } } },
+          include: { book: { select: { title: true, level: { select: { code: true } } } }, seller: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
           orderBy: { code: 'asc' },
           take: 200,
         })
@@ -85,7 +86,7 @@ export default async function VentePage({
         <label className="text-xs font-medium text-slate-600"><span className="mb-1 block">{tv('buyer')}</span>
           <select name="buyerId" defaultValue={sp.buyerId ?? ''} className={inputCls}>
             <option value="">{tv('anonymous')}</option>
-            {students.map((s) => <option key={s.id} value={s.id}>{s.lastName} {s.firstName}</option>)}
+            {students.map((s) => <option key={s.id} value={s.id}>{personDisplayName(locale, s)}</option>)}
           </select>
         </label>
         <button className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-white hover:bg-slate-900">{tv('searchBtn')}</button>

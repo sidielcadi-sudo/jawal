@@ -12,6 +12,7 @@ import { withTenant } from '@/lib/db';
 import { computeInstallmentStatus } from '@/lib/finance';
 import { putObject } from '@/lib/storage';
 import { assignStudents, studentsOfClasses, billFeeAssignments } from '@/lib/exceptional-fees';
+import { notifyExceptionalFeePublished } from '@/lib/exceptional-fee-notify';
 
 const REFUND_MIME = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/webp']);
 
@@ -231,6 +232,9 @@ export async function publishFeeAction(id: string): Promise<Result> {
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur publication' };
   }
+  // Après la transaction : un envoi qui échoue ne doit pas annuler une
+  // publication déjà enregistrée.
+  await notifyExceptionalFeePublished(tenantId, id);
   revalidatePath('/admin/finance/exceptional');
   revalidatePath(`/admin/finance/exceptional/${id}`);
   return { ok: true };

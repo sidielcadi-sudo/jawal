@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import type { DayKey } from '@/lib/timetable-conflicts';
 import { PrintButton } from '../../../../print-button';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 const DAYS: DayKey[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -24,7 +25,7 @@ export default async function TeacherTimetablePrintPage({
   const data = await withTenant(session.user.tenantId, async (tx) => {
     const teacher = await tx.person.findUnique({
       where: { id },
-      select: { firstName: true, lastName: true },
+      select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
     });
     if (!teacher) return null;
 
@@ -39,9 +40,9 @@ export default async function TeacherTimetablePrintPage({
       ? await tx.timetableEntry.findMany({
           where: { teacherId: id, academicYearId: yearId },
           include: {
-            subject: { select: { label: true } },
-            class: { select: { name: true } },
-            room: { select: { label: true } },
+            subject: { select: { label: true, labelAr: true } },
+            class: { select: { name: true, nameAr: true } },
+            room: { select: { label: true, labelAr: true } },
           },
         })
       : [];
@@ -66,7 +67,7 @@ export default async function TeacherTimetablePrintPage({
             {tenant.name}
           </div>
           <h1 className="mt-1 text-xl font-semibold text-slate-900">
-            {t('teacherWeek')} — {teacher.lastName} {teacher.firstName}
+            {t('teacherWeek')} — {personDisplayName(locale, teacher)}
           </h1>
           <p className="mt-0.5 text-sm text-slate-500">{yearLabel}</p>
         </div>
@@ -111,8 +112,8 @@ export default async function TeacherTimetablePrintPage({
                     {e ? (
                       <>
                         <div className="font-semibold">{e.subject?.label ?? '—'}</div>
-                        <div className="text-slate-600">{e.class.name}</div>
-                        {e.room && <div className="text-slate-500">{e.room.label}</div>}
+                        <div className="text-slate-600">{localizedLabel(locale, e.class.name, e.class.nameAr)}</div>
+                        {e.room && <div className="text-slate-500">{localizedLabel(locale, e.room.label, e.room.labelAr)}</div>}
                       </>
                     ) : (
                       <span className="text-slate-300">—</span>

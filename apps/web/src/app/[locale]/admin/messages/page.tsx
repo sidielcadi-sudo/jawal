@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { ConversationCreateForm } from './client';
+import { personDisplayName } from '@/lib/localized-name';
 
 export default async function MessagesPage({
   params,
@@ -42,7 +43,7 @@ export default async function MessagesPage({
     // Tous les users du tenant (pour le picker de participants)
     const users = await tx.user.findMany({
       where: { id: { not: session.user.id }, disabledAt: null },
-      include: { userPersons: { include: { person: { select: { firstName: true, lastName: true, type: true } } } } },
+      include: { userPersons: { include: { person: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, type: true } } } } },
       orderBy: { email: 'asc' },
     });
 
@@ -126,7 +127,7 @@ export default async function MessagesPage({
                   return {
                     id: u.id,
                     email: u.email,
-                    label: person ? `${person.lastName} ${person.firstName}` : u.email,
+                    label: person ? personDisplayName(locale, person) : u.email,
                   };
                 })}
               />

@@ -19,8 +19,8 @@ const overrideInclude = {
   entry: {
     select: {
       slot: { select: { startTime: true, endTime: true } },
-      class: { select: { name: true } },
-      subject: { select: { label: true } },
+      class: { select: { name: true, nameAr: true } },
+      subject: { select: { label: true, labelAr: true } },
     },
   },
   substituteTeacher: { select: { firstName: true, lastName: true } },

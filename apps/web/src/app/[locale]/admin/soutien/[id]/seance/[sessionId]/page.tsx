@@ -8,6 +8,7 @@ import { AttendanceForm, SessionTopicEditor } from '../../../attendance-form';
 import { ResourceManager } from '../../../pedagogy';
 import { SessionSkillPicker, SessionCompetencyGrid } from '../../../session-skills';
 import { loadActiveFramework, loadLeaves, loadMasteryScale } from '@/lib/competences';
+import { personDisplayName } from '@/lib/localized-name';
 
 const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
 
@@ -38,12 +39,12 @@ export default async function SupportSessionPage({
     });
     if (!sess || sess.supportCourseId !== id) return null;
     const teacher = sess.course.teacherId
-      ? await tx.person.findUnique({ where: { id: sess.course.teacherId }, select: { firstName: true, lastName: true } })
+      ? await tx.person.findUnique({ where: { id: sess.course.teacherId }, select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } })
       : null;
 
     const enrollments = await tx.supportEnrollment.findMany({ where: { supportCourseId: id, status: 'ACTIVE', unenrolledAt: null }, select: { studentId: true } });
     const students = enrollments.length
-      ? await tx.person.findMany({ where: { id: { in: enrollments.map((e) => e.studentId) } }, orderBy: [{ lastName: 'asc' }], select: { id: true, firstName: true, lastName: true } })
+      ? await tx.person.findMany({ where: { id: { in: enrollments.map((e) => e.studentId) } }, orderBy: [{ lastName: 'asc' }], select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } })
       : [];
     const attendance = await tx.supportAttendance.findMany({ where: { sessionId } });
     const attById = new Map(attendance.map((a) => [a.studentId, a]));
@@ -77,7 +78,7 @@ export default async function SupportSessionPage({
     return {
       sess,
       resources,
-      teacherName: teacher ? `${teacher.lastName} ${teacher.firstName}` : null,
+      teacherName: teacher ? personDisplayName(locale, teacher) : null,
       framework,
       scale,
       hasPeriod: !!period,
@@ -99,10 +100,10 @@ export default async function SupportSessionPage({
           ),
         ]),
       ),
-      studentList: students.map((s) => ({ studentId: s.id, name: `${s.lastName} ${s.firstName}` })),
+      studentList: students.map((s) => ({ studentId: s.id, name: personDisplayName(locale, s) })),
       rows: students.map((s) => {
         const a = attById.get(s.id);
-        return { studentId: s.id, name: `${s.lastName} ${s.firstName}`, present: a?.present ?? true, appreciation: a?.appreciation ?? '' };
+        return { studentId: s.id, name: personDisplayName(locale, s), present: a?.present ?? true, appreciation: a?.appreciation ?? '' };
       }),
     };
   });

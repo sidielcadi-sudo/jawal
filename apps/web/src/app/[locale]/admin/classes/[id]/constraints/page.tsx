@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { readClassTimetableConstraints } from '@jawal/shared';
 import { ConstraintsForm } from './client';
+import { localizedLabel } from '@/lib/localized-name';
 
 export default async function ClassConstraintsPage({
   params,
@@ -42,7 +43,7 @@ export default async function ClassConstraintsPage({
         </Link>
         <span className="mx-1.5">›</span>
         <Link href={`/${locale}/admin/classes/${cls.id}`} className="hover:text-brand-700">
-          {cls.name}
+          {localizedLabel(locale, cls.name, cls.nameAr)}
         </Link>
         <span className="mx-1.5">›</span>
         <span>{t('title')}</span>
@@ -51,12 +52,12 @@ export default async function ClassConstraintsPage({
       <header className="mb-5">
         <header className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-slate-900">
-          {t('title')} — {cls.name}
+          {t('title')} — {localizedLabel(locale, cls.name, cls.nameAr)}
         </h1>
         <ClassNav classId={id} locale={locale} />
       </header>
         <p className="mt-1 text-sm text-slate-500">
-          {cls.level.cycle.label} · {cls.level.label} · {cls.academicYear.label}
+          {localizedLabel(locale, cls.level.cycle.label, cls.level.cycle.labelAr)} · {localizedLabel(locale, cls.level.label, cls.level.labelAr)} · {cls.academicYear.label}
         </p>
         <p className="mt-3 text-sm text-slate-600">{t('subtitle')}</p>
       </header>

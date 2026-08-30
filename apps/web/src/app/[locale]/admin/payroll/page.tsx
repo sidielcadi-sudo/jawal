@@ -2,6 +2,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { SeedConfigButton, ConfigEditForm, EmployeeProfileForm } from './payroll-client';
+import { personDisplayName } from '@/lib/localized-name';
 
 export default async function PayrollPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -15,7 +16,7 @@ export default async function PayrollPage({ params }: { params: Promise<{ locale
       tx.person.findMany({
         where: { type: { in: ['STAFF', 'TEACHER'] }, deletedAt: null },
         orderBy: [{ lastName: 'asc' }],
-        select: { id: true, firstName: true, lastName: true, payrollProfile: true },
+        select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, payrollProfile: true },
       }),
     ]);
     return { config, employees };
@@ -77,7 +78,7 @@ export default async function PayrollPage({ params }: { params: Promise<{ locale
               <EmployeeProfileForm
                 key={e.id}
                 personId={e.id}
-                name={`${e.lastName} ${e.firstName}`}
+                name={personDisplayName(locale, e)}
                 profile={
                   e.payrollProfile
                     ? {

@@ -37,9 +37,9 @@ export async function GET(
     const entries = await tx.timetableEntry.findMany({
       where: { teacherId: id, academicYearId: year.id },
       include: {
-        subject: { select: { label: true } },
-        class: { select: { name: true } },
-        room: { select: { label: true } },
+        subject: { select: { label: true, labelAr: true } },
+        class: { select: { name: true, nameAr: true } },
+        room: { select: { label: true, labelAr: true } },
         slot: { select: { startTime: true, endTime: true } },
       },
     });
@@ -56,8 +56,8 @@ export async function GET(
         entry: {
           include: {
             slot: { select: { startTime: true, endTime: true } },
-            subject: { select: { label: true } },
-            class: { select: { name: true } },
+            subject: { select: { label: true, labelAr: true } },
+            class: { select: { name: true, nameAr: true } },
           },
         },
         substituteTeacher: { select: { firstName: true, lastName: true } },

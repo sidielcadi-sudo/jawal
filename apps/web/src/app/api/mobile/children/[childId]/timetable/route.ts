@@ -35,9 +35,9 @@ export async function GET(req: Request, ctx: { params: Promise<{ childId: string
       where: { classId: child.classId, academicYearId: child.year.id, dayOfWeek: dayCode },
       include: {
         slot: { select: { startTime: true, endTime: true, order: true, isBreak: true } },
-        subject: { select: { label: true } },
+        subject: { select: { label: true, labelAr: true } },
         teacher: { select: { firstName: true, lastName: true } },
-        room: { select: { label: true, code: true } },
+        room: { select: { label: true, labelAr: true, code: true } },
       },
       orderBy: { slot: { order: 'asc' } },
     });

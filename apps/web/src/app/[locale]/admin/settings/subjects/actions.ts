@@ -18,6 +18,7 @@ function input(formData: FormData) {
   return {
     code: get('code'),
     label: get('label'),
+    labelAr: get('labelAr'),
     scale: get('scale'),
     coefficient: get('coefficient'),
     order: get('order'),

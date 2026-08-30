@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import type { AppelRow } from '@/lib/teacher-attendance';
 import { categoryOf, type AttendanceCategory } from '@/lib/attendance-category';
 import { saveTeacherAppelAction, reopenTeacherAppelAction } from './actions';
+import { personDisplayName } from '@/lib/localized-name';
 
 type Reason = { id: string; label: string; color: string | null };
 
@@ -247,7 +248,7 @@ export function AppelGrid({
               return (
                 <tr key={r.studentId} className="hover:bg-slate-50/60">
                   <td className="max-w-[11rem] truncate px-2 py-1 text-[11px] text-slate-700">
-                    {r.lastName} {r.firstName}
+                    {personDisplayName(locale, r)}
                   </td>
                   {COLS.map((col) => (
                     <td key={col.cat} className="px-1 py-1 text-center align-top">

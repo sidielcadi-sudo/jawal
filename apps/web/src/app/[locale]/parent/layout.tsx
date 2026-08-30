@@ -63,6 +63,8 @@ export default async function ParentLayout({
             id: c.id,
             firstName: c.firstName,
             lastName: c.lastName,
+            firstNameAr: c.firstNameAr,
+            lastNameAr: c.lastNameAr,
             className: c.className,
             unread: c.unread,
             pendingFees: c.pendingFees,

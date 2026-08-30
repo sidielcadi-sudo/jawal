@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { requirePermission } from '@/lib/auth/rbac';
+import { personDisplayName } from '@/lib/localized-name';
 
 /**
  * Rapport direction : tableau des créances annulées (remises gracieuses) avec
@@ -29,7 +30,7 @@ export default async function WaivedDebtsPage({
         waivedReason: true,
         waivedAt: true,
         waivedByUserId: true,
-        student: { select: { firstName: true, lastName: true } },
+        student: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
       },
       orderBy: { waivedAt: 'desc' },
     });
@@ -37,13 +38,13 @@ export default async function WaivedDebtsPage({
     const users = userIds.length
       ? await tx.user.findMany({
           where: { id: { in: userIds } },
-          select: { id: true, email: true, userPersons: { include: { person: { select: { firstName: true, lastName: true } } } } },
+          select: { id: true, email: true, userPersons: { include: { person: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } } } },
         })
       : [];
     const userLabel = new Map<string, string>();
     for (const u of users) {
       const p = u.userPersons[0]?.person;
-      userLabel.set(u.id, p ? `${p.lastName} ${p.firstName}` : u.email);
+      userLabel.set(u.id, p ? personDisplayName(locale, p) : u.email);
     }
     const tenant = await tx.tenant.findFirst({ select: { currency: true } });
     return { rows, userLabel, currency: tenant?.currency ?? 'MAD' };
@@ -93,7 +94,7 @@ export default async function WaivedDebtsPage({
                 <td className="px-4 py-3 text-xs text-slate-600">
                   {r.waivedAt ? new Date(r.waivedAt).toLocaleDateString(locale) : '—'}
                 </td>
-                <td className="px-4 py-3 text-slate-800">{r.student.lastName} {r.student.firstName}</td>
+                <td className="px-4 py-3 text-slate-800">{personDisplayName(locale, r.student)}</td>
                 <td className="px-4 py-3 text-xs text-slate-600">{r.label}</td>
                 <td className="px-4 py-3 text-end tabular-nums font-medium text-amber-700">
                   {Number(r.waivedAmount ?? 0).toFixed(2)} {data.currency}

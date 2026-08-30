@@ -4,6 +4,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import type { DayKey } from '@/lib/timetable-conflicts';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 const DAYS: DayKey[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -39,9 +40,9 @@ export default async function RoomTimetablePage({
       ? await tx.timetableEntry.findMany({
           where: { roomId: id, academicYearId: yearId },
           include: {
-            subject: { select: { label: true } },
-            class: { select: { id: true, name: true } },
-            teacher: { select: { firstName: true, lastName: true } },
+            subject: { select: { label: true, labelAr: true } },
+            class: { select: { id: true, name: true, nameAr: true } },
+            teacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
           },
         })
       : [];
@@ -165,11 +166,11 @@ export default async function RoomTimetablePage({
                               href={`/${locale}/admin/classes/${e.class.id}`}
                               className="mt-0.5 block text-slate-600 hover:text-brand-700"
                             >
-                              {e.class.name}
+                              {localizedLabel(locale, e.class.name, e.class.nameAr)}
                             </Link>
                             {e.teacher && (
                               <div className="text-slate-500">
-                                {e.teacher.lastName} {e.teacher.firstName}
+                                {personDisplayName(locale, e.teacher)}
                               </div>
                             )}
                           </div>
