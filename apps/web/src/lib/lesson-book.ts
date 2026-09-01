@@ -281,7 +281,19 @@ export async function getClassUpcomingHomeworks(tx: Tx, classId: string, sinceDa
     take: 50,
     include: {
       lessonEntry: {
-        include: { entry: { include: { subject: { select: { label: true, labelAr: true } } } } },
+        // Le portail parent regroupe les devoirs par séance et titre la carte
+        // « Matière — Enseignant · Séance du JJ/MM » : il lui faut donc la
+        // date de la séance et son enseignant, pas seulement la matière.
+        include: {
+          entry: {
+            include: {
+              subject: { select: { label: true, labelAr: true } },
+              teacher: {
+                select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
+              },
+            },
+          },
+        },
       },
     },
   });

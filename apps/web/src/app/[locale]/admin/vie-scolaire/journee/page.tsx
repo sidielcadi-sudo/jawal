@@ -20,6 +20,8 @@ import { DashboardTabs } from '../../dashboard-tabs';
 import { StudentSearch } from './student-search';
 import { RaCheckbox, MotifPicker, NotifyAppelButton, type Reason } from './row-actions';
 import { JourneeTabs } from './attendance-tabs';
+import { PeriodBoard } from './period-board';
+import { loadPeriodBoard } from '@/lib/vie-scolaire-period-board';
 import { monthlyAttendance, topStudents } from '@/lib/attendance-stats';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
@@ -68,6 +70,9 @@ export default async function VieScolaireBoardPage({
 }: {
   params: Promise<{ locale: string }>;
   searchParams: Promise<{
+    tab?: string;
+    month?: string;
+    yearNum?: string;
     date?: string;
     class?: string;
     student?: string;
@@ -131,6 +136,29 @@ export default async function VieScolaireBoardPage({
 
     // Onglets d'analyse : évolution mensuelle et palmarès, sur l'année active.
     const monthly = await monthlyAttendance(tx, MONTH_COUNT, year ? new Date(year.startDate) : null);
+
+    // Vue mensuelle : mois choisi, sinon celui de la date consultée.
+    const monthParam = /^\d{4}-\d{2}$/.test(sp.month ?? '') ? sp.month! : date.slice(0, 7);
+    const [my, mm] = monthParam.split('-').map(Number);
+    const monthBoard = await loadPeriodBoard(tx, {
+      mode: 'month',
+      from: new Date(Date.UTC(my!, mm! - 1, 1)),
+      to: new Date(Date.UTC(my!, mm!, 1)),
+      classId,
+      studentId,
+      locale,
+    });
+
+    // Vue annuelle : année civile choisie, sinon celle de la date consultée.
+    const yearParam = /^\d{4}$/.test(sp.yearNum ?? '') ? Number(sp.yearNum) : Number(date.slice(0, 4));
+    const yearBoard = await loadPeriodBoard(tx, {
+      mode: 'year',
+      from: new Date(Date.UTC(yearParam, 0, 1)),
+      to: new Date(Date.UTC(yearParam + 1, 0, 1)),
+      classId,
+      studentId,
+      locale,
+    });
     const nameOf = (pp: {
       firstName: string;
       lastName: string;
@@ -152,12 +180,14 @@ export default async function VieScolaireBoardPage({
     return {
       date, classList, classId, students, studentId, studentName, reasons, board, detail, missing,
       monthly, monthLabels, topAbsences, topLates,
+      monthBoard, yearBoard, monthParam, yearParam,
     };
   });
 
   const {
     date, classList, classId, students, studentId, studentName, reasons, board, detail, missing,
     monthly, monthLabels, topAbsences, topLates,
+    monthBoard, yearBoard, monthParam, yearParam,
   } = data;
   const dateLabel = new Date(`${date}T00:00:00`).toLocaleDateString(locale, { dateStyle: 'full' });
 
@@ -183,6 +213,67 @@ export default async function VieScolaireBoardPage({
         <DashboardTabs locale={locale} showPilotage={showPilotage} />
       </div>
       <JourneeTabs
+        initialTab={sp.tab}
+        monthView={
+          <div>
+            <form method="get" className="mb-3 flex flex-wrap items-end gap-2">
+              <input type="hidden" name="tab" value="month" />
+              {classId && <input type="hidden" name="class" value={classId} />}
+              {studentId && <input type="hidden" name="student" value={studentId} />}
+              <label className="block">
+                <span className="block text-xs text-slate-500">{t('month')}</span>
+                <input
+                  type="month"
+                  name="month"
+                  defaultValue={monthParam}
+                  className="mt-1 rounded-lg border border-slate-300 px-3 py-1.5 text-sm shadow-sm"
+                />
+              </label>
+              <button
+                type="submit"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                {t('apply')}
+              </button>
+            </form>
+            <PeriodBoard
+              rows={monthBoard.rows}
+              totals={monthBoard.totals}
+              firstColLabel={t('day')}
+            />
+          </div>
+        }
+        yearView={
+          <div>
+            <form method="get" className="mb-3 flex flex-wrap items-end gap-2">
+              <input type="hidden" name="tab" value="year" />
+              {classId && <input type="hidden" name="class" value={classId} />}
+              {studentId && <input type="hidden" name="student" value={studentId} />}
+              <label className="block">
+                <span className="block text-xs text-slate-500">{t('year')}</span>
+                <input
+                  type="number"
+                  name="yearNum"
+                  min={2000}
+                  max={2100}
+                  defaultValue={yearParam}
+                  className="mt-1 w-28 rounded-lg border border-slate-300 px-3 py-1.5 text-sm shadow-sm"
+                />
+              </label>
+              <button
+                type="submit"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+              >
+                {t('apply')}
+              </button>
+            </form>
+            <PeriodBoard
+              rows={yearBoard.rows}
+              totals={yearBoard.totals}
+              firstColLabel={t('monthCol')}
+            />
+          </div>
+        }
         labels={monthLabels}
         monthly={monthly}
         topAbsences={topAbsences}

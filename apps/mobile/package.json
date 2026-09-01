@@ -4,9 +4,10 @@
   "private": true,
   "main": "index.ts",
   "scripts": {
-    "start": "expo start",
-    "android": "expo start --android",
-    "ios": "expo start --ios"
+    "start": "node scripts/adb-reverse.mjs && expo start",
+    "android": "node scripts/adb-reverse.mjs && expo start --android",
+    "ios": "expo start --ios",
+    "adb:reverse": "node scripts/adb-reverse.mjs"
   },
   "dependencies": {
     "expo": "^57.0.9",

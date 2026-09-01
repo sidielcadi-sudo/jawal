@@ -35,39 +35,66 @@ export default async function ParentChildNotesPage({
       ctx.periods.find((p) => p.id === sp.period) ?? current ?? fallback;
 
     // Onglet Notes : évaluations de la classe sur la période.
-    const notes =
+    const evaluations =
       tab === 'notes' && ctx.classId && selectedPeriod
-        ? (
-            await tx.evaluation.findMany({
-              where: { classId: ctx.classId, periodId: selectedPeriod.id },
-              orderBy: { date: 'desc' },
-              include: {
-                subject: { select: { label: true, labelAr: true } },
-                grades: { select: { studentId: true, value: true } },
-              },
-            })
-          ).map((e) => {
-            const childValue = e.grades.find((g) => g.studentId === childId)?.value ?? null;
-            const vals = e.grades.map((g) => g.value).filter((v): v is number => v !== null);
-            const classAvg = vals.length ? vals.reduce((s, x) => s + x, 0) / vals.length : null;
-            return {
-              id: e.id,
-              subject: localizedLabel(locale, e.subject.label, e.subject.labelAr),
-              label: e.label,
-              date: e.date,
-              max: e.maxValue,
-              childValue,
-              classAvg,
-            };
+        ? await tx.evaluation.findMany({
+            where: { classId: ctx.classId, periodId: selectedPeriod.id },
+            orderBy: { date: 'desc' },
+            include: {
+              subject: { select: { label: true, labelAr: true } },
+              grades: { select: { studentId: true, value: true } },
+            },
           })
         : [];
+    const notes = evaluations.map((e) => {
+      const childValue = e.grades.find((g) => g.studentId === childId)?.value ?? null;
+      const vals = e.grades.map((g) => g.value).filter((v): v is number => v !== null);
+      const classAvg = vals.length ? vals.reduce((s, x) => s + x, 0) / vals.length : null;
+      return {
+        id: e.id,
+        subject: localizedLabel(locale, e.subject.label, e.subject.labelAr),
+        label: e.label,
+        date: e.date,
+        max: e.maxValue,
+        childValue,
+        // Min/max de la classe sur cette évaluation : situe la note sans
+        // révéler qui l'a obtenue.
+        classMin: vals.length ? Math.min(...vals) : null,
+        classMax: vals.length ? Math.max(...vals) : null,
+        classAvg,
+      };
+    });
+
+    // Moyenne générale de la période : moyenne par élève de ses notes
+    // normalisées sur 20 (barèmes hétérogènes), puis min/max sur la classe.
+    const marksByStudent = new Map<string, number[]>();
+    for (const e of evaluations) {
+      const scale = e.maxValue || 20;
+      for (const g of e.grades) {
+        if (g.value === null) continue;
+        const arr = marksByStudent.get(g.studentId) ?? [];
+        arr.push((g.value / scale) * 20);
+        marksByStudent.set(g.studentId, arr);
+      }
+    }
+    const studentAvgs = [...marksByStudent.entries()].map(([studentId, marks]) => ({
+      studentId,
+      avg: marks.reduce((sum, x) => sum + x, 0) / marks.length,
+    }));
+    const generalAvg = studentAvgs.length
+      ? {
+          min: Math.min(...studentAvgs.map((a) => a.avg)),
+          max: Math.max(...studentAvgs.map((a) => a.avg)),
+          child: studentAvgs.find((a) => a.studentId === childId)?.avg ?? null,
+        }
+      : null;
 
     const classBulletin =
       tab === 'classe' && ctx.classId && selectedPeriod
         ? await loadClassBulletin(tx, ctx.classId, selectedPeriod.id, childId)
         : [];
 
-    return { ctx, selectedPeriod, notes, classBulletin };
+    return { ctx, selectedPeriod, notes, generalAvg, classBulletin };
   });
   if (!data) notFound();
 
@@ -132,6 +159,8 @@ export default async function ParentChildNotesPage({
                       <tr>
                         <th className="px-3 py-1.5 text-start">{t('notes.evaluation')}</th>
                         <th className="px-2 py-1.5 text-end">{t('notes.mark')}</th>
+                        <th className="px-2 py-1.5 text-end">{t('notes.min')}</th>
+                        <th className="px-2 py-1.5 text-end">{t('notes.max')}</th>
                         <th className="px-3 py-1.5 text-end">{t('notes.classAvg')}</th>
                       </tr>
                     </thead>
@@ -154,6 +183,12 @@ export default async function ParentChildNotesPage({
                               </span>
                             )}
                           </td>
+                          <td className="px-2 py-1.5 text-end tabular-nums text-slate-400">
+                            {n.classMin === null ? '—' : n.classMin}
+                          </td>
+                          <td className="px-2 py-1.5 text-end tabular-nums text-slate-400">
+                            {n.classMax === null ? '—' : n.classMax}
+                          </td>
                           <td className="px-3 py-1.5 text-end tabular-nums text-slate-500">
                             {n.classAvg === null ? '—' : `${n.classAvg.toFixed(2)}/${n.max}`}
                           </td>
@@ -164,6 +199,36 @@ export default async function ParentChildNotesPage({
                 </div>
               </div>
             ))}
+
+            {data.generalAvg && (
+              <div className="rounded-xl bg-slate-50 px-4 py-3">
+                <div className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  {t('notes.generalAvg')}
+                </div>
+                <dl className="flex flex-wrap items-end justify-between gap-3 text-xs">
+                  <div>
+                    <dt className="text-slate-500">{t('notes.childAvg')}</dt>
+                    <dd className="text-lg font-semibold tabular-nums text-slate-900">
+                      {data.generalAvg.child === null
+                        ? '—'
+                        : `${data.generalAvg.child.toFixed(2)}/20`}
+                    </dd>
+                  </div>
+                  <div className="text-end">
+                    <dt className="text-slate-500">{t('notes.min')}</dt>
+                    <dd className="font-medium tabular-nums text-slate-600">
+                      {data.generalAvg.min.toFixed(2)}/20
+                    </dd>
+                  </div>
+                  <div className="text-end">
+                    <dt className="text-slate-500">{t('notes.max')}</dt>
+                    <dd className="font-medium tabular-nums text-slate-600">
+                      {data.generalAvg.max.toFixed(2)}/20
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            )}
           </div>
         )
       ) : tab === 'bulletin' ? (

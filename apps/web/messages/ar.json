@@ -520,7 +520,14 @@
           "APPROVED": "مقبول",
           "REJECTED": "مرفوض"
         },
-        "noEvent": "لا يوجد تلميذ لهذه الحصة."
+        "noEvent": "لا يوجد تلميذ لهذه الحصة.",
+        "empty": "لا يوجد أي تسجيل خلال الفترة.",
+        "tabMonth": "العرض الشهري",
+        "tabYear": "العرض السنوي",
+        "month": "الشهر",
+        "year": "السنة",
+        "day": "اليوم",
+        "monthCol": "الشهر"
       }
     },
     "teacherDashboard": {
@@ -1151,7 +1158,8 @@
         "deduction": "اقتطاع",
         "note": "ملاحظة",
         "empty": "لا يوجد أي تسجيل لهذا الشهر."
-      }
+      },
+      "noReason": "السبب غير محدد"
     },
     "timetableDashboard": {
       "title": "لوحة التحكم — تحضير الجدول",
@@ -2415,6 +2423,10 @@
         "arabicData": "المعطيات بالعربية",
         "tabs": {
           "fiche": "البطاقة"
+        },
+        "attendanceScope": {
+          "year": "السنة",
+          "period": "الأسدس"
         }
       },
       "parentAccess": {
@@ -3782,7 +3794,7 @@
         "empty": "لا توجد معطيات مالية لهذه السنة."
       },
       "attendanceBlock": {
-        "sectionTitle": "الحضور / الغياب",
+        "sectionTitle": "حضور وغياب التلاميذ",
         "tabAbs": "تطور الغياب",
         "tabAbsSite": "تطور الغياب حسب المؤسسة",
         "tabLate": "تطور التأخر",
@@ -3804,6 +3816,32 @@
         "level": "المستوى",
         "class": "القسم",
         "empty": "لا يوجد أي تسجيل خلال الفترة."
+      },
+      "teacherAttendance": {
+        "sectionTitle": "تتبع حضور الأساتذة",
+        "tabOverview": "نظرة عامة",
+        "tabTrend": "التطور الشهري",
+        "tabReasons": "الأسباب",
+        "tabSites": "حسب المؤسسة",
+        "tabWeekday": "حسب اليوم",
+        "tabAlerts": "التنبيهات",
+        "presenceRate": "نسبة الحضور",
+        "absenceRate": "نسبة الغياب",
+        "nationalRef": "المرجع الوطني ≈ {rate} ٪",
+        "longAbsences": "غيابات طويلة",
+        "longHint": "فترات تتجاوز 15 يوماً",
+        "shortAbsences": "غيابات قصيرة",
+        "shortHint": "15 يوماً أو أقل",
+        "absences": "الغيابات",
+        "days": "ي",
+        "teacher": "الأستاذ",
+        "site": "المؤسسة",
+        "thisMonth": "هذا الشهر",
+        "totalDays": "الأيام المتراكمة",
+        "reasons": "الأسباب",
+        "alertsHint": "أساتذة تحت المراقبة: 3 غيابات على الأقل في الشهر، أو 10 أيام متراكمة في السنة.",
+        "noAlert": "لا يوجد أستاذ يتجاوز العتبات.",
+        "empty": "لا يوجد أي تسجيل لحضور الموظفين خلال الفترة."
       }
     },
     "transport": {
@@ -4041,7 +4079,11 @@
       "absencesTotal": "{days} يوم إجمالاً",
       "absencesHint": "الأيام المسجلة « غائب » خلال السنة الدراسية. الإجازات المصادق عليها والغيابات المبررة غير محتسبة.",
       "absencesEmpty": "لا يوجد أي تسجيل خلال السنة.",
-      "lateCount": "{count} تأخر"
+      "lateCount": "{count} تأخر",
+      "justification": "الوثيقة المبررة",
+      "justificationAdd": "إرفاق",
+      "justificationReplace": "استبدال",
+      "justificationView": "عرض الوثيقة"
     },
     "overtime": {
       "title": "الساعات الإضافية",
@@ -4314,7 +4356,9 @@
         "flopTitle": "الأقل طلبًا",
         "noFlop": "كل العناوين بيعت."
       },
-      "addCopy": "إضافة النسخة"
+      "addCopy": "إضافة النسخة",
+      "bookPhoto": "الغلاف",
+      "bookPhotoHint": "الغلاف (اختياري) — يمكن تغييره لاحقًا من الكتالوج."
     },
     "comptabilite": {
       "title": "المحاسبة",
@@ -4810,7 +4854,7 @@
         "cahier": "دفتر النصوص",
         "notes": "النقاط",
         "vie-scolaire": "الحياة المدرسية",
-        "scolarite": "رسوم الدراسة",
+        "scolarite": "الأداء",
         "documents": "الوثائق الرسمية",
         "bourse": "سوق الكتب"
       }
@@ -4917,7 +4961,8 @@
           "REVISION": "مراجعة",
           "PROJET": "مشروع",
           "AUTRE": "أخرى"
-        }
+        },
+        "session": "حصة"
       },
       "classBulletin": {
         "subject": "المادة",
@@ -4972,7 +5017,11 @@
         "evaluation": "التقييم",
         "period": "الفترة",
         "mark": "النقطة",
+        "min": "أدنى نقطة بالقسم",
+        "max": "أعلى نقطة بالقسم",
         "classAvg": "معدل القسم",
+        "generalAvg": "المعدل العام",
+        "childAvg": "ابنكم/ابنتكم",
         "tabNotes": "النقاط",
         "tabStudentBulletin": "كشف نقاط التلميذ",
         "tabClassBulletin": "كشف نقاط القسم",
@@ -5071,7 +5120,7 @@
         "failedBanner": "لم تكتمل عملية الدفع. لم يُخصم أي مبلغ. يمكنكم إعادة المحاولة."
       },
       "finance": {
-        "title": "الرسوم الدراسية",
+        "title": "الرسوم الدراسية والمصاريف الإضافية",
         "empty": "لا توجد أقساط حاليًا.",
         "label": "البيان",
         "dueDate": "تاريخ الاستحقاق",
@@ -5081,6 +5130,7 @@
         "receipt": "الوصل",
         "paidOf": "{paid} / {due} درهم مدفوعة",
         "totalRemaining": "إجمالي المتبقّي",
+        "overdue": "{days, plural, one {# يوم تأخير} other {# أيام تأخير}}",
         "payOnline": "الدفع عبر الإنترنت",
         "soon": "قريبًا",
         "payOnlineSoon": "الدفع الإلكتروني عبر CMI قادم قريبًا.",
@@ -5446,6 +5496,10 @@
       "status": "الحالة",
       "cancel": "إلغاء",
       "cancelConfirm": "إلغاء هذا الطلب؟",
+      "justification": "الوثيقة المبررة",
+      "justificationAdd": "إرفاق وثيقة",
+      "justificationReplace": "استبدال",
+      "justificationView": "عرض الوثيقة",
       "empty": "لا توجد طلبات.",
       "statusLabel": {
         "PENDING": "قيد الانتظار",

@@ -22,7 +22,7 @@ export default async function StaffAttendancePage({
   const date = new Date(dateStr);
   date.setUTCHours(0, 0, 0, 0);
 
-  const { rows, totals } = await withTenant(
+  const { rows, totals, absenceReasons } = await withTenant(
     session.user.tenantId,
     async (tx) => {
       const persons = await tx.person.findMany({
@@ -33,6 +33,16 @@ export default async function StaffAttendancePage({
         },
         orderBy: [{ type: 'asc' }, { lastName: 'asc' }, { firstName: 'asc' }],
       });
+
+      const reasonRows = await tx.staffAbsenceReason.findMany({
+        where: { active: true },
+        orderBy: [{ order: 'asc' }, { label: 'asc' }],
+        select: { id: true, label: true, labelAr: true },
+      });
+      const absenceReasons = reasonRows.map((r) => ({
+        id: r.id,
+        label: locale === 'ar' ? (r.labelAr ?? r.label) : r.label,
+      }));
 
       const rows: StaffRow[] = persons.map((p) => {
         const existing = p.staffAttendance[0];
@@ -48,6 +58,7 @@ export default async function StaffAttendancePage({
           grossSalary: p.grossSalary !== null ? Number(p.grossSalary) : null,
           status: (existing?.status ?? 'PRESENT') as StaffRow['status'],
           lateMinutes: existing?.lateMinutes ?? null,
+          absenceReasonId: existing?.absenceReasonId ?? null,
           note: existing?.note ?? null,
           deductionAmount:
             existing?.deductionAmount !== undefined
@@ -92,7 +103,7 @@ export default async function StaffAttendancePage({
         },
       );
 
-      return { rows, totals };
+      return { rows, totals, absenceReasons };
     },
   );
 
@@ -186,6 +197,7 @@ export default async function StaffAttendancePage({
       <section className="mt-6">
         <StaffAttendanceSheet
           locale={locale}
+          absenceReasons={absenceReasons}
           date={dateStr}
           initial={rows}
           backUrl={`/${locale}/admin`}

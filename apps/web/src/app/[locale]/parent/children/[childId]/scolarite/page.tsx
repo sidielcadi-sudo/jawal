@@ -36,14 +36,21 @@ export default async function ParentChildScolaritePage({
       include: { payments: { select: { amount: true } } },
       orderBy: { dueDate: 'asc' },
     });
+    // Échéance dépassée : on compte les jours pleins depuis la date d'échéance,
+    // en repartant de minuit pour que « aujourd'hui » ne soit jamais en retard.
+    const midnight = new Date();
+    midnight.setHours(0, 0, 0, 0);
     const fees = installments.map((i) => {
       const paid = i.payments.reduce((s, p) => s + Number(p.amount), 0);
+      const remaining = Math.max(0, Number(i.amount) - paid);
+      const lateMs = midnight.getTime() - new Date(i.dueDate).setHours(0, 0, 0, 0);
       return {
         id: i.id,
         label: i.label,
         amount: Number(i.amount),
-        remaining: Math.max(0, Number(i.amount) - paid),
+        remaining,
         dueDate: i.dueDate,
+        overdueDays: remaining > 0 && lateMs > 0 ? Math.floor(lateMs / 86400000) : 0,
         status: i.status as 'PENDING' | 'PARTIAL' | 'PAID',
       };
     });
@@ -122,11 +129,18 @@ export default async function ParentChildScolaritePage({
               {data.fees.map((f) => (
                 <tr key={f.id} className="border-b border-slate-100">
                   <td className="py-2 text-slate-800">{f.label}</td>
-                  <td className="py-2 text-end tabular-nums text-slate-500">
+                  <td className={`py-2 text-end tabular-nums ${f.overdueDays > 0 ? 'text-red-600' : 'text-slate-500'}`}>
                     {new Date(f.dueDate).toLocaleDateString(locale)}
+                    {f.overdueDays > 0 && (
+                      <span className="block text-[10px] font-medium text-red-600">
+                        {t('finance.overdue', { days: f.overdueDays })}
+                      </span>
+                    )}
                   </td>
-                  <td className="py-2 text-end tabular-nums">{f.amount.toLocaleString(locale)}</td>
-                  <td className="py-2 text-end font-medium tabular-nums">
+                  <td className={`py-2 text-end tabular-nums ${f.overdueDays > 0 ? 'font-semibold text-red-600' : ''}`}>
+                    {f.amount.toLocaleString(locale)}
+                  </td>
+                  <td className={`py-2 text-end font-medium tabular-nums ${f.overdueDays > 0 ? 'font-semibold text-red-600' : ''}`}>
                     {f.remaining > 0 ? f.remaining.toLocaleString(locale) : '—'}
                   </td>
                   <td className="py-2 text-center">

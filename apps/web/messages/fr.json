@@ -520,7 +520,14 @@
           "APPROVED": "Acceptée",
           "REJECTED": "Refusée"
         },
-        "noEvent": "Aucun élève pour ce créneau."
+        "noEvent": "Aucun élève pour ce créneau.",
+        "empty": "Aucun pointage sur la période.",
+        "tabMonth": "Vue mensuelle",
+        "tabYear": "Vue annuelle",
+        "month": "Mois",
+        "year": "Année",
+        "day": "Jour",
+        "monthCol": "Mois"
       }
     },
     "teacherDashboard": {
@@ -1151,7 +1158,8 @@
         "deduction": "Retenue",
         "note": "Note",
         "empty": "Aucun pointage enregistré ce mois-ci."
-      }
+      },
+      "noReason": "Motif non renseigné"
     },
     "timetableDashboard": {
       "title": "Tableau de bord — Préparation EDT",
@@ -2415,6 +2423,10 @@
         "arabicData": "Données en arabe",
         "tabs": {
           "fiche": "Fiche"
+        },
+        "attendanceScope": {
+          "year": "année",
+          "period": "trimestre"
         }
       },
       "parentAccess": {
@@ -3782,7 +3794,7 @@
         "empty": "Aucune donnée financière sur cette année."
       },
       "attendanceBlock": {
-        "sectionTitle": "Présence / Absence",
+        "sectionTitle": "Présence/Absence Élèves",
         "tabAbs": "Évol abs",
         "tabAbsSite": "Évol abs étab",
         "tabLate": "Évol retr",
@@ -3804,6 +3816,32 @@
         "level": "Niveau",
         "class": "Classe",
         "empty": "Aucun pointage sur la période."
+      },
+      "teacherAttendance": {
+        "sectionTitle": "Suivi présence des professeurs",
+        "tabOverview": "Vue d’ensemble",
+        "tabTrend": "Évolution mensuelle",
+        "tabReasons": "Motifs",
+        "tabSites": "Par établissement",
+        "tabWeekday": "Par jour",
+        "tabAlerts": "Alertes",
+        "presenceRate": "Taux de présence",
+        "absenceRate": "Taux d’absence",
+        "nationalRef": "Référence nationale ≈ {rate} %",
+        "longAbsences": "Absences longues",
+        "longHint": "Épisodes de plus de 15 jours",
+        "shortAbsences": "Absences courtes",
+        "shortHint": "15 jours ou moins",
+        "absences": "Absences",
+        "days": "j",
+        "teacher": "Enseignant",
+        "site": "Établissement",
+        "thisMonth": "Ce mois",
+        "totalDays": "Jours cumulés",
+        "reasons": "Motifs",
+        "alertsHint": "Enseignants à surveiller : au moins 3 absences dans le mois, ou 10 journées cumulées sur l’année.",
+        "noAlert": "Aucun enseignant au-dessus des seuils.",
+        "empty": "Aucun pointage du personnel sur la période."
       }
     },
     "transport": {
@@ -4041,7 +4079,11 @@
       "absencesTotal": "{days} j au total",
       "absencesHint": "Journées pointées « absent » sur l’année scolaire. Les congés approuvés et les absences excusées ne sont pas comptés.",
       "absencesEmpty": "Aucun pointage sur l’année.",
-      "lateCount": "{count} retard(s)"
+      "lateCount": "{count} retard(s)",
+      "justification": "Justificatif",
+      "justificationAdd": "Joindre",
+      "justificationReplace": "Remplacer",
+      "justificationView": "Voir le justificatif"
     },
     "overtime": {
       "title": "Heures supplémentaires",
@@ -4314,7 +4356,9 @@
         "flopTitle": "Titres les moins demandés",
         "noFlop": "Tous les titres ont vendu."
       },
-      "addCopy": "Ajouter l’exemplaire"
+      "addCopy": "Ajouter l’exemplaire",
+      "bookPhoto": "Couverture",
+      "bookPhotoHint": "Couverture (facultative) — modifiable ensuite depuis le catalogue."
     },
     "comptabilite": {
       "title": "Comptabilité",
@@ -4810,7 +4854,7 @@
         "cahier": "Cahier de texte",
         "notes": "Notes",
         "vie-scolaire": "Vie scolaire",
-        "scolarite": "Frais scolarité",
+        "scolarite": "Règlement",
         "documents": "Documents officiels",
         "bourse": "Bourse aux livres"
       }
@@ -4917,7 +4961,8 @@
           "REVISION": "Révision",
           "PROJET": "Projet",
           "AUTRE": "Autre"
-        }
+        },
+        "session": "Séance du"
       },
       "classBulletin": {
         "subject": "Matière",
@@ -4972,7 +5017,11 @@
         "evaluation": "Évaluation",
         "period": "Période",
         "mark": "Note",
+        "min": "Min classe",
+        "max": "Max classe",
         "classAvg": "Moy. classe",
+        "generalAvg": "Moyenne générale",
+        "childAvg": "Votre enfant",
         "tabNotes": "Notes",
         "tabStudentBulletin": "Bulletin de l'élève",
         "tabClassBulletin": "Bulletin de la classe",
@@ -5071,7 +5120,7 @@
         "failedBanner": "Le paiement n'a pas abouti. Aucun montant n'a été débité. Vous pouvez réessayer."
       },
       "finance": {
-        "title": "Scolarité",
+        "title": "Scolarité et frais annexes",
         "empty": "Aucune échéance pour le moment.",
         "label": "Libellé",
         "dueDate": "Échéance",
@@ -5081,6 +5130,7 @@
         "receipt": "Reçu",
         "paidOf": "{paid} / {due} MAD payés",
         "totalRemaining": "Total restant dû",
+        "overdue": "{days, plural, one {# jour de retard} other {# jours de retard}}",
         "payOnline": "Payer en ligne",
         "soon": "bientôt",
         "payOnlineSoon": "Le paiement en ligne CMI arrive bientôt.",
@@ -5446,6 +5496,10 @@
       "status": "Statut",
       "cancel": "Annuler",
       "cancelConfirm": "Annuler cette demande ?",
+      "justification": "Justificatif",
+      "justificationAdd": "Joindre un justificatif",
+      "justificationReplace": "Remplacer",
+      "justificationView": "Voir le justificatif",
       "empty": "Aucune demande.",
       "statusLabel": {
         "PENDING": "En attente",

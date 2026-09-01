@@ -70,6 +70,9 @@ export async function saveStaffAttendanceAction(formData: FormData): Promise<Res
       const data = {
         status: rec.status,
         lateMinutes: rec.status === 'LATE' ? (rec.lateMinutes ?? null) : null,
+        // Le motif ne concerne pas une journée de présence : on le purge, sinon
+        // il resterait accroché après correction d'un statut.
+        absenceReasonId: rec.status === 'PRESENT' ? null : (rec.absenceReasonId ?? null),
         note: rec.note ?? null,
         // On préserve le montant si l'opérateur l'a manuellement verrouillé
         deductionAmount: existing?.deductionLocked

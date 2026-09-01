@@ -6,6 +6,7 @@ import { loadParentChildContext } from '@/lib/parent';
 import { getClassLessonBook, getClassUpcomingHomeworks } from '@/lib/lesson-book';
 import { ChildTabs } from '../tabs';
 import { SinceFilter } from '../since-filter';
+import { personDisplayName } from '@/lib/localized-name';
 
 const HW_BADGE: Record<string, string> = {
   EXERCICE: 'bg-blue-50 text-blue-700',
@@ -45,6 +46,29 @@ export default async function ParentChildCahierPage({
   });
   if (!data) notFound();
 
+  // Couleur de matière dérivée du libellé : stable, et sans table à tenir.
+  const SUBJECT_COLORS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#4a3aa7', '#0ea5e9', '#84cc16'];
+  const subjectColor = (label: string) => {
+    let h = 0;
+    for (let i = 0; i < label.length; i++) h = (h * 31 + label.charCodeAt(i)) >>> 0;
+    return SUBJECT_COLORS[h % SUBJECT_COLORS.length]!;
+  };
+  const shortDate = (d: Date | string) =>
+    new Date(typeof d === 'string' ? `${d}T00:00:00.000Z` : d).toLocaleDateString(locale, {
+      day: '2-digit',
+      month: '2-digit',
+      timeZone: 'UTC',
+    });
+  /** « Mathématiques — ELIDRISSI · Séance du 21/07 » */
+  const sessionTitle = (
+    subject: string | null,
+    teacher: { firstName: string; lastName: string; firstNameAr: string | null; lastNameAr: string | null } | null,
+    date: Date | string,
+  ) =>
+    [subject ?? '—', teacher ? personDisplayName(locale, teacher) : null]
+      .filter(Boolean)
+      .join(' — ') + ` · ${t('cahier.session')} ${shortDate(date)}`;
+
   const base = `/${locale}/parent/children/${childId}/cahier`;
   const q = `&since=${since}`;
   const fmt = (d: Date | string) =>
@@ -54,6 +78,36 @@ export default async function ParentChildCahierPage({
       month: 'long',
       timeZone: 'UTC',
     });
+
+  // Une carte par séance : sans ce regroupement, deux devoirs d'un même cours
+  // produisaient deux lignes portant le même en-tête.
+  const groupedHomeworks = (() => {
+    const byLesson = new Map<
+      string,
+      {
+        lessonEntryId: string;
+        subject: string | null;
+        title: string;
+        dueDate: Date | null;
+        items: (typeof data.homeworks)[number][];
+      }
+    >();
+    for (const h of data.homeworks) {
+      const le = h.lessonEntry;
+      const cur = byLesson.get(le.id) ?? {
+        lessonEntryId: le.id,
+        subject: le.entry.subject?.label ?? null,
+        title: sessionTitle(le.entry.subject?.label ?? null, le.entry.teacher, le.date),
+        dueDate: h.dueDate,
+        items: [],
+      };
+      // La carte porte l'échéance la plus proche des devoirs qu'elle regroupe.
+      if (h.dueDate && (!cur.dueDate || h.dueDate < cur.dueDate)) cur.dueDate = h.dueDate;
+      cur.items.push(h);
+      byLesson.set(le.id, cur);
+    }
+    return [...byLesson.values()];
+  })();
 
   return (
     <>
@@ -72,19 +126,31 @@ export default async function ParentChildCahierPage({
           {t('noClass')}
         </p>
       ) : tab === 'contenu' ? (
-        <section className="mt-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <section className="mt-4">
           {data.lessons.length === 0 ? (
-            <p className="text-sm text-slate-400">{t('cahier.noLesson')}</p>
+            <p className="rounded-2xl border border-slate-100 bg-white p-5 text-sm text-slate-400 shadow-sm">
+              {t('cahier.noLesson')}
+            </p>
           ) : (
-            <ul className="divide-y divide-slate-100">
+            <ul className="space-y-3">
               {data.lessons.map((l) => (
-                <li key={l.id} className="py-3 first:pt-0 last:pb-0">
+                <li
+                  key={l.id}
+                  className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 ps-6 shadow-sm"
+                >
+                  {/* Filet coloré : repère la matière d'un coup d'œil. */}
+                  <span
+                    aria-hidden
+                    className="absolute inset-y-0 start-0 w-1.5"
+                    style={{ backgroundColor: subjectColor(l.entry.subject?.label ?? '—') }}
+                  />
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="text-sm font-semibold text-slate-900">
-                      {l.entry.subject?.label ?? '—'} — {l.title}
+                      {sessionTitle(l.entry.subject?.label ?? null, l.entry.teacher, l.date)}
                     </span>
                     <span className="text-xs capitalize text-slate-400">{fmt(l.date)}</span>
                   </div>
+                  {l.title && <p className="mt-0.5 text-sm text-slate-700">{l.title}</p>}
                   {l.theme && (
                     <p className="mt-1 text-xs font-medium text-brand-700">
                       {t('cahier.theme')} : {l.theme}
@@ -120,29 +186,43 @@ export default async function ParentChildCahierPage({
           )}
         </section>
       ) : (
-        <section className="mt-4 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm">
+        <section className="mt-4">
           {data.homeworks.length === 0 ? (
-            <p className="text-sm text-slate-400">{t('cahier.noHomework')}</p>
+            <p className="rounded-2xl border border-slate-100 bg-white p-5 text-sm text-slate-400 shadow-sm">
+              {t('cahier.noHomework')}
+            </p>
           ) : (
-            <ul className="divide-y divide-slate-100">
-              {data.homeworks.map((h) => (
-                <li key={h.id} className="py-3 text-sm first:pt-0 last:pb-0">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium text-slate-800">
-                      {h.lessonEntry.entry.subject?.label ?? '—'}
-                    </span>
-                    <span className="flex items-center gap-2">
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${HW_BADGE[h.type]}`}>
-                        {t(`cahier.homeworkTypes.${h.type}`)}
+            <ul className="space-y-3">
+              {groupedHomeworks.map((g) => (
+                <li
+                  key={g.lessonEntryId}
+                  className="relative overflow-hidden rounded-2xl border border-slate-100 bg-white p-5 ps-6 shadow-sm"
+                >
+                  <span
+                    aria-hidden
+                    className="absolute inset-y-0 start-0 w-1.5"
+                    style={{ backgroundColor: subjectColor(g.subject ?? '—') }}
+                  />
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="text-sm font-semibold text-slate-900">{g.title}</span>
+                    {g.dueDate && (
+                      <span className="text-sm font-semibold capitalize text-brand-700">
+                        {t('cahier.due')} {fmt(g.dueDate)}
                       </span>
-                      {h.dueDate && (
-                        <span className="text-xs font-medium capitalize text-brand-700">
-                          {t('cahier.due')} {fmt(h.dueDate)}
-                        </span>
-                      )}
-                    </span>
+                    )}
                   </div>
-                  <p className="mt-1 whitespace-pre-line text-slate-600">{h.description}</p>
+                  <ul className="mt-2 space-y-1.5">
+                    {g.items.map((h) => (
+                      <li key={h.id} className="flex items-start gap-2 text-sm">
+                        <span
+                          className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${HW_BADGE[h.type]}`}
+                        >
+                          {t(`cahier.homeworkTypes.${h.type}`)}
+                        </span>
+                        <span className="whitespace-pre-line text-slate-600">{h.description}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </li>
               ))}
             </ul>

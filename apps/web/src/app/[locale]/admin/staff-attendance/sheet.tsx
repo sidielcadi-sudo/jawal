@@ -20,6 +20,7 @@ export type StaffRow = {
   grossSalary: number | null;
   status: StaffAttendanceStatusInput;
   lateMinutes: number | null;
+  absenceReasonId: string | null;
   note: string | null;
   deductionAmount: number;
   deductionLocked: boolean;
@@ -62,11 +63,14 @@ const STATUS_STYLES: Record<
 
 export function StaffAttendanceSheet({
   locale,
+  absenceReasons,
   date,
   initial,
   backUrl,
 }: {
   locale: string;
+  /** Motifs d'absence actifs, paramétrés dans Réglages. */
+  absenceReasons: { id: string; label: string }[];
   date: string;
   initial: StaffRow[];
   backUrl: string;
@@ -104,6 +108,7 @@ export function StaffAttendanceSheet({
         ...r,
         status: 'PRESENT' as const,
         lateMinutes: null,
+        absenceReasonId: null,
         deductionAmount: r.deductionLocked ? r.deductionAmount : 0,
       })),
     );
@@ -117,6 +122,7 @@ export function StaffAttendanceSheet({
         personId: r.personId,
         status: r.status,
         lateMinutes: r.lateMinutes ?? undefined,
+        absenceReasonId: r.absenceReasonId,
         note: r.note ?? undefined,
       })),
     };
@@ -242,6 +248,24 @@ export function StaffAttendanceSheet({
                         }
                         className="w-24 rounded-md border border-slate-300 px-2 py-1 text-xs"
                       />
+                    )}
+                    {/* Motif : proposé dès qu'on s'écarte de la présence. Il
+                        reste facultatif, pour ne pas ralentir un pointage. */}
+                    {r.status !== 'PRESENT' && absenceReasons.length > 0 && (
+                      <select
+                        value={r.absenceReasonId ?? ''}
+                        onChange={(e) =>
+                          setRow(r.personId, { absenceReasonId: e.target.value || null })
+                        }
+                        className="rounded-md border border-slate-300 px-2 py-1 text-xs"
+                      >
+                        <option value="">{t('noReason')}</option>
+                        {absenceReasons.map((ar) => (
+                          <option key={ar.id} value={ar.id}>
+                            {ar.label}
+                          </option>
+                        ))}
+                      </select>
                     )}
                   </div>
                 </li>

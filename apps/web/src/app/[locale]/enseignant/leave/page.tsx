@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { getTeacherPersonId } from '@/lib/teacher';
 import { CreateOwnRequestForm, CancelOwnRequest } from './client';
+import { JustificationUpload } from '@/components/leave/justification-upload';
 
 const STATUS_BADGE: Record<string, string> = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -23,6 +24,11 @@ export default async function TeacherLeavePage({
   if (!session?.user) redirect(`/${locale}/login`);
   const t = await getTranslations('enseignant.leave');
   const typeLabel = (fr: string, ar: string) => (locale === 'ar' ? ar : fr);
+  const justifLabels = {
+    view: t('justificationView'),
+    add: t('justificationAdd'),
+    replace: t('justificationReplace'),
+  };
 
   const data = await withTenant(session.user.tenantId, async (tx) => {
     const personId = await getTeacherPersonId(tx, session.user.id);
@@ -70,6 +76,7 @@ export default async function TeacherLeavePage({
                   <th className="px-3 py-2.5 text-start">{t('period')}</th>
                   <th className="px-3 py-2.5 text-end">{t('days')}</th>
                   <th className="px-3 py-2.5 text-center">{t('status')}</th>
+                  <th className="px-3 py-2.5 text-center">{t('justification')}</th>
                   <th className="px-3 py-2.5" />
                 </tr>
               </thead>
@@ -91,6 +98,14 @@ export default async function TeacherLeavePage({
                         {t(`statusLabel.${r.status}`)}
                       </span>
                     </td>
+                    <td className="px-3 py-2.5 text-center">
+                      <JustificationUpload
+                        requestId={r.id}
+                        hasFile={!!r.justificationFileId}
+                        editable={r.status === 'PENDING'}
+                        labels={justifLabels}
+                      />
+                    </td>
                     <td className="px-3 py-2.5 text-end">
                       {r.status === 'PENDING' && <CancelOwnRequest id={r.id} />}
                     </td>
@@ -98,7 +113,7 @@ export default async function TeacherLeavePage({
                 ))}
                 {data.requests.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-3 py-8 text-center text-sm text-slate-500">
+                    <td colSpan={6} className="px-3 py-8 text-center text-sm text-slate-500">
                       {t('empty')}
                     </td>
                   </tr>

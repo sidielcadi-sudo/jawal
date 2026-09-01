@@ -7,7 +7,7 @@ import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
 import { DEFAULT_BOOK_CONFIG } from '@/lib/book-defaults';
 
-type Result = { ok: true } | { ok: false; error: string };
+type Result = { ok: true; id?: string } | { ok: false; error: string };
 
 const str = (fd: FormData, k: string) => {
   const v = fd.get(k);
@@ -94,7 +94,7 @@ export async function createBookAction(fd: FormData): Promise<Result> {
   if (!s) return { ok: false, error: 'Non autorisé' };
   const title = str(fd, 'title');
   if (!title) return { ok: false, error: 'Titre requis.' };
-  await withTenant(s.user.tenantId, (tx) =>
+  const book = await withTenant(s.user.tenantId, (tx) =>
     tx.book.create({
       data: {
         tenantId: s.user.tenantId,
@@ -107,10 +107,11 @@ export async function createBookAction(fd: FormData): Promise<Result> {
         priceNew: num(fd, 'priceNew') ?? 0,
         priceBourseDefault: num(fd, 'priceBourseDefault') ?? null,
       },
+      select: { id: true },
     }),
   );
   revalidatePath('/admin/bourse');
-  return { ok: true };
+  return { ok: true, id: book.id };
 }
 
 export async function deleteBookAction(id: string): Promise<Result> {

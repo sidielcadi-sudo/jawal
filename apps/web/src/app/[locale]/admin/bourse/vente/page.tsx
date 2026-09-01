@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { SellButton } from '../sell-client';
 import { personDisplayName } from '@/lib/localized-name';
+import { BourseNav } from '../bourse-nav';
 
 const inputCls = 'rounded-lg border border-slate-300 px-3 py-2 text-sm';
 
@@ -58,11 +59,14 @@ export default async function VentePage({
 
   return (
     <div className="mx-auto max-w-4xl px-3 py-3">
-      <nav className="mb-3 text-xs text-slate-500">
-        <Link href={`/${locale}/admin/bourse`} className="hover:text-brand-700">📚 {t('title')}</Link>
-        <span className="mx-1.5">›</span>
-        <span>{tv('title')}</span>
-      </nav>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <nav className="text-xs text-slate-500">
+          <Link href={`/${locale}/admin/bourse`} className="hover:text-brand-700">📚 {t('title')}</Link>
+          <span className="mx-1.5">›</span>
+          <span>{tv('title')}</span>
+        </nav>
+        <BourseNav locale={locale} />
+      </div>
 
       <h1 className="mb-3 text-base font-bold text-slate-900">{tv('title')}</h1>
 

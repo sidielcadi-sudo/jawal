@@ -19,7 +19,9 @@ export type TopRow = {
   count: number;
 };
 
-type TabKey = 'board' | 'abs' | 'rate' | 'topAbs' | 'topLate';
+type TabKey = 'board' | 'month' | 'year' | 'abs' | 'rate' | 'topAbs' | 'topLate';
+
+const TAB_KEYS: TabKey[] = ['board', 'month', 'year', 'abs', 'rate', 'topAbs', 'topLate'];
 
 const C = { present: '#1baf7a', absJust: '#eda100', absUnjust: '#e0492f' };
 
@@ -32,13 +34,21 @@ const C = { present: '#1baf7a', absJust: '#eda100', absUnjust: '#e0492f' };
  * des vues d'analyse, consultées ponctuellement.
  */
 export function JourneeTabs({
+  initialTab,
   board,
+  monthView,
+  yearView,
   labels,
   monthly,
   topAbsences,
   topLates,
 }: {
+  /** Onglet ouvert au chargement, repris de l'URL (`?tab=`). */
+  initialTab?: string;
   board: React.ReactNode;
+  /** Grilles agrégées, rendues côté serveur puis passées en enfants. */
+  monthView: React.ReactNode;
+  yearView: React.ReactNode;
   labels: string[];
   monthly: MonthlySeries;
   topAbsences: TopRow[];
@@ -46,10 +56,24 @@ export function JourneeTabs({
 }) {
   const t = useTranslations('admin.group.attendanceBlock');
   const tb = useTranslations('admin.vieScolaire.board');
-  const [tab, setTab] = useState<TabKey>('board');
+  const [tab, setTab] = useState<TabKey>(
+    TAB_KEYS.includes(initialTab as TabKey) ? (initialTab as TabKey) : 'board',
+  );
+
+  // Les vues mensuelle/annuelle rechargent la page via leur propre formulaire :
+  // on garde l'onglet courant dans l'URL pour y revenir après le submit.
+  const selectTab = (key: TabKey) => {
+    setTab(key);
+    const url = new URL(window.location.href);
+    if (key === 'board') url.searchParams.delete('tab');
+    else url.searchParams.set('tab', key);
+    window.history.replaceState(null, '', url.toString());
+  };
 
   const tabs: { key: TabKey; label: string }[] = [
     { key: 'board', label: tb('title') },
+    { key: 'month', label: tb('tabMonth') },
+    { key: 'year', label: tb('tabYear') },
     { key: 'abs', label: t('tabAbs') },
     { key: 'rate', label: t('tabRate') },
     { key: 'topAbs', label: t('tabTopAbs') },
@@ -75,7 +99,7 @@ export function JourneeTabs({
           <button
             key={x.key}
             type="button"
-            onClick={() => setTab(x.key)}
+            onClick={() => selectTab(x.key)}
             className={`-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
               tab === x.key
                 ? 'border-brand-600 text-brand-700'
@@ -90,6 +114,10 @@ export function JourneeTabs({
       {/* Le tableau de bord reste monté : le remonter à chaque aller-retour
           coûterait un rechargement complet de ses blocs. */}
       <div className={tab === 'board' ? '' : 'hidden'}>{board}</div>
+      {/* Montées en permanence comme le journalier : elles portent leurs
+          propres sélecteurs, qui rechargent la page. */}
+      <div className={tab === 'month' ? '' : 'hidden'}>{monthView}</div>
+      <div className={tab === 'year' ? '' : 'hidden'}>{yearView}</div>
 
       {tab === 'abs' && (
         <section className="rounded-2xl border border-brand-200 bg-white p-5">

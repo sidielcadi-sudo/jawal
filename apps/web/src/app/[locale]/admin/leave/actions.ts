@@ -12,7 +12,7 @@ import { renderTemplate } from '@/lib/notify-templates';
 import { sendDirectMessage } from '@/lib/inapp-message';
 import { alertTeacherAbsence } from '@/lib/leave-alerts';
 
-type Result = { ok: true } | { ok: false; error: string };
+type Result = { ok: true; id?: string } | { ok: false; error: string };
 
 const DOW_CODES = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
 const fmtDate = (d: Date) => d.toISOString().slice(0, 10).split('-').reverse().join('/');
@@ -86,7 +86,7 @@ export async function createLeaveRequestAction(fd: FormData): Promise<Result> {
   const days = workingDaysBetween(startDate, endDate);
 
   try {
-    await withTenant(tenantId, async (tx) => {
+    const created = await withTenant(tenantId, async (tx) => {
       // Cohérence : pas de chevauchement avec une demande active du même employé.
       const overlap = await tx.leaveRequest.count({
         where: {
@@ -124,9 +124,10 @@ export async function createLeaveRequestAction(fd: FormData): Promise<Result> {
         });
       }
       await logAudit(tx, { tenantId, userId: s.user.id, action: 'create', entityType: 'LeaveRequest', entityId: r.id, after: { personId, leaveTypeId, days } });
+      return r.id;
     });
     revalidatePath('/admin/leave');
-    return { ok: true };
+    return { ok: true, id: created };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
   }

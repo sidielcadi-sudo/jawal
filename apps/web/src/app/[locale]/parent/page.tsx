@@ -146,6 +146,10 @@ export default async function ParentHomePage({
     };
   });
 
+  // Libellé de la fenêtre de calcul des KPI (trimestre courant, ou année).
+  const windowLabel =
+    data.periods.find((p) => p.id === data.selectedPeriodId)?.label ?? null;
+
   return (
     <div className="px-3 py-3">
       {/* Hero */}
@@ -217,8 +221,12 @@ export default async function ParentHomePage({
                 <Donut
                   pct={attendanceRate ?? 0}
                   color={attendanceRate === null ? '#cbd5e1' : attendanceRate < 90 ? '#d97706' : '#059669'}
-                  center={attendanceRate !== null ? `${attendanceRate.toFixed(0)}%` : '—'}
-                  label={t('attendance')}
+                  center={attendanceRate !== null ? `${attendanceRate.toFixed(1)}%` : '—'}
+                  label={
+                    // Le taux porte sur la période sélectionnée, pas sur
+                    // l'année : sans ce repère, il semble contredire l'admin.
+                    windowLabel ? `${t('attendance')} · ${windowLabel}` : t('attendance')
+                  }
                 />
                 <div className="grid flex-1 grid-cols-3 gap-2 text-center text-xs">
                   <Stat value={String(absences)} label={t('absences')} tone={absences > 0 ? 'red' : 'slate'} />
@@ -282,7 +290,8 @@ export default async function ParentHomePage({
                     <span className="ms-1.5 text-xs font-normal text-slate-400">{n.label}</span>
                   </div>
                   <div className="text-[11px] text-slate-400">
-                    {n.childName} · {new Date(n.date).toLocaleDateString(locale)}
+                    <span className="font-semibold text-slate-600">{n.childName}</span> ·{' '}
+                    {new Date(n.date).toLocaleDateString(locale)}
                   </div>
                 </div>
                 <span

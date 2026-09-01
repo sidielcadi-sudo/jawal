@@ -1,8 +1,10 @@
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
-import { CreateForm, DeleteButton, SeedConfigButton, ConfigForm, CampaignStatusButton } from './bourse-client';
-import { createCampaignAction, createBookAction, deleteBookAction } from './actions';
+import { CreateForm, CreateBookForm, DeleteButton, SeedConfigButton, ConfigForm, CampaignStatusButton } from './bourse-client';
+import { createCampaignAction, deleteBookAction } from './actions';
+import { BourseNav } from './bourse-nav';
+import { BookPhoto } from './book-photo';
 
 const inputCls = 'rounded-lg border border-slate-300 px-3 py-2 text-sm';
 
@@ -31,20 +33,7 @@ export default async function BoursePage({ params }: { params: Promise<{ locale:
           <h1 className="text-base font-bold text-slate-900">📚 {t('title')}</h1>
           <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>
         </div>
-        <div className="flex shrink-0 gap-2">
-          <a href={`/${locale}/admin/bourse/depot`} className="rounded-xl border border-brand-300 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50">
-            {t('depot.cta')}
-          </a>
-          <a href={`/${locale}/admin/bourse/vente`} className="rounded-xl border border-brand-300 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50">
-            {t('vente.cta')}
-          </a>
-          <a href={`/${locale}/admin/bourse/remboursements`} className="rounded-xl border border-brand-300 px-4 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50">
-            {t('refund.cta')}
-          </a>
-          <a href={`/${locale}/admin/bourse/finance`} className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700">
-            {t('finance.cta')}
-          </a>
-        </div>
+        <BourseNav locale={locale} />
       </header>
 
       {/* Paramétrage */}
@@ -59,7 +48,7 @@ export default async function BoursePage({ params }: { params: Promise<{ locale:
         {/* Catalogue */}
         <section className="lg:col-span-2">
           <h2 className="mb-2 text-base font-semibold text-slate-900">{t('catalogTitle')}</h2>
-          <CreateForm action={createBookAction} className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+          <CreateBookForm className="mb-3 grid grid-cols-2 gap-2 md:grid-cols-4">
             <input name="title" required placeholder={t('bookTitle')} className={`${inputCls} col-span-2`} />
             <select name="levelId" defaultValue="" className={inputCls}>
               <option value="">{t('level')}</option>
@@ -73,12 +62,22 @@ export default async function BoursePage({ params }: { params: Promise<{ locale:
             <input name="isbn" placeholder="ISBN" className={inputCls} />
             <input name="editionYear" type="number" placeholder={t('editionYear')} className={inputCls} />
             <input name="priceNew" type="number" step="any" placeholder={t('priceNew')} className={inputCls} />
+            <label className="col-span-2 flex flex-col gap-0.5 text-xs text-slate-500 md:col-span-4">
+              {t('bookPhotoHint')}
+              <input
+                type="file"
+                name="cover"
+                accept="image/png,image/jpeg,image/webp"
+                className="text-xs file:me-2 file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-2 file:py-1 file:text-xs file:text-slate-700"
+              />
+            </label>
             <button className="col-span-2 rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white hover:bg-brand-700 md:col-span-4">{t('addBook')}</button>
-          </CreateForm>
+          </CreateBookForm>
           <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
             <table className="w-full text-sm">
               <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
                 <tr>
+                  <th className="px-3 py-2 text-start">{t('bookPhoto')}</th>
                   <th className="px-3 py-2 text-start">{t('bookTitle')}</th>
                   <th className="px-3 py-2 text-start">{t('level')}</th>
                   <th className="px-3 py-2 text-start">{t('subject')}</th>
@@ -90,6 +89,9 @@ export default async function BoursePage({ params }: { params: Promise<{ locale:
               <tbody className="divide-y divide-slate-100">
                 {books.map((b) => (
                   <tr key={b.id}>
+                    <td className="px-3 py-2">
+                      <BookPhoto bookId={b.id} hasPhoto={!!b.photoFileId} />
+                    </td>
                     <td className="px-3 py-2 font-medium text-slate-800">{b.title}{b.editor && <span className="ms-1 text-xs text-slate-400">· {b.editor}</span>}</td>
                     <td className="px-3 py-2 text-xs text-slate-600">{b.level?.code ?? '—'}</td>
                     <td className="px-3 py-2 text-xs text-slate-600">{b.subject?.label ?? '—'}</td>
@@ -98,7 +100,7 @@ export default async function BoursePage({ params }: { params: Promise<{ locale:
                     <td className="px-3 py-2 text-end"><DeleteButton onDelete={deleteBookAction.bind(null, b.id)} confirmText={t('deleteBookConfirm')} /></td>
                   </tr>
                 ))}
-                {books.length === 0 && <tr><td colSpan={6} className="px-3 py-8 text-center text-slate-400">{t('noBooks')}</td></tr>}
+                {books.length === 0 && <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-400">{t('noBooks')}</td></tr>}
               </tbody>
             </table>
           </div>

@@ -27,6 +27,8 @@ export const staffAttendanceRecordSchema = z.object({
     )
     .optional(),
   note: optionalString(500),
+  /** Motif d'absence (UUID) ; null = non renseigné. */
+  absenceReasonId: z.string().uuid().nullable().optional(),
 });
 export type StaffAttendanceRecordInput = z.infer<typeof staffAttendanceRecordSchema>;
 

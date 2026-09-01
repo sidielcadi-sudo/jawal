@@ -9,6 +9,11 @@ import { BarChart, GroupedBarChart, siteColors, type Series } from './charts';
 import { AttendanceTabs, type SiteAttendance, type TopRow } from './attendance-tabs';
 import { EncaissementTabs, type RecoverySite } from './encaissement-tabs';
 import { monthlyAttendance, topStudents } from '@/lib/attendance-stats';
+import { teacherAttendanceStats } from '@/lib/teacher-attendance-stats';
+import {
+  TeacherAttendanceTabs,
+  type SiteTeacherAttendance,
+} from './teacher-attendance-tabs';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 type Row = {
@@ -50,6 +55,8 @@ type Row = {
   };
   topAbsences: TopRow[];
   topLates: TopRow[];
+  /** Assiduité des enseignants (pointage journalier du personnel). */
+  teacherStats: Awaited<ReturnType<typeof teacherAttendanceStats>>;
 };
 
 /** Mois de l'année scolaire (10 mois à partir du mois de démarrage). */
@@ -143,6 +150,13 @@ export default async function GroupDashboard({
           lastNameAr: string | null;
         }) => personDisplayName(locale, pp);
         const labelOf = (l: string, la: string | null) => localizedLabel(locale, l, la);
+        const teacherStats = await teacherAttendanceStats(
+          tx,
+          MONTH_COUNT,
+          year ? new Date(year.startDate) : null,
+          nameOf,
+          (r) => (locale === 'ar' ? (r.labelAr ?? r.label) : r.label),
+        );
         const [topAbs, topLate] = await Promise.all([
           topStudents(tx, 'ABSENCE', 10, locale, nameOf, labelOf),
           topStudents(tx, 'LATE', 10, locale, nameOf, labelOf),
@@ -170,6 +184,7 @@ export default async function GroupDashboard({
           attendanceStats,
           topAbsences: topAbs.map((r) => ({ ...r, siteName })),
           topLates: topLate.map((r) => ({ ...r, siteName })),
+          teacherStats,
         };
       }),
     ),
@@ -224,6 +239,27 @@ export default async function GroupDashboard({
     .flatMap((r) => r.topLates)
     .sort((a, b) => b.count - a.count)
     .slice(0, 10);
+
+  const teacherSites: SiteTeacherAttendance[] = rows.map((r) => ({
+    name: r.name,
+    color: colors[r.name]!,
+    presenceRate: r.teacherStats.presenceRate,
+    absenceRate: r.teacherStats.absenceRate,
+    absentDays: r.teacherStats.absentDays,
+    longAbsenceDays: r.teacherStats.longAbsenceDays,
+    shortAbsenceDays: r.teacherStats.shortAbsenceDays,
+    monthly: r.teacherStats.monthly,
+    byReason: r.teacherStats.byReason,
+    byWeekday: r.teacherStats.byWeekday,
+    atRisk: r.teacherStats.atRisk,
+  }));
+  // Libellés de jours, dans la langue de l'interface (dimanche = index 0).
+  const weekdayLabels = Array.from({ length: 7 }, (_, i) =>
+    new Date(Date.UTC(2024, 8, 1 + i)).toLocaleDateString(locale, {
+      weekday: 'short',
+      timeZone: 'UTC',
+    }),
+  );
 
   const recoverySites: RecoverySite[] = rows.map((r) => ({
     name: r.name,
@@ -361,6 +397,12 @@ export default async function GroupDashboard({
         sites={attendanceSites}
         topAbsences={topAbsences}
         topLates={topLates}
+      />
+
+      <TeacherAttendanceTabs
+        labels={monthLabels}
+        sites={teacherSites}
+        weekdayLabels={weekdayLabels}
       />
     </div>
   );

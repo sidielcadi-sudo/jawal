@@ -5,6 +5,7 @@ import { withTenant } from '@/lib/db';
 import { can } from '@/lib/auth/rbac';
 import { SeedTypesButton, CreateRequestForm, RequestRowActions } from './leave-client';
 import { personDisplayName } from '@/lib/localized-name';
+import { JustificationUpload } from '@/components/leave/justification-upload';
 
 const STATUS_BADGE: Record<string, string> = {
   PENDING: 'bg-amber-100 text-amber-700',
@@ -21,6 +22,11 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
   // L'approbation/refus/annulation reste réservée aux gestionnaires (tenants.manage).
   // La vie scolaire voit la liste et les remplacements, sans ces actions.
   const canManage = await can('tenants.manage');
+  const justifLabels = {
+    view: t('justificationView'),
+    add: t('justificationAdd'),
+    replace: t('justificationReplace'),
+  };
 
   const data = await withTenant(session.user.tenantId, async (tx) => {
     const [types, staff, requests] = await Promise.all([
@@ -122,6 +128,7 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
                       <th className="px-3 py-2.5 text-start">{t('period')}</th>
                       <th className="px-3 py-2.5 text-end">{t('days')}</th>
                       <th className="px-3 py-2.5 text-center">{t('status')}</th>
+                      <th className="px-3 py-2.5 text-center">{t('justification')}</th>
                       <th className="px-3 py-2.5" />
                     </tr>
                   </thead>
@@ -136,6 +143,14 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
                         <td className="px-3 py-2.5 text-end tabular-nums text-slate-600">{r.days}</td>
                         <td className="px-3 py-2.5 text-center">
                           <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE[r.status]}`}>{t(`statusLabel.${r.status}`)}</span>
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <JustificationUpload
+                            requestId={r.id}
+                            hasFile={!!r.justificationFileId}
+                            editable={r.status === 'PENDING'}
+                            labels={justifLabels}
+                          />
                         </td>
                         <td className="px-3 py-2.5 text-end">
                           <span className="flex items-center justify-end gap-2">
@@ -153,7 +168,7 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
                       </tr>
                     ))}
                     {requests.length === 0 && (
-                      <tr><td colSpan={6} className="px-3 py-8 text-center text-slate-400">{t('empty')}</td></tr>
+                      <tr><td colSpan={7} className="px-3 py-8 text-center text-slate-400">{t('empty')}</td></tr>
                     )}
                   </tbody>
                 </table>

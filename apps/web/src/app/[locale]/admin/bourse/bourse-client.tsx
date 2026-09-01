@@ -3,9 +3,9 @@
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { seedBookConfigAction, updateBookConfigAction, setCampaignStatusAction } from './actions';
+import { seedBookConfigAction, updateBookConfigAction, setCampaignStatusAction, createBookAction } from './actions';
 
-type ActResult = { ok: boolean; error?: string };
+type ActResult = { ok: boolean; error?: string; id?: string };
 
 export function CreateForm({ action, className, children }: { action: (fd: FormData) => Promise<ActResult>; className?: string; children: React.ReactNode }) {
   const router = useRouter();
@@ -17,6 +17,42 @@ export function CreateForm({ action, className, children }: { action: (fd: FormD
       ref={ref}
       onSubmit={(e) => { e.preventDefault(); const fd = new FormData(e.currentTarget); setErr(''); start(async () => { const r = await action(fd); if (!r.ok) return setErr(r.error ?? 'Erreur'); ref.current?.reset(); router.refresh(); }); }}
       className={className}
+    >
+      {children}
+      {err && <p className="mt-1 text-xs text-red-700">{err}</p>}
+    </form>
+  );
+}
+
+export function CreateBookForm({ className, children }: { className?: string; children: React.ReactNode }) {
+  const router = useRouter();
+  const ref = useRef<HTMLFormElement>(null);
+  const [pending, start] = useTransition();
+  const [err, setErr] = useState('');
+  return (
+    <form
+      ref={ref}
+      onSubmit={(e) => {
+        e.preventDefault();
+        const fd = new FormData(e.currentTarget);
+        const cover = fd.get('cover');
+        fd.delete('cover');
+        setErr('');
+        start(async () => {
+          const r = await createBookAction(fd);
+          if (!r.ok) return setErr(r.error ?? 'Erreur');
+          if (cover instanceof File && cover.size > 0 && r.id) {
+            const up = new FormData();
+            up.append('file', cover);
+            const res = await fetch(`/api/admin/bourse/book/${r.id}/photo`, { method: 'POST', body: up });
+            if (!res.ok) setErr(await res.text());
+          }
+          ref.current?.reset();
+          router.refresh();
+        });
+      }}
+      className={className}
+      aria-busy={pending}
     >
       {children}
       {err && <p className="mt-1 text-xs text-red-700">{err}</p>}

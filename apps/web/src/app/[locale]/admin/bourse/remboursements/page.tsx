@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { RefundControl, WithdrawForm } from '../refund-client';
+import { BourseNav } from '../bourse-nav';
 
 const inputCls = 'rounded-lg border border-slate-300 px-3 py-2 text-sm';
 
@@ -64,11 +65,14 @@ export default async function RemboursementsPage({
 
   return (
     <div className="mx-auto max-w-4xl px-3 py-3">
-      <nav className="mb-3 text-xs text-slate-500">
-        <Link href={`/${locale}/admin/bourse`} className="hover:text-brand-700">📚 {t('title')}</Link>
-        <span className="mx-1.5">›</span>
-        <span>{tr('title')}</span>
-      </nav>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <nav className="text-xs text-slate-500">
+          <Link href={`/${locale}/admin/bourse`} className="hover:text-brand-700">📚 {t('title')}</Link>
+          <span className="mx-1.5">›</span>
+          <span>{tr('title')}</span>
+        </nav>
+        <BourseNav locale={locale} />
+      </div>
 
       <form className="mb-4 flex items-end gap-2">
         <label className="text-xs font-medium text-slate-600"><span className="mb-1 block">{t('campaigns')}</span>

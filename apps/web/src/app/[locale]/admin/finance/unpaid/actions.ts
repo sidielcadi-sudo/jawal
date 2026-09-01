@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
+import { notifyPaymentReminder } from '@/lib/unpaid-reminder-notify';
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -14,7 +15,12 @@ const schema = z.object({
   note: z.string().trim().min(1).max(2000),
 });
 
-/** Enregistre une relance de paiement pour la famille d'un élève. */
+/**
+ * Enregistre **et envoie** une relance de paiement à la famille d'un élève.
+ *
+ * L'enregistrement seul ne suffisait pas : la relance restait dans l'historique
+ * sans jamais parvenir aux parents.
+ */
 export async function createReminderAction(formData: FormData): Promise<Result> {
   const session = await auth();
   if (!session?.user) return { ok: false, error: 'Non authentifié' };
@@ -43,6 +49,9 @@ export async function createReminderAction(formData: FormData): Promise<Result> 
       after: { studentId: parsed.data.studentId },
     });
   });
+  // Hors transaction : un envoi qui échoue ne doit pas annuler une relance
+  // déjà consignée dans l'historique.
+  await notifyPaymentReminder(tenantId, parsed.data.studentId, parsed.data.note);
   revalidatePath('/admin/finance/unpaid');
   return { ok: true };
 }

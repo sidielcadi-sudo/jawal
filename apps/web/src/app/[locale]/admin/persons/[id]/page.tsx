@@ -1029,6 +1029,11 @@ export default async function PersonDetailPage({
                       {studentAttendance.rate !== null
                         ? `${studentAttendance.rate.toFixed(1)}%`
                         : '—'}
+                      {/* La fenêtre de calcul est affichée : le portail parent
+                          montre le trimestre courant, pas le cumul annuel. */}
+                      <span className="ms-1.5 text-xs font-normal text-slate-400">
+                        · {tDetail('attendanceScope.year')}
+                      </span>
                     </span>
                   </div>
                   <div className="mt-3 grid grid-cols-3 gap-1.5 text-xs sm:grid-cols-4">
@@ -1147,11 +1152,11 @@ export default async function PersonDetailPage({
                             }`}
                           >
                             {child.attendanceRate !== null
-                              ? `${child.attendanceRate.toFixed(0)}%`
+                              ? `${child.attendanceRate.toFixed(1)}%`
                               : '—'}
                           </div>
                           <div className="text-[10px] uppercase text-slate-500">
-                            {tDetail('family.attendance')}
+                            {tDetail('family.attendance')} · {tDetail('attendanceScope.year')}
                           </div>
                         </div>
                         <div className="rounded-lg border border-slate-100 px-2 py-1.5 text-center">

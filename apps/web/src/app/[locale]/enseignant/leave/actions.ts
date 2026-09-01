@@ -8,7 +8,7 @@ import { workingDaysBetween } from '@/lib/leave';
 import { getTeacherPersonId } from '@/lib/teacher';
 import { alertTeacherAbsence } from '@/lib/leave-alerts';
 
-type Result = { ok: true } | { ok: false; error: string };
+type Result = { ok: true; id?: string } | { ok: false; error: string };
 
 const str = (fd: FormData, k: string) => {
   const v = fd.get(k);
@@ -35,7 +35,7 @@ export async function createOwnLeaveRequestAction(fd: FormData): Promise<Result>
   const days = workingDaysBetween(startDate, endDate);
 
   try {
-    await withTenant(tenantId, async (tx) => {
+    const created = await withTenant(tenantId, async (tx) => {
       const personId = await getTeacherPersonId(tx, session.user.id);
       if (!personId) throw new Error('Profil enseignant introuvable.');
 
@@ -80,10 +80,11 @@ export async function createOwnLeaveRequestAction(fd: FormData): Promise<Result>
         entityId: r.id,
         after: { personId, leaveTypeId, days, selfDeclared: true },
       });
+      return r.id;
     });
     revalidatePath('/enseignant/leave');
     revalidatePath('/admin/leave');
-    return { ok: true };
+    return { ok: true, id: created };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
   }

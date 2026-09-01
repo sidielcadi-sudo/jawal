@@ -3,6 +3,7 @@
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
+import { uploadJustification } from '@/components/leave/justification-upload';
 import { createOwnLeaveRequestAction, cancelOwnLeaveRequestAction } from './actions';
 
 type Opt = { id: string; label: string };
@@ -22,9 +23,17 @@ export function CreateOwnRequestForm({ types }: { types: Opt[] }) {
         e.preventDefault();
         const fd = new FormData(e.currentTarget);
         setErr('');
+        // Le justificatif s'attache après coup : la pièce est rattachée à la
+        // demande, qui n'a son id qu'une fois créée.
+        const file = fd.get('justification');
+        fd.delete('justification');
         start(async () => {
           const r = await createOwnLeaveRequestAction(fd);
           if (!r.ok) return setErr(r.error);
+          if (file instanceof File && file.size > 0 && r.id) {
+            const upErr = await uploadJustification(r.id, file);
+            if (upErr) setErr(upErr);
+          }
           ref.current?.reset();
           router.refresh();
         });
@@ -44,6 +53,15 @@ export function CreateOwnRequestForm({ types }: { types: Opt[] }) {
       <input name="startDate" type="date" required className={input} title={t('start')} />
       <input name="endDate" type="date" required className={input} title={t('end')} />
       <input name="reason" placeholder={t('reason')} className={input} />
+      <label className="flex flex-col gap-0.5 text-xs text-slate-500 lg:col-span-2">
+        {t('justificationAdd')}
+        <input
+          type="file"
+          name="justification"
+          accept="application/pdf,image/png,image/jpeg,image/webp"
+          className="text-xs file:me-2 file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-2 file:py-1 file:text-xs file:text-slate-700"
+        />
+      </label>
       <div className="lg:col-span-4">
         <button
           disabled={pending}

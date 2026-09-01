@@ -3,6 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { BourseExportButton } from '../bourse-export';
+import { BourseNav } from '../bourse-nav';
 
 const inputCls = 'rounded-lg border border-slate-300 px-3 py-2 text-sm';
 const METHOD: Record<string, string> = { CASH: 'Espèces', CHEQUE: 'Chèque', TRANSFER: 'Virement', CMI: 'Carte', CREDIT: 'Avoir' };
@@ -62,11 +63,14 @@ export default async function BourseFinancePage({
 
   return (
     <div className="px-3 py-3">
-      <nav className="mb-3 text-xs text-slate-500">
-        <Link href={`/${locale}/admin/bourse`} className="hover:text-brand-700">📚 {t('title')}</Link>
-        <span className="mx-1.5">›</span>
-        <span>{tf('title')}</span>
-      </nav>
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <nav className="text-xs text-slate-500">
+          <Link href={`/${locale}/admin/bourse`} className="hover:text-brand-700">📚 {t('title')}</Link>
+          <span className="mx-1.5">›</span>
+          <span>{tf('title')}</span>
+        </nav>
+        <BourseNav locale={locale} />
+      </div>
 
       <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
         <form className="flex items-end gap-2">

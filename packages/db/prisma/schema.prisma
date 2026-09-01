@@ -376,6 +376,7 @@ model Tenant {
   attendanceSessions          AttendanceSession[]
   attendanceRecords           AttendanceRecord[]
   attendanceReasons           AttendanceReason[]
+  staffAbsenceReasons         StaffAbsenceReason[]
   attendanceEvents            AttendanceEvent[]
   carnetEntries               CarnetEntry[]
   absenceJustifications       AbsenceJustification[]
@@ -1282,6 +1283,37 @@ model AttendanceReason {
 /// moment de l'enregistrement à partir du salaire brut et du status, mais
 /// reste stocké pour permettre des ajustements manuels (cas de force
 /// majeure, conventions internes, etc.).
+/// Famille d'un motif d'absence du personnel. Sert aux regroupements
+/// statistiques ; le libellé, lui, reste paramétrable par l'établissement.
+enum StaffAbsenceKind {
+  SICK_LEAVE
+  TRAINING
+  PARENTAL
+  OFFICIAL_DUTY
+  UNJUSTIFIED
+  OTHER
+}
+
+/// Motif d'absence du personnel, paramétrable par établissement.
+model StaffAbsenceReason {
+  id        String           @id @default(uuid()) @db.Uuid
+  tenantId  String           @map("tenant_id") @db.Uuid
+  label     String
+  labelAr   String?          @map("label_ar")
+  kind      StaffAbsenceKind @default(OTHER)
+  /// Token de couleur pour les graphiques (donut, histogrammes).
+  color     String?
+  order     Int              @default(0)
+  active    Boolean          @default(true)
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  tenant  Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  records StaffAttendance[]
+
+  @@index([tenantId])
+  @@map("staff_absence_reasons")
+}
+
 model StaffAttendance {
   id               String                @id @default(uuid()) @db.Uuid
   tenantId         String                @map("tenant_id") @db.Uuid
@@ -1291,6 +1323,9 @@ model StaffAttendance {
   checkIn          DateTime?             @map("check_in")
   checkOut         DateTime?             @map("check_out")
   lateMinutes      Int?                  @map("late_minutes")
+  /// Motif de l'absence (null = non renseigné). Ne concerne que les statuts
+  /// non présents ; on ne le force pas, pour ne pas bloquer un pointage rapide.
+  absenceReasonId  String?               @map("absence_reason_id") @db.Uuid
   /// Montant de la retenue salariale automatique (devise du tenant).
   /// 0 si PRESENT/EXCUSED/LEAVE. Calculé via computeStaffDeduction().
   deductionAmount  Decimal               @default(0) @map("deduction_amount") @db.Decimal(12, 2)
@@ -1302,8 +1337,9 @@ model StaffAttendance {
   createdAt        DateTime              @default(now()) @map("created_at")
   updatedAt        DateTime              @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  person Person @relation("StaffAttendance", fields: [personId], references: [id], onDelete: Cascade)
+  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  person        Person              @relation("StaffAttendance", fields: [personId], references: [id], onDelete: Cascade)
+  absenceReason StaffAbsenceReason? @relation(fields: [absenceReasonId], references: [id], onDelete: SetNull)
 
   @@unique([personId, date])
   @@index([tenantId, date])
