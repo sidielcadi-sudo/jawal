@@ -1,5 +1,5 @@
 import { withTenant } from '@/lib/db';
-import { verifyMobileToken } from '@/lib/mobile-auth';
+import { verifyMobileParent } from '@/lib/mobile-auth';
 import { isParticipant } from '@/lib/messaging';
 
 export const runtime = 'nodejs';
@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params;
-  const principal = await verifyMobileToken(req);
+  const principal = await verifyMobileParent(req);
   if (!principal) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
 
   let payload: { body?: string };

@@ -1,5 +1,5 @@
 import { withTenant } from '@/lib/db';
-import { verifyMobileToken } from '@/lib/mobile-auth';
+import { verifyMobileParent } from '@/lib/mobile-auth';
 import { getParentChildren, getParentAnnouncements } from '@/lib/parent';
 
 export const runtime = 'nodejs';
@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 /** GET /api/mobile/announcements → annonces visibles par le parent. */
 export async function GET(req: Request) {
-  const principal = await verifyMobileToken(req);
+  const principal = await verifyMobileParent(req);
   if (!principal) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
 
   const items = await withTenant(principal.tenantId, async (tx) => {

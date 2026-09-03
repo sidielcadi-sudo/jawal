@@ -1,5 +1,5 @@
 import { prismaAdmin, withTenant } from '@/lib/db';
-import { verifyMobileToken } from '@/lib/mobile-auth';
+import { verifyMobileParent } from '@/lib/mobile-auth';
 import { parentCanAccessChild } from '@/lib/parent';
 
 export const runtime = 'nodejs';
@@ -12,7 +12,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(req: Request, ctx: { params: Promise<{ orderId: string }> }) {
   const { orderId } = await ctx.params;
-  const principal = await verifyMobileToken(req);
+  const principal = await verifyMobileParent(req);
   if (!principal) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
 
   const order = await prismaAdmin.onlinePayment.findUnique({

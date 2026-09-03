@@ -5,7 +5,7 @@ import { getTeacherPersonId } from '@/lib/teacher';
 import { SaisieGrid } from './saisie-grid';
 import { pickPeriodId } from '@/lib/periods';
 import { localizedLabel } from '@/lib/localized-name';
-import { PeriodButtons } from '@/components/period-buttons';
+import { PeriodPicker } from '@/components/period-picker';
 
 export default async function NotesSaisiePage({
   params,
@@ -129,7 +129,7 @@ export default async function NotesSaisiePage({
     <div>
       {/* Sélecteurs */}
       <div className="mb-3">
-        <PeriodButtons periods={periods} selectedId={periodId} locale={locale} />
+        <PeriodPicker periods={periods} selectedId={periodId} locale={locale} />
       </div>
       <form method="get" className="mb-4 flex flex-wrap items-center gap-3">
         <span className="text-sm font-medium text-slate-700">{t('saisieTitle')}</span>

@@ -1,5 +1,5 @@
 import { withTenant } from '@/lib/db';
-import { verifyMobileToken } from '@/lib/mobile-auth';
+import { verifyMobileParent } from '@/lib/mobile-auth';
 import { loadParentChildContext } from '@/lib/parent';
 
 export const runtime = 'nodejs';
@@ -14,7 +14,7 @@ const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
  */
 export async function GET(req: Request, ctx: { params: Promise<{ childId: string }> }) {
   const { childId } = await ctx.params;
-  const principal = await verifyMobileToken(req);
+  const principal = await verifyMobileParent(req);
   if (!principal) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
 
   const data = await withTenant(principal.tenantId, async (tx) => {

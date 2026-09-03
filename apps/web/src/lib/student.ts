@@ -87,12 +87,16 @@ async function subjectAverages(
   studentId: string,
   classId: string,
   periodIds: string[],
-): Promise<{ bySubject: { subjectId: string; label: string; avg: number | null }[]; general: number | null }> {
+): Promise<{
+  bySubject: { subjectId: string; label: string; avg: number | null; byPeriod: (number | null)[] }[];
+  general: number | null;
+}> {
   if (periodIds.length === 0) return { bySubject: [], general: null };
   const evals = await tx.evaluation.findMany({
     where: { classId, periodId: { in: periodIds } },
     select: {
       subjectId: true,
+      periodId: true,
       subject: { select: { label: true, labelAr: true } },
       maxValue: true,
       weight: true,
@@ -101,26 +105,64 @@ async function subjectAverages(
       grades: { where: { studentId }, select: { value: true } },
     },
   });
-  const bySubj = new Map<string, { label: string; items: AverageItem[] }>();
+  // Les notes sont ventilées deux fois : en cumul annuel (moyenne affichée) et
+  // par période, pour les anneaux trimestriels de l'app mobile.
+  const bySubj = new Map<string, { label: string; items: AverageItem[]; byPeriod: Map<string, AverageItem[]> }>();
   for (const ev of evals) {
-    const entry = bySubj.get(ev.subjectId) ?? { label: ev.subject?.label ?? '—', items: [] };
+    const entry = bySubj.get(ev.subjectId) ?? {
+      label: ev.subject?.label ?? '—',
+      items: [],
+      byPeriod: new Map<string, AverageItem[]>(),
+    };
     for (const g of ev.grades) {
       if (g.value === null) continue;
-      entry.items.push({
+      const item: AverageItem = {
         n20: (g.value / ev.maxValue) * 20,
         weight: ev.weight,
         optional: ev.optional,
         mode: ev.optionalMode as 'BONUS' | 'NOTE',
-      });
+      };
+      entry.items.push(item);
+      if (ev.periodId) {
+        entry.byPeriod.set(ev.periodId, [...(entry.byPeriod.get(ev.periodId) ?? []), item]);
+      }
     }
     bySubj.set(ev.subjectId, entry);
   }
   const bySubject = [...bySubj.entries()]
-    .map(([subjectId, v]) => ({ subjectId, label: v.label, avg: v.items.length ? computeAverage20(v.items) : null }))
+    .map(([subjectId, v]) => ({
+      subjectId,
+      label: v.label,
+      avg: v.items.length ? computeAverage20(v.items) : null,
+      byPeriod: periodIds.map((pid) => {
+        const items = v.byPeriod.get(pid) ?? [];
+        return items.length ? computeAverage20(items) : null;
+      }),
+    }))
     .sort((a, b) => a.label.localeCompare(b.label));
   const present = bySubject.map((s) => s.avg).filter((v): v is number => v !== null);
   const general = present.length ? present.reduce((s, x) => s + x, 0) / present.length : null;
   return { bySubject, general };
+}
+
+export type SubjectProgress = {
+  periods: { id: string; label: string }[];
+  subjects: { label: string; avg: number | null; byPeriod: (number | null)[] }[];
+};
+
+/**
+ * Moyennes par matière, déclinées période par période — de quoi tracer les
+ * anneaux de progression (un anneau par trimestre) sans payer le coût complet
+ * de `loadStudentDashboard`, qui charge en plus l'appel et le carnet.
+ */
+export async function loadSubjectProgress(tx: Tx, studentId: string): Promise<SubjectProgress> {
+  const ctx = await studentContext(tx, studentId);
+  if (!ctx?.classId || ctx.periods.length === 0) return { periods: ctx?.periods ?? [], subjects: [] };
+  const avgs = await subjectAverages(tx, studentId, ctx.classId, ctx.periods.map((p) => p.id));
+  return {
+    periods: ctx.periods,
+    subjects: avgs.bySubject.map((s) => ({ label: s.label, avg: s.avg, byPeriod: s.byPeriod })),
+  };
 }
 
 /** Classe + périodes de l'élève (année active) — pour lister ses bulletins. */
@@ -139,7 +181,9 @@ export type StudentDashboard = {
   attendanceRate: number | null;
   counts: Record<AttendanceCategory, number>;
   generalAverage: number | null;
-  subjects: { label: string; avg: number | null }[];
+  /** Périodes de l'année, dans l'ordre — index de `subjects[].byPeriod`. */
+  periods: { id: string; label: string }[];
+  subjects: { label: string; avg: number | null; byPeriod: (number | null)[] }[];
   carnetUnread: number;
   recentCarnet: { id: string; type: string; content: string; occurredAt: string; authorName: string }[];
   recentAbsences: { id: string; date: string; cat: AttendanceCategory; className: string }[];
@@ -179,7 +223,10 @@ export async function loadStudentDashboard(tx: Tx, studentId: string): Promise<S
   const avgs =
     ctx?.classId && ctx.periods.length
       ? await subjectAverages(tx, studentId, ctx.classId, ctx.periods.map((p) => p.id))
-      : { bySubject: [] as { subjectId: string; label: string; avg: number | null }[], general: null };
+      : {
+          bySubject: [] as { subjectId: string; label: string; avg: number | null; byPeriod: (number | null)[] }[],
+          general: null,
+        };
 
   const carnet = await loadStudentCarnet(tx, studentId, { forParents: true });
   const recentCarnet = carnet.entries.slice(0, 5).map((e) => ({
@@ -198,7 +245,8 @@ export async function loadStudentDashboard(tx: Tx, studentId: string): Promise<S
     attendanceRate: att.rate,
     counts: att.counts,
     generalAverage: avgs.general,
-    subjects: avgs.bySubject.map((s) => ({ label: s.label, avg: s.avg })),
+    periods: ctx?.periods ?? [],
+    subjects: avgs.bySubject.map((s) => ({ label: s.label, avg: s.avg, byPeriod: s.byPeriod })),
     carnetUnread,
     recentCarnet,
     recentAbsences,

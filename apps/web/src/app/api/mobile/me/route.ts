@@ -1,7 +1,8 @@
 import { withTenant } from '@/lib/db';
-import { verifyMobileToken } from '@/lib/mobile-auth';
+import { verifyMobileParent } from '@/lib/mobile-auth';
 import { getParentChildren } from '@/lib/parent';
 import { countUnreadConversations } from '@/lib/messaging';
+import { presignedGet } from '@/lib/storage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -11,7 +12,7 @@ export const dynamic = 'force-dynamic';
  * Header : Authorization: Bearer <token>
  */
 export async function GET(req: Request) {
-  const principal = await verifyMobileToken(req);
+  const principal = await verifyMobileParent(req);
   if (!principal) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
 
   const data = await withTenant(principal.tenantId, async (tx) => {
@@ -22,6 +23,21 @@ export async function GET(req: Request) {
     const person = parent?.userPersons[0]?.person;
     const children = await getParentChildren(tx, principal.userId);
     const unreadMessages = await countUnreadConversations(tx, principal.userId);
+    // Photos des enfants : URLs signées courtes, pour l'avatar de l'en-tête.
+    // Le stockage peut être indisponible — on retombe alors sur les initiales.
+    const photos = new Map<string, string>();
+    const withPhoto = await tx.person.findMany({
+      where: { id: { in: children.map((c) => c.id) }, photoFileId: { not: null } },
+      select: { id: true, photoFile: { select: { s3Key: true } } },
+    });
+    for (const p of withPhoto) {
+      if (!p.photoFile) continue;
+      try {
+        photos.set(p.id, await presignedGet(p.photoFile.s3Key, 15 * 60));
+      } catch {
+        /* photo indisponible : initiales */
+      }
+    }
     return {
       user: {
         id: principal.userId,
@@ -34,6 +50,7 @@ export async function GET(req: Request) {
         firstName: c.firstName,
         lastName: c.lastName,
         className: c.className,
+        photoUrl: photos.get(c.id) ?? null,
       })),
     };
   });

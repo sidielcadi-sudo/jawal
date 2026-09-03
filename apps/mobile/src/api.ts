@@ -31,7 +31,14 @@ async function request<T>(path: string, opts: RequestOpts = {}): Promise<T> {
 }
 
 // ── Types partagés avec l'API ──────────────────────────────────────────────
-export type Child = { id: string; firstName: string; lastName: string; className: string | null };
+export type Child = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  className: string | null;
+  /** URL signée de la photo de l'élève (courte durée), null si aucune. */
+  photoUrl: string | null;
+};
 export type Me = { user: { id: string; email: string | null; name: string | null }; unreadMessages: number; children: Child[] };
 export type Announcement = { id: string; title: string; body: string; publishedAt: string | null; audience: string };
 export type Evaluation = { id: string; subject: string; label: string; date: string; maxValue: number; coefficient: number; value: number | null; classAverage: number | null };
@@ -42,9 +49,14 @@ export type ChildDashboard = {
   firstName: string;
   lastName: string;
   className: string | null;
+  /** URL signée de la photo de l'élève (courte durée), null si aucune. */
+  photoUrl: string | null;
   attendanceRate: number | null;
   generalAverage: number | null;
-  subjects: { label: string; avg: number | null }[];
+  /** Périodes de l'année, dans l'ordre — index de `subjects[].byPeriod`. */
+  periods: { id: string; label: string }[];
+  /** `byPeriod` : une moyenne par période, alignée sur `periods`. */
+  subjects: { label: string; avg: number | null; byPeriod: (number | null)[] }[];
   carnetUnread: number;
   recentCarnet: { id: string; type: string; content: string; occurredAt: string; authorName: string }[];
   recentAbsences: { id: string; date: string; cat: string; className: string }[];
@@ -135,9 +147,91 @@ export type CompetencyReport =
       domains: CompetencyDomain[];
     };
 
+// ── Espace enseignant ──────────────────────────────────────────────────────
+/** Rôle porté par le jeton : détermine l'espace ouvert par l'app. */
+export type MobileRole = 'parent' | 'teacher';
+/** Un « service » du prof : un couple classe × matière. */
+export type TeacherService = {
+  classId: string;
+  className: string;
+  subjectId: string;
+  subjectLabel: string;
+};
+export type TeacherMe = {
+  teacher: { id: string; firstName: string; lastName: string; photoUrl: string | null };
+  yearLabel: string | null;
+  services: TeacherService[];
+  missingAppels: number;
+  unreadMessages: number;
+};
+/** Un cours de la journée, avec l'état de son appel. */
+export type TeacherDaySession = {
+  entryId: string;
+  date: string;
+  classId: string;
+  className: string;
+  subject: string | null;
+  room: string | null;
+  slotStart: string;
+  slotEnd: string;
+  periodLabel: string;
+  done: boolean;
+};
+export type AppelStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
+export type AppelStudentRow = {
+  studentId: string;
+  name: string;
+  status: AppelStatus;
+  lateMinutes: number | null;
+  lateReasonId: string | null;
+  infirmary: boolean;
+  punishment: boolean;
+  exclusion: boolean;
+  note: string | null;
+};
+export type AppelSheet = {
+  sessionId: string | null;
+  finalized: boolean;
+  date: string;
+  className: string;
+  subject: string | null;
+  room: string | null;
+  slotStart: string;
+  slotEnd: string;
+  reasons: { id: string; label: string; color: string | null }[];
+  rows: AppelStudentRow[];
+};
+export type TeacherNotesGrid = {
+  periods: { id: string; label: string }[];
+  periodId: string;
+  students: { id: string; name: string }[];
+  devoirs: {
+    id: string;
+    label: string;
+    date: string;
+    maxValue: number;
+    weight: number;
+    grades: Record<string, number | null>;
+  }[];
+};
+export type LeaveRequestItem = {
+  id: string;
+  typeLabel: string;
+  startDate: string;
+  endDate: string;
+  days: number;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+  reason: string | null;
+  decisionComment: string | null;
+};
+export type TeacherLeave = {
+  types: { id: string; label: string }[];
+  requests: LeaveRequestItem[];
+};
+
 export const api = {
   login: (tenantSlug: string, email: string, password: string) =>
-    request<{ token: string; user: { id: string } }>('/api/mobile/auth/login', {
+    request<{ token: string; user: { id: string; role: MobileRole } }>('/api/mobile/auth/login', {
       method: 'POST',
       body: { tenantSlug, email, password },
     }),
@@ -182,4 +276,46 @@ export const api = {
     request<PayInit>(`/api/mobile/children/${childId}/pay`, { token, method: 'POST', body: { installmentIds } }),
   paymentStatus: (token: string, orderId: string) =>
     request<PaymentStatus>(`/api/mobile/payments/${orderId}`, { token }),
+
+  // ── Espace enseignant ────────────────────────────────────────────────────
+  teacherMe: (token: string) => request<TeacherMe>('/api/mobile/teacher/me', { token }),
+  teacherDay: (token: string, date: string) =>
+    request<{ date: string; sessions: TeacherDaySession[] }>(
+      `/api/mobile/teacher/day?date=${date}`,
+      { token },
+    ),
+  appelSheet: (token: string, entryId: string, date: string) =>
+    request<AppelSheet>(`/api/mobile/teacher/appel/${entryId}/${date}`, { token }),
+  saveAppel: (
+    token: string,
+    entryId: string,
+    date: string,
+    body: { finalize: boolean; records: Omit<AppelStudentRow, 'name'>[] },
+  ) =>
+    request<{ ok: boolean }>(`/api/mobile/teacher/appel/${entryId}/${date}`, {
+      token,
+      method: 'POST',
+      body,
+    }),
+  teacherNotes: (token: string, classId: string, subjectId: string, periodId?: string) =>
+    request<TeacherNotesGrid>(
+      `/api/mobile/teacher/notes/${classId}/${subjectId}${periodId ? `?period=${periodId}` : ''}`,
+      { token },
+    ),
+  saveTeacherNotes: (
+    token: string,
+    classId: string,
+    subjectId: string,
+    cells: { evaluationId: string; studentId: string; value: number | null }[],
+  ) =>
+    request<{ ok: boolean }>(`/api/mobile/teacher/notes/${classId}/${subjectId}`, {
+      token,
+      method: 'POST',
+      body: { cells },
+    }),
+  teacherLeave: (token: string) => request<TeacherLeave>('/api/mobile/teacher/leave', { token }),
+  createLeave: (
+    token: string,
+    body: { leaveTypeId: string; startDate: string; endDate: string; reason?: string },
+  ) => request<{ ok: boolean; id: string }>('/api/mobile/teacher/leave', { token, method: 'POST', body }),
 };

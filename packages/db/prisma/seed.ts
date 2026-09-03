@@ -31,6 +31,13 @@ const SYSTEM_ROLES = [
   { code: 'direction', label: 'Direction', permissions: ['*.read', 'reports.*'] },
   { code: 'scolarite', label: 'Scolarité', permissions: ['students.*', 'classes.*', 'admissions.*'] },
   { code: 'comptable', label: 'Comptabilité', permissions: ['finance.*'] },
+  // Secrétariat : tient les dossiers élèves et les inscriptions, écrit aux
+  // familles, consulte l'appel et l'état des règlements — sans encaisser.
+  {
+    code: 'secretariat',
+    label: 'Secrétariat',
+    permissions: ['students.*', 'classes.read', 'communication.write', 'attendance.read', 'finance.read'],
+  },
   { code: 'enseignant', label: 'Enseignant', permissions: ['attendance.write', 'grades.write', 'lms.write'] },
   { code: 'cpe', label: 'CPE / Vie scolaire', permissions: ['attendance.*', 'discipline.*', 'communication.*'] },
   { code: 'parent', label: 'Parent', permissions: ['self.read'] },

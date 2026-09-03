@@ -164,7 +164,7 @@ export async function PersonHeader({
           <Link href={`${base}/edit`} className={tabCls(active === 'edit')}>
             {t('actions.edit')}
           </Link>
-          <PersonActions personId={person.id} isArchived={!!person.deletedAt} locale={locale} />
+          <PersonActions personId={person.id} isArchived={!!person.deletedAt} />
         </div>
       </header>
     </div>

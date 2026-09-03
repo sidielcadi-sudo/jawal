@@ -10,12 +10,20 @@
  * téléphone et à chaque relance du serveur adb : on les repose donc avant
  * chaque `expo start`.
  *
+ * Metro n'est pas toujours sur 8081 : si un autre projet React Native occupe
+ * déjà ce port, Expo bascule sur le suivant et la redirection posée ici tombe
+ * à côté. On suit donc RCT_METRO_PORT, la variable qu'Expo/React Native lit
+ * pour choisir son port (`$env:RCT_METRO_PORT = "8082"; npm start`).
+ *
  * Best-effort : sans appareil branché (émulateur, Expo Go en Wi-Fi), on
  * n'échoue pas — on affiche seulement ce qui manque.
  */
 import { execFileSync } from 'node:child_process';
 
-const PORTS = [3000, 8081];
+const METRO_PORT = Number(process.env.RCT_METRO_PORT) || 8081;
+// 9000 = MinIO : les photos (élèves, professeurs) sont servies par des URL
+// signées pointant sur 127.0.0.1:9000. Sans cette règle elles restent vides.
+const PORTS = [3000, 9000, METRO_PORT];
 
 function adb(args) {
   return execFileSync('adb', args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });

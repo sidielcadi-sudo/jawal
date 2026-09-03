@@ -6,7 +6,7 @@ import { loadReleveRows, loadClassSubjects, type ReleveRow } from '@/lib/notes-r
 import { AppreciationCell } from './appreciation-cell';
 import { pickPeriod } from '@/lib/periods';
 import { localizedLabel } from '@/lib/localized-name';
-import { PeriodButtons } from '@/components/period-buttons';
+import { PeriodPicker } from '@/components/period-picker';
 
 export default async function RelevePage({
   params,
@@ -42,7 +42,27 @@ export default async function RelevePage({
     if (!classId) return { classes, classId: null, subjects: [], subjectId: null, periods: year.periods, periodId: null, canEdit: false, rows: [] as ReleveRow[] };
 
     const subjects = await loadClassSubjects(tx, classId, year.id);
-    const subjectId = subjects.find((s) => s.subjectId === sp.subject)?.subjectId ?? subjects[0]?.subjectId ?? null;
+    // À défaut de choix explicite, on ouvre sur une matière que le prof
+    // connecté enseigne dans cette classe : c'est le relevé qu'il vient
+    // consulter neuf fois sur dix, et le seul qu'il puisse modifier.
+    const [myAssign, myEntries] = await Promise.all([
+      tx.teacherAssignment.findMany({
+        where: { classId, academicYearId: year.id, teacherId },
+        select: { subjectId: true },
+      }),
+      tx.timetableEntry.findMany({
+        where: { classId, academicYearId: year.id, teacherId },
+        select: { subjectId: true },
+      }),
+    ]);
+    const mine = new Set(
+      [...myAssign, ...myEntries].map((x) => x.subjectId).filter((v): v is string => !!v),
+    );
+    const subjectId =
+      subjects.find((s) => s.subjectId === sp.subject)?.subjectId ??
+      subjects.find((s) => mine.has(s.subjectId))?.subjectId ??
+      subjects[0]?.subjectId ??
+      null;
     const period = pickPeriod(year.periods, sp.period);
 
     if (!subjectId || !period) {
@@ -60,7 +80,7 @@ export default async function RelevePage({
   return (
     <div>
       <div className="mb-3">
-        <PeriodButtons periods={periods} selectedId={periodId} locale={locale} />
+        <PeriodPicker periods={periods} selectedId={periodId} locale={locale} />
       </div>
       <form method="get" className="mb-4 flex flex-wrap items-center gap-3">
         <span className="text-sm font-medium text-slate-700">{t('releve.title')}</span>

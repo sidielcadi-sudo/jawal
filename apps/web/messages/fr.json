@@ -552,11 +552,12 @@
         "distributionVariation": "Variation de la distribution"
       },
       "attendance": {
-        "title": "Présence & discipline",
-        "rate": "Taux de présence des élèves",
+        "title": "Suivi des présences et des absences",
+        "rate": "Taux de présence",
+        "absences": "Absences",
         "discipline": "Incidents / Retards",
         "incidents": "incidents",
-        "lates": "retards"
+        "lates": "Retards"
       },
       "load": {
         "title": "Charge horaire & planning",
@@ -579,6 +580,12 @@
         "late": "Appels en retard",
         "notDone": "Appels non faits",
         "reminders": "Relances reçues"
+      },
+      "leave": {
+        "title": "Congés & absences",
+        "days": "Jours d'absence",
+        "requests": "Demandes d'absence",
+        "pending": "{count} en attente"
       },
       "classAvg": {
         "title": "Moyenne des classes",
@@ -3159,7 +3166,7 @@
         "users": "Utilisateurs",
         "audit": "Journal d'audit",
         "timetable": "Emploi du temps",
-        "competences": "Compétences"
+        "competences": "Compétences et aptitudes"
       },
       "appearance": {
         "title": "Couleur du thème",
@@ -4929,6 +4936,9 @@
       "period": "Période",
       "retards": "Retards",
       "latestNotes": "Dernières notes",
+      "progression": "Progression",
+      "progressionHint": "Moyenne par matière, un anneau par période.",
+      "ringOrder": "de l'extérieur vers l'intérieur : {periods}",
       "pendingPayments": "{count} règlement(s) en attente",
       "overdueAlert": "{count} échéance(s) ont dépassé la date limite de paiement.",
       "lateBy": "En retard de {days} j",
@@ -5020,6 +5030,7 @@
         "min": "Min classe",
         "max": "Max classe",
         "classAvg": "Moy. classe",
+        "subjectAverage": "Moyenne",
         "generalAvg": "Moyenne générale",
         "childAvg": "Votre enfant",
         "tabNotes": "Notes",
@@ -5203,7 +5214,7 @@
       "leave": "Congés & absences",
       "messages": "Messages",
       "account": "Mon compte",
-      "competences": "Compétences",
+      "competences": "Compétences et aptitudes",
       "soutien": "Soutien scolaire"
     },
     "soutien": {
@@ -5228,6 +5239,10 @@
         "appreciations": "Appréciations du relevé",
         "graphes": "Graphes"
       },
+      "graphesRadarTitle": "Radar de compétences — moyenne de la classe",
+      "graphesGraded": "{graded} élève(s) évalué(s) sur {total}",
+      "graphesNoData": "Aucune compétence évaluée sur cette classe pour la période.",
+      "graphesEmpty": "Aucune classe ou aucun référentiel de compétences actif.",
       "saisieTitle": "Saisie des notes",
       "apply": "Afficher",
       "average": "Moyenne",
@@ -5620,6 +5635,7 @@
     }
   },
   "common": {
+    "view": "Voir",
     "period": "Période"
   }
 }

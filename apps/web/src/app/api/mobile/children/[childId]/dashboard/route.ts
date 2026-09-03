@@ -1,7 +1,8 @@
 import { withTenant } from '@/lib/db';
-import { verifyMobileToken } from '@/lib/mobile-auth';
+import { verifyMobileParent } from '@/lib/mobile-auth';
 import { loadParentChildContext } from '@/lib/parent';
 import { loadStudentDashboard } from '@/lib/student';
+import { presignedGet } from '@/lib/storage';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,13 +18,30 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(req: Request, ctx: { params: Promise<{ childId: string }> }) {
   const { childId } = await ctx.params;
-  const principal = await verifyMobileToken(req);
+  const principal = await verifyMobileParent(req);
   if (!principal) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
 
   const data = await withTenant(principal.tenantId, async (tx) => {
     const child = await loadParentChildContext(tx, principal.userId, childId);
     if (!child) return 'forbidden' as const;
-    return await loadStudentDashboard(tx, childId);
+    const dash = await loadStudentDashboard(tx, childId);
+    if (!dash) return null;
+    // Photo de l'élève : URL signée courte, renouvelée à chaque chargement de
+    // l'accueil. Le stockage peut être indisponible — l'app retombe alors sur
+    // les initiales, ce n'est pas une raison d'échouer.
+    let photoUrl: string | null = null;
+    const person = await tx.person.findUnique({
+      where: { id: childId },
+      select: { photoFile: { select: { s3Key: true } } },
+    });
+    if (person?.photoFile) {
+      try {
+        photoUrl = await presignedGet(person.photoFile.s3Key, 15 * 60);
+      } catch {
+        photoUrl = null;
+      }
+    }
+    return { ...dash, photoUrl };
   });
 
   if (data === 'forbidden') return Response.json({ error: 'Accès refusé.' }, { status: 403 });

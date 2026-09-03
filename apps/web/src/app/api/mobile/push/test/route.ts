@@ -1,5 +1,5 @@
 import { prismaAdmin } from '@/lib/db';
-import { verifyMobileToken } from '@/lib/mobile-auth';
+import { verifyMobileParent } from '@/lib/mobile-auth';
 import { pushToUsers } from '@/lib/push';
 
 export const runtime = 'nodejs';
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  * enregistrés de l'utilisateur courant (pour vérifier le push de bout en bout).
  */
 export async function POST(req: Request) {
-  const principal = await verifyMobileToken(req);
+  const principal = await verifyMobileParent(req);
   if (!principal) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
 
   const devices = await prismaAdmin.deviceToken.count({

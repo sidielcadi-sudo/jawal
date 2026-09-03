@@ -1,5 +1,5 @@
 import { prismaAdmin, withTenant } from '@/lib/db';
-import { verifyMobileToken } from '@/lib/mobile-auth';
+import { verifyMobileParent } from '@/lib/mobile-auth';
 import { parentCanAccessChild } from '@/lib/parent';
 import { buildCmiRequest, cmiConfigured } from '@/lib/cmi';
 
@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: Request, ctx: { params: Promise<{ childId: string }> }) {
   const { childId } = await ctx.params;
-  const principal = await verifyMobileToken(req);
+  const principal = await verifyMobileParent(req);
   if (!principal) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
   if (!cmiConfigured())
     return Response.json({ error: 'Paiement en ligne non configuré.', notConfigured: true }, { status: 503 });

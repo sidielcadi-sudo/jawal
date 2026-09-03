@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Image, Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 import { useAppState } from '../app-state';
@@ -16,7 +16,6 @@ export function AppHeader({ title, right }: { title: string; right?: React.React
   const { navigate, route, goBack, canGoBack } = useNav();
   const [pickerOpen, setPickerOpen] = useState(false);
 
-  const parentName = me?.user.name ?? me?.user.email ?? 'Parent';
   const unread = me?.unreadMessages ?? 0;
   const initials = selectedChild
     ? `${selectedChild.firstName[0] ?? ''}${selectedChild.lastName[0] ?? ''}`.toUpperCase()
@@ -28,16 +27,15 @@ export function AppHeader({ title, right }: { title: string; right?: React.React
   return (
     <View style={[styles.wrap, { paddingTop: insets.top + 6 }]}>
       <View style={styles.row}>
-        {/* Bande parent : identité seule, sans sélecteur — celui-ci est
-            descendu à la ligne du dessous, à la place de l'ancien titre. */}
-        <View style={styles.parentBand}>
+        {/* Photo de l'élève consulté, en petit format : elle dit d'un coup
+            d'œil de quel enfant on regarde le dossier. */}
+        {selectedChild?.photoUrl ? (
+          <Image source={{ uri: selectedChild.photoUrl }} style={styles.avatar} />
+        ) : (
           <View style={styles.avatar}>
             <Text style={styles.avatarText}>{initials}</Text>
           </View>
-          <Text style={styles.parent} numberOfLines={1}>
-            {parentName}
-          </Text>
-        </View>
+        )}
 
         <View style={{ flex: 1 }} />
 
@@ -72,7 +70,7 @@ export function AppHeader({ title, right }: { title: string; right?: React.React
       {/* À la place de l'ancien titre : le sélecteur d'enfant, plus grand,
           avec sa flèche en orange. Sans enfant multiple, simple libellé. */}
       <TouchableOpacity
-        style={styles.childLine}
+        style={[styles.childLine, multi && styles.childLineBordered]}
         onPress={() => multi && setPickerOpen(true)}
         activeOpacity={multi ? 0.7 : 1}
         accessibilityRole={multi ? 'button' : undefined}
@@ -83,7 +81,11 @@ export function AppHeader({ title, right }: { title: string; right?: React.React
             ? `${selectedChild.firstName}${selectedChild.className ? ` · ${selectedChild.className}` : ''}`
             : title}
         </Text>
-        {multi && <Text style={styles.childArrow}>▾</Text>}
+        {multi && (
+          <View style={styles.childArrowDot}>
+            <Text style={styles.childArrow}>▾</Text>
+          </View>
+        )}
       </TouchableOpacity>
 
       {/* Sélecteur d'enfant (liste des enfants scolarisés) */}
@@ -127,17 +129,6 @@ export function AppHeader({ title, right }: { title: string; right?: React.React
 const styles = StyleSheet.create({
   wrap: { backgroundColor: colors.brand, paddingHorizontal: 12, paddingBottom: 12 },
   row: { flexDirection: 'row', alignItems: 'center' },
-  /** Bande d'identité du parent : orange, coins peu arrondis. */
-  parentBand: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 9,
-    backgroundColor: colors.amber,
-    borderRadius: 8,
-    paddingLeft: 5,
-    paddingRight: 12,
-    paddingVertical: 5,
-  },
   avatar: {
     width: 34,
     height: 34,
@@ -155,11 +146,26 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 10,
   },
+  childLineBordered: {
+    alignSelf: 'center',
+    borderWidth: 1.5,
+    borderColor: colors.white,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+  },
   childName: { color: colors.white, fontSize: 19, fontWeight: '700' },
-  childArrow: { color: colors.amber, fontSize: 20, fontWeight: '900', lineHeight: 22 },
+  childArrowDot: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  childArrow: { color: colors.brand, fontSize: 14, fontWeight: '900', lineHeight: 16 },
   avatarDark: { backgroundColor: colors.brand },
   avatarTextDark: { color: colors.white, fontWeight: '800', fontSize: 13 },
-  parent: { color: colors.white, fontWeight: '800', fontSize: 15 },
   iconBtn: { padding: 6, marginLeft: 2 },
   icon: { color: colors.white, fontSize: 20 },
   backIcon: { color: colors.white, fontSize: 30, lineHeight: 30, fontWeight: '700' },

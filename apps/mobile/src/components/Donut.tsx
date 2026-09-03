@@ -77,3 +77,68 @@ const styles = StyleSheet.create({
   value: { fontSize: 14, fontWeight: '800', color: colors.text },
   label: { fontSize: 11, lineHeight: 14, color: colors.textMuted, textAlign: 'center' },
 });
+
+/**
+ * Anneaux concentriques — une matière, une moyenne par période. Le trimestre
+ * le plus ancien occupe l'anneau extérieur ; on lit donc la progression de
+ * l'extérieur vers l'intérieur. Chaque anneau garde le code couleur des
+ * moyennes (rouge < 10, orange < 14, vert au-delà) : la couleur dit le niveau,
+ * la position dit la période.
+ */
+export function MultiDonut({
+  values,
+  center,
+  label,
+  size = 88,
+}: {
+  /** Moyennes /20 par période, dans l'ordre chronologique. */
+  values: (number | null)[];
+  center: string;
+  label: string;
+  size?: number;
+}) {
+  const rings = values.length || 1;
+  const stroke = rings >= 3 ? 7 : rings === 2 ? 8 : 9;
+  const gap = 3;
+  const step = stroke + gap;
+  const outerR = (size - stroke) / 2;
+
+  return (
+    <View style={styles.wrap}>
+      <View style={{ width: size, height: size }}>
+        <Svg width={size} height={size}>
+          {values.map((v, i) => {
+            const r = outerR - i * step;
+            if (r <= stroke) return null;
+            const circumference = 2 * Math.PI * r;
+            const filled = v === null ? 0 : (Math.max(0, Math.min(20, v)) / 20) * circumference;
+            return (
+              <React.Fragment key={i}>
+                <Circle cx={size / 2} cy={size / 2} r={r} stroke="#E6E9F5" strokeWidth={stroke} fill="none" />
+                {v !== null && (
+                  <Circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={r}
+                    stroke={avgColor(v)}
+                    strokeWidth={stroke}
+                    fill="none"
+                    strokeDasharray={`${filled} ${circumference - filled}`}
+                    strokeLinecap="round"
+                    transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                  />
+                )}
+              </React.Fragment>
+            );
+          })}
+        </Svg>
+        <View style={styles.center}>
+          <Text style={styles.value}>{center}</Text>
+        </View>
+      </View>
+      <Text style={styles.label} numberOfLines={2}>
+        {label}
+      </Text>
+    </View>
+  );
+}

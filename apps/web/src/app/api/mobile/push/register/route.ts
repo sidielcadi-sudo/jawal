@@ -1,5 +1,5 @@
 import { prismaAdmin } from '@/lib/db';
-import { verifyMobileToken } from '@/lib/mobile-auth';
+import { verifyMobileParent } from '@/lib/mobile-auth';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
  * DELETE  { token } → désenregistre (à la déconnexion).
  */
 export async function POST(req: Request) {
-  const principal = await verifyMobileToken(req);
+  const principal = await verifyMobileParent(req);
   if (!principal) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
 
   let body: { token?: string; platform?: string };
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const principal = await verifyMobileToken(req);
+  const principal = await verifyMobileParent(req);
   if (!principal) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
   let body: { token?: string };
   try {

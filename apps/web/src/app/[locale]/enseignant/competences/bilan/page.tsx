@@ -9,6 +9,7 @@ import { computeReports } from '@/lib/competency-report';
 import { ClassSynthesis } from '@/components/competences/class-synthesis';
 import { CompetencyRadar, CompetencyBars } from '@/components/competences/radar';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
+import { PeriodPicker } from '@/components/period-picker';
 
 /** Synthèse de classe côté enseignant (lecture seule : le gel reste à la direction). */
 export default async function TeacherBilanPage({
@@ -140,19 +141,7 @@ export default async function TeacherBilanPage({
           </Link>
         ))}
         <span className="mx-2 self-center text-slate-300">|</span>
-        {data.periods.map((p) => (
-          <Link
-            key={p.id}
-            href={`${base}?class=${data.classId}&period=${p.id}`}
-            className={`rounded-lg border px-3 py-1.5 text-sm ${
-              p.id === data.periodId
-                ? 'border-brand-600 bg-brand-600 text-white'
-                : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-            }`}
-          >
-            {p.label}
-          </Link>
-        ))}
+        <PeriodPicker periods={data.periods} selectedId={data.periodId} locale={locale} />
       </div>
 
       <ClassSynthesis

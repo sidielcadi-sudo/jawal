@@ -552,11 +552,12 @@
         "distributionVariation": "تغير التوزيع"
       },
       "attendance": {
-        "title": "الحضور والانضباط",
-        "rate": "نسبة حضور التلاميذ",
+        "title": "تتبّع الحضور والغياب",
+        "rate": "نسبة الحضور",
+        "absences": "الغيابات",
         "discipline": "الحوادث / التأخّرات",
         "incidents": "حوادث",
-        "lates": "تأخّرات"
+        "lates": "التأخّرات"
       },
       "load": {
         "title": "الحصص والجدولة",
@@ -579,6 +580,12 @@
         "late": "مناداة متأخرة",
         "notDone": "مناداة غير منجزة",
         "reminders": "التذكيرات المستلمة"
+      },
+      "leave": {
+        "title": "العطل والغيابات",
+        "days": "أيام الغياب",
+        "requests": "طلبات الغياب",
+        "pending": "{count} قيد الانتظار"
       },
       "classAvg": {
         "title": "معدل الأقسام",
@@ -3159,7 +3166,7 @@
         "users": "المستخدمون",
         "audit": "سجل التدقيق",
         "timetable": "استعمال الزمن",
-        "competences": "الكفايات"
+        "competences": "الكفايات والقدرات"
       },
       "appearance": {
         "title": "لون النمط",
@@ -4929,6 +4936,9 @@
       "period": "الفترة",
       "retards": "التأخرات",
       "latestNotes": "آخر النقاط",
+      "progression": "التقدّم",
+      "progressionHint": "معدل كل مادة، حلقة لكل فترة.",
+      "ringOrder": "من الخارج إلى الداخل: {periods}",
       "pendingPayments": "{count} أداء (آداءات) في الانتظار",
       "overdueAlert": "{count} استحقاق (استحقاقات) تجاوزت تاريخ الأداء.",
       "lateBy": "متأخر بـ {days} يوم",
@@ -5020,6 +5030,7 @@
         "min": "أدنى نقطة بالقسم",
         "max": "أعلى نقطة بالقسم",
         "classAvg": "معدل القسم",
+        "subjectAverage": "المعدل",
         "generalAvg": "المعدل العام",
         "childAvg": "ابنكم/ابنتكم",
         "tabNotes": "النقاط",
@@ -5203,7 +5214,7 @@
       "leave": "العطل والغيابات",
       "messages": "الرسائل",
       "account": "حسابي",
-      "competences": "الكفايات",
+      "competences": "الكفايات والقدرات",
       "soutien": "الدعم المدرسي"
     },
     "soutien": {
@@ -5228,6 +5239,10 @@
         "appreciations": "ملاحظات الكشف",
         "graphes": "الرسوم البيانية"
       },
+      "graphesRadarTitle": "رادار الكفايات — معدل القسم",
+      "graphesGraded": "{graded} تلميذ(ة) مقيَّم من أصل {total}",
+      "graphesNoData": "لم تُقيَّم أي كفاية في هذا القسم خلال الفترة.",
+      "graphesEmpty": "لا يوجد قسم أو إطار مرجعي للكفايات نشط.",
       "saisieTitle": "إدخال النقاط",
       "apply": "عرض",
       "average": "المعدل",
@@ -5620,6 +5635,7 @@
     }
   },
   "common": {
+    "view": "عرض",
     "period": "الفترة"
   }
 }

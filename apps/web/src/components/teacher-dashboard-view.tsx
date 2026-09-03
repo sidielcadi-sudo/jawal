@@ -114,39 +114,33 @@ export async function TeacherDashboardView({ dash }: { dash: TeacherDashboard })
         </div>
       </Section>
 
-      {/* Progression du programme — N/A */}
-      <Section title={`🔸 ${t('program.title')}`}>
-        <Field label={t('program.progress')}>
-          <div className="mt-1">
-            <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
-              <div className={`h-full ${BAR.na}`} style={{ width: '0%' }} />
-            </div>
-            <span className="mt-1 block text-xs italic text-slate-400">{t('na')}</span>
-          </div>
-        </Field>
-        <Field label={t('program.chapters')}>
-          <span className="text-slate-400">{t('na')}</span>
-        </Field>
-      </Section>
-
-      {/* Présence & discipline */}
+      {/* Suivi des présences et des absences */}
       <Section title={`🔸 ${t('attendance.title')}`}>
-        <Field label={t('attendance.rate')}>
-          <span className={`text-2xl font-bold tabular-nums ${TEXT[dash.attendanceStatus]}`}>
-            {dash.attendanceRate !== null ? `${dash.attendanceRate.toFixed(0)} %` : '—'}
-          </span>
-        </Field>
-        <Field label={t('attendance.discipline')}>
-          <span className="text-sm">
-            <span className="font-semibold text-slate-400">{t('na')}</span>
-            <span className="text-slate-400"> {t('attendance.incidents')}</span>
-            <span className="mx-2 text-slate-300">·</span>
-            <span className={`font-semibold ${dash.lateCount > 0 ? 'text-amber-600' : 'text-slate-700'}`}>
-              {dash.lateCount}
-            </span>
-            <span className="text-slate-500"> {t('attendance.lates')}</span>
-          </span>
-        </Field>
+        <div className="grid grid-cols-3 gap-3">
+          <MiniKpi
+            label={t('attendance.rate')}
+            value={dash.attendanceRate !== null ? `${dash.attendanceRate.toFixed(0)} %` : '—'}
+            tone={
+              dash.attendanceStatus === 'green'
+                ? 'emerald'
+                : dash.attendanceStatus === 'orange'
+                  ? 'amber'
+                  : dash.attendanceStatus === 'red'
+                    ? 'red'
+                    : 'slate'
+            }
+          />
+          <MiniKpi
+            label={t('attendance.absences')}
+            value={String(dash.absenceCount)}
+            tone={dash.absenceCount > 0 ? 'red' : 'slate'}
+          />
+          <MiniKpi
+            label={t('attendance.lates')}
+            value={String(dash.lateCount)}
+            tone={dash.lateCount > 0 ? 'amber' : 'slate'}
+          />
+        </div>
       </Section>
 
       {/* Charge horaire & planning */}
@@ -205,6 +199,23 @@ export async function TeacherDashboardView({ dash }: { dash: TeacherDashboard })
         </div>
       </Section>
 
+      {/* Congés & absences du prof */}
+      <Section title={`🔸 ${t('leave.title')}`}>
+        <div className="grid grid-cols-2 gap-3">
+          <MiniKpi
+            label={t('leave.days')}
+            value={dash.leave.daysApproved.toLocaleString(undefined, { maximumFractionDigits: 1 })}
+            tone={dash.leave.daysApproved > 0 ? 'amber' : 'slate'}
+          />
+          <MiniKpi
+            label={t('leave.requests')}
+            value={String(dash.leave.requests)}
+            tone={dash.leave.pending > 0 ? 'amber' : 'slate'}
+            hint={dash.leave.pending > 0 ? t('leave.pending', { count: dash.leave.pending }) : undefined}
+          />
+        </div>
+      </Section>
+
       {/* Moyenne des classes : graphique à barres verticales (axes X/Y), tri croissant */}
       <Section title={`🔸 ${t('classAvg.title')}`}>
         {dash.classAverages.length === 0 ? (
@@ -212,6 +223,21 @@ export async function TeacherDashboardView({ dash }: { dash: TeacherDashboard })
         ) : (
           <ClassAvgChart data={dash.classAverages} />
         )}
+      </Section>
+
+      {/* Progression du programme — N/A */}
+      <Section title={`🔸 ${t('program.title')}`}>
+        <Field label={t('program.progress')}>
+          <div className="mt-1">
+            <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
+              <div className={`h-full ${BAR.na}`} style={{ width: '0%' }} />
+            </div>
+            <span className="mt-1 block text-xs italic text-slate-400">{t('na')}</span>
+          </div>
+        </Field>
+        <Field label={t('program.chapters')}>
+          <span className="text-slate-400">{t('na')}</span>
+        </Field>
       </Section>
     </div>
   );

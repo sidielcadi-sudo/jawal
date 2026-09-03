@@ -8,8 +8,16 @@ import { BackHandler } from 'react-native';
  */
 export type ChildTab = 'cahier' | 'notes' | 'vie' | 'competences' | 'soutien' | 'scolarite';
 
+/** Onglets de l'espace enseignant, calqués sur le menu du portail prof. */
+export type TeacherTab = 'appel' | 'notes' | 'leave';
+
 export type Route =
   | { name: 'home' }
+  | { name: 'teacher'; tab: TeacherTab }
+  // Feuille d'appel d'une séance précise.
+  | { name: 'appel'; entryId: string; date: string }
+  // Saisie des notes d'un couple classe × matière.
+  | { name: 'teacherNotes'; classId: string; subjectId: string; title: string }
   | { name: 'child'; tab: ChildTab } // enfant = celui sélectionné dans l'état global
   | { name: 'announcements' }
   | { name: 'messages' }

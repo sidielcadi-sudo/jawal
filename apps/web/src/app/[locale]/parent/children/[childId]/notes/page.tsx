@@ -7,6 +7,7 @@ import { loadParentChildContext } from '@/lib/parent';
 import { loadClassBulletin } from '@/lib/parent-bulletin';
 import { ChildTabs } from '../tabs';
 import { localizedLabel } from '@/lib/localized-name';
+import { PeriodPicker } from '@/components/period-picker';
 
 export default async function ParentChildNotesPage({
   params,
@@ -65,6 +66,41 @@ export default async function ParentChildNotesPage({
       };
     });
 
+    // Moyennes par matière : on moyenne d'abord par élève (notes normalisées
+    // sur 20, les barèmes variant d'une évaluation à l'autre), puis on en tire
+    // le min, le max et la moyenne de la classe.
+    const bySubjectStudent = new Map<string, Map<string, number[]>>();
+    for (const e of evaluations) {
+      const scale = e.maxValue || 20;
+      const subject = localizedLabel(locale, e.subject.label, e.subject.labelAr);
+      const perStudent = bySubjectStudent.get(subject) ?? new Map<string, number[]>();
+      for (const g of e.grades) {
+        if (g.value === null) continue;
+        const arr = perStudent.get(g.studentId) ?? [];
+        arr.push((g.value / scale) * 20);
+        perStudent.set(g.studentId, arr);
+      }
+      bySubjectStudent.set(subject, perStudent);
+    }
+    const subjectStats: Record<
+      string,
+      { child: number | null; min: number; max: number; classAvg: number }
+    > = {};
+    for (const [subject, perStudent] of bySubjectStudent.entries()) {
+      const avgs = [...perStudent.entries()].map(([studentId, marks]) => ({
+        studentId,
+        avg: marks.reduce((sum, x) => sum + x, 0) / marks.length,
+      }));
+      if (avgs.length === 0) continue;
+      const values = avgs.map((a) => a.avg);
+      subjectStats[subject] = {
+        child: avgs.find((a) => a.studentId === childId)?.avg ?? null,
+        min: Math.min(...values),
+        max: Math.max(...values),
+        classAvg: values.reduce((sum, x) => sum + x, 0) / values.length,
+      };
+    }
+
     // Moyenne générale de la période : moyenne par élève de ses notes
     // normalisées sur 20 (barèmes hétérogènes), puis min/max sur la classe.
     const marksByStudent = new Map<string, number[]>();
@@ -94,7 +130,7 @@ export default async function ParentChildNotesPage({
         ? await loadClassBulletin(tx, ctx.classId, selectedPeriod.id, childId)
         : [];
 
-    return { ctx, selectedPeriod, notes, generalAvg, classBulletin };
+    return { ctx, selectedPeriod, notes, subjectStats, generalAvg, classBulletin };
   });
   if (!data) notFound();
 
@@ -120,22 +156,15 @@ export default async function ParentChildNotesPage({
         ]}
       />
 
-      {/* Sélecteur de périodes (trimestres / semestres) */}
-      {data.ctx.periods.length > 0 && (
-        <div className="mb-4 flex flex-wrap gap-2 overflow-x-auto">
-          {data.ctx.periods.map((p) => (
-            <Link
-              key={p.id}
-              href={`${base}?tab=${tab}&period=${p.id}`}
-              className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-xs font-medium ${
-                data.selectedPeriod?.id === p.id
-                  ? 'bg-brand-600 text-white'
-                  : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-              }`}
-            >
-              {p.label}
-            </Link>
-          ))}
+      {/* Sélecteur de périodes (trimestres / semestres). Masqué sur l'onglet
+          Bulletin, qui liste déjà toutes les périodes ligne à ligne. */}
+      {tab !== 'bulletin' && data.ctx.periods.length > 0 && (
+        <div className="mb-4">
+          <PeriodPicker
+            periods={data.ctx.periods}
+            selectedId={data.selectedPeriod?.id ?? null}
+            locale={locale}
+          />
         </div>
       )}
 
@@ -195,6 +224,29 @@ export default async function ParentChildNotesPage({
                         </tr>
                       ))}
                     </tbody>
+                    {data.subjectStats[subject] && (
+                      <tfoot className="border-t border-slate-200 bg-slate-50">
+                        <tr>
+                          <td className="px-3 py-1.5 font-semibold text-slate-700">
+                            {t('notes.subjectAverage')}
+                          </td>
+                          <td className="px-2 py-1.5 text-end font-semibold tabular-nums text-slate-900">
+                            {data.subjectStats[subject]!.child === null
+                              ? '—'
+                              : `${data.subjectStats[subject]!.child!.toFixed(2)}/20`}
+                          </td>
+                          <td className="px-2 py-1.5 text-end tabular-nums text-slate-500">
+                            {data.subjectStats[subject]!.min.toFixed(2)}
+                          </td>
+                          <td className="px-2 py-1.5 text-end tabular-nums text-slate-500">
+                            {data.subjectStats[subject]!.max.toFixed(2)}
+                          </td>
+                          <td className="px-3 py-1.5 text-end tabular-nums text-slate-500">
+                            {data.subjectStats[subject]!.classAvg.toFixed(2)}/20
+                          </td>
+                        </tr>
+                      </tfoot>
+                    )}
                   </table>
                 </div>
               </div>

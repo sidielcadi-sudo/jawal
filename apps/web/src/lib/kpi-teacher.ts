@@ -35,9 +35,19 @@ export type TeacherDashboard = {
     onTimePct: number | null;
     reminders: number;
   };
+  // Congés / absences du prof lui-même (demandes chevauchant la période)
+  leave: {
+    /** Jours décomptés sur les demandes approuvées. */
+    daysApproved: number;
+    /** Nombre de demandes déposées, tous statuts hors annulation. */
+    requests: number;
+    /** Demandes encore en attente de décision. */
+    pending: number;
+  };
   // Présence & discipline (classes du prof, sur la période)
   attendanceRate: number | null; // %
   attendanceStatus: KpiStatus;
+  absenceCount: number;
   lateCount: number;
   incidentCount: number | null; // N/A (pas de modèle discipline)
   // Charge horaire & planning (année active)
@@ -347,6 +357,7 @@ export async function computeTeacherDashboard(
 
   // ── Présence + retards (sessions finalisées des classes du prof) ─────────
   let attendanceRate: number | null = null;
+  let absenceCount = 0;
   let lateCount = 0;
   if (opts.periodId && classIds.length) {
     const period = await tx.period.findUnique({
@@ -371,7 +382,36 @@ export async function computeTeacherDashboard(
         ).length;
         attendanceRate = (present / total) * 100;
       }
+      absenceCount = records.filter((r) => r.status === 'ABSENT').length;
       lateCount = records.filter((r) => r.status === 'LATE').length;
+    }
+  }
+
+  // ── Congés / absences du prof (demandes chevauchant la période) ─────────
+  // Une demande à cheval sur deux trimestres compte dans les deux : le prof
+  // était bien absent dans chacun, et un décompte au prorata donnerait des
+  // demi-journées difficiles à rapprocher du dossier RH.
+  const leave = { daysApproved: 0, requests: 0, pending: 0 };
+  if (opts.periodId) {
+    const period = await tx.period.findUnique({
+      where: { id: opts.periodId },
+      select: { startDate: true, endDate: true },
+    });
+    if (period) {
+      const requests = await tx.leaveRequest.findMany({
+        where: {
+          personId: opts.teacherId,
+          status: { not: 'CANCELLED' },
+          startDate: { lte: period.endDate },
+          endDate: { gte: period.startDate },
+        },
+        select: { days: true, status: true },
+      });
+      leave.requests = requests.length;
+      leave.pending = requests.filter((r) => r.status === 'PENDING').length;
+      leave.daysApproved = requests
+        .filter((r) => r.status === 'APPROVED')
+        .reduce((s, r) => s + r.days, 0);
     }
   }
 
@@ -467,8 +507,10 @@ export async function computeTeacherDashboard(
     selectedPeriodId: opts.periodId,
     classAverages,
     appel,
+    leave,
     attendanceRate,
     attendanceStatus: statusAttendance(attendanceRate),
+    absenceCount,
     lateCount,
     incidentCount: null,
     weeklyHours,

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth';
 import { useAppState } from '../app-state';
@@ -7,17 +7,36 @@ import { useNav } from '../navigation';
 import {
   api,
   ApiError,
+  type Announcement,
   type ChildDashboard,
+  type Evaluation,
   type Homework,
   type TimetableDay,
   type UpcomingExam,
 } from '../api';
 import { AppHeader } from '../components/AppHeader';
 import { EmptyCard } from '../components/EmptyCard';
-import { Donut, avgColor } from '../components/Donut';
+import { Donut, MultiDonut, avgColor } from '../components/Donut';
 import { colors, subjectColor } from '../theme';
 
 const DAY_MS = 86_400_000;
+
+/** Catégories d'appel et types de carnet, rendus lisibles pour les parents. */
+const ABSENCE_LABEL: Record<string, string> = {
+  ABSENT: 'Absence',
+  ABSENT_JUSTIFIED: 'Absence justifiée',
+  ABSENT_UNJUSTIFIED: 'Absence non justifiée',
+  LATE: 'Retard',
+  EXCUSED: 'Sortie / dispense',
+};
+const CARNET_LABEL: Record<string, string> = {
+  INCIDENT: 'Incident',
+  REMARQUE: 'Remarque',
+  ENCOURAGEMENT: 'Encouragement',
+  INFORMATION: 'Information',
+  CONVOCATION: 'Convocation',
+  SANCTION: 'Sanction',
+};
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
 /** Formate un ISO YYYY-MM-DD en libellé « lun. 21 juil. ». */
@@ -40,6 +59,8 @@ export default function HomeScreen() {
   const [homeworks, setHomeworks] = useState<Homework[]>([]);
   const [timetable, setTimetable] = useState<TimetableDay | null>(null);
   const [dash, setDash] = useState<ChildDashboard | null>(null);
+  const [notes, setNotes] = useState<Evaluation[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   /** Jour affiché par l'emploi du temps — navigable, comme sur le portail. */
   const [edtDate, setEdtDate] = useState(() => ymd(new Date()));
   const [loading, setLoading] = useState(true);
@@ -54,14 +75,18 @@ export default function HomeScreen() {
     }
     setError('');
     try {
-      const [up, cah, d] = await Promise.all([
+      const [up, cah, d, nt, ann] = await Promise.all([
         api.upcoming(token, childId),
         api.cahier(token, childId),
         api.dashboard(token, childId),
+        api.notes(token, childId),
+        api.announcements(token),
       ]);
       setExams(up.items);
       setHomeworks(cah.homeworks);
       setDash(d);
+      setNotes(nt.evaluations);
+      setAnnouncements(ann.items);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) return logout();
       setError(e instanceof ApiError ? e.message : 'Erreur inattendue.');
@@ -98,6 +123,37 @@ export default function HomeScreen() {
   }
   const days = [...byDay.keys()].sort();
 
+  // Les 5 notes les plus récentes effectivement saisies.
+  const lastNotes = notes
+    .filter((n) => n.value !== null)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 5);
+
+  // Vie scolaire : absences/retards et entrées de carnet fusionnées sur une
+  // seule frise, du plus récent au plus ancien.
+  const events = [
+    ...(dash?.recentAbsences ?? []).map((a) => ({
+      id: a.id,
+      at: a.date,
+      title: ABSENCE_LABEL[a.cat] ?? a.cat,
+      detail: a.className,
+      color: a.cat === 'LATE' ? '#D97706' : colors.danger,
+    })),
+    ...(dash?.recentCarnet ?? []).map((c) => ({
+      id: c.id,
+      at: c.occurredAt,
+      title: CARNET_LABEL[c.type] ?? c.type,
+      detail: c.content,
+      color: '#7C3AED',
+    })),
+  ]
+    .sort((a, b) => b.at.localeCompare(a.at))
+    .slice(0, 5);
+
+  const lastAnnouncements = [...announcements]
+    .sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''))
+    .slice(0, 5);
+
   return (
     <View style={styles.container}>
       <AppHeader title="Page d'accueil" />
@@ -120,9 +176,18 @@ export default function HomeScreen() {
           {/* Carte d'accueil — reprise du « hero » du portail élève :
               salutation, classe, deux boutons pilule, emblème à droite. */}
           <View style={styles.hero}>
+            {dash?.photoUrl ? (
+              <Image source={{ uri: dash.photoUrl }} style={styles.heroPhoto} />
+            ) : (
+              <View style={[styles.heroPhoto, styles.heroPhotoFallback]}>
+                <Text style={styles.heroPhotoInitials}>
+                  {`${selectedChild.firstName[0] ?? ''}${selectedChild.lastName[0] ?? ''}`.toUpperCase()}
+                </Text>
+              </View>
+            )}
             <View style={{ flex: 1 }}>
               <Text style={styles.heroHello}>
-                Bonjour {dash?.firstName ?? selectedChild.firstName}
+                {dash?.firstName ?? selectedChild.firstName}
               </Text>
               <Text style={styles.heroClass}>
                 {dash?.className ?? selectedChild.className ?? 'Classe non renseignée'}
@@ -141,9 +206,6 @@ export default function HomeScreen() {
                   <Text style={styles.pillGhostText}>Cahier</Text>
                 </TouchableOpacity>
               </View>
-            </View>
-            <View style={styles.heroEmblem}>
-              <Text style={styles.heroEmblemText}>🎓</Text>
             </View>
           </View>
 
@@ -175,15 +237,20 @@ export default function HomeScreen() {
                 {dash.subjects
                   .filter((s) => s.avg !== null)
                   .map((s) => (
-                    <Donut
+                    <MultiDonut
                       key={s.label}
-                      pct={(s.avg! / 20) * 100}
-                      color={avgColor(s.avg)}
+                      values={s.byPeriod.length ? s.byPeriod : [s.avg]}
                       center={s.avg!.toFixed(1)}
                       label={s.label}
                     />
                   ))}
               </View>
+              {dash.periods.length > 1 && (
+                <Text style={styles.ringLegend}>
+                  Anneaux de l’extérieur vers l’intérieur :{' '}
+                  {dash.periods.map((p) => p.label).join(' · ')}
+                </Text>
+              )}
             </View>
           )}
 
@@ -322,6 +389,82 @@ export default function HomeScreen() {
               </View>
             ))
           )}
+          {/* Dernières notes reçues */}
+          <View style={[styles.sectionHead, { marginTop: 22 }]}>
+            <Text style={styles.sectionTitle}>Dernières notes reçues</Text>
+            <TouchableOpacity onPress={() => navigate({ name: 'child', tab: 'notes' })}>
+              <Text style={styles.seeAll}>Tout voir ↗</Text>
+            </TouchableOpacity>
+          </View>
+          {lastNotes.length === 0 ? (
+            <EmptyCard text="Aucune note pour le moment." />
+          ) : (
+            lastNotes.map((n) => (
+              <View key={n.id} style={styles.hwRow}>
+                <View style={[styles.hwBar, { backgroundColor: subjectColor(n.subject) }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.hwSubject}>{n.subject.toUpperCase()}</Text>
+                  <Text style={styles.hwDesc} numberOfLines={1}>
+                    {n.label} · {dayLabel(n.date.slice(0, 10))}
+                  </Text>
+                </View>
+                <Text style={[styles.noteValue, { color: avgColor((n.value! / n.maxValue) * 20) }]}>
+                  {n.value}
+                  <Text style={styles.noteMax}>/{n.maxValue}</Text>
+                </Text>
+              </View>
+            ))
+          )}
+
+          {/* Absences / retards / incidents */}
+          <View style={[styles.sectionHead, { marginTop: 22 }]}>
+            <Text style={styles.sectionTitle}>Absences / retards / incidents</Text>
+            <TouchableOpacity onPress={() => navigate({ name: 'child', tab: 'vie' })}>
+              <Text style={styles.seeAll}>Tout voir ↗</Text>
+            </TouchableOpacity>
+          </View>
+          {events.length === 0 ? (
+            <EmptyCard text="Aucun événement de vie scolaire." />
+          ) : (
+            events.map((e) => (
+              <View key={e.id} style={styles.hwRow}>
+                <View style={[styles.hwBar, { backgroundColor: e.color }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.hwSubject}>{e.title}</Text>
+                  <Text style={styles.hwDesc} numberOfLines={2}>
+                    {e.detail}
+                  </Text>
+                </View>
+                <Text style={styles.eventDate}>{dayLabel(e.at.slice(0, 10))}</Text>
+              </View>
+            ))
+          )}
+
+          {/* Dernières annonces */}
+          <View style={[styles.sectionHead, { marginTop: 22 }]}>
+            <Text style={styles.sectionTitle}>Dernières annonces</Text>
+            <TouchableOpacity onPress={() => navigate({ name: 'announcements' })}>
+              <Text style={styles.seeAll}>Tout voir ↗</Text>
+            </TouchableOpacity>
+          </View>
+          {lastAnnouncements.length === 0 ? (
+            <EmptyCard text="Aucune annonce." />
+          ) : (
+            lastAnnouncements.map((a) => (
+              <View key={a.id} style={styles.hwRow}>
+                <View style={[styles.hwBar, { backgroundColor: colors.brand }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.hwSubject}>{a.title}</Text>
+                  <Text style={styles.hwDesc} numberOfLines={2}>
+                    {a.body}
+                  </Text>
+                </View>
+                {a.publishedAt && (
+                  <Text style={styles.eventDate}>{dayLabel(a.publishedAt.slice(0, 10))}</Text>
+                )}
+              </View>
+            ))
+          )}
         </ScrollView>
       )}
     </View>
@@ -395,15 +538,9 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   pillGhostText: { color: colors.text, fontSize: 12, fontWeight: '600' },
-  heroEmblem: {
-    width: 84,
-    height: 84,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.65)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroEmblemText: { fontSize: 40 },
+  heroPhoto: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.brand200 },
+  heroPhotoFallback: { alignItems: 'center', justifyContent: 'center' },
+  heroPhotoInitials: { fontSize: 24, fontWeight: '900', color: colors.brandDark },
   panel: {
     backgroundColor: colors.card,
     borderRadius: 22,
@@ -413,6 +550,10 @@ const styles = StyleSheet.create({
     marginBottom: 18,
   },
   panelTitle: { fontSize: 15, fontWeight: '800', color: colors.text, marginBottom: 14 },
+  ringLegend: { marginTop: 14, fontSize: 11, lineHeight: 15, color: colors.textMuted },
+  noteValue: { fontSize: 16, fontWeight: '900' },
+  noteMax: { fontSize: 11, fontWeight: '600', color: colors.textMuted },
+  eventDate: { fontSize: 11, color: colors.textMuted },
   donutGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, justifyContent: 'space-between' },
 
   /* ── Emploi du temps du jour ─────────────────────────────────────────── */

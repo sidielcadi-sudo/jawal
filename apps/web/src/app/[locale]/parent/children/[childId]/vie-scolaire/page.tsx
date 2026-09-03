@@ -10,6 +10,7 @@ import { TimetableGridReadonly, type ReadonlyEntry } from '@/components/timetabl
 import { DayTimetable, type DayCourse } from '@/components/day-timetable';
 import { loadActiveFramework } from '@/lib/competences';
 import { computeReports, rateColor } from '@/lib/competency-report';
+import { CompetencyRadar } from '@/components/competences/radar';
 import { pickPeriodId } from '@/lib/periods';
 import { ChildTabs } from '../tabs';
 import { JustifyButton } from '../justify-button';
@@ -411,6 +412,9 @@ export default async function ParentChildVieScolairePage({
                     </div>
                   </div>
                 ))}
+              </div>
+              <div className="mt-3 border-t border-slate-100 pt-3">
+                <CompetencyRadar domains={data.competences.report.domains} size={300} />
               </div>
               {/* Légende de l'échelle — indispensable pour un parent */}
               <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-slate-100 pt-2 text-[11px] text-slate-500">

@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
@@ -9,11 +8,9 @@ import { restorePersonAction, softDeletePersonAction } from '../actions';
 export function PersonActions({
   personId,
   isArchived,
-  locale,
 }: {
   personId: string;
   isArchived: boolean;
-  locale: string;
 }) {
   const t = useTranslations('admin.persons.actions');
   const router = useRouter();
@@ -35,12 +32,6 @@ export function PersonActions({
 
   return (
     <div className="flex flex-wrap gap-2">
-      <Link
-        href={`/${locale}/admin/persons/${personId}/edit`}
-        className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-      >
-        {t('edit')}
-      </Link>
       {isArchived ? (
         <button
           type="button"

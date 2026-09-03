@@ -6,6 +6,8 @@ import { tallyAttendance } from '@/lib/attendance-category';
 import { countUnreadCarnet } from '@/lib/carnet';
 import { getParentChildren, getParentAnnouncements } from '@/lib/parent';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
+import { loadSubjectProgress } from '@/lib/student';
+import { PeriodPicker } from '@/components/period-picker';
 
 export default async function ParentHomePage({
   params,
@@ -89,6 +91,7 @@ export default async function ParentHomePage({
         const nextDue = pending[0] ?? null;
 
         const carnetUnread = await countUnreadCarnet(tx, child.id);
+        const progress = await loadSubjectProgress(tx, child.id);
 
         return {
           child,
@@ -97,6 +100,7 @@ export default async function ParentHomePage({
           retards,
           remaining: Math.max(0, due - paid),
           carnetUnread,
+          progress,
           pendingCount: pending.length,
           overdueCount,
           next: nextDue
@@ -159,22 +163,7 @@ export default async function ParentHomePage({
           <p className="mt-1 text-sm text-slate-600">{t('subtitle')}</p>
         </div>
         {data.periods.length > 0 && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-xs font-medium text-slate-500">{t('period')}</span>
-            {data.periods.map((p) => (
-              <Link
-                key={p.id}
-                href={`/${locale}/parent?period=${p.id}`}
-                className={`whitespace-nowrap rounded-lg px-3 py-1 text-xs font-medium ${
-                  data.selectedPeriodId === p.id
-                    ? 'bg-brand-600 text-white'
-                    : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
-                }`}
-              >
-                {p.label}
-              </Link>
-            ))}
-          </div>
+          <PeriodPicker periods={data.periods} selectedId={data.selectedPeriodId} locale={locale} />
         )}
       </section>
 
@@ -308,6 +297,43 @@ export default async function ParentHomePage({
         </section>
       )}
 
+      {data.cards.some((c) => c.progress.subjects.some((s) => s.avg !== null)) && (
+        <section className="mt-6 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
+          <h2 className="mb-1 text-base font-semibold text-slate-800">{t('progression')}</h2>
+          <p className="mb-4 text-xs text-slate-500">{t('progressionHint')}</p>
+          <div className="space-y-6">
+            {data.cards
+              .filter((c) => c.progress.subjects.some((s) => s.avg !== null))
+              .map(({ child, progress }) => (
+                <div key={child.id}>
+                  <div className="mb-3 flex flex-wrap items-baseline gap-2">
+                    <span className="text-sm font-semibold text-slate-800">
+                      {personDisplayName(locale, child, 'first-last')}
+                    </span>
+                    {progress.periods.length > 1 && (
+                      <span className="text-[11px] text-slate-400">
+                        {t('ringOrder', { periods: progress.periods.map((x) => x.label).join(' · ') })}
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-5">
+                    {progress.subjects
+                      .filter((s) => s.avg !== null)
+                      .map((s) => (
+                        <SubjectRings
+                          key={s.label}
+                          values={s.byPeriod.length > 0 ? s.byPeriod : [s.avg]}
+                          center={s.avg!.toFixed(1)}
+                          label={s.label}
+                        />
+                      ))}
+                  </div>
+                </div>
+              ))}
+          </div>
+        </section>
+      )}
+
       <section className="mt-6 rounded-3xl border border-slate-100 bg-white p-6 shadow-sm">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-base font-semibold text-slate-800">{t('latestAnnouncements')}</h2>
@@ -363,6 +389,72 @@ function Donut({ pct, color, center, label }: { pct: number; color: string; cent
         </div>
       </div>
       <span className="text-[10px] uppercase tracking-wide text-slate-400">{label}</span>
+    </div>
+  );
+}
+
+/** Couleur d'une moyenne /20 — mêmes seuils que l'app mobile. */
+function avgColor(avg: number | null): string {
+  if (avg === null) return '#cbd5e1';
+  return avg < 10 ? '#dc2626' : avg < 14 ? '#d97706' : '#059669';
+}
+
+/**
+ * Anneaux concentriques : une matière, une moyenne par période. Le trimestre
+ * le plus ancien occupe l'anneau extérieur — on lit la progression de
+ * l'extérieur vers l'intérieur. La couleur dit le niveau, la position dit la
+ * période.
+ */
+function SubjectRings({
+  values,
+  center,
+  label,
+  size = 84,
+}: {
+  values: (number | null)[];
+  center: string;
+  label: string;
+  size?: number;
+}) {
+  const rings = values.length || 1;
+  const stroke = rings >= 3 ? 7 : rings === 2 ? 8 : 9;
+  const step = stroke + 3;
+  const outerR = (size - stroke) / 2;
+
+  return (
+    <div className="flex w-[92px] shrink-0 flex-col items-center gap-1.5">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} role="img" aria-label={label}>
+          {values.map((v, i) => {
+            const r = outerR - i * step;
+            if (r <= stroke) return null;
+            const circumference = 2 * Math.PI * r;
+            const filled = v === null ? 0 : (Math.max(0, Math.min(20, v)) / 20) * circumference;
+            return (
+              <g key={i}>
+                <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#e6e9f5" strokeWidth={stroke} />
+                {v !== null && (
+                  <circle
+                    cx={size / 2}
+                    cy={size / 2}
+                    r={r}
+                    fill="none"
+                    stroke={avgColor(v)}
+                    strokeWidth={stroke}
+                    strokeLinecap="round"
+                    strokeDasharray={`${filled} ${circumference - filled}`}
+                    transform={`rotate(-90 ${size / 2} ${size / 2})`}
+                  />
+                )}
+              </g>
+            );
+          })}
+        </svg>
+        <span className="absolute inset-0 grid place-items-center text-xs font-bold text-slate-800">
+          {center}
+        </span>
+      </div>
+      <span className="text-center text-[10px] leading-tight text-slate-500">{label}</span>
     </div>
   );
 }

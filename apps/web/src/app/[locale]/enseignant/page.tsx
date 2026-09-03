@@ -8,7 +8,7 @@ import { TeacherDashboardView } from '@/components/teacher-dashboard-view';
 import { pickPeriodId } from '@/lib/periods';
 import { ProgressionClassSelect } from './progression-class-select';
 import { localizedLabel } from '@/lib/localized-name';
-import { PeriodButtons } from '@/components/period-buttons';
+import { PeriodPicker } from '@/components/period-picker';
 
 export default async function TeacherHomePage({
   params,
@@ -83,7 +83,7 @@ export default async function TeacherHomePage({
           </p>
         </div>
         {data.periods.length > 0 && (
-          <PeriodButtons periods={data.periods} selectedId={data.selectedPeriodId} locale={locale} />
+          <PeriodPicker periods={data.periods} selectedId={data.selectedPeriodId} locale={locale} />
         )}
       </header>
 

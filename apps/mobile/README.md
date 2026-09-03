@@ -178,7 +178,93 @@ Pour pousser des correctifs JS sans repasser par les stores :
 - Config **CMI par tenant** (aujourd'hui variables d'env globales).
 
 ## Dépannage
-- *« Connexion au serveur impossible »* → mauvaise `EXPO_PUBLIC_API_URL`, pare-feu,
-  ou PC/téléphone sur des réseaux différents. Testez l'URL dans le navigateur du
-  téléphone : `http://<IP>:3000/fr/login` doit s'afficher.
-- Après changement du `.env`, **redémarrez** `expo start` (touche `r` pour recharger).
+
+### Séquence de démarrage (mode USB — configuration actuelle du .env)
+Trois choses doivent tourner **en même temps** : l'API web (3000), Metro (8081),
+et les redirections `adb reverse` qui relient le téléphone aux deux.
+
+```powershell
+# Terminal A — API web (à la racine du dépôt)
+pnpm dev
+
+# Téléphone branché en USB, écran déverrouillé, débogage USB autorisé.
+
+# Terminal B — app mobile
+cd apps/mobile
+npm start          # PAS « npx expo start » : npm start pose d'abord adb reverse
+```
+Puis, sur le téléphone : ouvrir **Expo Go** et recharger (secouer → *Reload*).
+
+### Diagnostic en 4 commandes
+À lancer dans PowerShell quand l'app ne démarre pas ou affiche
+« connexion au serveur impossible ». Chaque commande a un résultat attendu :
+
+```powershell
+# 1) Le téléphone est-il vu ? → une ligne « <série>   device »
+adb devices
+
+# 2) Les deux redirections sont-elles posées ? → tcp:3000 ET tcp:8081 présents
+adb reverse --list
+
+# 3) L'API répond-elle ? → 401 (normal : pas de jeton) ; 000 = rien n'écoute
+curl.exe -s -o NUL -w "%{http_code}`n" http://127.0.0.1:3000/api/mobile/me
+
+# 4) Metro sert-il le bundle ? → 200 (la 1re fois : jusqu'à 1 min)
+curl.exe -s -o NUL -w "%{http_code}`n" "http://127.0.0.1:8081/index.bundle?platform=android&dev=true"
+```
+
+### Réparations selon la commande qui échoue
+
+| Symptôme | Commande de réparation |
+|---|---|
+| (2) `tcp:3000` absent de la liste — **cause la plus fréquente** | `adb reverse tcp:3000 tcp:3000` |
+| (2) `tcp:8081` absent | `adb reverse tcp:8081 tcp:8081` |
+| (2) le reverse pointe sur `tcp:8082` (ou 8083…) | **un autre projet React Native occupe 8081** — voir ci-dessous |
+| (1) liste vide | `adb kill-server` puis `adb start-server` ; sinon changer de câble (certains ne font que charger) |
+| (1) appareil en `unauthorized` | déverrouiller le téléphone et accepter « Autoriser le débogage USB » |
+| (3) renvoie `000` | l'API ne tourne pas → `pnpm dev` à la racine |
+| (4) renvoie `000` | Metro ne tourne pas → `npm start` dans `apps/mobile` |
+| Expo Go : écran bleu « Something went wrong » | `npx expo-doctor` (doit afficher 21/21), puis `npx expo install --fix` |
+| Modification du `.env` ignorée | arrêter expo start, relancer `npm start -- -c` (vide le cache Metro) |
+
+Les redirections `adb reverse` sont **perdues à chaque débranchement du câble**,
+au redémarrage du téléphone et à chaque relance du serveur adb — c'est pourquoi
+`npm start` les repose systématiquement, et pourquoi `npx expo start` lancé
+directement laisse l'app sans API.
+
+### Un autre projet occupe déjà le port 8081
+Metro se réserve 8081. Si un **autre** dépôt React Native tourne déjà sur la
+machine, Expo bascule silencieusement sur 8082 : le téléphone qui charge depuis
+8081 reçoit alors le bundle **de l'autre projet**. Symptôme : `adb reverse --list`
+montre `tcp:8082` au lieu de `tcp:8081`.
+
+Identifier le squatteur :
+
+```powershell
+$metroPid = (Get-NetTCPConnection -LocalPort 8081 -State Listen).OwningProcess
+(Get-CimInstance Win32_Process -Filter "ProcessId=$metroPid").CommandLine
+```
+
+Puis, au choix :
+
+```powershell
+# A) libérer 8081 pour ce projet
+Stop-Process -Id $metroPid
+npm start
+
+# B) faire cohabiter les deux — ce projet sur 8082
+$env:RCT_METRO_PORT = "8082"
+npm start
+```
+`scripts/adb-reverse.mjs` lit `RCT_METRO_PORT` : la redirection suit
+automatiquement le port choisi.
+
+### Basculer en Wi-Fi (sans câble)
+```powershell
+ipconfig    # relever « Adresse IPv4 » du Wi-Fi, ex. 192.168.254.211
+```
+Reporter cette IP dans `apps/mobile/.env` (`EXPO_PUBLIC_API_URL=http://<IP>:3000`),
+puis relancer `npm start -- -c`. L'IP LAN **change** d'un réseau à l'autre : c'est
+la cause n°1 des pannes en mode Wi-Fi. Vérification depuis le navigateur du
+téléphone : `http://<IP>:3000/fr/login` doit s'afficher. Sinon, ouvrir le port
+3000 dans le pare-feu Windows (profil « Réseau privé »).
