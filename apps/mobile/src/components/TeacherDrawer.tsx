@@ -42,11 +42,7 @@ export function TeacherDrawer() {
   ];
 
   const soon: Item[] = [
-    { key: 'timetable', label: 'Emploi du temps', icon: '🗓️', route: web('Emploi du temps') },
-    { key: 'cahier', label: 'Cahier de texte', icon: '📓', route: web('Cahier de texte') },
-    { key: 'competences', label: 'Compétences et aptitudes', icon: '🎯', route: web('Compétences et aptitudes') },
     { key: 'carnet', label: 'Carnet de correspondance', icon: '📒', route: web('Carnet de correspondance') },
-    { key: 'soutien', label: 'Soutien scolaire', icon: '📚', route: web('Soutien scolaire') },
     { key: 'account', label: 'Mon compte', icon: '👤', route: web('Mon compte') },
   ];
 

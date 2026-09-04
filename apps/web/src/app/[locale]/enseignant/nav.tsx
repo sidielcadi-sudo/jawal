@@ -16,6 +16,7 @@ const EMOJI: Record<string, string> = {
   carnet: '📒',
   classes: '🏫',
   leave: '🌴',
+  announcements: '📢',
   account: '👤',
 };
 
@@ -56,6 +57,7 @@ export function TeacherSidebar({
     { href: `${prefix}/carnet`, key: 'carnet', exact: false },
     { href: `${prefix}/classes`, key: 'classes', exact: false },
     { href: `${prefix}/leave`, key: 'leave', exact: false },
+    { href: `${prefix}/announcements`, key: 'announcements', exact: false },
     // « Messages » retiré du menu : accessible via l'enveloppe de l'en-tête.
     { href: `${prefix}/account`, key: 'account', exact: false },
   ] as const;

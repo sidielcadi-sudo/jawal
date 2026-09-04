@@ -157,6 +157,15 @@ export type TeacherService = {
   subjectId: string;
   subjectLabel: string;
 };
+/** Alerte in-app du personnel — la cloche de l'en-tête. */
+export type StaffAlert = {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  read: boolean;
+  createdAt: string;
+};
 export type TeacherMe = {
   teacher: { id: string; firstName: string; lastName: string; photoUrl: string | null };
   yearLabel: string | null;
@@ -188,6 +197,12 @@ export type AppelStudentRow = {
   punishment: boolean;
   exclusion: boolean;
   note: string | null;
+  /** Observation aux parents (→ entrée carnet OBSERVATION). */
+  observation: string | null;
+  observationVisible: boolean;
+  /** Encouragement (→ entrée carnet ENCOURAGEMENT). */
+  encouragement: string | null;
+  encouragementVisible: boolean;
 };
 export type AppelSheet = {
   sessionId: string | null;
@@ -236,6 +251,16 @@ export const api = {
       body: { tenantSlug, email, password },
     }),
   me: (token: string) => request<Me>('/api/mobile/me', { token }),
+  /** Alertes in-app (cloche de l'en-tête) + non-lues — parent comme prof. */
+  alerts: (token: string) =>
+    request<{ unread: number; items: StaffAlert[] }>('/api/mobile/alerts', { token }),
+  /** Marque une alerte comme lue, ou toutes si `id` est omis. */
+  readAlerts: (token: string, id?: string) =>
+    request<{ ok: boolean }>('/api/mobile/alerts', {
+      token,
+      method: 'POST',
+      body: id ? { id } : {},
+    }),
   announcements: (token: string) => request<{ items: Announcement[] }>('/api/mobile/announcements', { token }),
   notes: (token: string, childId: string) =>
     request<{ periodId: string | null; evaluations: Evaluation[] }>(`/api/mobile/children/${childId}/notes`, { token }),
@@ -279,6 +304,12 @@ export const api = {
 
   // ── Espace enseignant ────────────────────────────────────────────────────
   teacherMe: (token: string) => request<TeacherMe>('/api/mobile/teacher/me', { token }),
+  /** Annonces reçues par le prof — `days` borne la fenêtre (30 par défaut). */
+  teacherAnnouncements: (token: string, days?: number) =>
+    request<{ items: Announcement[] }>(
+      `/api/mobile/teacher/announcements${days === undefined ? '' : `?days=${days}`}`,
+      { token },
+    ),
   teacherDay: (token: string, date: string) =>
     request<{ date: string; sessions: TeacherDaySession[] }>(
       `/api/mobile/teacher/day?date=${date}`,
@@ -297,10 +328,28 @@ export const api = {
       method: 'POST',
       body,
     }),
+  /** Déverrouille une feuille d'appel validée (bouton « Déverrouiller »). */
+  reopenAppel: (token: string, entryId: string, date: string, sessionId: string) =>
+    request<{ ok: boolean }>(`/api/mobile/teacher/appel/${entryId}/${date}/reopen`, {
+      token,
+      method: 'POST',
+      body: { sessionId },
+    }),
   teacherNotes: (token: string, classId: string, subjectId: string, periodId?: string) =>
     request<TeacherNotesGrid>(
       `/api/mobile/teacher/notes/${classId}/${subjectId}${periodId ? `?period=${periodId}` : ''}`,
       { token },
+    ),
+  /** Crée un devoir (nouvelle colonne de notes) pour un couple classe × matière. */
+  createTeacherDevoir: (
+    token: string,
+    classId: string,
+    subjectId: string,
+    body: { periodId: string; label: string; date: string; maxValue: number; weight: number },
+  ) =>
+    request<{ ok: boolean; id: string }>(
+      `/api/mobile/teacher/notes/${classId}/${subjectId}/devoirs`,
+      { token, method: 'POST', body },
     ),
   saveTeacherNotes: (
     token: string,

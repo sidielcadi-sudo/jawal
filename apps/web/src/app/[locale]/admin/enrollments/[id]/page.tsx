@@ -6,6 +6,7 @@ import { can, currentUserRoleCodes } from '@/lib/auth/rbac';
 import { withTenant } from '@/lib/db';
 import { withdrawEnrollmentFormAction } from '../form-actions';
 import { applicableAnnualFees, type FeeCategory } from '@/lib/fees';
+import { discountAppliesToFee } from '@/lib/discounts';
 import { AdmissionPanel } from './admission-panel';
 import { RadiationPanel } from './radiation-panel';
 import { RefundPanel } from './refund-panel';
@@ -66,19 +67,19 @@ export default async function EnrollmentDetailPage({
         kind: 'ANNUAL',
       },
       orderBy: { label: 'asc' },
-      include: {
-        discountRules: {
-          where: { active: true },
-          orderBy: [{ order: 'asc' }, { label: 'asc' }],
-          select: { id: true, label: true, pct: true },
-        },
-      },
     });
-    // Réductions globales (feeScheduleItemId null) applicables à n'importe quel frais.
-    const globalDiscounts = await tx.discountRule.findMany({
-      where: { active: true, feeScheduleItemId: null },
+    // Toutes les réductions actives, avec leur portée : un frais (ancien
+    // ciblage), une sélection de frais, ou aucun filtre = tous les frais.
+    const discountRules = await tx.discountRule.findMany({
+      where: { active: true },
       orderBy: [{ order: 'asc' }, { label: 'asc' }],
-      select: { id: true, label: true, pct: true },
+      select: {
+        id: true,
+        label: true,
+        pct: true,
+        feeScheduleItemId: true,
+        fees: { select: { id: true } },
+      },
     });
     const installments = await tx.installment.findMany({
       where: {
@@ -164,7 +165,7 @@ export default async function EnrollmentDetailPage({
       enrollmentDocs,
       previousDue,
       annualFeesRaw,
-      globalDiscounts: globalDiscounts.map((d) => ({ id: d.id, label: d.label, pct: Number(d.pct) })),
+      discountRules: discountRules.map((d) => ({ ...d, pct: Number(d.pct) })),
       feeMeta: Array.from(feeMetaById.entries()),
     };
   });
@@ -181,7 +182,7 @@ export default async function EnrollmentDetailPage({
     enrollmentDocs,
     previousDue,
     annualFeesRaw,
-    globalDiscounts,
+    discountRules,
     feeMeta,
   } = data;
   const feeMetaById = new Map(feeMeta);
@@ -233,10 +234,10 @@ export default async function EnrollmentDetailPage({
     amount: Number(f.totalAmount),
     installmentCount: f.installmentCount,
     installmentLocked: f.installmentLocked,
-    discounts: [
-      ...f.discountRules.map((d) => ({ id: d.id, label: d.label, pct: Number(d.pct) })),
-      ...globalDiscounts,
-    ],
+    // Une réduction est proposée sur ce frais si sa portée le couvre.
+    discounts: discountRules
+      .filter((d) => discountAppliesToFee(d, f.id))
+      .map((d) => ({ id: d.id, label: d.label, pct: d.pct })),
   }));
 
   const docByReq = new Map<string, (typeof enrollmentDocs)[number]>();

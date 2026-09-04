@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Image, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth';
 import { useAppState } from '../app-state';
@@ -173,40 +173,22 @@ export default function HomeScreen() {
         >
           {error ? <Text style={styles.error}>{error}</Text> : null}
 
-          {/* Carte d'accueil — reprise du « hero » du portail élève :
-              salutation, classe, deux boutons pilule, emblème à droite. */}
-          <View style={styles.hero}>
-            {dash?.photoUrl ? (
-              <Image source={{ uri: dash.photoUrl }} style={styles.heroPhoto} />
-            ) : (
-              <View style={[styles.heroPhoto, styles.heroPhotoFallback]}>
-                <Text style={styles.heroPhotoInitials}>
-                  {`${selectedChild.firstName[0] ?? ''}${selectedChild.lastName[0] ?? ''}`.toUpperCase()}
-                </Text>
-              </View>
-            )}
-            <View style={{ flex: 1 }}>
-              <Text style={styles.heroHello}>
-                {dash?.firstName ?? selectedChild.firstName}
-              </Text>
-              <Text style={styles.heroClass}>
-                {dash?.className ?? selectedChild.className ?? 'Classe non renseignée'}
-              </Text>
-              <View style={styles.heroActions}>
-                <TouchableOpacity
-                  style={styles.pillPrimary}
-                  onPress={() => navigate({ name: 'child', tab: 'notes' })}
-                >
-                  <Text style={styles.pillPrimaryText}>Notes</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.pillGhost}
-                  onPress={() => navigate({ name: 'child', tab: 'cahier' })}
-                >
-                  <Text style={styles.pillGhostText}>Cahier</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+          {/* Raccourcis d'accès rapide. L'identité de l'enfant (photo, prénom,
+              classe) n'est plus rappelée ici : le sélecteur d'enfant de
+              l'en-tête la porte déjà, juste au-dessus. */}
+          <View style={styles.quickActions}>
+            <TouchableOpacity
+              style={styles.pillPrimary}
+              onPress={() => navigate({ name: 'child', tab: 'notes' })}
+            >
+              <Text style={styles.pillPrimaryText}>Notes</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.pillGhost}
+              onPress={() => navigate({ name: 'child', tab: 'cahier' })}
+            >
+              <Text style={styles.pillGhostText}>Cahier corresp</Text>
+            </TouchableOpacity>
           </View>
 
           {/* Progression — anneaux identiques à ceux du portail élève. */}
@@ -512,21 +494,8 @@ const styles = StyleSheet.create({
   notDone: { backgroundColor: '#DBEAFE', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 4 },
   notDoneText: { fontSize: 11, fontWeight: '700', color: '#1D4ED8' },
 
-  /* ── Carte d'accueil et progression (langage du portail élève) ───────── */
-  hero: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: colors.brand100,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.brand200,
-    padding: 18,
-    marginBottom: 14,
-  },
-  heroHello: { fontSize: 21, fontWeight: '800', color: colors.text },
-  heroClass: { marginTop: 3, fontSize: 13, color: colors.textMuted },
-  heroActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
+  /* ── Raccourcis et progression (langage du portail élève) ────────────── */
+  quickActions: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   pillPrimary: { backgroundColor: colors.brand, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 7 },
   pillPrimaryText: { color: colors.white, fontSize: 12, fontWeight: '700' },
   pillGhost: {
@@ -538,9 +507,6 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
   },
   pillGhostText: { color: colors.text, fontSize: 12, fontWeight: '600' },
-  heroPhoto: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.brand200 },
-  heroPhotoFallback: { alignItems: 'center', justifyContent: 'center' },
-  heroPhotoInitials: { fontSize: 24, fontWeight: '900', color: colors.brandDark },
   panel: {
     backgroundColor: colors.card,
     borderRadius: 22,

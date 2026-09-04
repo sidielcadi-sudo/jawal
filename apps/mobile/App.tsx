@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { AuthProvider, useAuth } from './src/auth';
 import { AppStateProvider } from './src/app-state';
 import { TeacherStateProvider } from './src/teacher-state';
+import { AlertsProvider } from './src/alerts';
 import { subscribeToNotificationTaps } from './src/push';
 import { NavigationProvider, useNav } from './src/navigation';
 import { DrawerMenu } from './src/components/DrawerMenu';
@@ -128,7 +129,11 @@ export default function App() {
     <SafeAreaProvider>
       <AuthProvider>
         <StatusBar style="light" />
-        <Root />
+        {/* Les alertes de la cloche sont rattachées au compte, pas au rôle :
+            un seul fournisseur au-dessus des deux espaces. */}
+        <AlertsProvider>
+          <Root />
+        </AlertsProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

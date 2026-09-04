@@ -11,7 +11,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppHeader } from '../components/AppHeader';
+import { PortalHeader } from '../components/PortalHeader';
 import { EmptyCard } from '../components/EmptyCard';
 import { useAuth } from '../auth';
 import { useNav } from '../navigation';
@@ -68,7 +68,7 @@ export default function ThreadScreen({ conversationId, subject }: { conversation
 
   return (
     <View style={styles.container}>
-      <AppHeader title={title} />
+      <PortalHeader title={title} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}

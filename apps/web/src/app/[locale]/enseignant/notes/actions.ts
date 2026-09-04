@@ -7,23 +7,16 @@ import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
 import { getTeacherPersonId, teacherTeachesClassSubject } from '@/lib/teacher';
+import { createTeacherDevoir, teacherDevoirSchema } from '@/lib/teacher-devoir';
 
 type Result<T = void> = { ok: true; data?: T } | { ok: false; error: string };
 
-/** Crée un « devoir » (évaluation) = nouvelle colonne dans la grille de saisie. */
-const devoirSchema = z
-  .object({
-    classId: z.string().uuid(),
-    subjectId: z.string().uuid(),
-    periodId: z.string().uuid(),
-    label: z.string().min(1).max(60),
-    date: z.coerce.date(),
-    maxValue: z.coerce.number().min(1).max(1000).default(20),
-    weight: z.coerce.number().min(0.1).max(100).default(1),
-    optional: z.boolean().default(false),
-    optionalMode: z.enum(['BONUS', 'NOTE']).default('BONUS'),
-  })
-  .refine((d) => !Number.isNaN(d.date.getTime()), { message: 'Date invalide' });
+/**
+ * Crée un « devoir » (évaluation) = nouvelle colonne dans la grille de saisie.
+ * Le schéma et l'écriture vivent dans `lib/teacher-devoir`, partagés avec
+ * l'API mobile : un devoir créé sur le téléphone est en tout point identique.
+ */
+const devoirSchema = teacherDevoirSchema;
 
 function readDevoir(formData: FormData) {
   const get = (k: string) => {
@@ -53,52 +46,7 @@ export async function createDevoirAction(formData: FormData): Promise<Result<{ i
 
   const tenantId = session.user.tenantId;
   try {
-    const id = await withTenant(tenantId, async (tx) => {
-      const teacherId = await getTeacherPersonId(tx, session.user.id);
-      if (!teacherId) throw new Error('Profil enseignant introuvable.');
-      if (!(await teacherTeachesClassSubject(tx, teacherId, parsed.data.classId, parsed.data.subjectId)))
-        throw new Error('Matière/classe non autorisée.');
-
-      const cls = await tx.class.findUnique({
-        where: { id: parsed.data.classId },
-        include: { students: { where: { unenrolledAt: null }, select: { studentId: true } } },
-      });
-      if (!cls) throw new Error('Classe introuvable.');
-
-      const ev = await tx.evaluation.create({
-        data: {
-          tenantId,
-          classId: parsed.data.classId,
-          subjectId: parsed.data.subjectId,
-          periodId: parsed.data.periodId,
-          label: parsed.data.label,
-          date: parsed.data.date,
-          weight: parsed.data.weight,
-          maxValue: parsed.data.maxValue,
-          optional: parsed.data.optional,
-          optionalMode: parsed.data.optionalMode,
-        },
-      });
-      if (cls.students.length > 0) {
-        await tx.grade.createMany({
-          data: cls.students.map((sc) => ({
-            tenantId,
-            evaluationId: ev.id,
-            studentId: sc.studentId,
-            value: null,
-          })),
-        });
-      }
-      await logAudit(tx, {
-        tenantId,
-        userId: session.user.id,
-        action: 'create',
-        entityType: 'Evaluation',
-        entityId: ev.id,
-        after: { source: 'teacher-notes', label: ev.label },
-      });
-      return ev.id;
-    });
+    const id = await createTeacherDevoir(tenantId, session.user.id, parsed.data, 'teacher-notes');
     revalidatePath('/enseignant/notes');
     return { ok: true, data: { id } };
   } catch (e) {

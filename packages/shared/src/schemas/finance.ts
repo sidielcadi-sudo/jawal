@@ -4,7 +4,17 @@ export const paymentMethodSchema = z.enum(['CASH', 'CHEQUE', 'TRANSFER', 'CMI', 
 export type PaymentMethodInput = z.infer<typeof paymentMethodSchema>;
 
 export const feeKindSchema = z.enum(['ANNUAL', 'EXCEPTIONAL']);
-export const feeCategorySchema = z.enum(['TUITION', 'TRANSPORT', 'CANTEEN', 'DAYCARE', 'OTHER']);
+// Doit rester aligné sur l'enum `FeeCategory` du schéma Prisma : l'écran de
+// paramétrage propose INSCRIPTION (frais d'inscription, non remboursables par
+// défaut), qui était absent ici et faisait échouer la validation.
+export const feeCategorySchema = z.enum([
+  'TUITION',
+  'INSCRIPTION',
+  'TRANSPORT',
+  'CANTEEN',
+  'DAYCARE',
+  'OTHER',
+]);
 
 export const feeScheduleCreateSchema = z.object({
   academicYearId: z.string().uuid(),

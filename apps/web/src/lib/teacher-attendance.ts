@@ -203,67 +203,36 @@ export type AppelDetail = {
 };
 
 /**
- * Charge la feuille d'appel d'une séance pour l'enseignant **sans rien écrire** :
- * vérifie l'appartenance de la case d'EDT et la cohérence du jour, construit le
- * tableau à partir des élèves inscrits, fusionné avec la session d'appel
- * existante (si déjà saisie). Aucune session/record n'est créé tant que
- * l'enseignant n'enregistre pas — évite les brouillons fantômes au simple
- * affichage (ou au prefetch). Renvoie null si non autorisé / incohérent.
+ * Construit les lignes d'une feuille d'appel **sans rien écrire** : les élèves
+ * inscrits dans la classe, fusionnés avec la session déjà saisie s'il y en a
+ * une (statuts, motifs, observations). Partagé par l'appel enseignant et
+ * l'appel administratif, pour que les deux montrent exactement le même état.
  */
-export async function loadTeacherAppel(
+export async function buildAppelRows(
   tx: Tx,
-  teacherId: string,
-  entryId: string,
-  dateStr: string,
-): Promise<AppelDetail | null> {
-  const entry = await tx.timetableEntry.findUnique({
-    where: { id: entryId },
-    include: {
-      slot: { select: { startTime: true, endTime: true } },
-      subject: { select: { label: true, labelAr: true } },
-      class: {
-        select: {
-          id: true,
-          name: true,
-          students: {
-            where: { unenrolledAt: null },
-            select: {
-              student: {
-                select: {
-                  id: true,
-                  firstName: true,
-                  lastName: true,
-                  firstNameAr: true,
-                  lastNameAr: true,
-                },
-              },
-            },
-            orderBy: { student: { lastName: 'asc' } },
-          },
-        },
+  classId: string,
+  sessionId: string | null,
+): Promise<AppelRow[]> {
+  const enrolled = await tx.studentClass.findMany({
+    where: { classId, unenrolledAt: null },
+    select: {
+      student: {
+        select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
       },
-      room: { select: { code: true } },
-      teacher: { select: { firstName: true, lastName: true } },
     },
+    orderBy: { student: { lastName: 'asc' } },
   });
-  if (!entry || entry.teacherId !== teacherId) return null;
-  if (dowOf(dateStr) !== entry.dayOfWeek) return null;
 
-  const dateOnly = parseDateUTC(dateStr);
-  const periodLabel = periodLabelOf(entry.slot.startTime, entry.slot.endTime);
-
-  // Session existante (si l'appel a déjà été saisi) — lecture seule.
-  const attSession = await tx.attendanceSession.findFirst({
-    where: { classId: entry.classId, date: dateOnly, periodLabel },
-    include: { records: true },
-  });
-  const byStudent = new Map((attSession?.records ?? []).map((r) => [r.studentId, r]));
+  const records = sessionId
+    ? await tx.attendanceRecord.findMany({ where: { sessionId } })
+    : [];
+  const byStudent = new Map(records.map((r) => [r.studentId, r]));
 
   // Observations / encouragements déjà saisis dans cette feuille d'appel.
-  const carnet = attSession
+  const carnet = sessionId
     ? await tx.carnetEntry.findMany({
         where: {
-          attendanceSessionId: attSession.id,
+          attendanceSessionId: sessionId,
           type: { in: ['OBSERVATION', 'ENCOURAGEMENT'] },
         },
         select: { studentId: true, type: true, content: true, visibleToParents: true },
@@ -278,7 +247,7 @@ export async function loadTeacherAppel(
     });
   }
 
-  const rows: AppelRow[] = entry.class.students.map(({ student }) => {
+  return enrolled.map(({ student }) => {
     const r = byStudent.get(student.id);
     const obs = obsByStudent.get(student.id);
     const enc = encByStudent.get(student.id);
@@ -301,6 +270,136 @@ export async function loadTeacherAppel(
       encouragementVisible: enc?.visible ?? true,
     };
   });
+}
+
+/** Une séance d'EDT d'une classe pour un jour donné, avec l'état de son appel. */
+export type ClassDaySession = {
+  entryId: string;
+  periodLabel: string;
+  slotStart: string;
+  slotEnd: string;
+  subject: string | null;
+  teacherName: string | null;
+  room: string | null;
+  /** Appel déjà validé pour ce créneau. */
+  done: boolean;
+  /** Appel commencé mais pas validé. */
+  draft: boolean;
+};
+
+/**
+ * Séances d'une classe pour une date : le créneau, la matière et le
+ * professeur. L'administration choisit là-dedans avant de faire l'appel, ce
+ * qui garantit que sa feuille porte sur la **même** séance que celle du prof
+ * (même couple classe × date × créneau).
+ */
+export async function getClassDaySessions(
+  tx: Tx,
+  classId: string,
+  dateStr: string,
+): Promise<ClassDaySession[]> {
+  const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
+  if (!year) return [];
+
+  const entries = await tx.timetableEntry.findMany({
+    where: {
+      classId,
+      academicYearId: year.id,
+      dayOfWeek: dowOf(dateStr),
+      slot: { isBreak: false },
+    },
+    include: {
+      slot: { select: { startTime: true, endTime: true } },
+      subject: { select: { label: true } },
+      teacher: { select: { firstName: true, lastName: true } },
+      room: { select: { code: true } },
+    },
+  });
+  if (entries.length === 0) return [];
+
+  const sessions = await tx.attendanceSession.findMany({
+    where: { classId, date: parseDateUTC(dateStr) },
+    select: { periodLabel: true, finalizedAt: true },
+  });
+  const byPeriod = new Map(sessions.map((s) => [s.periodLabel ?? '', s]));
+
+  return entries
+    .map((e) => {
+      const periodLabel = periodLabelOf(e.slot.startTime, e.slot.endTime);
+      const sess = byPeriod.get(periodLabel);
+      return {
+        entryId: e.id,
+        periodLabel,
+        slotStart: e.slot.startTime,
+        slotEnd: e.slot.endTime,
+        subject: e.subject?.label ?? null,
+        teacherName: e.teacher ? `${e.teacher.firstName} ${e.teacher.lastName}` : null,
+        room: e.room?.code ?? null,
+        done: sess?.finalizedAt != null,
+        draft: sess != null && sess.finalizedAt == null,
+      };
+    })
+    .sort((a, b) => a.slotStart.localeCompare(b.slotStart));
+}
+
+/**
+ * Feuille d'appel administrative d'une classe pour une date (et un créneau
+ * optionnel) — pendant de `loadTeacherAppel` côté portail admin. Ne crée rien :
+ * la session naît à l'enregistrement, comme côté prof.
+ */
+export async function loadClassAppel(
+  tx: Tx,
+  classId: string,
+  dateStr: string,
+  periodLabel: string | null,
+): Promise<{ sessionId: string | null; finalizedAt: Date | null; rows: AppelRow[] }> {
+  const attSession = await tx.attendanceSession.findFirst({
+    where: { classId, date: parseDateUTC(dateStr), periodLabel },
+    select: { id: true, finalizedAt: true },
+  });
+  return {
+    sessionId: attSession?.id ?? null,
+    finalizedAt: attSession?.finalizedAt ?? null,
+    rows: await buildAppelRows(tx, classId, attSession?.id ?? null),
+  };
+}
+
+/**
+ * Charge la feuille d'appel d'une séance pour l'enseignant **sans rien écrire** :
+ * vérifie l'appartenance de la case d'EDT et la cohérence du jour, construit le
+ * tableau à partir des élèves inscrits, fusionné avec la session d'appel
+ * existante (si déjà saisie). Aucune session/record n'est créé tant que
+ * l'enseignant n'enregistre pas — évite les brouillons fantômes au simple
+ * affichage (ou au prefetch). Renvoie null si non autorisé / incohérent.
+ */
+export async function loadTeacherAppel(
+  tx: Tx,
+  teacherId: string,
+  entryId: string,
+  dateStr: string,
+): Promise<AppelDetail | null> {
+  const entry = await tx.timetableEntry.findUnique({
+    where: { id: entryId },
+    include: {
+      slot: { select: { startTime: true, endTime: true } },
+      subject: { select: { label: true, labelAr: true } },
+      class: { select: { id: true, name: true } },
+      room: { select: { code: true } },
+      teacher: { select: { firstName: true, lastName: true } },
+    },
+  });
+  if (!entry || entry.teacherId !== teacherId) return null;
+  if (dowOf(dateStr) !== entry.dayOfWeek) return null;
+
+  const dateOnly = parseDateUTC(dateStr);
+  const periodLabel = periodLabelOf(entry.slot.startTime, entry.slot.endTime);
+
+  // Session existante (si l'appel a déjà été saisi) — lecture seule.
+  const attSession = await tx.attendanceSession.findFirst({
+    where: { classId: entry.classId, date: dateOnly, periodLabel },
+    select: { id: true, finalizedAt: true },
+  });
+  const rows = await buildAppelRows(tx, entry.classId, attSession?.id ?? null);
 
   return {
     sessionId: attSession?.id ?? null,

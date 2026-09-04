@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { feeScheduleCreateSchema } from '@jawal/shared';
+import { feeCategorySchema, feeScheduleCreateSchema } from '@jawal/shared';
 import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
@@ -88,7 +88,8 @@ export async function createFeeScheduleAction(formData: FormData): Promise<Resul
 
 const FEE_UPDATE_SCHEMA = z.object({
   label: z.string().min(1).max(100),
-  category: z.enum(['TUITION', 'TRANSPORT', 'CANTEEN', 'DAYCARE', 'OTHER']),
+  // Même liste que `feeCategorySchema` / l'enum Prisma `FeeCategory`.
+  category: feeCategorySchema,
   totalAmount: z.coerce.number().min(1).max(100_000_000),
   installmentCount: z.coerce.number().int().min(1).max(24),
   installmentLocked: z.boolean(),
@@ -166,12 +167,18 @@ export async function deleteFeeScheduleAction(id: string): Promise<Result> {
 
 // ─── Réductions paramétrables (catalogue tenant) ──────────────────────────
 
+/**
+ * Portée d'une réduction : une sélection de frais (`feeIds`), ou tous les
+ * frais quand la sélection est vide. Le ciblage historique (colonne
+ * `feeScheduleItemId`, un seul frais) reste lu par les écrans d'admission,
+ * mais ce formulaire n'écrit plus que la sélection multiple.
+ */
 const DISCOUNT_SCHEMA = z.object({
   label: z.string().min(1).max(100),
   pct: z.coerce.number().min(0).max(100),
   active: z.coerce.boolean(),
   order: z.coerce.number().int().min(0).max(999),
-  feeScheduleItemId: z.string().uuid().nullable(),
+  feeIds: z.array(z.string().uuid()).max(200),
 });
 
 function discountInput(formData: FormData) {
@@ -179,13 +186,14 @@ function discountInput(formData: FormData) {
     const v = formData.get(k);
     return typeof v === 'string' ? v.trim() : '';
   };
-  const feeId = get('feeScheduleItemId');
   return {
     label: get('label'),
     pct: get('pct'),
     active: formData.get('active') === 'on' || formData.get('active') === 'true',
     order: get('order') || '0',
-    feeScheduleItemId: feeId || null,
+    feeIds: formData
+      .getAll('feeIds')
+      .filter((v): v is string => typeof v === 'string' && v.trim() !== ''),
   };
 }
 
@@ -197,16 +205,25 @@ export async function createDiscountRuleAction(formData: FormData): Promise<Resu
   const parsed = DISCOUNT_SCHEMA.safeParse(discountInput(formData));
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalide' };
 
+  const { feeIds, ...fields } = parsed.data;
   const tenantId = session.user.tenantId;
   await withTenant(tenantId, async (tx) => {
-    const d = await tx.discountRule.create({ data: { tenantId, ...parsed.data } });
+    const d = await tx.discountRule.create({
+      data: {
+        tenantId,
+        ...fields,
+        // Sélection vide ⇒ tous les frais : ni lien 1-N, ni lien multiple.
+        feeScheduleItemId: null,
+        fees: feeIds.length > 0 ? { connect: feeIds.map((id) => ({ id })) } : undefined,
+      },
+    });
     await logAudit(tx, {
       tenantId,
       userId: session.user.id,
       action: 'create',
       entityType: 'DiscountRule',
       entityId: d.id,
-      after: { label: d.label, pct: Number(d.pct) },
+      after: { label: d.label, pct: Number(d.pct), fees: feeIds.length },
     });
   });
   revalidatePath('/admin/settings/fees');
@@ -221,12 +238,21 @@ export async function updateDiscountRuleAction(id: string, formData: FormData): 
   const parsed = DISCOUNT_SCHEMA.safeParse(discountInput(formData));
   if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? 'Invalide' };
 
+  const { feeIds, ...fields } = parsed.data;
   const tenantId = session.user.tenantId;
   try {
     await withTenant(tenantId, async (tx) => {
       const before = await tx.discountRule.findUnique({ where: { id } });
       if (!before) throw new Error('Réduction introuvable');
-      await tx.discountRule.update({ where: { id }, data: parsed.data });
+      await tx.discountRule.update({
+        where: { id },
+        data: {
+          ...fields,
+          // `set` remplace la sélection : décocher un frais l'exclut vraiment.
+          feeScheduleItemId: null,
+          fees: { set: feeIds.map((fid) => ({ id: fid })) },
+        },
+      });
       await logAudit(tx, {
         tenantId,
         userId: session.user.id,
@@ -234,7 +260,7 @@ export async function updateDiscountRuleAction(id: string, formData: FormData): 
         entityType: 'DiscountRule',
         entityId: id,
         before: { label: before.label, pct: Number(before.pct) },
-        after: { label: parsed.data.label, pct: parsed.data.pct },
+        after: { label: fields.label, pct: fields.pct, fees: feeIds.length },
       });
     });
   } catch (e: unknown) {

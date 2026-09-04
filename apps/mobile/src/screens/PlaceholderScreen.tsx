@@ -1,13 +1,13 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { AppHeader } from '../components/AppHeader';
+import { PortalHeader } from '../components/PortalHeader';
 import { colors } from '../theme';
 
 /** Écran d'attente pour les rubriques du portail pas encore portées sur mobile. */
 export default function PlaceholderScreen({ title, note }: { title: string; note?: string }) {
   return (
     <View style={styles.container}>
-      <AppHeader title={title} />
+      <PortalHeader title={title} />
       <View style={styles.body}>
         <Text style={styles.icon}>🌐</Text>
         <Text style={styles.title}>{title}</Text>

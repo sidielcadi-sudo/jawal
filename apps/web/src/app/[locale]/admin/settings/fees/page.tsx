@@ -43,7 +43,7 @@ export default async function FeesPage({
         subtab === 'annual'
           ? tx.discountRule.findMany({
               orderBy: [{ order: 'asc' }, { label: 'asc' }],
-              include: { fee: { select: { label: true } } },
+              include: { fee: { select: { label: true } }, fees: { select: { id: true, label: true } } },
             })
           : Promise.resolve([]),
       ]);
@@ -80,8 +80,11 @@ export default async function FeesPage({
           pct: Number(d.pct),
           active: d.active,
           order: d.order,
-          feeScheduleItemId: d.feeScheduleItemId,
-          feeLabel: d.fee?.label ?? null,
+          // Portée : sélection multiple si renseignée, sinon l'ancien lien
+          // unique, sinon tous les frais.
+          feeIds: d.fees.length > 0 ? d.fees.map((f) => f.id) : d.feeScheduleItemId ? [d.feeScheduleItemId] : [],
+          feeLabel:
+            d.fees.length > 0 ? d.fees.map((f) => f.label).join(', ') : (d.fee?.label ?? null),
         })),
         annualFeeOptions,
       };

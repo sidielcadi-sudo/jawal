@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 import { useAppState } from '../app-state';
 import { useNav } from '../navigation';
+import { AlertsBell } from './AlertsBell';
 
 /**
  * En-tête vert façon Pronote : sélecteur d'enfant scolarisé (menu déroulant),
@@ -40,6 +41,9 @@ export function AppHeader({ title, right }: { title: string; right?: React.React
         <View style={{ flex: 1 }} />
 
         {right}
+
+        {/* Cloche des alertes, à gauche de l'accueil. */}
+        <AlertsBell />
 
         {/* Accueil */}
         <TouchableOpacity
@@ -130,14 +134,14 @@ const styles = StyleSheet.create({
   wrap: { backgroundColor: colors.brand, paddingHorizontal: 12, paddingBottom: 12 },
   row: { flexDirection: 'row', alignItems: 'center' },
   avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { color: colors.white, fontWeight: '800', fontSize: 13 },
+  avatarText: { color: colors.white, fontWeight: '800', fontSize: 16 },
   /** Ligne du sélecteur d'enfant, à la place de l'ancien titre. */
   childLine: {
     flexDirection: 'row',

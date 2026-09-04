@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  Image,
   RefreshControl,
   ScrollView,
   StyleSheet,
@@ -13,12 +12,14 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../auth';
 import { useTeacherState } from '../teacher-state';
 import { useNav } from '../navigation';
-import { api, ApiError, type TeacherDaySession } from '../api';
+import { api, ApiError, type Announcement, type TeacherDaySession } from '../api';
 import { TeacherHeader } from '../components/TeacherHeader';
 import { EmptyCard } from '../components/EmptyCard';
 import { colors, subjectColor } from '../theme';
 
 const DAY_MS = 86_400_000;
+/** Fenêtre du bloc « Annonces » de l'accueil : le dernier mois. */
+const ANNOUNCE_DAYS = 30;
 const ymd = (d: Date) => d.toISOString().slice(0, 10);
 
 function dayLabel(iso: string) {
@@ -31,11 +32,12 @@ function dayLabel(iso: string) {
 }
 
 /**
- * Accueil de l'espace enseignant — même langage visuel que l'accueil parent :
- * une carte d'identité, des indicateurs, puis la journée de cours.
+ * Accueil de l'espace enseignant : les indicateurs du jour, la journée de
+ * cours, puis les annonces du dernier mois.
  *
  * La journée passe avant tout le reste : c'est l'écran que le prof ouvre entre
- * deux salles, et chaque cours y porte l'état de son appel.
+ * deux salles, et chaque cours y porte l'état de son appel. Son identité n'est
+ * plus rappelée ici — la bande d'en-tête la porte déjà.
  */
 export default function TeacherHomeScreen() {
   const { token, logout } = useAuth();
@@ -45,6 +47,7 @@ export default function TeacherHomeScreen() {
 
   const [date, setDate] = useState(() => ymd(new Date()));
   const [sessions, setSessions] = useState<TeacherDaySession[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -52,8 +55,12 @@ export default function TeacherHomeScreen() {
     if (!token) return;
     setError('');
     try {
-      const d = await api.teacherDay(token, date);
+      const [d, ann] = await Promise.all([
+        api.teacherDay(token, date),
+        api.teacherAnnouncements(token, ANNOUNCE_DAYS),
+      ]);
       setSessions(d.sessions);
+      setAnnouncements(ann.items);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) return logout();
       setError(e instanceof ApiError ? e.message : 'Erreur inattendue.');
@@ -67,8 +74,10 @@ export default function TeacherHomeScreen() {
     load();
   }, [load]);
 
-  const teacher = me?.teacher;
   const pending = sessions.filter((s) => !s.done).length;
+  const lastAnnouncements = [...announcements].sort((a, b) =>
+    (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''),
+  );
 
   return (
     <View style={styles.container}>
@@ -84,39 +93,6 @@ export default function TeacherHomeScreen() {
           refreshControl={<RefreshControl refreshing={false} onRefresh={load} tintColor={colors.brand} />}
         >
           {error ? <Text style={styles.error}>{error}</Text> : null}
-
-          {/* Carte d'accueil : photo, nom, année scolaire. */}
-          <View style={styles.hero}>
-            {teacher?.photoUrl ? (
-              <Image source={{ uri: teacher.photoUrl }} style={styles.heroPhoto} />
-            ) : (
-              <View style={[styles.heroPhoto, styles.heroPhotoFallback]}>
-                <Text style={styles.heroPhotoInitials}>
-                  {`${teacher?.firstName[0] ?? ''}${teacher?.lastName[0] ?? ''}`.toUpperCase()}
-                </Text>
-              </View>
-            )}
-            <View style={{ flex: 1 }}>
-              <Text style={styles.heroName}>
-                {teacher ? `${teacher.firstName} ${teacher.lastName}` : ''}
-              </Text>
-              <Text style={styles.heroMeta}>{me?.yearLabel ?? ''}</Text>
-              <View style={styles.heroActions}>
-                <TouchableOpacity
-                  style={styles.pillPrimary}
-                  onPress={() => navigate({ name: 'teacher', tab: 'appel' })}
-                >
-                  <Text style={styles.pillPrimaryText}>Appels</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.pillGhost}
-                  onPress={() => navigate({ name: 'teacher', tab: 'notes' })}
-                >
-                  <Text style={styles.pillGhostText}>Notes</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
 
           {/* Indicateurs : ce qui reste à faire aujourd'hui. */}
           <View style={styles.kpiRow}>
@@ -201,6 +177,30 @@ export default function TeacherHomeScreen() {
               </TouchableOpacity>
             ))
           )}
+
+          {/* Annonces du dernier mois — celles dont le prof est destinataire :
+              établissement, corps enseignant, et ses classes / niveaux. */}
+          <View style={[styles.sectionHead, { marginTop: 22 }]}>
+            <Text style={styles.sectionTitle}>Annonces</Text>
+          </View>
+          {lastAnnouncements.length === 0 ? (
+            <EmptyCard text="Aucune annonce ce dernier mois." />
+          ) : (
+            lastAnnouncements.map((a) => (
+              <View key={a.id} style={styles.announceRow}>
+                <View style={styles.announceBar} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.announceTitle}>{a.title}</Text>
+                  <Text style={styles.announceBody} numberOfLines={3}>
+                    {a.body}
+                  </Text>
+                </View>
+                {a.publishedAt && (
+                  <Text style={styles.announceDate}>{dayLabel(a.publishedAt.slice(0, 10))}</Text>
+                )}
+              </View>
+            ))
+          )}
         </ScrollView>
       )}
     </View>
@@ -222,34 +222,18 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   error: { color: colors.danger, marginBottom: 8 },
 
-  hero: {
+  announceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    backgroundColor: colors.brand100,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: colors.brand200,
-    padding: 18,
-    marginBottom: 14,
+    gap: 10,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  heroPhoto: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.brand200 },
-  heroPhotoFallback: { alignItems: 'center', justifyContent: 'center' },
-  heroPhotoInitials: { fontSize: 24, fontWeight: '900', color: colors.brandDark },
-  heroName: { fontSize: 20, fontWeight: '800', color: colors.text },
-  heroMeta: { marginTop: 3, fontSize: 13, color: colors.textMuted },
-  heroActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  pillPrimary: { backgroundColor: colors.brand, borderRadius: 999, paddingHorizontal: 16, paddingVertical: 7 },
-  pillPrimaryText: { color: colors.white, fontSize: 12, fontWeight: '700' },
-  pillGhost: {
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 999,
-    paddingHorizontal: 16,
-    paddingVertical: 7,
-  },
-  pillGhostText: { color: colors.text, fontSize: 12, fontWeight: '600' },
+  announceBar: { width: 4, alignSelf: 'stretch', borderRadius: 2, backgroundColor: colors.brand },
+  announceTitle: { fontSize: 14, fontWeight: '800', color: colors.text },
+  announceBody: { fontSize: 13, color: colors.textMuted, marginTop: 1 },
+  announceDate: { fontSize: 11, color: colors.textMuted },
 
   kpiRow: { flexDirection: 'row', gap: 10, marginBottom: 18 },
   kpi: {

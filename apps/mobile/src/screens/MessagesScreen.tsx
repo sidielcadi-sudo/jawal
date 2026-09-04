@@ -13,7 +13,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { AppHeader } from '../components/AppHeader';
+import { PortalHeader } from '../components/PortalHeader';
 import { EmptyCard } from '../components/EmptyCard';
 import { Header } from '../components/Header';
 import { useAuth } from '../auth';
@@ -56,7 +56,7 @@ export default function MessagesScreen() {
     <View style={styles.container}>
       {/* Barre complète (sélecteur d'enfant, accueil, menu) comme sur les
           autres écrans principaux — et non le simple bandeau titre+retour. */}
-      <AppHeader
+      <PortalHeader
         title="Messagerie"
         right={
           <TouchableOpacity onPress={() => setComposing(true)} hitSlop={10} style={styles.newBtn}>

@@ -3,11 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
-import { logAudit } from '@/lib/audit';
-import { withTenant } from '@/lib/db';
-import { getTeacherPersonId } from '@/lib/teacher';
-import { teacherOwnsEntry } from '@/lib/teacher-attendance';
-import { appelPayloadSchema, saveTeacherAppel } from '@/lib/teacher-appel-save';
+import {
+  appelPayloadSchema,
+  reopenTeacherAppel,
+  saveTeacherAppel,
+} from '@/lib/teacher-appel-save';
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -56,34 +56,14 @@ export async function reopenTeacherAppelAction(
   const sessionAuth = await auth();
   if (!sessionAuth?.user) return { ok: false, error: 'Non authentifié' };
   await requirePermission('attendance.write');
-  const tenantId = sessionAuth.user.tenantId;
-  try {
-    await withTenant(tenantId, async (tx) => {
-      const teacherId = await getTeacherPersonId(tx, sessionAuth.user.id);
-      if (!teacherId) throw new Error('Profil enseignant introuvable.');
-      if (!(await teacherOwnsEntry(tx, teacherId, entryId)))
-        throw new Error('Séance non autorisée.');
-      const sess = await tx.attendanceSession.findUnique({
-        where: { id: sessionId },
-        select: { vsLocked: true },
-      });
-      if (sess?.vsLocked)
-        throw new Error('Appel verrouillé par la Vie scolaire — modification impossible.');
-      await tx.attendanceSession.update({
-        where: { id: sessionId },
-        data: { finalizedAt: null },
-      });
-      await logAudit(tx, {
-        tenantId,
-        userId: sessionAuth.user.id,
-        action: 'reopen',
-        entityType: 'AttendanceSession',
-        entityId: sessionId,
-      });
-    });
-    revalidatePath(`/enseignant/appel/${entryId}`);
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
-  }
+
+  const res = await reopenTeacherAppel(
+    sessionAuth.user.tenantId,
+    sessionAuth.user.id,
+    sessionId,
+    entryId,
+  );
+  if (!res.ok) return res;
+  revalidatePath(`/enseignant/appel/${entryId}`);
+  return { ok: true };
 }

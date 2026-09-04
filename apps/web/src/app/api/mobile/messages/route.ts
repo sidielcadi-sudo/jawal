@@ -1,5 +1,5 @@
 import { withTenant } from '@/lib/db';
-import { verifyMobileParent } from '@/lib/mobile-auth';
+import { verifyMobileUser } from '@/lib/mobile-auth';
 import {
   listConversationsForParticipant,
   countUnreadConversations,
@@ -9,9 +9,9 @@ import {
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-/** GET /api/mobile/messages → conversations du parent (+ non-lus). */
+/** GET /api/mobile/messages → conversations de l’utilisateur (+ non-lus). */
 export async function GET(req: Request) {
-  const principal = await verifyMobileParent(req);
+  const principal = await verifyMobileUser(req);
   if (!principal) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
 
   const data = await withTenant(principal.tenantId, async (tx) => {
@@ -45,10 +45,10 @@ export async function GET(req: Request) {
 
 /**
  * POST /api/mobile/messages  { subject, body }
- * → le parent ouvre une conversation avec l'école (mêmes participants que le web).
+ * → ouvre une conversation avec l'école (mêmes participants que le web).
  */
 export async function POST(req: Request) {
-  const principal = await verifyMobileParent(req);
+  const principal = await verifyMobileUser(req);
   if (!principal) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
 
   let payload: { subject?: string; body?: string };

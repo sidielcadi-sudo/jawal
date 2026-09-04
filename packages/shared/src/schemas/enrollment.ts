@@ -71,9 +71,25 @@ export const bulkReenrollItemSchema = z.object({
   targetLevelId: z.string().uuid().optional(),
 });
 
+/** Catégories de frais dont le lot peut générer l'échéancier. */
+export const bulkFeeCategorySchema = z.enum(['INSCRIPTION', 'TUITION', 'CANTEEN', 'TRANSPORT']);
+
+/**
+ * Statut donné aux dossiers créés par le lot. Volontairement sans valeur par
+ * défaut : l'agent doit trancher entre « ouvrir un dossier à instruire » et
+ * « réinscrire d'office », deux gestes très différents.
+ */
+export const bulkTargetStatusSchema = z.enum(['DRAFT', 'INSCRIPTION_VALIDEE']);
+
 export const bulkReenrollSchema = z.object({
   sourceYearId: z.string().uuid(),
   targetYearId: z.string().uuid(),
+  targetStatus: bulkTargetStatusSchema,
   items: z.array(bulkReenrollItemSchema).min(1).max(2000),
+  /**
+   * Échéanciers à générer pour les élèves réinscrits. Vide = aucun (le
+   * dossier reste en brouillon, l'échéancier se fera au cas par cas).
+   */
+  feeCategories: z.array(bulkFeeCategorySchema).max(4).default([]),
 });
 export type BulkReenrollInput = z.infer<typeof bulkReenrollSchema>;

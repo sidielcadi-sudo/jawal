@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme';
 import { useTeacherState } from '../teacher-state';
 import { useNav } from '../navigation';
+import { AlertsBell } from './AlertsBell';
 
 /**
  * En-tête de l'espace enseignant — même bandeau bleu que l'espace parent, mais
@@ -35,6 +36,9 @@ export function TeacherHeader({ title, right }: { title: string; right?: React.R
         <View style={{ flex: 1 }} />
 
         {right}
+
+        {/* Cloche des alertes, à gauche de l'accueil. */}
+        <AlertsBell />
 
         <TouchableOpacity
           style={styles.iconBtn}
@@ -74,14 +78,14 @@ const styles = StyleSheet.create({
   wrap: { backgroundColor: colors.brand, paddingHorizontal: 12, paddingBottom: 12 },
   row: { flexDirection: 'row', alignItems: 'center' },
   avatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarText: { color: colors.white, fontWeight: '800', fontSize: 13 },
+  avatarText: { color: colors.white, fontWeight: '800', fontSize: 16 },
   nameLine: { alignItems: 'center', marginTop: 10 },
   name: { color: colors.white, fontSize: 19, fontWeight: '700' },
   iconBtn: { padding: 6, marginLeft: 2 },

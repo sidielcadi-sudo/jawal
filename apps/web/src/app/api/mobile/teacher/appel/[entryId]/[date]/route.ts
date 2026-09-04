@@ -53,6 +53,10 @@ export async function GET(req: Request, ctx: Ctx) {
         punishment: r.punishment,
         exclusion: r.exclusion,
         note: r.note,
+        observation: r.observation,
+        observationVisible: r.observationVisible,
+        encouragement: r.encouragement,
+        encouragementVisible: r.encouragementVisible,
       })),
     };
   });

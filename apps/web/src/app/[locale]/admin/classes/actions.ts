@@ -346,3 +346,82 @@ export async function setClassDelegateAction(
   revalidatePath('/admin/attendance/management');
   return { ok: true };
 }
+
+/**
+ * Duplique les classes d'une année scolaire vers l'année active.
+ *
+ * On ne recopie que la « coquille » — nom, niveau, capacité, enseignant
+ * principal, salle attitrée — sans élèves, sans emploi du temps et sans
+ * appels : en début d'année la structure des classes bouge peu, seule la
+ * composition change. Les classes archivées sont ignorées, et un nom déjà
+ * présent sur l'année active est sauté (contrainte d'unicité), ce qui rend
+ * l'opération rejouable sans créer de doublon.
+ */
+export async function duplicateClassesAction(
+  sourceYearId: string,
+): Promise<ActionResult<{ created: number; skipped: number; targetYearLabel: string }>> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requirePermission('classes.write');
+
+  const tenantId = session.user.tenantId;
+  try {
+    const data = await withTenant(tenantId, async (tx) => {
+      const target = await tx.academicYear.findFirst({ where: { active: true } });
+      if (!target) throw new Error('Aucune année scolaire active.');
+      if (target.id === sourceYearId)
+        throw new Error("L'année source doit être différente de l'année active.");
+
+      const sources = await tx.class.findMany({
+        where: { academicYearId: sourceYearId, deletedAt: null },
+        orderBy: [{ level: { order: 'asc' } }, { name: 'asc' }],
+      });
+      if (sources.length === 0) throw new Error('Aucune classe à dupliquer sur cette année.');
+
+      const existing = await tx.class.findMany({
+        where: { academicYearId: target.id },
+        select: { name: true },
+      });
+      const taken = new Set(existing.map((c) => c.name));
+
+      let created = 0;
+      let skipped = 0;
+      for (const src of sources) {
+        if (taken.has(src.name)) {
+          skipped += 1;
+          continue;
+        }
+        // `metadata` porte la salle attitrée (`homeRoomId`) : on la reprend
+        // telle quelle, comme le reste de la fiche.
+        const cls = await tx.class.create({
+          data: {
+            tenantId,
+            academicYearId: target.id,
+            levelId: src.levelId,
+            name: src.name,
+            nameAr: src.nameAr,
+            capacity: src.capacity,
+            mainTeacherId: src.mainTeacherId,
+            metadata: (src.metadata ?? {}) as Prisma.InputJsonValue,
+          },
+        });
+        taken.add(src.name);
+        created += 1;
+        await logAudit(tx, {
+          tenantId,
+          userId: session.user.id,
+          action: 'duplicate',
+          entityType: 'Class',
+          entityId: cls.id,
+          after: { name: cls.name, fromYearId: sourceYearId, toYearId: target.id },
+        });
+      }
+      return { created, skipped, targetYearLabel: target.label };
+    });
+
+    revalidatePath('/admin/classes');
+    return { ok: true, data };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
+  }
+}

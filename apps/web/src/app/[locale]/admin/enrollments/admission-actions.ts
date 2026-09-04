@@ -9,6 +9,7 @@ import type { Prisma } from '@/lib/db';
 import { computeSiblingDiscount } from '@/lib/enrollment-discount';
 import { addressesMatch } from '@/lib/address';
 import { buildInstallments, type FeeCategory } from '@/lib/fees';
+import { discountsForFeeWhere } from '@/lib/discounts';
 import { sendEnrollmentActivationEmails } from '@/lib/enrollment-activation-email';
 import { sendNotifications, parentRecipient } from '@/lib/notify';
 import { safeSendEmail } from '@/lib/email';
@@ -294,11 +295,7 @@ export async function acceptEnrollmentAction(
           let discountLabel = '';
           if (line.discountRuleId) {
             const rule = await tx.discountRule.findFirst({
-              where: {
-                id: line.discountRuleId,
-                active: true,
-                OR: [{ feeScheduleItemId: fee.id }, { feeScheduleItemId: null }],
-              },
+              where: { id: line.discountRuleId, ...discountsForFeeWhere(fee.id) },
             });
             if (!rule) throw new Error('Réduction invalide pour ce frais.');
             pct = Number(rule.pct);

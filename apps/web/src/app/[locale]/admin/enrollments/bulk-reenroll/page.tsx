@@ -20,7 +20,7 @@ export default async function BulkReenrollPage({
   const session = (await auth())!;
   const t = await getTranslations('admin.enrollments.bulk');
 
-  const { years, levels, sourceYearId, targetYearId, rows } = await withTenant(
+  const { years, levels, sourceYearId, targetYearId, rows, currency } = await withTenant(
     session.user.tenantId,
     async (tx) => {
       const years = await tx.academicYear.findMany({
@@ -84,6 +84,20 @@ export default async function BulkReenrollPage({
           : [];
         const existingByStudent = new Map(targetExisting.map((e) => [e.studentId, e.status]));
 
+        // Solde restant dû par élève : total des échéances non soldées, tous
+        // exercices confondus. On le montre avant la décision : réinscrire un
+        // élève dont la famille traîne un impayé n'est pas un geste anodin.
+        const installments = await tx.installment.findMany({
+          where: { studentId: { in: studentIds } },
+          select: { studentId: true, amount: true, payments: { select: { amount: true } } },
+        });
+        const balanceByStudent = new Map<string, number>();
+        for (const i of installments) {
+          const paid = i.payments.reduce((s, p) => s + Number(p.amount), 0);
+          const remaining = Math.max(0, Number(i.amount) - paid);
+          balanceByStudent.set(i.studentId, (balanceByStudent.get(i.studentId) ?? 0) + remaining);
+        }
+
         rows = sourceEnrollments.map((e) => {
           const suggested = proposeNextLevel(e.levelId, levels);
           const suggestedFull = suggested ? levels.find((l) => l.id === suggested.id) : null;
@@ -100,6 +114,7 @@ export default async function BulkReenrollPage({
             currentStatus: e.status as 'ACTIVE' | 'DRAFT',
             suggestedNextLevelId: suggested?.id ?? null,
             suggestedNextLevelLabel: suggestedFull?.label ?? null,
+            balance: Math.round((balanceByStudent.get(e.studentId) ?? 0) * 100) / 100,
             existingTargetStatus:
               (existingByStudent.get(e.studentId) as
                 | 'DRAFT'
@@ -111,7 +126,8 @@ export default async function BulkReenrollPage({
         });
       }
 
-      return { years, levels, sourceYearId, targetYearId, rows };
+      const tenant = await tx.tenant.findFirst({ select: { currency: true } });
+      return { years, levels, sourceYearId, targetYearId, rows, currency: tenant?.currency ?? 'MAD' };
     },
   );
 
@@ -149,6 +165,7 @@ export default async function BulkReenrollPage({
         locale={locale}
         years={yearOpts}
         levels={levels}
+        currency={currency}
         sourceYearId={sourceYearId ?? ''}
         targetYearId={targetYearId ?? ''}
         rows={rows}

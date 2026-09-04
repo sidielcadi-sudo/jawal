@@ -126,3 +126,15 @@ export async function verifyMobileParent(req: Request): Promise<MobilePrincipal 
   const principal = await verifyMobileToken(req);
   return principal?.role === 'parent' ? principal : null;
 }
+
+/**
+ * Vérifie qu'une requête mobile porte un jeton valide, **quel que soit
+ * l'espace**. Réservé aux routes qui ne parlent ni d'enfants ni de classes et
+ * dont la portée est déjà l'utilisateur lui-même : messagerie (les
+ * conversations sont filtrées par participation) et enregistrement des jetons
+ * push. Les restreindre au rôle parent renvoyait un 401 aux professeurs, que
+ * l'app interprète comme une session expirée et qui les déconnectait.
+ */
+export async function verifyMobileUser(req: Request): Promise<MobilePrincipal | null> {
+  return verifyMobileToken(req);
+}

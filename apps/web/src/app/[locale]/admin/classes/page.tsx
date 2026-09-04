@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import type { Prisma } from '@/lib/db';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
+import { DuplicateClassesButton } from './duplicate-classes';
 
 export default async function ClassesListPage({
   params,
@@ -58,12 +59,18 @@ export default async function ClassesListPage({
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
           <p className="mt-0.5 text-sm text-slate-600">{t('count', { count: classes.length })}</p>
         </div>
-        <Link
-          href={`${baseHref}/new`}
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-brand-700"
-        >
-          {t('actions.new')}
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <DuplicateClassesButton
+            years={years.map((y) => ({ id: y.id, label: y.label, active: y.active }))}
+            activeYear={activeYear ? { id: activeYear.id, label: activeYear.label } : null}
+          />
+          <Link
+            href={`${baseHref}/new`}
+            className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-brand-700"
+          >
+            {t('actions.new')}
+          </Link>
+        </div>
       </div>
 
       <form method="get" className="mb-4 flex flex-wrap items-end gap-3">

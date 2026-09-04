@@ -2245,7 +2245,10 @@ model FeeScheduleItem {
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   academicYear  AcademicYear   @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   level         Level          @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  /// Réductions rattachées à ce seul frais (ancien ciblage 1-N, conservé).
   discountRules DiscountRule[]
+  /// Réductions portant sur une sélection de frais (ciblage multiple).
+  scopedDiscounts DiscountRule[] @relation("DiscountRuleFees")
 
   @@unique([tenantId, academicYearId, levelId, label])
   @@map("fee_schedules")
@@ -2267,7 +2270,11 @@ model DiscountRule {
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   tenant Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  /// Ciblage historique : un seul frais (ou null = tous). Toujours honoré.
   fee    FeeScheduleItem? @relation(fields: [feeScheduleItemId], references: [id], onDelete: Cascade)
+  /// Ciblage multiple : la réduction porte sur cette sélection de frais.
+  /// Vide + `feeScheduleItemId` null ⇒ la réduction s'applique à tous les frais.
+  fees   FeeScheduleItem[] @relation("DiscountRuleFees")
 
   @@index([tenantId])
   @@map("discount_rules")

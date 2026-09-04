@@ -11,12 +11,13 @@ import {
 import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
-import { withTenant } from '@/lib/db';
+import { withTenant, type Prisma } from '@/lib/db';
 import {
   applyDiscount,
   computeSiblingDiscount,
   readSiblingDiscountPct,
 } from '@/lib/enrollment-discount';
+import { applicableAnnualFees, buildInstallments, type FeeCategory } from '@/lib/fees';
 
 type Result<T = void> =
   | { ok: true; data?: T }
@@ -371,23 +372,147 @@ export async function withdrawEnrollmentAction(
 }
 
 /**
+ * Génère l'échéancier d'un élève réinscrit, pour les seules catégories de
+ * frais cochées dans le lot.
+ *
+ * La réduction fratrie est calculée ici plutôt que laissée à l'agent : sur
+ * plusieurs centaines de dossiers, l'appliquer à la main est la garantie de
+ * l'oublier. Le rang se lit sur les dossiers **déjà créés** pour l'année
+ * cible dans la même famille — d'où l'importance de l'ordre de traitement :
+ * le premier enfant rencontré est l'aîné, les suivants sont des cadets.
+ *
+ * Cantine et transport ne sont posés que si l'élève est concerné (régime,
+ * transport scolaire), même s'ils sont cochés : cocher « Cantine » veut dire
+ * « génère la cantine à ceux qui en ont une », pas « facture tout le monde ».
+ */
+async function generateBulkInstallments(
+  tx: Prisma.TransactionClient,
+  opts: {
+    tenantId: string;
+    enrollmentId: string;
+    studentId: string;
+    academicYearId: string;
+    levelId: string;
+    categories: FeeCategory[];
+    siblingPct: number;
+  },
+): Promise<{ feeCount: number; pct: number }> {
+  const fees = await tx.feeScheduleItem.findMany({
+    where: {
+      academicYearId: opts.academicYearId,
+      levelId: opts.levelId,
+      kind: 'ANNUAL',
+      category: { in: opts.categories },
+    },
+  });
+  if (fees.length === 0) return { feeCount: 0, pct: 0 };
+
+  const student = await tx.person.findUnique({
+    where: { id: opts.studentId },
+    select: { regime: true, usesTransport: true },
+  });
+  const applicable = applicableAnnualFees(
+    fees.map((f) => ({ ...f, category: f.category as FeeCategory })),
+    { usesTransport: student?.usesTransport ?? false, regime: student?.regime ?? null },
+  );
+  if (applicable.length === 0) return { feeCount: 0, pct: 0 };
+
+  // Rang dans la fratrie : nombre de frères/sœurs déjà inscrits sur l'année.
+  const rels = await tx.personRelation.findMany({
+    where: { childId: opts.studentId },
+    select: { parentId: true },
+  });
+  let siblingsEnrolled = 0;
+  if (rels.length > 0) {
+    const sibs = await tx.personRelation.findMany({
+      where: { parentId: { in: rels.map((r) => r.parentId) }, childId: { not: opts.studentId } },
+      distinct: ['childId'],
+      select: { childId: true },
+    });
+    if (sibs.length > 0) {
+      siblingsEnrolled = await tx.enrollment.count({
+        where: {
+          studentId: { in: sibs.map((s) => s.childId) },
+          academicYearId: opts.academicYearId,
+          status: { in: ['ACTIVE', 'AFFECTE', 'INSCRIPTION_VALIDEE', 'ACCEPTE'] },
+        },
+      });
+    }
+  }
+  const { rank, pct } = computeSiblingDiscount(siblingsEnrolled, opts.siblingPct);
+
+  const yearStart = (
+    await tx.academicYear.findUniqueOrThrow({ where: { id: opts.academicYearId } })
+  ).startDate;
+
+  for (const fee of applicable) {
+    const drafts = buildInstallments(
+      {
+        id: fee.id,
+        label: fee.label,
+        category: fee.category as FeeCategory,
+        totalAmount: Number(fee.totalAmount),
+        installmentCount: fee.installmentCount,
+        installmentLocked: fee.installmentLocked,
+        firstDueMonth: fee.firstDueMonth,
+      },
+      { pct, count: fee.installmentCount, yearStart },
+    );
+    for (const d of drafts) {
+      await tx.installment.create({
+        data: {
+          tenantId: opts.tenantId,
+          studentId: opts.studentId,
+          feeScheduleItemId: d.feeScheduleItemId,
+          label: d.label,
+          amount: d.amount,
+          dueDate: d.dueDate,
+          status: 'PENDING',
+        },
+      });
+    }
+  }
+
+  await tx.enrollment.update({
+    where: { id: opts.enrollmentId },
+    data: {
+      feesGenerated: true,
+      siblingRank: rank,
+      discountPct: pct > 0 ? pct : null,
+      discountReason: pct > 0 ? `Fratrie (rang ${rank}) −${pct}%` : null,
+    },
+  });
+
+  return { feeCount: applicable.length, pct };
+}
+
+/**
  * Réinscription en lot d'une année source vers une année cible.
  *
  * Pour chaque item :
- *  - REENROLL → crée un Enrollment DRAFT (student × targetYear × targetLevel)
- *  - REPEAT → DRAFT au même niveau que la source
+ *  - REENROLL → crée un Enrollment (student × targetYear × targetLevel)
+ *  - REPEAT → même niveau que la source
  *  - GRADUATE → marque la source enrollment GRADUATED
  *  - SKIP → no-op
  *
  * Idempotent : si un dossier (student × targetYear) existe déjà, on saute
- * et on incrémente skipped. La création est en DRAFT volontairement —
- * c'est à l'admin de valider individuellement chaque dossier (choix classe
- * + génération échéancier + réduction fratrie).
+ * et on incrémente skipped.
+ *
+ * Sans catégorie de frais cochée, la création reste en DRAFT et l'échéancier
+ * se fait dossier par dossier. Avec, le lot génère l'échéancier (réduction
+ * fratrie comprise) et passe les dossiers en « Inscription validée » ;
+ * l'affectation de classe et les pièces restent manuelles.
  */
 export async function bulkReenrollAction(
   formData: FormData,
 ): Promise<
-  Result<{ created: number; graduated: number; skipped: number; errors: string[] }>
+  Result<{
+    created: number;
+    graduated: number;
+    skipped: number;
+    feesGenerated: number;
+    errors: string[];
+  }>
 > {
   const session = await auth();
   if (!session?.user) return { ok: false, error: 'Non authentifié' };
@@ -416,9 +541,19 @@ export async function bulkReenrollAction(
   let created = 0;
   let graduated = 0;
   let skipped = 0;
+  let feesGenerated = 0;
+  const withFees = parsed.data.feeCategories.length > 0;
+  // Statut porté par le lot : « En attente » ouvre un dossier à instruire,
+  // « Inscription validée » réinscrit d'office.
+  const targetStatus = parsed.data.targetStatus;
+  const decided = targetStatus === 'INSCRIPTION_VALIDEE';
 
   try {
     await withTenant(tenantId, async (tx) => {
+      // Réduction fratrie du tenant : appliquée aux cadets de chaque famille.
+      const tenant = await tx.tenant.findFirst({ select: { settings: true } });
+      const siblingPct = readSiblingDiscountPct(tenant?.settings);
+
       const sourceIds = parsed.data.items.map((i) => i.sourceEnrollmentId);
       const sources = await tx.enrollment.findMany({
         where: { id: { in: sourceIds }, academicYearId: parsed.data.sourceYearId },
@@ -469,13 +604,18 @@ export async function bulkReenrollAction(
           continue;
         }
 
-        await tx.enrollment.create({
+        // Le statut vient du choix de l'agent, pas de la génération d'échéancier :
+        // on peut vouloir un échéancier sur un dossier encore à instruire, ou
+        // l'inverse. Le reste (affectation de classe, pièces) se traite ensuite.
+        const enrollment = await tx.enrollment.create({
           data: {
             tenantId,
             studentId: src.studentId,
             academicYearId: parsed.data.targetYearId,
             levelId: targetLevelId,
-            status: 'DRAFT',
+            status: targetStatus,
+            decidedAt: decided ? new Date() : null,
+            decidedByUserId: decided ? session.user.id : null,
             notes:
               item.decision === 'REPEAT'
                 ? 'Redoublement — créé par réinscription en lot'
@@ -484,6 +624,27 @@ export async function bulkReenrollAction(
           },
         });
         created += 1;
+
+        if (withFees) {
+          try {
+            const gen = await generateBulkInstallments(tx, {
+              tenantId,
+              enrollmentId: enrollment.id,
+              studentId: src.studentId,
+              academicYearId: parsed.data.targetYearId,
+              levelId: targetLevelId,
+              categories: parsed.data.feeCategories,
+              siblingPct,
+            });
+            feesGenerated += gen.feeCount;
+          } catch (e) {
+            errors.push(
+              `Échéancier non généré (${src.id.slice(0, 8)}…) : ${
+                e instanceof Error ? e.message : 'erreur'
+              }`,
+            );
+          }
+        }
       }
 
       await logAudit(tx, {
@@ -499,13 +660,16 @@ export async function bulkReenrollAction(
           created,
           graduated,
           skipped,
+          targetStatus,
+          feeCategories: parsed.data.feeCategories,
+          feesGenerated,
           errorsCount: errors.length,
         },
       });
     });
 
     revalidatePath('/admin/enrollments');
-    return { ok: true, data: { created, graduated, skipped, errors } };
+    return { ok: true, data: { created, graduated, skipped, feesGenerated, errors } };
   } catch (e: unknown) {
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur inconnue' };
   }

@@ -1,13 +1,20 @@
 /**
  * Frais annuels : applicabilité conditionnelle + génération d'échéances.
  *
- * - Scolarité / Garderie / Autre : toujours applicables.
+ * - Scolarité / Inscription / Garderie / Autre : toujours applicables.
  * - Transport : seulement si l'élève utilise le transport scolaire.
  * - Cantine : seulement si demi-pensionnaire ou interne.
  */
 import { applyDiscount } from './enrollment-discount';
 
-export type FeeCategory = 'TUITION' | 'TRANSPORT' | 'CANTEEN' | 'DAYCARE' | 'OTHER';
+/** Aligné sur l'enum Prisma `FeeCategory`. */
+export type FeeCategory =
+  | 'TUITION'
+  | 'INSCRIPTION'
+  | 'TRANSPORT'
+  | 'CANTEEN'
+  | 'DAYCARE'
+  | 'OTHER';
 export type StudentRegime = 'EXTERNE' | 'DEMI_PENSIONNAIRE' | 'INTERNE' | null | undefined;
 
 export type AnnualFee = {
@@ -38,7 +45,7 @@ export function feeCategoryApplies(category: FeeCategory, ctx: StudentFeeContext
     case 'CANTEEN':
       return eatsAtCanteen(ctx.regime);
     default:
-      // TUITION, DAYCARE, OTHER : toujours applicables.
+      // TUITION, INSCRIPTION, DAYCARE, OTHER : toujours applicables.
       return true;
   }
 }

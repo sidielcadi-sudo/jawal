@@ -21,12 +21,17 @@ type Draft = Record<string, string>;
 
 const key = (devoirId: string, studentId: string) => `${devoirId}|${studentId}`;
 
+const ymd = (d: Date) => d.toISOString().slice(0, 10);
+
 /**
  * Saisie des notes d'un couple classe × matière.
  *
  * Sur mobile on saisit un devoir à la fois, élève par élève : la grille à deux
  * dimensions du portail web est illisible sur un écran de téléphone. Le devoir
  * se choisit en haut, la liste dessous ne montre que la colonne concernée.
+ *
+ * Le prof peut aussi créer le devoir ici : sans cela il devait ouvrir le
+ * portail web avant de pouvoir saisir la moindre note en classe.
  */
 export default function TeacherNotesScreen({
   classId,
@@ -47,6 +52,14 @@ export default function TeacherNotesScreen({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  /* Formulaire « nouveau devoir ». */
+  const [creating, setCreating] = useState(false);
+  const [newLabel, setNewLabel] = useState('');
+  const [newDate, setNewDate] = useState(() => ymd(new Date()));
+  const [newMax, setNewMax] = useState('20');
+  const [newWeight, setNewWeight] = useState('1');
+  const [savingDevoir, setSavingDevoir] = useState(false);
 
   const load = useCallback(async () => {
     if (!token) return;
@@ -72,6 +85,55 @@ export default function TeacherNotesScreen({
   }, [load]);
 
   const devoir = grid?.devoirs.find((d) => d.id === devoirId) ?? null;
+
+  const createDevoir = async () => {
+    if (!token || !grid) return;
+    const label = newLabel.trim();
+    if (!label) {
+      Alert.alert('Libellé manquant', 'Donnez un nom au devoir (ex. « Contrôle n°1 »).');
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDate)) {
+      Alert.alert('Date invalide', 'Format attendu : AAAA-MM-JJ.');
+      return;
+    }
+    const maxValue = Number(newMax.replace(',', '.'));
+    const weight = Number(newWeight.replace(',', '.'));
+    if (!Number.isFinite(maxValue) || maxValue < 1) {
+      Alert.alert('Barème invalide', 'Le barème doit être un nombre d’au moins 1.');
+      return;
+    }
+    if (!Number.isFinite(weight) || weight < 0.1) {
+      Alert.alert('Coefficient invalide', 'Le coefficient doit être d’au moins 0,1.');
+      return;
+    }
+
+    setSavingDevoir(true);
+    setError('');
+    try {
+      const res = await api.createTeacherDevoir(token, classId, subjectId, {
+        periodId: grid.periodId,
+        label,
+        date: newDate,
+        maxValue,
+        weight,
+      });
+      // Le nouveau devoir devient la colonne courante : le prof enchaîne
+      // directement sur la saisie des notes.
+      setDevoirId(res.id);
+      setCreating(false);
+      setNewLabel('');
+      setNewMax('20');
+      setNewWeight('1');
+      setNewDate(ymd(new Date()));
+      await load();
+    } catch (e) {
+      if (e instanceof ApiError && e.status === 401) return logout();
+      setError(e instanceof ApiError ? e.message : 'Erreur inattendue.');
+    } finally {
+      setSavingDevoir(false);
+    }
+  };
 
   const save = async () => {
     if (!token || !devoir) return;
@@ -141,8 +203,75 @@ export default function TeacherNotesScreen({
               ))}
             </View>
 
+            {/* Création d'un devoir — la colonne de notes se prépare ici. */}
+            {creating ? (
+              <View style={styles.formCard}>
+                <Text style={styles.formTitle}>Nouveau devoir</Text>
+
+                <Text style={styles.fieldLabel}>Libellé</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newLabel}
+                  onChangeText={setNewLabel}
+                  placeholder="Contrôle n°1"
+                  placeholderTextColor={colors.textMuted}
+                />
+
+                <Text style={styles.fieldLabel}>Date (AAAA-MM-JJ)</Text>
+                <TextInput
+                  style={styles.input}
+                  value={newDate}
+                  onChangeText={setNewDate}
+                  placeholder="2026-09-10"
+                  placeholderTextColor={colors.textMuted}
+                />
+
+                <View style={{ flexDirection: 'row', gap: 10 }}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.fieldLabel}>Barème</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={newMax}
+                      onChangeText={setNewMax}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.fieldLabel}>Coefficient</Text>
+                    <TextInput
+                      style={styles.input}
+                      value={newWeight}
+                      onChangeText={setNewWeight}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 10, marginTop: 14 }}>
+                  <TouchableOpacity
+                    style={styles.btnGhost}
+                    disabled={savingDevoir}
+                    onPress={() => setCreating(false)}
+                  >
+                    <Text style={styles.btnGhostText}>Annuler</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.btnCreate, { flex: 1, marginTop: 0 }, savingDevoir && { opacity: 0.6 }]}
+                    disabled={savingDevoir}
+                    onPress={createDevoir}
+                  >
+                    <Text style={styles.btnPrimaryText}>{savingDevoir ? '…' : 'Créer'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.btnCreate} onPress={() => setCreating(true)}>
+                <Text style={styles.btnPrimaryText}>＋ Nouveau devoir</Text>
+              </TouchableOpacity>
+            )}
+
             {grid.devoirs.length === 0 ? (
-              <EmptyCard text="Aucun devoir sur cette période. Créez-le depuis le portail web." />
+              <EmptyCard text="Aucun devoir sur cette période. Créez-en un pour saisir des notes." />
             ) : (
               <>
                 {/* Devoir courant */}
@@ -219,6 +348,43 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '800', color: colors.text, marginBottom: 10 },
   fieldLabel: { fontSize: 12, color: colors.textMuted, marginTop: 12, marginBottom: 6 },
   devoirMeta: { fontSize: 12, color: colors.textMuted, marginTop: 10, marginBottom: 8 },
+
+  /* ── Création d'un devoir ───────────────────────────────────────────── */
+  formCard: {
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: colors.brand200,
+    padding: 14,
+    marginTop: 14,
+  },
+  formTitle: { fontSize: 15, fontWeight: '800', color: colors.text },
+  input: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: colors.text,
+    backgroundColor: colors.bg,
+  },
+  btnCreate: {
+    backgroundColor: colors.brand,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 14,
+  },
+  btnGhost: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: colors.brand,
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  btnGhostText: { color: colors.brand, fontWeight: '700' },
 
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   chip: {

@@ -985,7 +985,8 @@
           "student": "Élève",
           "current": "Niveau / classe actuels",
           "decision": "Décision",
-          "targetLevel": "Niveau cible"
+          "targetLevel": "Niveau cible",
+          "balance": "Solde"
         },
         "filter": {
           "currentClass": "Classe actuelle",
@@ -993,6 +994,26 @@
           "allClasses": "Toutes les classes",
           "allLevels": "Tous les niveaux",
           "active": "{shown} ligne(s) affichée(s) sur {total}. « Appliquer à tous » ne porte que sur les lignes affichées ; les décisions des lignes masquées sont conservées et enregistrées."
+        },
+        "fees": {
+          "title": "Génération Échéancier",
+          "hint": "Cochez les frais dont l'échéancier doit être créé pour chaque élève réinscrit. La réduction fratrie du paramétrage est appliquée automatiquement.",
+          "categories": {
+            "INSCRIPTION": "Frais d'inscription",
+            "TUITION": "Frais de scolarité",
+            "CANTEEN": "Cantine",
+            "TRANSPORT": "Transport"
+          },
+          "warning": "Les dossiers créés passeront directement en « Inscription validée ». L'affectation de classe et les pièces restent à faire manuellement.",
+          "resultDetails": "{fees} échéancier(s) de frais générés."
+        },
+        "status": {
+          "label": "Statut cible",
+          "none": "— Aucun choix —",
+          "DRAFT": "En attente",
+          "INSCRIPTION_VALIDEE": "Inscription validée",
+          "hint": "Statut appliqué aux dossiers créés par le lot.",
+          "required": "Choisissez un statut cible avant de lancer la réinscription."
         }
       },
       "pagination": {
@@ -2859,7 +2880,7 @@
         "lastAttendance": "Dernier appel",
         "manageGrades": "Notes",
         "gradeBook": "Carnet de notes",
-        "timetable": "Emploi du temps",
+        "timetable": "EDT/Remplacement",
         "timetableConstraints": "Contraintes EDT",
         "programme": "Programme & affectations",
         "subject": "Matière",
@@ -2874,6 +2895,19 @@
         "viewDetail": "Détail",
         "levelLabel": "Niveau",
         "yearLabel": "Année scolaire"
+      },
+      "duplicate": {
+        "button": "Dupliquer classes",
+        "title": "Dupliquer les classes",
+        "subtitle": "Recopier la structure des classes d'une année précédente sur {year}.",
+        "sourceYear": "Année à dupliquer",
+        "copied": "Sont repris : nom de la classe, niveau, capacité, enseignant principal et salle attitrée. Les élèves, emplois du temps et appels ne sont pas copiés.",
+        "selectSource": "Choisissez une année source.",
+        "result": "{created} classe(s) créée(s), {skipped} ignorée(s) (nom déjà existant).",
+        "confirm": "Dupliquer",
+        "running": "Duplication…",
+        "cancel": "Annuler",
+        "close": "Fermer"
       }
     },
     "gradeBook": {
@@ -3144,6 +3178,17 @@
           "APPROVED": "Approuvée",
           "REJECTED": "Rejetée"
         }
+      },
+      "session": {
+        "date": "Date",
+        "slot": "Créneau · matière · professeur",
+        "wholeDay": "— Journée entière (sans créneau) —",
+        "noSubject": "Sans matière",
+        "noTeacher": "Sans professeur",
+        "done": "appel validé",
+        "draft": "brouillon",
+        "noSessions": "Aucune séance à l'emploi du temps ce jour : l'appel portera sur la journée entière.",
+        "hint": "Choisissez le créneau : l'appel se pose alors sur la même séance que celle du professeur."
       }
     },
     "settings": {
@@ -5213,6 +5258,7 @@
       "classes": "Mes classes",
       "leave": "Congés & absences",
       "messages": "Messages",
+      "announcements": "Annonces",
       "account": "Mon compte",
       "competences": "Compétences et aptitudes",
       "soutien": "Soutien scolaire"
@@ -5563,6 +5609,18 @@
         "saved": "{count} saisie(s) enregistrée(s).",
         "nothingToSave": "Aucune modification.",
         "noStudent": "Aucun élève."
+      }
+    },
+    "announcements": {
+      "title": "Annonces",
+      "empty": "Aucune annonce pour le moment.",
+      "audiences": {
+        "ALL": "Tous",
+        "PARENTS": "Parents",
+        "TEACHERS": "Enseignants",
+        "STAFF": "Personnel",
+        "CLASS": "Classe",
+        "LEVEL": "Niveau"
       }
     }
   },

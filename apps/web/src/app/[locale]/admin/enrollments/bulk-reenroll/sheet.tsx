@@ -28,10 +28,19 @@ export type Row = {
   currentStatus: 'ACTIVE' | 'DRAFT';
   suggestedNextLevelId: string | null;
   suggestedNextLevelLabel: string | null;
+  /** Reste dû par l'élève, toutes échéances confondues. */
+  balance: number;
   existingTargetStatus: 'DRAFT' | 'ACTIVE' | 'WITHDRAWN' | 'GRADUATED' | null;
 };
 
 type Decision = 'REENROLL' | 'REPEAT' | 'GRADUATE' | 'SKIP';
+
+/** Catégories dont le lot sait générer l'échéancier, dans l'ordre d'usage. */
+const FEE_CATEGORIES = ['INSCRIPTION', 'TUITION', 'CANTEEN', 'TRANSPORT'] as const;
+type FeeCategoryKey = (typeof FEE_CATEGORIES)[number];
+
+/** Statut donné aux dossiers créés. '' = pas encore choisi (refusé). */
+type TargetStatus = '' | 'DRAFT' | 'INSCRIPTION_VALIDEE';
 
 type ItemState = {
   decision: Decision;
@@ -42,6 +51,7 @@ export function BulkReenrollSheet({
   locale,
   years,
   levels,
+  currency,
   sourceYearId,
   targetYearId,
   rows,
@@ -49,6 +59,7 @@ export function BulkReenrollSheet({
   locale: string;
   years: YearOpt[];
   levels: LevelOpt[];
+  currency: string;
   sourceYearId: string;
   targetYearId: string;
   rows: Row[];
@@ -58,7 +69,14 @@ export function BulkReenrollSheet({
   const [pending, startTransition] = useTransition();
   const [result, setResult] = useState<
     | null
-    | { ok: true; created: number; graduated: number; skipped: number; errors: string[] }
+    | {
+        ok: true;
+        created: number;
+        graduated: number;
+        skipped: number;
+        feesGenerated: number;
+        errors: string[];
+      }
     | { ok: false; error: string }
   >(null);
 
@@ -85,6 +103,16 @@ export function BulkReenrollSheet({
   // conservées et partent quand même à l'enregistrement.
   const [classFilter, setClassFilter] = useState('');
   const [levelFilter, setLevelFilter] = useState('');
+
+  // Échéanciers à générer pendant le lot. Aucune case cochée = comportement
+  // historique : les dossiers naissent en brouillon, sans échéance.
+  const [feeCategories, setFeeCategories] = useState<FeeCategoryKey[]>([]);
+
+  // Statut cible : sans choix explicite, le lot est refusé. Réinscrire des
+  // centaines d'élèves dans le mauvais statut se rattrape très mal.
+  const [targetStatus, setTargetStatus] = useState<TargetStatus>('');
+  const toggleCategory = (c: FeeCategoryKey) =>
+    setFeeCategories((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
 
   const classOptions = useMemo(
     () =>
@@ -144,6 +172,10 @@ export function BulkReenrollSheet({
       setResult({ ok: false, error: t('selectTargetYear') });
       return;
     }
+    if (!targetStatus) {
+      setResult({ ok: false, error: t('status.required') });
+      return;
+    }
     const payload = {
       sourceYearId,
       targetYearId,
@@ -155,6 +187,8 @@ export function BulkReenrollSheet({
             ? it.targetLevelId
             : undefined,
       })),
+      targetStatus,
+      feeCategories,
     };
     const fd = new FormData();
     fd.append('payload', JSON.stringify(payload));
@@ -266,6 +300,50 @@ export function BulkReenrollSheet({
             </p>
           )}
 
+          {/* Statut cible — encadré rouge : c'est la décision structurante du
+              lot, elle doit sauter aux yeux avant de lancer l'exécution. */}
+          <div className="mt-4">
+            <label className="block text-xs font-medium uppercase text-slate-500">
+              {t('status.label')}
+            </label>
+            <select
+              value={targetStatus}
+              onChange={(e) => setTargetStatus(e.target.value as TargetStatus)}
+              className="mt-1 w-full rounded-lg border-2 border-red-500 px-3 py-2 text-sm focus:border-red-600 focus:outline-none focus:ring-1 focus:ring-red-500 sm:max-w-sm"
+            >
+              <option value="">{t('status.none')}</option>
+              <option value="DRAFT">{t('status.DRAFT')}</option>
+              <option value="INSCRIPTION_VALIDEE">{t('status.INSCRIPTION_VALIDEE')}</option>
+            </select>
+            <p className="mt-1 text-xs text-slate-500">{t('status.hint')}</p>
+          </div>
+
+          {/* Génération d'échéancier — le lot devient une décision : cocher une
+              catégorie fait naître les échéances (réduction fratrie comprise)
+              et passe les dossiers en « Inscription validée ». */}
+          <div className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+            <h3 className="text-sm font-semibold text-slate-900">{t('fees.title')}</h3>
+            <p className="mt-1 text-xs text-slate-500">{t('fees.hint')}</p>
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
+              {FEE_CATEGORIES.map((c) => (
+                <label key={c} className="flex items-center gap-2 text-sm text-slate-700">
+                  <input
+                    type="checkbox"
+                    checked={feeCategories.includes(c)}
+                    onChange={() => toggleCategory(c)}
+                    className="h-4 w-4 rounded border-slate-300"
+                  />
+                  {t(`fees.categories.${c}`)}
+                </label>
+              ))}
+            </div>
+            {feeCategories.length > 0 && (
+              <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                {t('fees.warning')}
+              </p>
+            )}
+          </div>
+
           <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
             <span className="text-slate-500">{t('applyAll')} :</span>
             <button
@@ -305,6 +383,7 @@ export function BulkReenrollSheet({
                 <tr>
                   <th className="px-3 py-3 text-start">{t('table.student')}</th>
                   <th className="px-3 py-3 text-start">{t('table.current')}</th>
+                  <th className="px-3 py-3 text-end">{t('table.balance')}</th>
                   <th className="px-3 py-3 text-start">{t('table.decision')}</th>
                   <th className="px-3 py-3 text-start">{t('table.targetLevel')}</th>
                 </tr>
@@ -333,6 +412,11 @@ export function BulkReenrollSheet({
                         <div className="text-[11px] text-slate-400">
                           {r.currentClassName ?? '—'} · {r.currentStatus}
                         </div>
+                      </td>
+                      <td className="px-3 py-2 text-end text-xs tabular-nums">
+                        <span className={r.balance > 0 ? 'font-semibold text-red-700' : 'text-slate-400'}>
+                          {r.balance.toLocaleString(locale, { minimumFractionDigits: 2 })} {currency}
+                        </span>
                       </td>
                       <td className="px-3 py-2">
                         <select
@@ -411,6 +495,11 @@ export function BulkReenrollSheet({
                     graduated: result.graduated,
                     skipped: result.skipped,
                   })}
+                  {result.feesGenerated > 0 && (
+                    <div className="mt-1">
+                      {t('fees.resultDetails', { fees: result.feesGenerated })}
+                    </div>
+                  )}
                   {result.errors.length > 0 && (
                     <ul className="mt-2 list-disc ps-5 text-xs">
                       {result.errors.slice(0, 10).map((err, i) => (
