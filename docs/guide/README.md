@@ -65,17 +65,33 @@ jeu de démonstration.
 
 ## 5. Produire le PDF
 
-Le manuel est écrit pour l'impression : titres numérotés, aucune dépendance au
-survol, tableaux courts. Deux chaînes possibles :
+Le manuel est écrit pour l'impression : titres numérotés, renvois par numéro de
+section plutôt que par lien, marqueurs `\newpage` en début de partie.
 
 ```bash
-# Option 1 — pandoc (rendu le plus propre, nécessite une installation)
-pandoc docs/guide/00-prise-en-main.md -o manuel-prise-en-main.pdf \
-  --toc --number-sections -V lang=fr -V geometry:margin=2cm
+# Manuel complet (tous les chapitres du § 2, dans l'ordre)
+pnpm docs:pdf
 
-# Option 2 — sans installation
-npx md-to-pdf docs/guide/00-prise-en-main.md
+# Un seul chapitre
+node docs/guide/build-pdf.mjs 00-prise-en-main
+node docs/guide/build-pdf.mjs espaces/parent
 ```
 
-Pour un manuel complet relié, concaténer les chapitres dans l'ordre du § 2 avant
-la conversion.
+Les fichiers sont produits dans `build/manuel/` (répertoire ignoré par Git) :
+le PDF et le HTML intermédiaire, utile pour vérifier la mise en page dans un
+navigateur avant impression.
+
+**Comment ça marche** — `docs/guide/build-pdf.mjs` convertit le Markdown en HTML
+(`markdown-it`), applique la feuille de style d'impression A4 intégrée au
+script, puis imprime avec le navigateur Chromium **déjà installé** sur le poste
+(Edge ou Chrome) en mode `--headless`. Aucun téléchargement de navigateur, pas
+de dépendance à `pandoc`.
+
+Si aucun navigateur n'est trouvé, renseigner son chemin :
+
+```bash
+CHROME_PATH="C:/Program Files/Google/Chrome/Application/chrome.exe" pnpm docs:pdf
+```
+
+> 💡 Pour changer la mise en page (marges, polices, couleurs des titres),
+> modifier le bloc `<style>` dans `build-pdf.mjs` — il est unique et commenté.
