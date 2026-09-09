@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
+import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
@@ -56,7 +57,14 @@ export function AlertsBell({
         await markAlertReadAction(a.id);
         setUnread((u) => Math.max(0, u - 1));
       }
-      if (a.link) router.push(a.link.startsWith('/') ? a.link : `/${locale}/admin/${a.link}`);
+      // La cible vient de la base (StaffAlert.link) : c'est une chaîne libre,
+      // pas une route connue à la compilation. `typedRoutes` exige donc un
+      // cast explicite — la validité de l'URL est garantie côté producteur
+      // de l'alerte, pas par le type.
+      if (a.link) {
+        const href = (a.link.startsWith('/') ? a.link : `/${locale}/admin/${a.link}`) as Route;
+        router.push(href);
+      }
       else router.refresh();
     });
   }

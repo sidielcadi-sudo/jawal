@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
+import { localizedLabel } from '@/lib/localized-name';
 import { computeKpis } from '@/lib/kpi-edt';
 import { loadSubjectCoverage } from '@/lib/subject-coverage';
 import {
@@ -23,7 +24,7 @@ export default async function TimetableDashboardPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ year?: string }>;
+  searchParams: Promise<{ year?: string; cycle?: string }>;
 }) {
   const { locale } = await params;
   const sp = await searchParams;
@@ -32,7 +33,7 @@ export default async function TimetableDashboardPage({
   const session = (await auth())!;
   const t = await getTranslations('admin.timetableDashboard');
 
-  const { years, year, isArchive, kpis, subjectCoverage } = await withTenant(
+  const { years, year, isArchive, kpis, subjectCoverage, cycles, cycle } = await withTenant(
     session.user.tenantId,
     async (tx) => {
       const years = await tx.academicYear.findMany({
@@ -44,11 +45,30 @@ export default async function TimetableDashboardPage({
       const active = years.find((y) => y.active) ?? null;
       const requested = sp.year ? (years.find((y) => y.id === sp.year) ?? null) : null;
       const year = requested ?? active;
-      if (!year) return { years, year: null, isArchive: false, kpis: null, subjectCoverage: [] };
 
-      const kpis = await computeKpis(tx, session.user.tenantId, year.id);
-      const subjectCoverage = await loadSubjectCoverage(tx, year.id);
-      return { years, year, isArchive: !year.active, kpis, subjectCoverage };
+      // Cycles ayant au moins une classe sur l'année : proposer « Primaire »
+      // à un établissement qui n'en a pas serait une impasse.
+      const cycles = await tx.cycle.findMany({
+        where: { levels: { some: { classes: { some: { academicYearId: year?.id ?? '', deletedAt: null } } } } },
+        orderBy: { order: 'asc' },
+        select: { id: true, label: true, labelAr: true },
+      });
+      if (!year) {
+        return { years, year: null, isArchive: false, kpis: null, subjectCoverage: [], cycles, cycle: null };
+      }
+
+      // Aucun cycle demandé = l'écran s'arrête au choix. Les indicateurs d'un
+      // cycle ne se lisent pas mélangés à ceux d'un autre : la couverture
+      // horaire du collège n'a rien à voir avec celle du lycée, et leur somme
+      // ne veut rien dire.
+      const cycle = sp.cycle ? (cycles.find((c) => c.id === sp.cycle) ?? null) : null;
+      if (!cycle) {
+        return { years, year, isArchive: !year.active, kpis: null, subjectCoverage: [], cycles, cycle: null };
+      }
+
+      const kpis = await computeKpis(tx, session.user.tenantId, year.id, cycle.id);
+      const subjectCoverage = await loadSubjectCoverage(tx, year.id, cycle.id);
+      return { years, year, isArchive: !year.active, kpis, subjectCoverage, cycles, cycle };
     },
   );
   const activeYear = year;
@@ -60,8 +80,12 @@ export default async function TimetableDashboardPage({
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
           <p className="mt-0.5 text-sm text-slate-600">
             {t('subtitle')}
-            {activeYear &&
-              ` · ${activeYear.label} (${activeYear.startDate.toLocaleDateString(locale)} → ${activeYear.endDate.toLocaleDateString(locale)})`}
+            {activeYear && ` · ${activeYear.label}`}
+            {cycle && (
+              <span className="ms-2 rounded-lg bg-brand-100 px-2 py-0.5 text-xs font-semibold text-brand-800">
+                {localizedLabel(locale, cycle.label, cycle.labelAr)}
+              </span>
+            )}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -115,7 +139,46 @@ export default async function TimetableDashboardPage({
         </div>
       )}
 
-      {!kpis ? (
+      {/* Choix du cycle : l'écran ne calcule rien tant qu'il n'est pas fait.
+          Un tableau de bord tous cycles confondus additionnait des grandeurs
+          qui ne s'additionnent pas. */}
+      {activeYear && (
+        <form className="mb-4 flex flex-wrap items-end gap-3 rounded-2xl border border-brand-200 bg-white px-4 py-3">
+          {sp.year && <input type="hidden" name="year" value={sp.year} />}
+          <label className="text-xs font-medium text-slate-700">
+            {t('cyclePicker.label')}
+            <select
+              name="cycle"
+              defaultValue={cycle?.id ?? ''}
+              className="mt-1 block rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-800"
+            >
+              <option value="">{t('cyclePicker.placeholder')}</option>
+              {cycles.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {localizedLabel(locale, c.label, c.labelAr)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="submit"
+            className="rounded-lg bg-brand-600 px-5 py-2 text-sm font-medium text-white hover:bg-brand-700"
+          >
+            {t('cyclePicker.submit')}
+          </button>
+          <p className="text-xs text-slate-500">{t('cyclePicker.hint')}</p>
+        </form>
+      )}
+
+      {activeYear && !cycle && (
+        <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
+          <p className="text-sm text-slate-500">{t('cyclePicker.empty')}</p>
+        </div>
+      )}
+
+      {/* Sans cycle choisi : rien. L'état vide du sélecteur suffit, un second
+          message « aucune donnée » serait du bruit. */}
+      {!cycle ? null : !kpis ? (
         <div className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
           {t('noData')}
         </div>
@@ -358,10 +421,13 @@ export default async function TimetableDashboardPage({
               regénérer une grille close écraserait un historique. */}
           <div className={`flex justify-center ${isArchive ? 'hidden' : ''}`}>
             <Link
-              href={`/${locale}/admin/timetable/generate${activeYear ? `?year=${activeYear.id}` : ''}`}
+              href={`/${locale}/admin/timetable/generate?${new URLSearchParams({
+                ...(activeYear ? { year: activeYear.id } : {}),
+                ...(cycle ? { cycle: cycle.id } : {}),
+              })}`}
               className="rounded-xl bg-emerald-600 px-8 py-3 text-base font-medium text-white shadow hover:bg-emerald-700"
             >
-              ✨ {t('generateButton')}
+              ✨ {t('generateForCycle', { cycle: localizedLabel(locale, cycle.label, cycle.labelAr) })}
             </Link>
           </div>
         </>

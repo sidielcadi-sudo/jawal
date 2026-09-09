@@ -17,6 +17,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(here, './src'),
+      // Les libs métier déclarent 'server-only' ; en test on le neutralise.
+      'server-only': path.resolve(here, './test/server-only-stub.ts'),
     },
   },
 });

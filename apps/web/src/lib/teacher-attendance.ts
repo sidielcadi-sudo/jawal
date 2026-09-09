@@ -212,9 +212,17 @@ export async function buildAppelRows(
   tx: Tx,
   classId: string,
   sessionId: string | null,
+  /** Restreint la feuille aux élèves du groupe. Null = la classe entière. */
+  groupId: string | null = null,
 ): Promise<AppelRow[]> {
   const enrolled = await tx.studentClass.findMany({
-    where: { classId, unenrolledAt: null },
+    where: {
+      classId,
+      unenrolledAt: null,
+      // Une séance dédoublée n'appelle que sa moitié : présenter les 26 élèves
+      // à un prof qui n'en a que 13 devant lui produirait 13 absences.
+      ...(groupId ? { student: { classGroupMemberships: { some: { groupId } } } } : {}),
+    },
     select: {
       student: {
         select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
@@ -386,6 +394,7 @@ export async function loadTeacherAppel(
       class: { select: { id: true, name: true } },
       room: { select: { code: true } },
       teacher: { select: { firstName: true, lastName: true } },
+      group: { select: { id: true, name: true } },
     },
   });
   if (!entry || entry.teacherId !== teacherId) return null;
@@ -396,10 +405,10 @@ export async function loadTeacherAppel(
 
   // Session existante (si l'appel a déjà été saisi) — lecture seule.
   const attSession = await tx.attendanceSession.findFirst({
-    where: { classId: entry.classId, date: dateOnly, periodLabel },
+    where: { classId: entry.classId, date: dateOnly, periodLabel, groupId: entry.groupId },
     select: { id: true, finalizedAt: true },
   });
-  const rows = await buildAppelRows(tx, entry.classId, attSession?.id ?? null);
+  const rows = await buildAppelRows(tx, entry.classId, attSession?.id ?? null, entry.groupId);
 
   return {
     sessionId: attSession?.id ?? null,
@@ -437,11 +446,17 @@ export async function getOrCreateAppelSession(
   const dateOnly = parseDateUTC(dateStr);
   const periodLabel = periodLabelOf(entry.slot.startTime, entry.slot.endTime);
   let sess = await tx.attendanceSession.findFirst({
-    where: { classId: entry.classId, date: dateOnly, periodLabel },
+    where: { classId: entry.classId, date: dateOnly, periodLabel, groupId: entry.groupId },
   });
   if (!sess) {
     sess = await tx.attendanceSession.create({
-      data: { tenantId, classId: entry.classId, date: dateOnly, periodLabel },
+      data: {
+        tenantId,
+        classId: entry.classId,
+        date: dateOnly,
+        periodLabel,
+        groupId: entry.groupId,
+      },
     });
   }
   return { sessionId: sess.id, finalizedAt: sess.finalizedAt };

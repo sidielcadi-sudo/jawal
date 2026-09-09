@@ -5,6 +5,7 @@ import { withTenant } from '@/lib/db';
 import type { Prisma } from '@/lib/db';
 import { Pagination } from '@/components/pagination';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
+import { SchoolFilters } from './school-filters';
 
 const PAGE_SIZE = 20;
 const VALID_TYPES = ['STUDENT', 'TEACHER', 'STAFF', 'PARENT'] as const;
@@ -44,10 +45,12 @@ export default async function PersonsListPage({
     page?: string;
     archived?: string;
     service?: string;
-    cycle?: string;
-    level?: string;
-    status?: string;
-    classId?: string;
+    // Filtres multi-valeurs : le formulaire émet une occurrence par case
+    // cochée, Next les remonte donc en tableau dès la deuxième.
+    cycle?: string | string[];
+    level?: string | string[];
+    status?: string | string[];
+    classId?: string | string[];
   }>;
 }) {
   const { locale } = await params;
@@ -67,12 +70,16 @@ export default async function PersonsListPage({
   const isStudentView = typeFilter === 'STUDENT';
   // Le filtre service ne s'applique qu'au personnel (STAFF) ; valeur = serviceId.
   const requestedService = typeFilter === 'STAFF' ? (sp.service ?? '') : '';
+  /** Un paramètre peut arriver seul ou répété : on ramène tout à un tableau. */
+  const asList = (v: string | string[] | undefined): string[] =>
+    v === undefined ? [] : Array.isArray(v) ? v.filter(Boolean) : v ? [v] : [];
+
   // Filtres scolarité (vue Élèves) : cycle / niveau / classe.
-  const cycleFilter = isStudentView ? sp.cycle || '' : '';
-  const levelFilter = isStudentView ? sp.level || '' : '';
-  const classFilter = isStudentView ? sp.classId || '' : '';
+  const cycleFilter = isStudentView ? asList(sp.cycle) : [];
+  const levelFilter = isStudentView ? asList(sp.level) : [];
+  const classFilter = isStudentView ? asList(sp.classId) : [];
   // Statut : dossier d'inscription côté élève, statut d'emploi côté personnel.
-  const statusFilter = sp.status || '';
+  const statusFilter = asList(sp.status);
   const isStaffView = isTeacherView || typeFilter === 'STAFF';
 
   type StudentRow = {
@@ -96,6 +103,15 @@ export default async function PersonsListPage({
   } = await withTenant(
     tenantId,
     async (tx) => {
+      // Année active : elle borne AUSSI le filtrage, pas seulement l'affichage.
+      // Un élève garde une ligne StudentClass par année scolaire ; sans cette
+      // borne, filtrer sur « 2AC » ramène ceux qui y étaient l'an dernier et
+      // que la liste affiche, à juste titre, en 3AC.
+      const activeYear = await tx.academicYear.findFirst({
+        where: { active: true },
+        select: { id: true },
+      });
+
       const services = await tx.service.findMany({
         where: { active: true },
         orderBy: [{ order: 'asc' }, { labelFr: 'asc' }],
@@ -118,9 +134,10 @@ export default async function PersonsListPage({
                 some: {
                   unenrolledAt: null,
                   class: {
-                    ...(classFilter ? { id: classFilter } : {}),
-                    ...(levelFilter ? { levelId: levelFilter } : {}),
-                    ...(cycleFilter ? { level: { cycleId: cycleFilter } } : {}),
+                    ...(activeYear ? { academicYearId: activeYear.id } : {}),
+                    ...(classFilter.length ? { id: { in: classFilter } } : {}),
+                    ...(levelFilter.length ? { levelId: { in: levelFilter } } : {}),
+                    ...(cycleFilter.length ? { level: { cycleId: { in: cycleFilter } } } : {}),
                   },
                 },
               },
@@ -128,11 +145,15 @@ export default async function PersonsListPage({
           : {}),
         // Élève : statut du dossier de l'année active. Personnel : colonne
         // dédiée `employmentStatus`.
-        ...(statusFilter && isStudentView
-          ? { enrollments: { some: { academicYear: { active: true }, status: statusFilter as never } } }
+        ...(statusFilter.length && isStudentView
+          ? {
+              enrollments: {
+                some: { academicYear: { active: true }, status: { in: statusFilter as never[] } },
+              },
+            }
           : {}),
-        ...(statusFilter && isStaffView
-          ? { employmentStatus: statusFilter as never }
+        ...(statusFilter.length && isStaffView
+          ? { employmentStatus: { in: statusFilter as never[] } }
           : {}),
         ...(search
           ? {
@@ -213,10 +234,6 @@ export default async function PersonsListPage({
       const studentExtras = new Map<string, StudentRow>();
       if (isStudentView && persons.length > 0) {
         const ids = persons.map((p) => p.id);
-        const activeYear = await tx.academicYear.findFirst({
-          where: { active: true },
-          select: { id: true },
-        });
         const [enr, rel, enrollments] = await Promise.all([
           tx.studentClass.findMany({
             where: {
@@ -289,12 +306,8 @@ export default async function PersonsListPage({
       // Options des filtres scolarité (vue Élèves).
       let cycles: { id: string; label: string }[] = [];
       let levels: { id: string; cycleId: string; label: string }[] = [];
-      let classOptions: { id: string; levelId: string; name: string }[] = [];
+      let classOptions: { id: string; levelId: string; cycleId: string; name: string }[] = [];
       if (typeFilter === 'STUDENT') {
-        const activeYear = await tx.academicYear.findFirst({
-          where: { active: true },
-          select: { id: true },
-        });
         const [cyc, lvl, cls] = await Promise.all([
           tx.cycle.findMany({ orderBy: { order: 'asc' }, select: { id: true, label: true } }),
           tx.level.findMany({
@@ -304,7 +317,7 @@ export default async function PersonsListPage({
           tx.class.findMany({
             where: { deletedAt: null, ...(activeYear ? { academicYearId: activeYear.id } : {}) },
             orderBy: { name: 'asc' },
-            select: { id: true, levelId: true, name: true, nameAr: true },
+            select: { id: true, levelId: true, name: true, nameAr: true, level: { select: { cycleId: true } } },
           }),
         ]);
         cycles = cyc;
@@ -316,6 +329,7 @@ export default async function PersonsListPage({
         classOptions = cls.map((c) => ({
           id: c.id,
           levelId: c.levelId,
+          cycleId: c.level.cycleId,
           name: localizedLabel(locale, c.name, c.nameAr),
         }));
       }
@@ -346,12 +360,15 @@ export default async function PersonsListPage({
     if (overrides.search) usp.set('search', overrides.search);
     if (showArchived && overrides.archived === undefined) usp.set('archived', '1');
     if (overrides.archived) usp.set('archived', overrides.archived);
-    if (cycleFilter && overrides.cycle === undefined) usp.set('cycle', cycleFilter);
+    // Filtres multi-valeurs : une occurrence du paramètre par valeur cochée,
+    // pour que la pagination et le tri conservent la sélection complète.
+    if (overrides.cycle === undefined) for (const v of cycleFilter) usp.append('cycle', v);
     if (overrides.cycle) usp.set('cycle', overrides.cycle);
-    if (levelFilter && overrides.level === undefined) usp.set('level', levelFilter);
+    if (overrides.level === undefined) for (const v of levelFilter) usp.append('level', v);
     if (overrides.level) usp.set('level', overrides.level);
-    if (classFilter && overrides.classId === undefined) usp.set('classId', classFilter);
+    if (overrides.classId === undefined) for (const v of classFilter) usp.append('classId', v);
     if (overrides.classId) usp.set('classId', overrides.classId);
+    if (overrides.status === undefined) for (const v of statusFilter) usp.append('status', v);
     if (overrides.page) usp.set('page', overrides.page);
     const s = usp.toString();
     return s ? `${baseHref}?${s}` : baseHref;
@@ -364,6 +381,17 @@ export default async function PersonsListPage({
       ]
     : 'new';
   const newLabel = t(`actions.${newKey}` as never);
+
+  // Options de statut : dossier d'inscription côté élève, statut d'emploi
+  // côté personnel — deux référentiels distincts sous un même libellé.
+  const statusOptions = isStudentView
+    ? STUDENT_STATUSES.map((st) => ({ id: st, label: t(`studentStatus.${st}` as never) }))
+    : isStaffView
+      ? EMPLOYMENT_STATUSES.map((st) => ({
+          id: st,
+          label: tForm(`employmentStatus.${st}` as never),
+        }))
+      : [];
 
   return (
     <div className="px-3 py-3">
@@ -430,76 +458,19 @@ export default async function PersonsListPage({
           </div>
         )}
         {(isStudentView || isStaffView) && (
-          <div className="min-w-[160px]">
-            <label className="block text-xs font-medium text-slate-600">{t('filters.status')}</label>
-            <select
-              name="status"
-              defaultValue={statusFilter}
-              className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
-            >
-              <option value="">{t('filters.allStatuses')}</option>
-              {(isStudentView ? STUDENT_STATUSES : EMPLOYMENT_STATUSES).map((st) => (
-                <option key={st} value={st}>
-                  {isStudentView
-                    ? t(`studentStatus.${st}` as never)
-                    : tForm(`employmentStatus.${st}` as never)}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-        {isStudentView && (
-          <>
-            <div className="min-w-[140px]">
-              <label className="block text-xs font-medium text-slate-600">{t('filters.cycle')}</label>
-              <select
-                name="cycle"
-                defaultValue={cycleFilter}
-                className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
-              >
-                <option value="">{t('filters.allCycles')}</option>
-                {cycles.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="min-w-[140px]">
-              <label className="block text-xs font-medium text-slate-600">{t('filters.level')}</label>
-              <select
-                name="level"
-                defaultValue={levelFilter}
-                className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
-              >
-                <option value="">{t('filters.allLevels')}</option>
-                {levels
-                  .filter((l) => !cycleFilter || l.cycleId === cycleFilter)
-                  .map((l) => (
-                    <option key={l.id} value={l.id}>
-                      {l.label}
-                    </option>
-                  ))}
-              </select>
-            </div>
-            <div className="min-w-[140px]">
-              <label className="block text-xs font-medium text-slate-600">{t('filters.class')}</label>
-              <select
-                name="classId"
-                defaultValue={classFilter}
-                className="focus:border-brand-500 focus:ring-brand-500 mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:outline-none focus:ring-1"
-              >
-                <option value="">{t('filters.allClasses')}</option>
-                {classOptions
-                  .filter((c) => !levelFilter || c.levelId === levelFilter)
-                  .map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          </>
+          <SchoolFilters
+            cycles={cycles}
+            levels={levels}
+            classes={classOptions}
+            statuses={statusOptions}
+            showSchool={isStudentView}
+            initial={{
+              cycle: cycleFilter,
+              level: levelFilter,
+              classId: classFilter,
+              status: statusFilter,
+            }}
+          />
         )}
         <button
           type="submit"

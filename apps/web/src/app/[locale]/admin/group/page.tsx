@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { computeHeadcount, computeAcademicOverview, computeAttendanceRate } from '@/lib/bi';
 import { pickPeriodId } from '@/lib/periods';
+import { yearInstallmentEnd } from '@/lib/school-year';
 import { tenantDisplayName } from '@/lib/tenant-name';
 import { BarChart, GroupedBarChart, siteColors, type Series } from './charts';
 import { AttendanceTabs, type SiteAttendance, type TopRow } from './attendance-tabs';
@@ -88,11 +89,20 @@ export default async function GroupDashboard({
         const academic = periodId ? await computeAcademicOverview(tx, periodId) : null;
         const attendance = periodId ? await computeAttendanceRate(tx, periodId) : null;
 
+        // Périmètre : l'ANNÉE SCOLAIRE active du site, pas l'historique. Sans
+        // cette borne, les créances des exercices antérieurs s'ajoutaient au
+        // « dû » de chaque site et faussaient la comparaison entre sites.
+        const yearWindow = year
+          ? { gte: year.startDate, lt: yearInstallmentEnd(year) }
+          : undefined;
         const installments = await tx.installment.findMany({
-          where: { status: { not: 'CANCELLED' } },
+          where: { status: { not: 'CANCELLED' }, ...(yearWindow ? { dueDate: yearWindow } : {}) },
           select: { amount: true, dueDate: true },
         });
-        const payments = await tx.payment.findMany({ select: { amount: true, paidAt: true } });
+        const payments = await tx.payment.findMany({
+          ...(yearWindow ? { where: { installment: { dueDate: yearWindow } } } : {}),
+          select: { amount: true, paidAt: true },
+        });
         const due = installments.reduce((s, i) => s + Number(i.amount), 0);
         const paid = payments.reduce((s, p) => s + Number(p.amount), 0);
         const tenant = await tx.tenant.findFirst({ select: { currency: true, name: true, nameAr: true } });

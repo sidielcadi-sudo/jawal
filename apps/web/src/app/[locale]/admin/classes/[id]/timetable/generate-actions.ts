@@ -14,6 +14,7 @@ import {
   type SolverSlot,
   type SolverTeacher,
 } from '@/lib/solver-client';
+import { buildLoadReport, explainEmptyLoad, type HoursBySubject } from '@/lib/timetable-load';
 
 type Result =
   | {
@@ -63,7 +64,18 @@ export async function generateTimetableAction(
     payload = await withTenant(tenantId, async (tx) => {
       const cls = await tx.class.findUnique({
         where: { id: classId },
-        select: { id: true, name: true, nameAr: true, academicYearId: true, levelId: true },
+        select: {
+          id: true,
+          name: true,
+          nameAr: true,
+          academicYearId: true,
+          levelId: true,
+          // La filière commande le programme au lycée : deux classes du même
+          // niveau (TC Sciences, TC Lettres) n'ont ni les mêmes matières ni les
+          // mêmes volumes.
+          trackId: true,
+          level: { select: { cycle: { select: { label: true } } } },
+        },
       });
       if (!cls) throw new Error('Classe introuvable.');
 
@@ -97,28 +109,58 @@ export async function generateTimetableAction(
         );
       }
 
-      // Volume horaire cible : si TeacherAssignment.hoursPerWeek est null,
-      // on retombe sur CurriculumSubject pour le (level × subject).
-      const curriculum = await tx.curriculumSubject.findMany({
-        where: { levelId: cls.levelId },
-      });
-      const curriculumByKey = new Map(
+      // Volume horaire cible, par cascade : affectation → filière → niveau.
+      // Cf. lib/timetable-load pour l'ordre et sa raison.
+      const [curriculum, trackRows] = await Promise.all([
+        tx.curriculumSubject.findMany({ where: { levelId: cls.levelId } }),
+        cls.trackId
+          ? tx.trackSubjectCoefficient.findMany({
+              where: { trackId: cls.trackId },
+              select: { subjectId: true, weeklyHours: true },
+            })
+          : Promise.resolve([]),
+      ]);
+      const curriculumHours: HoursBySubject = new Map(
         curriculum.map((c) => [c.subjectId, c.weeklyHours]),
       );
+      const trackHours: HoursBySubject | null = cls.trackId
+        ? new Map(trackRows.map((r) => [r.subjectId, r.weeklyHours]))
+        : null;
 
-      const solverAssignments: SolverAssignment[] = assignments.map((a) => {
-        const fallbackHours = curriculumByKey.get(a.subjectId) ?? 0;
-        const hours = a.hoursPerWeek ?? fallbackHours;
-        return {
+      const load = buildLoadReport(
+        assignments.map((a) => ({
           id: a.id,
-          teacher_id: a.teacherId,
-          subject_id: a.subjectId,
-          subject_label: a.subject.label,
-          class_id: cls.id,
-          class_name: cls.name,
-          weekly_hours: Math.max(0, Math.round(hours)),
-        };
-      });
+          teacherId: a.teacherId,
+          subjectId: a.subjectId,
+          subjectLabel: a.subject.label,
+          hoursPerWeek: a.hoursPerWeek,
+        })),
+        trackHours,
+        curriculumHours,
+      );
+
+      // Rien à placer : le solveur rendrait une grille vide et l'agent
+      // conclurait à un échec du moteur. On nomme la cause à la place.
+      if (load.totalHours === 0) {
+        throw new Error(
+          explainEmptyLoad({
+            hasTrack: Boolean(cls.trackId),
+            isLycee: /lyc/i.test(cls.level.cycle.label),
+            missingCount: load.missing.length,
+          }),
+        );
+      }
+
+      const hoursByAssignment = new Map(load.rows.map((r, i) => [assignments[i]!.id, r.hours]));
+      const solverAssignments: SolverAssignment[] = assignments.map((a) => ({
+        id: a.id,
+        teacher_id: a.teacherId,
+        subject_id: a.subjectId,
+        subject_label: a.subject.label,
+        class_id: cls.id,
+        class_name: cls.name,
+        weekly_hours: hoursByAssignment.get(a.id) ?? 0,
+      }));
 
       // Profs uniques avec dispo
       const teacherMap = new Map<string, SolverTeacher>();

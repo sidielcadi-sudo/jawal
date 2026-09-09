@@ -154,6 +154,14 @@ export default async function EnrollmentDetailPage({
       }
     }
 
+    // Années scolaires : servent à rattacher chaque créance antérieure à son
+    // exercice (une échéance ne porte pas d'academicYearId — on la situe par
+    // sa date d'échéance, ce qui marche aussi pour les frais ad hoc).
+    const academicYears = await tx.academicYear.findMany({
+      select: { id: true, label: true, startDate: true, endDate: true },
+      orderBy: { startDate: 'desc' },
+    });
+
     const tenant = await tx.tenant.findFirstOrThrow();
     return {
       enrollment,
@@ -164,6 +172,7 @@ export default async function EnrollmentDetailPage({
       requiredDocs,
       enrollmentDocs,
       previousDue,
+      academicYears,
       annualFeesRaw,
       discountRules: discountRules.map((d) => ({ ...d, pct: Number(d.pct) })),
       feeMeta: Array.from(feeMetaById.entries()),
@@ -181,6 +190,7 @@ export default async function EnrollmentDetailPage({
     requiredDocs,
     enrollmentDocs,
     previousDue,
+    academicYears,
     annualFeesRaw,
     discountRules,
     feeMeta,
@@ -271,6 +281,60 @@ export default async function EnrollmentDetailPage({
     (s, i) => s + Number(i.amount) - i.payments.reduce((ps, p) => ps + Number(p.amount), 0),
     0,
   );
+
+  // Créances antérieures regroupées PAR ÉLÈVE : une famille peut traîner des
+  // impayés sur plusieurs enfants et plusieurs exercices ; la liste à plat
+  // devenait illisible dès qu'il y avait plus de trois lignes.
+  const yearLabelOf = (d: Date) =>
+    academicYears.find((y) => d >= y.startDate && d <= y.endDate)?.label ?? '—';
+  const previousDueByStudent = (() => {
+    const groups = new Map<
+      string,
+      {
+        studentName: string;
+        total: number;
+        rows: {
+          id: string;
+          label: string;
+          yearLabel: string;
+          dueDate: Date;
+          amount: number;
+          paid: number;
+          remaining: number;
+        }[];
+      }
+    >();
+    for (const i of previousDue) {
+      const paid = i.payments.reduce((s, p) => s + Number(p.amount), 0);
+      const remaining = Number(i.amount) - paid;
+      const g = groups.get(i.studentId) ?? {
+        studentName: personDisplayName(locale, i.student),
+        total: 0,
+        rows: [],
+      };
+      g.total += remaining;
+      g.rows.push({
+        id: i.id,
+        label: i.label,
+        yearLabel: yearLabelOf(i.dueDate),
+        dueDate: i.dueDate,
+        amount: Number(i.amount),
+        paid,
+        remaining,
+      });
+      groups.set(i.studentId, g);
+    }
+    // L'élève du dossier en premier, puis les fratries par montant décroissant.
+    return [...groups.entries()]
+      .map(([studentId, g]) => ({ studentId, ...g }))
+      .sort((a, b) =>
+        a.studentId === enrollment.studentId
+          ? -1
+          : b.studentId === enrollment.studentId
+            ? 1
+            : b.total - a.total,
+      );
+  })();
 
   const docRows = requiredDocs.map((rd) => {
     const ed = docByReq.get(rd.id);
@@ -530,18 +594,67 @@ export default async function EnrollmentDetailPage({
               currency: tenant.currency,
             })}
           </p>
-          <ul className="mt-2 flex flex-wrap gap-1.5">
-            {previousDue.map((i) => (
-              <li
-                key={i.id}
-                className="rounded border border-amber-200 bg-white px-1.5 py-0.5 text-[11px] text-amber-800"
-              >
-                <strong>{personDisplayName(locale, i.student)}</strong> · {i.label} ·{' '}
-                {new Date(i.dueDate).toLocaleDateString(locale)} · {Number(i.amount).toFixed(0)}{' '}
-                {tenant.currency}
-              </li>
-            ))}
-          </ul>
+          <div className="mt-3 overflow-x-auto rounded-xl border border-amber-200 bg-white">
+            <table className="w-full text-xs">
+              <thead className="border-b border-amber-200 bg-amber-100/60 text-[11px] uppercase tracking-wide text-amber-900">
+                <tr>
+                  <th className="px-3 py-2 text-start">{t('detail.previousDueTable.year')}</th>
+                  <th className="px-3 py-2 text-start">{t('detail.previousDueTable.label')}</th>
+                  <th className="px-3 py-2 text-start">{t('detail.previousDueTable.dueDate')}</th>
+                  <th className="px-3 py-2 text-end">{t('detail.previousDueTable.amount')}</th>
+                  <th className="px-3 py-2 text-end">{t('detail.previousDueTable.paid')}</th>
+                  <th className="px-3 py-2 text-end">{t('detail.previousDueTable.remaining')}</th>
+                </tr>
+              </thead>
+              {previousDueByStudent.map((g) => (
+                <tbody key={g.studentId} className="divide-y divide-amber-100">
+                  {/* En-tête de groupe : un élève = un sous-total. */}
+                  <tr className="bg-amber-50/70">
+                    <td colSpan={5} className="px-3 py-1.5 font-semibold text-amber-900">
+                      {g.studentName}
+                      {g.studentId === enrollment.studentId && (
+                        <span className="ms-1.5 font-normal text-amber-700">
+                          ({t('detail.previousDueTable.thisStudent')})
+                        </span>
+                      )}
+                      <span className="ms-1.5 font-normal text-amber-700">
+                        · {t('detail.previousDueTable.lines', { count: g.rows.length })}
+                      </span>
+                    </td>
+                    <td className="px-3 py-1.5 text-end font-semibold tabular-nums text-amber-900">
+                      {g.total.toFixed(2)} {tenant.currency}
+                    </td>
+                  </tr>
+                  {g.rows.map((r) => (
+                    <tr key={r.id} className="text-amber-900">
+                      <td className="px-3 py-1.5 text-amber-700">{r.yearLabel}</td>
+                      <td className="px-3 py-1.5">{r.label}</td>
+                      <td className="px-3 py-1.5 text-amber-700">
+                        {new Date(r.dueDate).toLocaleDateString(locale)}
+                      </td>
+                      <td className="px-3 py-1.5 text-end tabular-nums">{r.amount.toFixed(2)}</td>
+                      <td className="px-3 py-1.5 text-end tabular-nums text-emerald-700">
+                        {r.paid.toFixed(2)}
+                      </td>
+                      <td className="px-3 py-1.5 text-end font-medium tabular-nums text-red-700">
+                        {r.remaining.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              ))}
+              <tfoot className="border-t-2 border-amber-300 bg-amber-100/60">
+                <tr>
+                  <td colSpan={5} className="px-3 py-2 text-end font-semibold text-amber-900">
+                    {t('detail.previousDueTable.total')}
+                  </td>
+                  <td className="px-3 py-2 text-end font-bold tabular-nums text-red-800">
+                    {previousDueTotal.toFixed(2)} {tenant.currency}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
           <SettleDebtsButton
             installmentIds={previousDue
               .filter((i) => Number(i.amount) - i.payments.reduce((s, p) => s + Number(p.amount), 0) > 0)

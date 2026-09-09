@@ -11,6 +11,7 @@ type ClassRow = {
   id: string;
   name: string;
   levelLabel: string;
+  cycleId: string;
   assignmentCount: number;
   entryCount: number;
 };
@@ -60,18 +61,33 @@ export function GenerateGlobalForm({
   locale,
   academicYearId,
   classes,
+  cycleId,
 }: {
   locale: string;
   academicYearId: string;
   classes: ClassRow[];
+  /** Cycle à présélectionner, venu du tableau de bord. Null = toutes. */
+  cycleId: string | null;
 }) {
   const t = useTranslations('admin.timetable.generateMulti');
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [engine, setEngine] = useState<'ortools' | 'fet'>('fet');
+  /**
+   * Présélection : les classes du cycle demandé qui ont des affectations.
+   *
+   * Arriver du tableau de bord après avoir préparé le collège, et trouver les
+   * 25 classes cochées, ferait générer les deux cycles d'un coup — l'inverse
+   * de ce qu'on venait de faire. Sans cycle, on retombe sur toutes les classes
+   * prêtes, comme avant.
+   */
   const [selected, setSelected] = useState<Set<string>>(
-    new Set(classes.filter((c) => c.assignmentCount > 0).map((c) => c.id)),
+    new Set(
+      classes
+        .filter((c) => c.assignmentCount > 0 && (!cycleId || c.cycleId === cycleId))
+        .map((c) => c.id),
+    ),
   );
   const [result, setResult] = useState<
     null | { ok: true; data: ResultData } | { ok: false; error: string }

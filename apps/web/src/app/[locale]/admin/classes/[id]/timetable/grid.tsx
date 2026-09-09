@@ -24,10 +24,15 @@ export type GridEntry = {
   teacherName: string | null;
   roomId: string | null;
   roomLabel: string | null;
+  /** Groupe visé. Null = la classe entière. */
+  groupId: string | null;
+  groupName: string | null;
   note: string | null;
 };
 
 export type SubjectOpt = { id: string; label: string };
+/** Groupe de la classe, proposé à la case selon la matière choisie. */
+export type GroupOpt = { id: string; label: string; subjectId: string | null; size: number };
 export type TeacherOpt = { id: string; label: string };
 export type RoomOpt = { id: string; label: string };
 
@@ -37,7 +42,11 @@ type EditState = {
   subjectId: string;
   teacherId: string;
   roomId: string;
+  /** '' = classe entière. */
+  groupId: string;
   note: string;
+  /** Séance en cours de modification, s'il y en a une. */
+  entryId: string | null;
 };
 
 export type CellOverride = { kind: 'CANCELLED' | 'SUBSTITUTION'; label: string };
@@ -55,6 +64,7 @@ export function TimetableGrid({
   subjects,
   teachers,
   rooms,
+  groups,
 }: {
   locale: string;
   classId: string;
@@ -69,6 +79,8 @@ export function TimetableGrid({
   subjects: SubjectOpt[];
   teachers: TeacherOpt[];
   rooms: RoomOpt[];
+  /** Groupes de la classe, toutes matières confondues. */
+  groups: GroupOpt[];
 }) {
   const t = useTranslations('admin.timetable');
   const router = useRouter();
@@ -76,23 +88,49 @@ export function TimetableGrid({
   const [editing, setEditing] = useState<EditState | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Index entries par (day, slot) pour lookup O(1)
-  const entryByKey = useMemo(() => {
-    const m = new Map<string, GridEntry>();
-    for (const e of entries) m.set(`${e.dayOfWeek}|${e.slotId}`, e);
+  /**
+   * Séances par (jour, créneau) — une LISTE, pas une séance unique.
+   *
+   * Le dédoublement autorise plusieurs séances simultanées sur une même case
+   * dès qu'elles visent des groupes distincts. L'index précédent n'en gardait
+   * qu'une : la seconde existait en base sans jamais s'afficher.
+   */
+  const entriesByKey = useMemo(() => {
+    const m = new Map<string, GridEntry[]>();
+    for (const e of entries) {
+      const k = `${e.dayOfWeek}|${e.slotId}`;
+      const arr = m.get(k) ?? [];
+      arr.push(e);
+      m.set(k, arr);
+    }
+    // Classe entière d'abord, puis les groupes par nom : l'ordre d'affichage
+    // ne doit pas dépendre de l'ordre de création.
+    for (const arr of m.values()) {
+      arr.sort((a, b) =>
+        a.groupId === b.groupId
+          ? 0
+          : a.groupId === null
+            ? -1
+            : b.groupId === null
+              ? 1
+              : (a.groupName ?? '').localeCompare(b.groupName ?? ''),
+      );
+    }
     return m;
   }, [entries]);
 
-  const onCellClick = (day: DayKey, slot: GridSlot) => {
+  /** Ouvre l'édition d'une séance existante, ou d'une nouvelle sur la case. */
+  const openEditor = (day: DayKey, slot: GridSlot, existing?: GridEntry) => {
     if (slot.isBreak) return;
-    const existing = entryByKey.get(`${day}|${slot.id}`);
     setEditing({
       day,
       slotId: slot.id,
       subjectId: existing?.subjectId ?? '',
       teacherId: existing?.teacherId ?? '',
       roomId: existing?.roomId ?? '',
+      groupId: existing?.groupId ?? '',
       note: existing?.note ?? '',
+      entryId: existing?.id ?? null,
     });
     setError(null);
   };
@@ -108,6 +146,7 @@ export function TimetableGrid({
       subjectId: editing.subjectId || undefined,
       teacherId: editing.teacherId || undefined,
       roomId: editing.roomId || undefined,
+      groupId: editing.groupId || undefined,
       note: editing.note || undefined,
     };
     const fd = new FormData();
@@ -160,20 +199,24 @@ export function TimetableGrid({
                       </td>
                     );
                   }
-                  const e = entryByKey.get(`${d}|${s.id}`);
-                  const inConflict = e && conflictEntryIds.has(e.id);
-                  const outOfAvailability = e && availabilityWarningIds?.has(e.id);
-                  const ov = e ? approvedOverrides?.[e.id] : undefined;
-                  const cancelled = ov?.kind === 'CANCELLED';
+                  const cell = entriesByKey.get(`${d}|${s.id}`) ?? [];
+                  const split = cell.length > 1 || cell.some((x) => x.groupId);
                   return (
-                    <td
-                      key={d}
-                      className="cursor-pointer px-2 py-2 align-top hover:bg-slate-50"
-                      onClick={() => onCellClick(d, s)}
-                    >
-                      {e ? (
+                    <td key={d} className="px-2 py-2 align-top">
+                      <div className="space-y-1">
+                      {cell.map((e) => {
+                      const inConflict = conflictEntryIds.has(e.id);
+                      const outOfAvailability = availabilityWarningIds?.has(e.id);
+                      const ov = approvedOverrides?.[e.id];
+                      const cancelled = ov?.kind === 'CANCELLED';
+                      return (
                         <div
-                          className={`rounded-lg border p-2 text-[11px] leading-tight ${
+                          key={e.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openEditor(d, s, e)}
+                          onKeyDown={(ev) => ev.key === 'Enter' && openEditor(d, s, e)}
+                          className={`cursor-pointer rounded-lg border p-2 text-[11px] leading-tight hover:brightness-95 ${
                             cancelled
                               ? 'border-red-300 bg-red-50'
                               : ov
@@ -188,6 +231,13 @@ export function TimetableGrid({
                           <div className={`font-semibold ${cancelled ? 'text-red-700 line-through' : 'text-slate-900'}`}>
                             {e.subjectLabel ?? t('untitledCourse')}
                           </div>
+                          {/* Le groupe se lit AVANT le prof : c'est lui qui dit
+                              quels élèves sont concernés. */}
+                          {e.groupName && (
+                            <div className="mt-0.5 inline-block rounded bg-indigo-100 px-1 py-0.5 text-[10px] font-semibold text-indigo-800">
+                              {e.groupName}
+                            </div>
+                          )}
                           {e.teacherName && (
                             <div className={`mt-0.5 ${cancelled ? 'text-red-400 line-through' : 'text-slate-600'}`}>{e.teacherName}</div>
                           )}
@@ -214,11 +264,25 @@ export function TimetableGrid({
                             </div>
                           )}
                         </div>
-                      ) : (
-                        <div className="rounded-lg border border-dashed border-slate-200 p-2 text-center text-[10px] text-slate-300 hover:border-brand-300 hover:text-brand-600">
-                          + {t('add')}
+                      );
+                      })}
+
+                      {/* Ajouter : toujours proposé quand la case est vide, et
+                          aussi sous un dédoublement — c'est là qu'on ajoute le
+                          groupe suivant. Jamais sous une séance en classe
+                          entière : le serveur la refuserait. */}
+                      {(cell.length === 0 || split) && (
+                        <div
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => openEditor(d, s)}
+                          onKeyDown={(ev) => ev.key === 'Enter' && openEditor(d, s)}
+                          className="cursor-pointer rounded-lg border border-dashed border-slate-200 p-1.5 text-center text-[10px] text-slate-300 hover:border-brand-300 hover:text-brand-600"
+                        >
+                          + {cell.length === 0 ? t('add') : t('addGroup')}
                         </div>
                       )}
+                      </div>
                     </td>
                   );
                 })}
@@ -261,6 +325,32 @@ export function TimetableGrid({
                   ))}
                 </select>
               </Field>
+              {/* Groupe : filtré par la matière choisie, plus les groupes
+                  polyvalents. Sans matière, on montre tout — l'agent choisit
+                  souvent le groupe après la matière, mais pas toujours. */}
+              {groups.length > 0 && (
+                <Field label={t('group')}>
+                  <select
+                    value={editing.groupId}
+                    onChange={(e) => setEditing({ ...editing, groupId: e.target.value })}
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
+                  >
+                    <option value="">{t('wholeClass')}</option>
+                    {groups
+                      .filter(
+                        (g) =>
+                          g.subjectId === null ||
+                          !editing.subjectId ||
+                          g.subjectId === editing.subjectId,
+                      )
+                      .map((g) => (
+                        <option key={g.id} value={g.id}>
+                          {g.label} ({g.size})
+                        </option>
+                      ))}
+                  </select>
+                </Field>
+              )}
               <Field label={t('teacher')}>
                 <select
                   value={editing.teacherId}

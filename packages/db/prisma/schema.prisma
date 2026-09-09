@@ -410,6 +410,8 @@ model Tenant {
   requiredDocuments           RequiredDocument[]
   enrollmentDocuments         EnrollmentDocument[]
   timetableSlots              TimetableSlot[]
+  classGroups                 ClassGroup[]
+  classGroupMembers           ClassGroupMember[]
   timetableEntries            TimetableEntry[]
   timetableOverrides          TimetableOverride[]
   timetableConstraints        TimetableConstraint[]
@@ -455,6 +457,19 @@ model Tenant {
   radiationRequests           RadiationRequest[]
   radiationRefunds            RadiationRefund[]
   staffAlerts                 StaffAlert[]
+  tracks                      Track[]
+  trackSubjectCoefficients    TrackSubjectCoefficient[]
+  gradingRules                GradingRule[]
+  examSessions                ExamSession[]
+  examSessionTracks           ExamSessionTrack[]
+  examPapers                  ExamPaper[]
+  examRoomAllocations         ExamRoomAllocation[]
+  examSupervisors             ExamSupervisor[]
+  examSeats                   ExamSeat[]
+  examGraders                 ExamGrader[]
+  examMarks                   ExamMark[]
+  examBlueprints              ExamBlueprint[]
+  examPaperTracks             ExamPaperTrack[]
 
   @@map("tenants")
 }
@@ -628,6 +643,10 @@ model Person {
   delegateOfClass           Class[]                     @relation("ClassDelegate")
   attendanceRecords         AttendanceRecord[]          @relation("StudentAttendance")
   grades                    Grade[]                     @relation("StudentGrades")
+  examSeats                 ExamSeat[]                  @relation("ExamSeats")
+  examMarks                 ExamMark[]                  @relation("ExamMarks")
+  examSupervisions          ExamSupervisor[]            @relation("ExamSupervisions")
+  examGradings              ExamGrader[]                @relation("ExamGradings")
   subjectAppreciations      SubjectAppreciation[]       @relation("StudentSubjectAppreciations")
   councilEntries            CouncilEntry[]              @relation("StudentCouncil")
   carnetEntries             CarnetEntry[]               @relation("StudentCarnet")
@@ -656,6 +675,7 @@ model Person {
   staffAttendance           StaffAttendance[]           @relation("StaffAttendance")
   enrollments               Enrollment[]                @relation("StudentEnrollments")
   timetableEntries          TimetableEntry[]            @relation("TeacherTimetable")
+  classGroupMemberships     ClassGroupMember[]          @relation("StudentClassGroups")
   substitutionsAsTeacher    TimetableOverride[]         @relation("SubstituteTeacher")
   /// Liens de parenté où cette personne est l'enfant (FROM = student/PARENT-child)
   relationsAsChild          PersonRelation[]            @relation("ChildRelations")
@@ -939,6 +959,8 @@ model AcademicYear {
   timetableEntries   TimetableEntry[]
   admissionQuotas    AdmissionQuota[]
   exceptionalFees    ExceptionalFee[]
+  gradingRules       GradingRule[]
+  examSessions       ExamSession[]
 
   @@unique([tenantId, label])
   @@map("academic_years")
@@ -960,6 +982,7 @@ model Period {
   tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   evaluations  Evaluation[]
+  examSessions ExamSession[]
 
   @@index([tenantId, academicYearId])
   @@map("periods")
@@ -981,6 +1004,7 @@ model Cycle {
 
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   levels        Level[]
+  priorityRooms Room[]
   teacherCycles TeacherCycle[]
 
   @@unique([tenantId, code])
@@ -1009,6 +1033,9 @@ model Level {
   admissionQuotas    AdmissionQuota[]
   requiredDocuments  RequiredDocument[]
   books              Book[]
+  tracks             Track[]
+  gradingRules       GradingRule[]
+  examSessions       ExamSession[]
 
   @@unique([tenantId, code])
   @@map("levels")
@@ -1044,6 +1071,8 @@ model Class {
   tenantId       String    @map("tenant_id") @db.Uuid
   academicYearId String    @map("academic_year_id") @db.Uuid
   levelId        String    @map("level_id") @db.Uuid
+  /// Filière de la classe (lycée). Null hors lycée.
+  trackId        String?   @map("track_id") @db.Uuid
   name           String // "1AC-A", "TD-Info-1"
   /// Libellé arabe de la classe (import MASSAR, documents et bulletins en AR).
   nameAr         String?   @map("name_ar")
@@ -1060,6 +1089,7 @@ model Class {
   tenant                 Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   academicYear           AcademicYear           @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   level                  Level                  @relation(fields: [levelId], references: [id])
+  track                  Track?                 @relation(fields: [trackId], references: [id])
   mainTeacher            Person?                @relation("MainTeacher", fields: [mainTeacherId], references: [id])
   delegate               Person?                @relation("ClassDelegate", fields: [delegateId], references: [id])
   students               StudentClass[]
@@ -1070,10 +1100,81 @@ model Class {
   timetableEntries       TimetableEntry[]
   lessonEntries          LessonEntry[]
   teacherPriorityClasses TeacherPriorityClass[]
+  groups                 ClassGroup[]
 
   @@unique([tenantId, academicYearId, name])
   @@index([tenantId, levelId])
   @@map("classes")
+}
+
+/// Groupe d'une classe pour une matière donnée : le dédoublement.
+///
+/// Certaines séances se font en demi-classe — langues, TP de physique ou de
+/// SVT. L'élève garde UNE seule classe (appel, bulletin, effectifs) ; le
+/// groupe n'existe que pour la matière concernée, et seulement à l'emploi du
+/// temps.
+///
+/// `subjectId` null = groupe polyvalent (une répartition « groupe A / groupe B »
+/// réutilisée par plusieurs matières). Renseigné, le groupe ne vaut que pour
+/// cette matière — c'est le cas courant : les groupes de français et ceux de
+/// physique ne contiennent pas les mêmes élèves.
+model ClassGroup {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  classId   String   @map("class_id") @db.Uuid
+  /// Matière à laquelle le groupe s'applique. Null = toutes.
+  subjectId String?  @map("subject_id") @db.Uuid
+  name      String // "Groupe 1", "Gr. A"
+  nameAr    String?  @map("name_ar")
+  order     Int      @default(0)
+  /// Nombre d'heures hebdomadaires réellement dédoublées, sur le volume de la
+  /// matière. Null = toutes les heures.
+  ///
+  /// Un dédoublement n'est pas toujours permanent : sur 3 h de français, une
+  /// seule peut se faire en demi-groupes. Sans cette information, la demande
+  /// horaire multiplierait tout le volume par le nombre de groupes et
+  /// surestimerait la charge.
+  ///
+  /// La valeur appartient au couple (classe, matière), pas au groupe : tous les
+  /// groupes d'une même matière portent donc la même. L'écran est le seul
+  /// chemin d'écriture et les met à jour ensemble ; le calcul retient le
+  /// maximum, pour rester juste si une divergence apparaissait malgré tout.
+  splitHours Int?    @map("split_hours")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class   Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject?           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  members            ClassGroupMember[]
+  entries            TimetableEntry[]
+  attendanceSessions AttendanceSession[]
+
+  @@unique([classId, subjectId, name])
+  @@index([tenantId, classId])
+  @@map("class_groups")
+}
+
+/// Appartenance d'un élève à un groupe.
+///
+/// Un élève ne peut être que dans UN groupe par (classe × matière) : deux
+/// demi-groupes de français simultanés ne peuvent pas le contenir tous les
+/// deux. La contrainte ne s'exprime pas en SQL — elle porte sur le `subjectId`
+/// du groupe, pas sur la ligne — et se vérifie donc côté serveur.
+model ClassGroupMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  groupId   String   @map("group_id") @db.Uuid
+  studentId String   @map("student_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant  Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  group   ClassGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  student Person     @relation("StudentClassGroups", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, studentId])
+  @@index([tenantId, studentId])
+  @@map("class_group_members")
 }
 
 model StudentClass {
@@ -1092,22 +1193,40 @@ model StudentClass {
   @@map("student_classes")
 }
 
+/// Salle : ressource physique de l'établissement, caractérisée par son type et
+/// sa capacité — pas par le cycle qui l'occupe.
+///
+/// Aucun rattachement exclusif à un cycle, volontairement. Une salle
+/// d'informatique sert au collège et au lycée ; un gymnase sert à tout le
+/// monde ; et pendant les examens régionaux ou nationaux, les salles du
+/// collège accueillent les candidats du lycée. Réserver une salle à un cycle
+/// interdirait ces usages et laisserait des locaux vides.
+///
+/// `primaryCycleId` exprime une **priorité**, pas un verrou : le moteur de
+/// planification cherche d'abord une salle prioritaire pour le cycle de la
+/// classe, puis se rabat sur les salles générales. Un établissement peut ainsi
+/// réserver de fait un bâtiment au primaire sans bloquer les cas d'exception.
 model Room {
-  id        String   @id @default(uuid()) @db.Uuid
-  tenantId  String   @map("tenant_id") @db.Uuid
-  code      String // "A101", "Labo-Info-2"
-  label     String
+  id             String   @id @default(uuid()) @db.Uuid
+  tenantId       String   @map("tenant_id") @db.Uuid
+  code           String // "A101", "Labo-Info-2"
+  label          String
   /// Libellé arabe de la salle (ex. « مختبر العلوم »).
-  labelAr   String?  @map("label_ar")
-  capacity  Int      @default(0)
-  equipment String[] @default([])
-  createdAt DateTime @default(now()) @map("created_at")
+  labelAr        String?  @map("label_ar")
+  capacity       Int      @default(0)
+  equipment      String[] @default([])
+  /// Cycle prioritaire sur cette salle. Null = salle générale, sans préférence.
+  primaryCycleId String?  @map("primary_cycle_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
 
+  primaryCycle        Cycle?              @relation(fields: [primaryCycleId], references: [id], onDelete: SetNull)
   tenant              Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   timetableEntries    TimetableEntry[]
   substitutionsAsRoom TimetableOverride[] @relation("SubstituteRoom")
+  examAllocations     ExamRoomAllocation[]
 
   @@unique([tenantId, code])
+  @@index([tenantId, primaryCycleId])
   @@map("rooms")
 }
 
@@ -1166,6 +1285,12 @@ model AttendanceSession {
   id          String    @id @default(uuid()) @db.Uuid
   tenantId    String    @map("tenant_id") @db.Uuid
   classId     String    @map("class_id") @db.Uuid
+  /// Groupe appelé. Null = la classe entière.
+  ///
+  /// Deux demi-groupes se tiennent au même créneau : sans cette colonne, leurs
+  /// deux feuilles d'appel se disputeraient la même clé (classe, date, période)
+  /// et le second appel écraserait le premier.
+  groupId     String?   @map("group_id") @db.Uuid
   date        DateTime  @db.Date
   periodLabel String?   @map("period_label") // "08h00-09h00", "Cours 1", "Matin", ...
   finalizedAt DateTime? @map("finalized_at") // null = brouillon, set = validé
@@ -1177,11 +1302,14 @@ model AttendanceSession {
 
   tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   class         Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
+  group         ClassGroup?        @relation(fields: [groupId], references: [id], onDelete: Cascade)
   records       AttendanceRecord[]
   carnetEntries CarnetEntry[]
   events        AttendanceEvent[]
 
-  @@unique([classId, date, periodLabel])
+  // Unicité par DEUX index partiels (cf. prisma/rls.sql) — voir la note sur
+  // timetable_entries : NULL ne s'oppose pas à NULL en SQL.
+  @@index([classId, date, periodLabel])
   @@index([tenantId, date])
   @@map("attendance_sessions")
 }
@@ -1397,7 +1525,11 @@ model Subject {
   teacherSpecialties     TeacherSpecialty[]
   timetableEntries       TimetableEntry[]
   substitutionsAsSubject TimetableOverride[] @relation("SubstituteSubject")
+  classGroups            ClassGroup[]
   books                  Book[]
+  trackCoefficients      TrackSubjectCoefficient[]
+  examPapers             ExamPaper[]
+  examBlueprints         ExamBlueprint[]
 
   @@unique([tenantId, code])
   /// Empêche deux matières d'avoir le même libellé dans un même tenant —
@@ -1591,6 +1723,9 @@ model Enrollment {
   studentId         String           @map("student_id") @db.Uuid
   academicYearId    String           @map("academic_year_id") @db.Uuid
   levelId           String           @map("level_id") @db.Uuid
+  /// Filière choisie (lycée). Fait autorité pour l'élève : la classe doit
+  /// être de la même filière. Null hors lycée.
+  trackId           String?          @map("track_id") @db.Uuid
   classId           String?          @map("class_id") @db.Uuid
   status            EnrollmentStatus @default(DRAFT)
   /// Rang fratrie au moment de la validation (1 = aîné).
@@ -1624,6 +1759,7 @@ model Enrollment {
   student           Person               @relation("StudentEnrollments", fields: [studentId], references: [id], onDelete: Cascade)
   academicYear      AcademicYear         @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   level             Level                @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  track             Track?               @relation(fields: [trackId], references: [id])
   class             Class?               @relation(fields: [classId], references: [id], onDelete: SetNull)
   documents         EnrollmentDocument[]
   radiationRequests RadiationRequest[]
@@ -1744,6 +1880,11 @@ model TimetableEntry {
   slotId         String    @map("slot_id") @db.Uuid
   dayOfWeek      DayOfWeek @map("day_of_week")
   subjectId      String?   @map("subject_id") @db.Uuid
+  /// Groupe concerné par la séance. Null = la classe entière.
+  ///
+  /// Deux séances simultanées sur la même case sont donc possibles dès qu'elles
+  /// visent des groupes différents : c'est tout l'objet du dédoublement.
+  groupId        String?   @map("group_id") @db.Uuid
   teacherId      String?   @map("teacher_id") @db.Uuid
   roomId         String?   @map("room_id") @db.Uuid
   note           String?
@@ -1755,12 +1896,18 @@ model TimetableEntry {
   class         Class               @relation(fields: [classId], references: [id], onDelete: Cascade)
   slot          TimetableSlot       @relation(fields: [slotId], references: [id], onDelete: Cascade)
   subject       Subject?            @relation(fields: [subjectId], references: [id], onDelete: SetNull)
+  group         ClassGroup?         @relation(fields: [groupId], references: [id], onDelete: Cascade)
   teacher       Person?             @relation("TeacherTimetable", fields: [teacherId], references: [id], onDelete: SetNull)
   room          Room?               @relation(fields: [roomId], references: [id], onDelete: SetNull)
   overrides     TimetableOverride[]
   lessonEntries LessonEntry[]
 
-  @@unique([classId, academicYearId, dayOfWeek, slotId])
+  // Unicité assurée par DEUX index partiels (cf. prisma/rls.sql) :
+  //   - classe entière  : UNIQUE(class, année, jour, créneau) WHERE group_id IS NULL
+  //   - par groupe      : UNIQUE(class, année, jour, créneau, group) WHERE group_id IS NOT NULL
+  // Un simple @@unique incluant groupId ne suffirait pas : en SQL, NULL n'entre
+  // pas en conflit avec NULL, et deux séances « classe entière » passeraient.
+  @@index([classId, academicYearId, dayOfWeek, slotId])
   @@index([tenantId, academicYearId, dayOfWeek, slotId])
   @@index([tenantId, teacherId])
   @@index([tenantId, roomId])
@@ -3492,7 +3639,12 @@ enum AssessmentSource {
 model CompetencyFramework {
   id             String          @id @default(uuid()) @db.Uuid
   tenantId       String          @map("tenant_id") @db.Uuid
-  academicYearId String          @map("academic_year_id") @db.Uuid
+  /// Null pour le référentiel MODÈLE de l'établissement : il ne dépend pas
+  /// d'une année et sert de source aux référentiels annuels.
+  academicYearId String?         @map("academic_year_id") @db.Uuid
+  /// Référentiel modèle, éditable en continu dans Paramétrage. Un seul par
+  /// établissement ; les référentiels d'année en sont des copies figées.
+  isTemplate     Boolean         @default(false) @map("is_template")
   label          String
   version        Int             @default(1)
   status         FrameworkStatus @default(DRAFT)
@@ -3500,7 +3652,7 @@ model CompetencyFramework {
   updatedAt      DateTime        @updatedAt @map("updated_at")
 
   tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  academicYear AcademicYear     @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear?    @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
   nodes        CompetencyNode[]
   reports      CompetencyReport[]
 
@@ -3653,4 +3805,356 @@ model SupportSessionSkill {
   @@unique([supportSessionId, nodeId])
   @@index([tenantId, nodeId])
   @@map("support_session_skills")
+}
+
+
+// ─── Examens certificatifs & sessions d'examen ─────────────────────────────
+//
+// Le contrôle continu existe déjà (Evaluation/Grade). Ce bloc ajoute les
+// examens du lycée marocain : semestriel local, Régional (1BAC) et National
+// (2BAC), avec la filière comme pivot — c'est elle qui porte les coefficients
+// et qui détermine les épreuves applicables à un élève.
+
+/// Nature d'une épreuve dans le calcul de la moyenne.
+enum ExamKind {
+  SEMESTRIEL // examen semestriel local
+  REGIONAL // examen régional (1ère année Bac)
+  NATIONAL // examen national (2ème année Bac)
+  BLANC // examen blanc (entraînement, pondération à part)
+}
+
+enum ExamSessionStatus {
+  DRAFT
+  PUBLISHED
+  CLOSED
+}
+
+/// Filière / option / spécialité (TC Sciences, 1BAC SMA, 2BAC SVT…).
+/// Rattachée à un niveau : au Maroc, « 2BAC SVT » n'a de sens qu'en 2BAC.
+/// C'est la filière qui porte les coefficients réglementaires, pas le niveau
+/// seul — deux élèves de 1BAC n'ont pas le même coefficient en maths.
+model Track {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  levelId   String   @map("level_id") @db.Uuid
+  code      String // "1bac-sma", "tc-sciences"
+  label     String
+  labelAr   String?  @map("label_ar")
+  order     Int      @default(0)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant       Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  level        Level                     @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  coefficients TrackSubjectCoefficient[]
+  classes      Class[]
+  enrollments  Enrollment[]
+  gradingRules GradingRule[]
+  examSessions ExamSessionTrack[]
+  blueprints   ExamBlueprint[]
+  examPapers   ExamPaperTrack[]
+
+  @@unique([tenantId, code])
+  @@index([tenantId, levelId])
+  @@map("tracks")
+}
+
+/// Coefficient d'une matière dans une filière. Prime sur
+/// CurriculumSubject.coefficient, lui-même prioritaire sur Subject.coefficient.
+model TrackSubjectCoefficient {
+  id          String  @id @default(uuid()) @db.Uuid
+  tenantId    String  @map("tenant_id") @db.Uuid
+  trackId     String  @map("track_id") @db.Uuid
+  subjectId   String  @map("subject_id") @db.Uuid
+  /// Coefficient de l'EXAMEN certificatif (Bac national/régional).
+  coefficient Float   @default(1)
+  /// Volume horaire hebdomadaire au programme de la filière.
+  weeklyHours Float?  @map("weekly_hours")
+  /// Coefficient du CONTRÔLE CONTINU (moyenne semestrielle). Au lycée
+  /// marocain il suit le volume horaire, et diffère du coefficient d'examen
+  /// (en 2BAC SMA : 7 en contrôle continu, 9 au Bac).
+  ccCoefficient Float? @map("cc_coefficient")
+  /// Matière évaluée à l'épreuve certificative (régionale ou nationale) de
+  /// cette filière — sert à filtrer les épreuves applicables (RF-01.2).
+  certifying  Boolean @default(false)
+  order       Int     @default(0)
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  track   Track   @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([trackId, subjectId])
+  @@index([tenantId, trackId])
+  @@map("track_subject_coefficients")
+}
+
+/// Pondération réglementaire CC / semestriel / régional / national, par niveau
+/// et éventuellement par filière, sur une année scolaire donnée.
+/// `trackId` null = règle par défaut du niveau (unicité garantie côté action :
+/// Postgres considère deux NULL comme distincts).
+model GradingRule {
+  id             String  @id @default(uuid()) @db.Uuid
+  tenantId       String  @map("tenant_id") @db.Uuid
+  academicYearId String  @map("academic_year_id") @db.Uuid
+  levelId        String  @map("level_id") @db.Uuid
+  trackId        String? @map("track_id") @db.Uuid
+  /// Pourcentages, somme attendue = 100.
+  ccWeight       Float   @default(0) @map("cc_weight")
+  semesterWeight Float   @default(0) @map("semester_weight")
+  regionalWeight Float   @default(0) @map("regional_weight")
+  nationalWeight Float   @default(0) @map("national_weight")
+  /// Verrou de saisie : à la clôture, plus aucune note n'entre (RF-01.3).
+  locked         Boolean @default(false)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  level        Level        @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  track        Track?       @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, academicYearId, levelId])
+  @@map("grading_rules")
+}
+
+/// Session d'examen : un ensemble d'épreuves pour un niveau et des filières,
+/// sur une plage de dates (RF-02.1).
+model ExamSession {
+  id             String            @id @default(uuid()) @db.Uuid
+  tenantId       String            @map("tenant_id") @db.Uuid
+  academicYearId String            @map("academic_year_id") @db.Uuid
+  levelId        String            @map("level_id") @db.Uuid
+  /// Période (semestre) à laquelle la session se rattache pour le calcul.
+  periodId       String?           @map("period_id") @db.Uuid
+  label          String
+  labelAr        String?           @map("label_ar")
+  kind           ExamKind
+  startDate      DateTime          @map("start_date") @db.Date
+  endDate        DateTime          @map("end_date") @db.Date
+  status         ExamSessionStatus @default(DRAFT)
+  /// Mélanger les classes/filières à la répartition en salle (anti-fraude).
+  mixClasses     Boolean           @default(true) @map("mix_classes")
+  /// Générer des numéros d'anonymat pour les copies (RF-05.1).
+  anonymized     Boolean           @default(true)
+  publishedAt    DateTime?         @map("published_at")
+  closedAt       DateTime?         @map("closed_at")
+  closedByUserId String?           @map("closed_by_user_id") @db.Uuid
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  tenant       Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  academicYear AcademicYear       @relation(fields: [academicYearId], references: [id], onDelete: Cascade)
+  level        Level              @relation(fields: [levelId], references: [id], onDelete: Cascade)
+  period       Period?            @relation(fields: [periodId], references: [id])
+  tracks       ExamSessionTrack[]
+  papers       ExamPaper[]
+
+  @@index([tenantId, academicYearId, levelId])
+  @@map("exam_sessions")
+}
+
+/// Filières concernées par une session (une session 1BAC peut couvrir SMA+SP).
+model ExamSessionTrack {
+  id        String @id @default(uuid()) @db.Uuid
+  tenantId  String @map("tenant_id") @db.Uuid
+  sessionId String @map("session_id") @db.Uuid
+  trackId   String @map("track_id") @db.Uuid
+
+  tenant  Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  session ExamSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  track   Track       @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([sessionId, trackId])
+  @@map("exam_session_tracks")
+}
+
+/// Une épreuve : matière, date, heure, durée, coefficient (RF-02.2).
+model ExamPaper {
+  id          String   @id @default(uuid()) @db.Uuid
+  tenantId    String   @map("tenant_id") @db.Uuid
+  sessionId   String   @map("session_id") @db.Uuid
+  subjectId   String   @map("subject_id") @db.Uuid
+  date        DateTime @db.Date
+  /// Heure de début, format "HH:MM" — même convention que TimetableSlot.
+  startTime   String   @map("start_time")
+  durationMin Int      @map("duration_min")
+  coefficient Float    @default(1)
+  maxValue    Float    @default(20) @map("max_value")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  session     ExamSession          @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  subject     Subject              @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  allocations ExamRoomAllocation[]
+  seats       ExamSeat[]
+  graders     ExamGrader[]
+  tracks      ExamPaperTrack[]
+  marks       ExamMark[]
+
+  @@unique([sessionId, subjectId, date, startTime])
+  @@index([tenantId, sessionId])
+  @@map("exam_papers")
+}
+
+/// Salle réservée pour une épreuve, avec sa capacité « examen » (RF-03.1),
+/// distincte de la capacité de cours (1 élève par table).
+model ExamRoomAllocation {
+  id           String @id @default(uuid()) @db.Uuid
+  tenantId     String @map("tenant_id") @db.Uuid
+  paperId      String @map("paper_id") @db.Uuid
+  roomId       String @map("room_id") @db.Uuid
+  examCapacity Int    @map("exam_capacity")
+
+  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  paper       ExamPaper        @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  room        Room             @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  supervisors ExamSupervisor[]
+  seats       ExamSeat[]
+
+  @@unique([paperId, roomId])
+  @@index([tenantId, paperId])
+  @@map("exam_room_allocations")
+}
+
+/// Surveillant affecté à une salle pour une épreuve (RF-04.1).
+model ExamSupervisor {
+  id           String   @id @default(uuid()) @db.Uuid
+  tenantId     String   @map("tenant_id") @db.Uuid
+  allocationId String   @map("allocation_id") @db.Uuid
+  teacherId    String   @map("teacher_id") @db.Uuid
+  /// Responsable de salle (un seul par salle) ou surveillant d'appoint.
+  lead         Boolean  @default(false)
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  allocation ExamRoomAllocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+  teacher    Person             @relation("ExamSupervisions", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([allocationId, teacherId])
+  @@index([tenantId, teacherId])
+  @@map("exam_supervisors")
+}
+
+/// Place d'un élève à une épreuve : salle, numéro de table, anonymat.
+model ExamSeat {
+  id            String  @id @default(uuid()) @db.Uuid
+  tenantId      String  @map("tenant_id") @db.Uuid
+  paperId       String  @map("paper_id") @db.Uuid
+  allocationId  String  @map("allocation_id") @db.Uuid
+  studentId     String  @map("student_id") @db.Uuid
+  seatNumber    Int     @map("seat_number")
+  /// Numéro d'anonymat de la copie (RF-05.1). Null si session non anonymisée.
+  anonymousCode String? @map("anonymous_code")
+
+  tenant     Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  paper      ExamPaper          @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  allocation ExamRoomAllocation @relation(fields: [allocationId], references: [id], onDelete: Cascade)
+  student    Person             @relation("ExamSeats", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([paperId, studentId])
+  @@unique([paperId, anonymousCode])
+  @@index([tenantId, paperId])
+  @@map("exam_seats")
+}
+
+/// Correcteur d'une épreuve, avec son lot de copies (RF-04.2).
+model ExamGrader {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  paperId   String   @map("paper_id") @db.Uuid
+  teacherId String   @map("teacher_id") @db.Uuid
+  /// Bornes du lot attribué (numéros d'anonymat ou de place). Null = tout.
+  lotFrom   Int?     @map("lot_from")
+  lotTo     Int?     @map("lot_to")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant  Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  paper   ExamPaper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  teacher Person    @relation("ExamGradings", fields: [teacherId], references: [id], onDelete: Cascade)
+
+  @@unique([paperId, teacherId])
+  @@index([tenantId, teacherId])
+  @@map("exam_graders")
+}
+
+/// Note d'un élève à une épreuve (RF-05.2).
+model ExamMark {
+  id              String   @id @default(uuid()) @db.Uuid
+  tenantId        String   @map("tenant_id") @db.Uuid
+  paperId         String   @map("paper_id") @db.Uuid
+  studentId       String   @map("student_id") @db.Uuid
+  value           Float?
+  absent          Boolean  @default(false)
+  enteredByUserId String?  @map("entered_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  tenant  Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  paper   ExamPaper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  student Person    @relation("ExamMarks", fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([paperId, studentId])
+  @@index([tenantId, studentId])
+  @@map("exam_marks")
+}
+
+/// Nature d'une épreuve dans la maquette du Bac : spécialité (le cœur de la
+/// filière), secondaire (matière scientifique/technique non spécialisée), ou
+/// littéraire (tronc littéraire commun).
+enum ExamPaperType {
+  SPECIALITY
+  SECONDARY
+  LITERARY
+}
+
+/// Maquette d'épreuve : pour une filière et une matière, la durée
+/// réglementaire, le type, et le **groupe de sujet partagé**.
+///
+/// La distinction qui commande toute l'organisation :
+///  - même `paperGroup` + même matière  → **épreuve identique** : un seul
+///    sujet, une seule épreuve à planifier pour toutes ces filières ;
+///  - `paperGroup` null → sujet propre à la filière, même si la durée est
+///    identique à celle d'une autre filière (cas SVT en SMA/SMB/SP, ou
+///    Gestion en Économie/TGC : même durée, sujets différents).
+model ExamBlueprint {
+  id          String        @id @default(uuid()) @db.Uuid
+  tenantId    String        @map("tenant_id") @db.Uuid
+  trackId     String        @map("track_id") @db.Uuid
+  subjectId   String        @map("subject_id") @db.Uuid
+  durationMin Int           @map("duration_min")
+  type        ExamPaperType
+  /// Code de regroupement des sujets identiques (ex. « sci-lit »).
+  paperGroup  String?       @map("paper_group")
+  order       Int           @default(0)
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  track   Track   @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+
+  @@unique([trackId, subjectId])
+  @@index([tenantId, trackId])
+  @@map("exam_blueprints")
+}
+
+/// Filières couvertes par une épreuve. Une épreuve mutualisée (Arabe des
+/// filières scientifiques) en porte plusieurs ; une épreuve de spécialité une
+/// seule. Vide = toutes les filières de la session (compatibilité avec les
+/// épreuves créées avant la mutualisation).
+model ExamPaperTrack {
+  id       String @id @default(uuid()) @db.Uuid
+  tenantId String @map("tenant_id") @db.Uuid
+  paperId  String @map("paper_id") @db.Uuid
+  trackId  String @map("track_id") @db.Uuid
+
+  tenant Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  paper  ExamPaper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  track  Track     @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([paperId, trackId])
+  @@index([tenantId, trackId])
+  @@map("exam_paper_tracks")
 }

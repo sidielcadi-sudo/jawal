@@ -13,7 +13,15 @@ import {
   isInAvailability,
   type AvailabilityMap,
 } from '@/lib/timetable-validation';
-import { TimetableGrid, type GridEntry, type GridSlot, type SubjectOpt, type TeacherOpt, type RoomOpt } from './grid';
+import {
+  TimetableGrid,
+  type GridEntry,
+  type GridSlot,
+  type SubjectOpt,
+  type TeacherOpt,
+  type RoomOpt,
+  type GroupOpt,
+} from './grid';
 import { OverridesPanel } from './overrides';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
@@ -49,7 +57,22 @@ export default async function ClassTimetablePage({
           select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, availability: true },
         },
         room: { select: { id: true, code: true, label: true, labelAr: true } },
+        group: { select: { id: true, name: true, nameAr: true } },
       },
+    });
+
+    // Groupes de la classe : le sélecteur de la case en a besoin, et la grille
+    // doit pouvoir nommer le groupe d'une séance dédoublée.
+    const groups = await tx.classGroup.findMany({
+      where: { classId: id },
+      select: {
+        id: true,
+        name: true,
+        nameAr: true,
+        subjectId: true,
+        _count: { select: { members: true } },
+      },
+      orderBy: [{ order: 'asc' }, { name: 'asc' }],
     });
 
     // Overrides à venir sur les séances de cette classe (à partir d'aujourd'hui)
@@ -89,12 +112,19 @@ export default async function ClassTimetablePage({
     });
     const rooms = await tx.room.findMany({ orderBy: { code: 'asc' } });
 
-    return { cls, slots, entries, allEntriesYear, overrides, subjects, teachers, rooms };
+    return { cls, slots, entries, allEntriesYear, overrides, subjects, teachers, rooms, groups };
   });
 
   if (!data) notFound();
 
-  const { cls, slots, entries, allEntriesYear, overrides, subjects, teachers, rooms } = data;
+  const { cls, slots, entries, allEntriesYear, overrides, subjects, teachers, rooms, groups } = data;
+
+  const gridGroups: GroupOpt[] = groups.map((g) => ({
+    id: g.id,
+    label: localizedLabel(locale, g.name, g.nameAr),
+    subjectId: g.subjectId,
+    size: g._count.members,
+  }));
 
   // Détection conflits sur l'année entière (l'UI met en évidence les cases
   // de CETTE classe qui sont en conflit ailleurs)
@@ -152,6 +182,8 @@ export default async function ClassTimetablePage({
     slotId: e.slotId,
     subjectId: e.subjectId,
     subjectLabel: e.subject?.label ?? null,
+    groupId: e.groupId,
+    groupName: e.group ? localizedLabel(locale, e.group.name, e.group.nameAr) : null,
     teacherId: e.teacherId,
     teacherName: e.teacher ? personDisplayName(locale, e.teacher) : null,
     roomId: e.roomId,
@@ -339,6 +371,7 @@ export default async function ClassTimetablePage({
             subjects={subjectOpts}
             teachers={teacherOpts}
             rooms={roomOpts}
+            groups={gridGroups}
           />
         </>
       )}

@@ -110,6 +110,14 @@ export default async function CompetencesBilanPage({
         <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center">
           <h2 className="text-lg font-semibold text-slate-700">{t('bilanTitle')}</h2>
           <p className="mt-2 text-sm text-slate-400">{t('noFramework')}</p>
+          {/* Sans référentiel sur l'année, l'écran est un cul-de-sac : on renvoie
+              là où on l'importe. */}
+          <a
+            href={`/${locale}/admin/settings/competences`}
+            className="mt-3 inline-block rounded-lg border border-brand-300 px-3 py-1.5 text-sm font-medium text-brand-700 hover:bg-brand-50"
+          >
+            {t('goToSettings')}
+          </a>
         </div>
       </div>
     );

@@ -147,7 +147,22 @@ DECLARE
     'mastery_levels',
     'competency_assessments',
     'competency_reports',
-    'support_session_skills'
+    'support_session_skills',
+    'tracks',
+    'track_subject_coefficients',
+    'grading_rules',
+    'exam_sessions',
+    'exam_session_tracks',
+    'exam_papers',
+    'exam_room_allocations',
+    'exam_supervisors',
+    'exam_seats',
+    'exam_graders',
+    'exam_marks',
+    'exam_blueprints',
+    'exam_paper_tracks',
+    'class_groups',
+    'class_group_members'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped
@@ -172,3 +187,57 @@ DROP POLICY IF EXISTS tenant_self ON tenants;
 CREATE POLICY tenant_self ON tenants
   USING (id = current_tenant_id())
   WITH CHECK (id = current_tenant_id());
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Unicité d'une case d'emploi du temps, avec dédoublement en groupes.
+--
+-- Deux index PARTIELS plutôt qu'une contrainte unique incluant group_id :
+-- en SQL, NULL n'entre pas en conflit avec NULL, donc un UNIQUE(..., group_id)
+-- laisserait passer deux séances « classe entière » sur la même case — le
+-- doublon que l'ancienne contrainte interdisait justement.
+--
+--   1. classe entière : au plus une séance sans groupe par case ;
+--   2. par groupe     : au plus une séance par (case × groupe).
+--
+-- Ensemble, ils autorisent N séances simultanées sur une même case dès qu'elles
+-- visent des groupes distincts, et une seule si elle vise la classe entière.
+-- Ils n'empêchent PAS de mêler une séance « classe entière » et une séance de
+-- groupe sur la même case : c'est une incohérence pédagogique, pas une
+-- violation d'intégrité, et elle est refusée côté serveur avec un message.
+DROP INDEX IF EXISTS timetable_entries_whole_class_uniq;
+CREATE UNIQUE INDEX timetable_entries_whole_class_uniq
+  ON timetable_entries (class_id, academic_year_id, day_of_week, slot_id)
+  WHERE group_id IS NULL;
+
+DROP INDEX IF EXISTS timetable_entries_group_uniq;
+CREATE UNIQUE INDEX timetable_entries_group_uniq
+  ON timetable_entries (class_id, academic_year_id, day_of_week, slot_id, group_id)
+  WHERE group_id IS NOT NULL;
+
+-- Unicité d'une feuille d'appel, avec dédoublement en groupes.
+-- Même construction que pour timetable_entries, et pour la même raison : en SQL
+-- NULL n'entre pas en conflit avec NULL.
+DROP INDEX IF EXISTS attendance_sessions_whole_class_uniq;
+CREATE UNIQUE INDEX attendance_sessions_whole_class_uniq
+  ON attendance_sessions (class_id, date, period_label)
+  WHERE group_id IS NULL;
+
+DROP INDEX IF EXISTS attendance_sessions_group_uniq;
+CREATE UNIQUE INDEX attendance_sessions_group_uniq
+  ON attendance_sessions (class_id, date, period_label, group_id)
+  WHERE group_id IS NOT NULL;
+
+-- Une salle ne peut accueillir qu'UNE séance à la fois.
+--
+-- Cette garantie n'existait pas : les conflits de salle étaient seulement
+-- signalés à l'écran, jamais empêchés. Deux classes pouvaient donc être
+-- inscrites dans la même salle au même créneau, et l'anomalie ne se
+-- découvrait qu'en lisant le tableau de bord — ou devant la porte.
+--
+-- L'index ne porte que sur les séances AVEC salle : une case saisie sans salle
+-- reste permise, c'est le cas courant d'un emploi du temps en cours de
+-- construction.
+DROP INDEX IF EXISTS timetable_entries_room_uniq;
+CREATE UNIQUE INDEX timetable_entries_room_uniq
+  ON timetable_entries (academic_year_id, day_of_week, slot_id, room_id)
+  WHERE room_id IS NOT NULL;

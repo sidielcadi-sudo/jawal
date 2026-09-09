@@ -27,6 +27,7 @@ type IntlMessages = {
       staff: string;
       parents: string;
       classes: string;
+      exams: string;
       enrollments: string;
       transport: string;
       timetable: string;
@@ -103,6 +104,12 @@ function buildItems(locale: string, roleCodes: string[]): NavItem[] {
       href: `${prefix}/classes`,
       labelKey: 'classes',
       match: (p, _s) => p.startsWith(`${prefix}/classes`),
+    },
+    {
+      href: `${prefix}/exams`,
+      labelKey: 'exams',
+      match: (p, _s) => p.startsWith(`${prefix}/exams`),
+      roles: ['tenant_admin', 'direction', 'scolarite'],
     },
     {
       href: `${prefix}/finance`,
@@ -212,6 +219,7 @@ const EMOJI: Record<string, string> = {
   staff: '🧑‍💼',
   parents: '👪',
   classes: '🏫',
+  exams: '📄',
   finance: '💰',
   soutien: '📚',
   competences: '🎯',

@@ -7,10 +7,14 @@ import { localizedLabel } from '@/lib/localized-name';
 
 export default async function GenerateGlobalPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  /** `cycle` vient du tableau de bord : il présélectionne les bonnes classes. */
+  searchParams: Promise<{ year?: string; cycle?: string }>;
 }) {
   const { locale } = await params;
+  const sp = await searchParams;
   setRequestLocale(locale);
 
   const session = (await auth())!;
@@ -29,7 +33,7 @@ export default async function GenerateGlobalPage({
         ? await tx.class.findMany({
             where: { academicYearId: currentYearId, deletedAt: null },
             include: {
-              level: { select: { label: true, labelAr: true } },
+              level: { select: { label: true, labelAr: true, cycleId: true } },
               _count: {
                 select: {
                   teacherAssignments: true,
@@ -77,10 +81,12 @@ export default async function GenerateGlobalPage({
         <GenerateGlobalForm
           locale={locale}
           academicYearId={currentYearId}
+          cycleId={sp.cycle ?? null}
           classes={classes.map((c) => ({
             id: c.id,
             name: localizedLabel(locale, c.name, c.nameAr),
             levelLabel: localizedLabel(locale, c.level.label, c.level.labelAr),
+            cycleId: c.level.cycleId,
             assignmentCount: c._count.teacherAssignments,
             entryCount: c._count.timetableEntries,
           }))}

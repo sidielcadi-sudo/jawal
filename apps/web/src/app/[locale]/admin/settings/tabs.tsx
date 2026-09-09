@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 
 // Le groupe emploi du temps (Créneaux, Réglages EDT, Contraintes EDT) est placé
 // en fin de liste, juste avant l'entrée « Emploi du temps » (ajoutée plus bas).
-const TABS = ['establishment', 'appearance', 'years', 'curriculum', 'subjects', 'competences', 'rooms', 'fees', 'admissions', 'attendance-reasons', 'roles', 'users', 'audit', 'timetable-slots', 'timetable-settings', 'timetable-constraints'] as const;
+const TABS = ['establishment', 'appearance', 'years', 'curriculum', 'subjects', 'tracks', 'competences', 'rooms', 'fees', 'admissions', 'attendance-reasons', 'roles', 'users', 'audit', 'timetable-slots', 'timetable-settings', 'timetable-constraints'] as const;
 type Tab = (typeof TABS)[number];
 
 export function SettingsTabs({ locale }: { locale: string }) {

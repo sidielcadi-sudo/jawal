@@ -3,7 +3,8 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { proposeNextLevel } from '@/lib/level-progression';
-import { BulkReenrollSheet, type Row, type YearOpt, type LevelOpt } from './sheet';
+import { loadOutstandingBalances } from '@/lib/unpaid';
+import { BulkReenrollSheet, type Row, type YearOpt, type LevelOpt, type ClassOpt } from './sheet';
 import { localizedLabel } from '@/lib/localized-name';
 
 export default async function BulkReenrollPage({
@@ -20,7 +21,7 @@ export default async function BulkReenrollPage({
   const session = (await auth())!;
   const t = await getTranslations('admin.enrollments.bulk');
 
-  const { years, levels, sourceYearId, targetYearId, rows, currency } = await withTenant(
+  const { years, levels, classes, sourceYearId, targetYearId, rows, currency } = await withTenant(
     session.user.tenantId,
     async (tx) => {
       const years = await tx.academicYear.findMany({
@@ -55,12 +56,40 @@ export default async function BulkReenrollPage({
         cycle: { id: l.cycle.id, order: l.cycle.order },
       }));
 
+      // Classes de l'année CIBLE : elles alimentent la colonne « Classe
+      // affectée », filtrée par niveau. L'effectif sert à montrer le
+      // remplissage (12/30) et à refuser les classes pleines.
+      const classesRaw = targetYearId
+        ? await tx.class.findMany({
+            where: { academicYearId: targetYearId, deletedAt: null },
+            select: {
+              id: true,
+              name: true,
+              nameAr: true,
+              levelId: true,
+              capacity: true,
+              _count: { select: { students: { where: { unenrolledAt: null } } } },
+            },
+            orderBy: { name: 'asc' },
+          })
+        : [];
+      const classes: ClassOpt[] = classesRaw.map((c) => ({
+        id: c.id,
+        label: localizedLabel(locale, c.name, c.nameAr),
+        levelId: c.levelId,
+        capacity: c.capacity,
+        enrolled: c._count.students,
+      }));
+
       let rows: Row[] = [];
       if (sourceYearId) {
         const sourceEnrollments = await tx.enrollment.findMany({
           where: {
             academicYearId: sourceYearId,
-            status: { in: ['ACTIVE', 'DRAFT'] },
+            // Les diplômés entrent dans le lot : en fin de collège, la
+            // réinscription au lycée est la suite normale de la scolarité, et
+            // sans eux l'écran n'a rien à proposer en fin de cycle.
+            status: { in: ['ACTIVE', 'DRAFT', 'GRADUATED'] },
           },
           include: {
             student: { select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
@@ -84,19 +113,11 @@ export default async function BulkReenrollPage({
           : [];
         const existingByStudent = new Map(targetExisting.map((e) => [e.studentId, e.status]));
 
-        // Solde restant dû par élève : total des échéances non soldées, tous
-        // exercices confondus. On le montre avant la décision : réinscrire un
-        // élève dont la famille traîne un impayé n'est pas un geste anodin.
-        const installments = await tx.installment.findMany({
-          where: { studentId: { in: studentIds } },
-          select: { studentId: true, amount: true, payments: { select: { amount: true } } },
-        });
-        const balanceByStudent = new Map<string, number>();
-        for (const i of installments) {
-          const paid = i.payments.reduce((s, p) => s + Number(p.amount), 0);
-          const remaining = Math.max(0, Number(i.amount) - paid);
-          balanceByStudent.set(i.studentId, (balanceByStudent.get(i.studentId) ?? 0) + remaining);
-        }
+        // Solde restant dû par élève. On le montre avant la décision :
+        // réinscrire un élève dont la famille traîne un impayé n'est pas un
+        // geste anodin. Même source que l'action qui traite le lot, pour que
+        // l'écran n'annonce pas « hors lot » un élève qu'elle accepterait.
+        const balanceByStudent = await loadOutstandingBalances(tx, studentIds);
 
         rows = sourceEnrollments.map((e) => {
           const suggested = proposeNextLevel(e.levelId, levels);
@@ -111,7 +132,7 @@ export default async function BulkReenrollPage({
             currentLevelId: e.levelId,
             currentLevelLabel: localizedLabel(locale, e.level.label, e.level.labelAr),
             currentClassName: e.class ? localizedLabel(locale, e.class.name, e.class.nameAr) : null,
-            currentStatus: e.status as 'ACTIVE' | 'DRAFT',
+            currentStatus: e.status as 'ACTIVE' | 'DRAFT' | 'GRADUATED',
             suggestedNextLevelId: suggested?.id ?? null,
             suggestedNextLevelLabel: suggestedFull?.label ?? null,
             balance: Math.round((balanceByStudent.get(e.studentId) ?? 0) * 100) / 100,
@@ -127,7 +148,7 @@ export default async function BulkReenrollPage({
       }
 
       const tenant = await tx.tenant.findFirst({ select: { currency: true } });
-      return { years, levels, sourceYearId, targetYearId, rows, currency: tenant?.currency ?? 'MAD' };
+      return { years, levels, classes, sourceYearId, targetYearId, rows, currency: tenant?.currency ?? 'MAD' };
     },
   );
 
@@ -165,6 +186,7 @@ export default async function BulkReenrollPage({
         locale={locale}
         years={yearOpts}
         levels={levels}
+        classes={classes}
         currency={currency}
         sourceYearId={sourceYearId ?? ''}
         targetYearId={targetYearId ?? ''}

@@ -14,6 +14,7 @@ import { listContractAlerts } from '@/lib/contract-alerts';
 import { contractStatusBadgeClass } from '@/lib/contract-status';
 import { isDirection, isVieScolaireOnly as checkVieScolaireOnly } from '@/lib/auth/rbac';
 import { computePilotage, type Kpi, type KpiStatus } from '@/lib/kpi-pilotage';
+import { yearInstallmentEnd } from '@/lib/school-year';
 import { BLUE_TONES, kpiTone, type KpiTone } from '@/lib/kpi-tones';
 import { AbsencePie } from './absence-pie';
 import { ContractAlertsActions } from './contract-alerts-actions';
@@ -92,12 +93,31 @@ export default async function AdminDashboard({
     // « À date » : on ne retient que les échéances déjà tombées. C'est la
     // mesure qui juge le recouvrement — le total inclut des échéances à venir,
     // dont l'absence de paiement n'est pas un retard.
+    // Périmètre : l'ANNÉE SCOLAIRE active, pas l'année civile ni l'historique.
+    // Sans cette borne, les créances des exercices antérieurs gonflaient le
+    // « reste à recouvrer » du tableau de bord ; elles se traitent désormais
+    // dans Finances → Gestion des impayés.
+    const yearWindow = activeYear
+      ? { gte: activeYear.startDate, lt: yearInstallmentEnd(activeYear) }
+      : undefined;
     const [dueAgg, paidAgg, dueToDateAgg] = await Promise.all([
-      tx.installment.aggregate({ _sum: { amount: true }, where: { status: { not: 'CANCELLED' } } }),
-      tx.payment.aggregate({ _sum: { amount: true } }),
       tx.installment.aggregate({
         _sum: { amount: true },
-        where: { status: { not: 'CANCELLED' }, dueDate: { lte: new Date() } },
+        where: { status: { not: 'CANCELLED' }, ...(yearWindow ? { dueDate: yearWindow } : {}) },
+      }),
+      // Encaissements rattachés aux échéances de l'année (le statut de
+      // l'échéance n'est pas filtré : un versement reçu puis effacé reste
+      // de l'argent entré en caisse).
+      tx.payment.aggregate({
+        _sum: { amount: true },
+        ...(yearWindow ? { where: { installment: { dueDate: yearWindow } } } : {}),
+      }),
+      tx.installment.aggregate({
+        _sum: { amount: true },
+        where: {
+          status: { not: 'CANCELLED' },
+          dueDate: yearWindow ? { ...yearWindow, lte: new Date() } : { lte: new Date() },
+        },
       }),
     ]);
     const totalDue = Number(dueAgg._sum.amount ?? 0);

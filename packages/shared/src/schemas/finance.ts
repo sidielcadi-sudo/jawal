@@ -107,12 +107,18 @@ export const recordPaymentSchema = z.object({
   installmentId: z.string().uuid(),
   amount: z.coerce.number().positive().max(10_000_000),
   method: paymentMethodSchema,
+  // `formData.get()` rend `null` pour un champ absent et `''` pour un champ
+  // vide : les deux valent « pas de référence ». Sans ce repli, un appel qui
+  // omet simplement le champ échoue sur « Expected string, received null ».
   reference: z
     .preprocess(
-      (v) => (typeof v === 'string' && v.trim() === '' ? undefined : v),
+      (v) => (v === null || v === undefined || (typeof v === 'string' && v.trim() === '') ? undefined : v),
       z.string().min(1).max(200).optional(),
     )
     .optional(),
-  paidAt: z.coerce.date().default(() => new Date()),
+  // Idem : null (champ absent) doit retomber sur le défaut, pas être coercé
+  // en 1970 — `new Date(null)` vaut l'epoch, ce qui daterait le règlement
+  // d'un demi-siècle en arrière sans rien signaler.
+  paidAt: z.preprocess((v) => (v === null || v === '' ? undefined : v), z.coerce.date().optional()).default(() => new Date()),
 });
 export type RecordPayment = z.infer<typeof recordPaymentSchema>;

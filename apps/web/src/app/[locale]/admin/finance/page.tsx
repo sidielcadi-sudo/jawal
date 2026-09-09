@@ -330,7 +330,10 @@ export default async function FinanceDashboardPage({
     const unpaidRate = totalDue > 0 ? ((totalDue - totalPaid) / totalDue) * 100 : 0;
 
     // Relances enregistrées (PaymentReminder).
-    const reminders = await tx.paymentReminder.findMany({ select: { studentId: true, createdAt: true } });
+    const reminders = await tx.paymentReminder.findMany({
+      where: { createdAt: { gte: ys0, lt: yearEnd } },
+      select: { studentId: true, createdAt: true },
+    });
     const inDunning = new Set(reminders.map((r) => r.studentId)).size;
     const stillOwing = [...new Set(reminders.map((r) => r.studentId))].filter(
       (id) => (remainingByStudent.get(id) ?? 0) > 0,
@@ -351,7 +354,7 @@ export default async function FinanceDashboardPage({
       if (!cur || r.createdAt < cur) firstReminder.set(r.studentId, r.createdAt);
     }
     const firstOverdue = new Map<string, Date>();
-    for (const i of allInstallments) {
+    for (const i of yearInstallments) {
       if (i.dueDate >= today) continue;
       if (Math.max(0, Number(i.amount) - (paidByInst.get(i.id) ?? 0)) <= 0) continue;
       const cur = firstOverdue.get(i.studentId);
@@ -388,7 +391,7 @@ export default async function FinanceDashboardPage({
       paymentsByInst.set(p.installmentId, arr);
     }
     const instByStudent = new Map<string, typeof allInstallments>();
-    for (const i of allInstallments) {
+    for (const i of yearInstallments) {
       const arr = instByStudent.get(i.studentId) ?? [];
       arr.push(i);
       instByStudent.set(i.studentId, arr);
@@ -428,6 +431,9 @@ export default async function FinanceDashboardPage({
     let digitalAmt = 0;
     let allPayAmt = 0;
     for (const p of allPayments) {
+      // Taux de digitalisation de l'année : seuls les règlements portant sur
+      // les échéances de l'exercice sélectionné comptent.
+      if (!yearInstIds.has(p.installmentId)) continue;
       const a = Number(p.amount);
       allPayAmt += a;
       if (DIGITAL.has(p.method)) digitalAmt += a;
@@ -435,21 +441,47 @@ export default async function FinanceDashboardPage({
     const digitalRate = allPayAmt > 0 ? (digitalAmt / allPayAmt) * 100 : 0;
 
     let overpaid = 0;
-    for (const i of allInstallments) {
+    for (const i of yearInstallments) {
       const ex = (paidByInst.get(i.id) ?? 0) - Number(i.amount);
       if (ex > 0) overpaid += ex;
     }
     const in30 = new Date(today.getTime() + 30 * DAY);
-    const upcomingCount = allInstallments.filter(
+    const upcomingCount = yearInstallments.filter(
       (i) => i.dueDate >= today && i.dueDate < in30 && Number(i.amount) - (paidByInst.get(i.id) ?? 0) > 0,
     ).length;
-    const transfersCount = await tx.radiationRequest.count({ where: { type: 'TRANSFERT' } });
+    const transfersCount = await tx.radiationRequest.count({
+      where: {
+        type: 'TRANSFERT',
+        ...(selectedYearId ? { enrollment: { academicYearId: selectedYearId } } : {}),
+      },
+    });
 
-    // Impayés groupés par famille (à la date du jour).
-    const unpaid = await loadUnpaidByFamily(tx);
+    // Impayés groupés par famille, bornés à l'année scolaire sélectionnée.
+    // Les créances des exercices antérieurs ne polluent pas les indicateurs de
+    // l'année : elles sont traitées dans « Gestion des impayés ».
+    const unpaid = await loadUnpaidByFamily(tx, { from: ys0, to: yearEnd, yearId: selectedYearId ?? undefined });
+
+    // Créances des exercices ANTÉRIEURS à l'année sélectionnée : hors des
+    // indicateurs ci-dessus, mais on en annonce le montant et on renvoie vers
+    // « Gestion des impayés », seul écran qui les détaille par année.
+    let previousYearsUnpaid = 0;
+    let previousYearsStudents = 0;
+    {
+      const seen = new Set<string>();
+      for (const i of allInstallments) {
+        if (i.dueDate >= ys0 || i.dueDate > today) continue;
+        const rem = Number(i.amount) - (paidByInst.get(i.id) ?? 0);
+        if (rem <= 0.01) continue;
+        previousYearsUnpaid += rem;
+        seen.add(i.studentId);
+      }
+      previousYearsStudents = seen.size;
+    }
 
     return {
       currency: tenant?.currency ?? 'MAD',
+      previousYearsUnpaid: Math.round(previousYearsUnpaid * 100) / 100,
+      previousYearsStudents,
       totalDue,
       totalPaid,
       totalRemaining: Math.max(0, totalDue - totalPaid),
@@ -514,6 +546,7 @@ export default async function FinanceDashboardPage({
       transfersCount,
       years: years.map((y) => ({ id: y.id, label: y.label, active: y.active })),
       selectedYearId,
+      selectedYearLabel: selectedYear?.label ?? null,
     };
   });
 
@@ -523,6 +556,10 @@ export default async function FinanceDashboardPage({
         <div>
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
           <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>
+          {/* Le périmètre de tous les chiffres de la page, dit une fois. */}
+          <p className="mt-0.5 text-xs text-slate-500">
+            {t('scopeHint', { year: data.selectedYearLabel ?? '—' })}
+          </p>
         </div>
         {/* Sélecteur d'année (auto-submit, sans bouton) — dans le flux, juste
             avant les boutons d'action : centré en absolu il recouvrait
@@ -695,6 +732,27 @@ export default async function FinanceDashboardPage({
 
       {section === 'impayes' && (
         <>
+        {/* Créances reportées : elles n'entrent pas dans les indicateurs de
+            l'année, mais elles existent — on les annonce et on renvoie vers
+            l'écran qui les détaille par famille, élève et année. */}
+        {data.previousYearsUnpaid > 0 && (
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <span>
+              <strong>⚠ {t('previousYears.title')}</strong>{' '}
+              {t('previousYears.hint', {
+                amount: `${formatNumber(data.previousYearsUnpaid)} ${data.currency}`,
+                count: data.previousYearsStudents,
+              })}
+            </span>
+            <Link
+              href={`/${locale}/admin/finance/unpaid`}
+              className="shrink-0 rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-amber-700"
+            >
+              {t('unpaid.manageLink')} →
+            </Link>
+          </div>
+        )}
+
         {/* Indicateurs impayés & recouvrement */}
         <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard

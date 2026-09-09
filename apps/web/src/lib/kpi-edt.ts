@@ -9,6 +9,8 @@
 import type { prisma } from '@jawal/db';
 import { readTimetableSettings, isSlotAllowedOnDay, type TimetableSettings } from '@jawal/shared';
 
+import { loadDemand } from '@/lib/timetable-demand';
+
 type Tx = typeof prisma;
 
 export type RoomType = 'STD' | 'LABO_SVT' | 'LABO_PC' | 'INFO' | 'EPS';
@@ -190,17 +192,37 @@ const TEACHER_UNDERLOAD_HOURS = 8;
  * Calcule tous les KPI pour un tenant × année.
  * Doit être appelé dans un `withTenant(tx)` côté caller pour respecter RLS.
  */
+/**
+ * Indicateurs de préparation de l'emploi du temps.
+ *
+ * `cycleId` borne tout le calcul à un cycle. C'est nécessaire, pas cosmétique :
+ * un taux de couverture qui rapporte la demande du collège aux heures
+ * contractuelles de TOUS les enseignants — lycée compris — n'a aucun sens. Les
+ * enseignants retenus sont donc ceux qui enseignent dans le cycle, et les
+ * classes, programmes et séances sont filtrés de même.
+ *
+ * Les salles et la grille horaire restent globales : elles appartiennent à
+ * l'établissement, pas à un cycle.
+ */
 export async function computeKpis(
   tx: Tx,
   tenantId: string,
   academicYearId: string,
+  cycleId?: string | null,
 ): Promise<KpiResult> {
+  // Demande horaire du périmètre — classe par classe, dédoublements compris.
+  // Sert aux besoins en salles et à la cohérence matière → prof → classe.
+  const demand = await loadDemand(tx, academicYearId, cycleId);
+
+  /** Filtre « classes de ce cycle », vide si aucun cycle demandé. */
+  const inCycle = cycleId ? { level: { cycleId } } : {};
+  const levelInCycle = cycleId ? { level: { cycleId } } : {};
   const tenant = await tx.tenant.findUniqueOrThrow({ where: { id: tenantId } });
   const settings: TimetableSettings = readTimetableSettings(tenant.settings);
 
   // ─── KPI 1 : Couverture horaire profs ─────────────────────────
   const assignments = await tx.teacherAssignment.findMany({
-    where: { academicYearId },
+    where: { academicYearId, ...(cycleId ? { class: inCycle } : {}) },
     select: {
       id: true,
       teacherId: true,
@@ -211,8 +233,15 @@ export async function computeKpis(
     },
   });
 
+  // Enseignants du périmètre : ceux qui interviennent dans le cycle. Sinon la
+  // capacité de l'établissement entier écraserait la demande d'un seul cycle.
+  const cycleTeacherIds = cycleId ? [...new Set(assignments.map((a) => a.teacherId))] : null;
   const teachers = await tx.person.findMany({
-    where: { type: 'TEACHER', deletedAt: null },
+    where: {
+      type: 'TEACHER',
+      deletedAt: null,
+      ...(cycleTeacherIds ? { id: { in: cycleTeacherIds } } : {}),
+    },
     select: {
       id: true,
       firstName: true,
@@ -241,7 +270,7 @@ export async function computeKpis(
 
   // ─── KPI 2 : Classes physiques disponibles ────────────────────
   const classes = await tx.class.findMany({
-    where: { academicYearId, deletedAt: null },
+    where: { academicYearId, deletedAt: null, ...inCycle },
     include: {
       level: { select: { label: true, labelAr: true, cycleId: true } },
       _count: { select: { teacherAssignments: true, students: true } },
@@ -321,18 +350,17 @@ export async function computeKpis(
   // Besoins par type de salle = volume du PROGRAMME : pour chaque matière,
   // Σ (heures hebdo du programme × nombre de classes du niveau). Les matières de
   // labo/info/EPS sont mappées vers leur salle ; les autres → salles standard (STD).
-  const curriculumForRooms = await tx.curriculumSubject.findMany({
-    select: { levelId: true, weeklyHours: true, subject: { select: { label: true, labelAr: true } } },
-  });
-  const classCountByLevelRooms = new Map<string, number>();
-  for (const c of classes)
-    classCountByLevelRooms.set(c.levelId, (classCountByLevelRooms.get(c.levelId) ?? 0) + 1);
+  // Besoins par type de salle = la demande réelle. Une séance dédoublée
+  // occupe DEUX salles pendant la même heure : l'ignorer sous-estimait les
+  // besoins en labos et en salles informatiques, précisément là où elles sont
+  // rares.
+  const subjectLabels = new Map(
+    (await tx.subject.findMany({ select: { id: true, label: true } })).map((x) => [x.id, x.label]),
+  );
   const needsByType = new Map<RoomType, number>();
-  for (const cs of curriculumForRooms) {
-    const n = classCountByLevelRooms.get(cs.levelId) ?? 0;
-    if (n === 0) continue;
-    const req = subjectRoomRequirement(cs.subject.label) ?? 'STD';
-    needsByType.set(req, (needsByType.get(req) ?? 0) + cs.weeklyHours * n);
+  for (const [subjectId, hours] of demand.bySubject) {
+    const req = subjectRoomRequirement(subjectLabels.get(subjectId) ?? '') ?? 'STD';
+    needsByType.set(req, (needsByType.get(req) ?? 0) + hours);
   }
   const specialized: KpiResult['specializedRooms'] = [];
   for (const t of ['LABO_PC', 'LABO_SVT', 'INFO', 'EPS', 'STD'] as RoomType[]) {
@@ -352,6 +380,7 @@ export async function computeKpis(
 
   // ─── KPI 5 : Cohérence matière → prof → classe ────────────────
   const curriculum = await tx.curriculumSubject.findMany({
+    where: levelInCycle,
     select: { levelId: true, subjectId: true, weeklyHours: true },
   });
   const curriculumByLevel = new Map<string, Set<string>>();
@@ -446,7 +475,7 @@ export async function computeKpis(
 
   // ─── KPI 9 : Conflits structurels (sur EDT existant) ──────────
   const entries = await tx.timetableEntry.findMany({
-    where: { academicYearId },
+    where: { academicYearId, ...(cycleId ? { class: inCycle } : {}) },
     select: {
       id: true,
       classId: true,

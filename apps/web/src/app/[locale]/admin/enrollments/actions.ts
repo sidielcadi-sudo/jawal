@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import {
+  bulkCancelSchema,
   bulkReenrollSchema,
   enrollmentCreateSchema,
   enrollmentValidateSchema,
@@ -18,6 +19,8 @@ import {
   readSiblingDiscountPct,
 } from '@/lib/enrollment-discount';
 import { applicableAnnualFees, buildInstallments, type FeeCategory } from '@/lib/fees';
+import { loadOutstandingBalances } from '@/lib/unpaid';
+import { sendEnrollmentActivationEmails } from '@/lib/enrollment-activation-email';
 
 type Result<T = void> =
   | { ok: true; data?: T }
@@ -510,6 +513,13 @@ export async function bulkReenrollAction(
     created: number;
     graduated: number;
     skipped: number;
+    blockedByDebt: number;
+    /** Élèves rejetés faute de place dans la classe demandée. */
+    rejectedNoSeat: number;
+    /** Élèves rejetés faute de classe alors que le lot demandait « Actif ». */
+    rejectedNoClass: number;
+    /** Dossiers activés — un envoi d'accès au portail par dossier. */
+    activated: number;
     feesGenerated: number;
     errors: string[];
   }>
@@ -541,12 +551,37 @@ export async function bulkReenrollAction(
   let created = 0;
   let graduated = 0;
   let skipped = 0;
+  /** Élèves écartés du lot pour créance non soldée. */
+  let blockedByDebt = 0;
+  /**
+   * Élèves rejetés parce que la classe demandée était pleine.
+   *
+   * Le lot les REJETTE au lieu de créer un dossier sans classe : l'agent a
+   * désigné une classe, un dossier créé sans elle serait un demi-geste qu'il
+   * faudrait retrouver et reprendre un par un. Mieux vaut le dire et le
+   * laisser retenter avec une autre classe.
+   */
+  let rejectedNoSeat = 0;
+  /**
+   * Rejets faute de classe quand le lot demande « Actif ». Un dossier actif
+   * sans classe n'existe pas : le statut signifie « intégré — classe, EDT,
+   * comptes ». Le créer en retrait serait le demi-geste qu'on refuse ailleurs.
+   */
+  let rejectedNoClass = 0;
+  /**
+   * Dossiers activés dans le lot. Les mails d'accès partent APRÈS la
+   * transaction : un envoi est irréversible, il ne doit pas se produire pour
+   * un lot qui finirait par être annulé.
+   */
+  const activatedIds: string[] = [];
   let feesGenerated = 0;
   const withFees = parsed.data.feeCategories.length > 0;
   // Statut porté par le lot : « En attente » ouvre un dossier à instruire,
   // « Inscription validée » réinscrit d'office.
   const targetStatus = parsed.data.targetStatus;
-  const decided = targetStatus === 'INSCRIPTION_VALIDEE';
+  // « Décidé » couvre les deux statuts qui actent la réinscription : la date
+  // et l'auteur de la décision sont alors renseignés.
+  const decided = targetStatus !== 'DRAFT';
 
   try {
     await withTenant(tenantId, async (tx) => {
@@ -557,9 +592,43 @@ export async function bulkReenrollAction(
       const sourceIds = parsed.data.items.map((i) => i.sourceEnrollmentId);
       const sources = await tx.enrollment.findMany({
         where: { id: { in: sourceIds }, academicYearId: parsed.data.sourceYearId },
-        select: { id: true, studentId: true, levelId: true, status: true },
+        select: {
+          id: true,
+          studentId: true,
+          levelId: true,
+          trackId: true,
+          status: true,
+          // Nom de l'élève : le bilan du lot doit nommer qui a été rejeté,
+          // un identifiant tronqué n'aide personne à reprendre le dossier.
+          student: { select: { firstName: true, lastName: true } },
+        },
       });
       const byId = new Map(sources.map((s) => [s.id, s]));
+
+      // Créances à solder : un élève dont le solde n'est pas réglé (ou effacé)
+      // reste hors du lot. Le contrôle est refait ici — l'écran a pu être
+      // ouvert avant un encaissement, et la décision est structurante.
+      const studentIds = [...new Set(sources.map((s) => s.studentId))];
+      const balanceByStudent = await loadOutstandingBalances(tx, studentIds);
+
+      // Classes de l'année cible, pour l'affectation demandée par le lot.
+      const targetClasses = await tx.class.findMany({
+        where: { academicYearId: parsed.data.targetYearId, deletedAt: null },
+        select: {
+          id: true,
+          name: true,
+          levelId: true,
+          trackId: true,
+          capacity: true,
+          _count: { select: { students: { where: { unenrolledAt: null } } } },
+        },
+      });
+      const classById = new Map(
+        targetClasses.map((c) => [
+          c.id,
+          { id: c.id, name: c.name, levelId: c.levelId, trackId: c.trackId, capacity: c.capacity, enrolled: c._count.students },
+        ]),
+      );
 
       for (const item of parsed.data.items) {
         const src = byId.get(item.sourceEnrollmentId);
@@ -570,6 +639,14 @@ export async function bulkReenrollAction(
 
         if (item.decision === 'SKIP') {
           skipped += 1;
+          continue;
+        }
+
+        // Créance non soldée → l'élève est ignoré, y compris pour une sortie
+        // (GRADUATE) : on ne clôt pas un dossier qui doit encore de l'argent.
+        const balance = balanceByStudent.get(src.studentId) ?? 0;
+        if (balance > 0) {
+          blockedByDebt += 1;
           continue;
         }
 
@@ -607,15 +684,78 @@ export async function bulkReenrollAction(
         // Le statut vient du choix de l'agent, pas de la génération d'échéancier :
         // on peut vouloir un échéancier sur un dossier encore à instruire, ou
         // l'inverse. Le reste (affectation de classe, pièces) se traite ensuite.
+        // Classe affectée : contrôlée (bon niveau, place disponible) avant la
+        // création. Une classe refusée n'annule pas la réinscription — le
+        // dossier naît sans classe et l'erreur est remontée à l'agent.
+        const who = `${src.student.lastName} ${src.student.firstName}`;
+        let classId: string | null = null;
+        if (item.targetClassId) {
+          const cls = classById.get(item.targetClassId);
+          if (!cls) {
+            errors.push(`${who} — classe introuvable sur l'année cible.`);
+            rejectedNoSeat += 1;
+            continue;
+          }
+          if (cls.levelId !== targetLevelId) {
+            errors.push(`${who} — classe « ${cls.name} » hors du niveau cible.`);
+            rejectedNoSeat += 1;
+            continue;
+          }
+          // La filière du dossier commande : une classe d'une autre filière
+          // fausserait les coefficients de l'élève.
+          if (src.trackId && cls.trackId && cls.trackId !== src.trackId) {
+            errors.push(`${who} — classe « ${cls.name} » hors de la filière du dossier.`);
+            rejectedNoSeat += 1;
+            continue;
+          }
+          if (cls.enrolled >= cls.capacity) {
+            errors.push(
+              `${who} — classe « ${cls.name} » pleine (${cls.enrolled}/${cls.capacity}), non réinscrit.`,
+            );
+            rejectedNoSeat += 1;
+            continue;
+          }
+          classId = cls.id;
+          // Effectif tenu à jour dans le lot : sans ça, 40 élèves entreraient
+          // dans une classe de 30 au sein d'un même traitement.
+          cls.enrolled += 1;
+        }
+
+        if (targetStatus === 'ACTIVE' && !classId) {
+          errors.push(`${who} — statut « Actif » demandé sans classe affectée, non réinscrit.`);
+          rejectedNoClass += 1;
+          continue;
+        }
+
         const enrollment = await tx.enrollment.create({
           data: {
             tenantId,
             studentId: src.studentId,
             academicYearId: parsed.data.targetYearId,
             levelId: targetLevelId,
-            status: targetStatus,
+            // La filière suit l'élève d'une année sur l'autre.
+            trackId: src.trackId,
+            classId,
+            // Une classe attribuée implique le statut « Affecté » : le reste
+            // du produit (listes de classe, appel, bulletins) considère qu'un
+            // élève placé dans une classe est affecté. Laisser
+            // « Inscription validée » avec une classe produisait un dossier qui
+            // se disait en attente d'affectation tout en figurant à l'appel.
+            // « Actif » est déjà le bout de la chaîne : on le garde tel quel.
+            // Sinon, une classe attribuée implique « Affecté » — le reste du
+            // produit (listes de classe, appel, bulletins) considère qu'un
+            // élève placé dans une classe est affecté.
+            status:
+              targetStatus === 'ACTIVE'
+                ? 'ACTIVE'
+                : classId && targetStatus !== 'DRAFT'
+                  ? 'AFFECTE'
+                  : targetStatus,
             decidedAt: decided ? new Date() : null,
             decidedByUserId: decided ? session.user.id : null,
+            // L'activation date et signe le dossier, comme le geste individuel.
+            validatedAt: targetStatus === 'ACTIVE' ? new Date() : null,
+            validatedByUserId: targetStatus === 'ACTIVE' ? session.user.id : null,
             notes:
               item.decision === 'REPEAT'
                 ? 'Redoublement — créé par réinscription en lot'
@@ -624,6 +764,29 @@ export async function bulkReenrollAction(
           },
         });
         created += 1;
+        if (targetStatus === 'ACTIVE') activatedIds.push(enrollment.id);
+
+        // L'appartenance à la classe vit dans StudentClass : sans cette ligne,
+        // l'élève n'apparaît ni dans les listes de classe, ni à l'appel.
+        if (classId) {
+          // Même règle que l'affectation individuelle : une seule classe active
+          // par année. Le lot pouvant repasser sur un élève, la garde est ici
+          // aussi.
+          await tx.studentClass.updateMany({
+            where: {
+              studentId: src.studentId,
+              unenrolledAt: null,
+              classId: { not: classId },
+              class: { academicYearId: parsed.data.targetYearId },
+            },
+            data: { unenrolledAt: new Date() },
+          });
+          await tx.studentClass.upsert({
+            where: { studentId_classId: { studentId: src.studentId, classId } },
+            update: { unenrolledAt: null },
+            create: { tenantId, studentId: src.studentId, classId },
+          });
+        }
 
         if (withFees) {
           try {
@@ -660,6 +823,10 @@ export async function bulkReenrollAction(
           created,
           graduated,
           skipped,
+          blockedByDebt,
+          rejectedNoSeat,
+          rejectedNoClass,
+          activated: activatedIds.length,
           targetStatus,
           feeCategories: parsed.data.feeCategories,
           feesGenerated,
@@ -668,9 +835,192 @@ export async function bulkReenrollAction(
       });
     });
 
+    // Accès au portail — famille et élève. Hors transaction et en
+    // « best-effort » : un serveur mail indisponible ne doit pas défaire une
+    // réinscription déjà écrite. En séquence plutôt qu'en parallèle, pour ne
+    // pas saturer le relais sur un lot de 150 dossiers.
+    for (const id of activatedIds) {
+      try {
+        await sendEnrollmentActivationEmails({ tenantId, enrollmentId: id });
+      } catch (e) {
+        errors.push(
+          `Accès portail non envoyés pour un dossier activé : ${
+            e instanceof Error ? e.message : 'erreur'
+          }`,
+        );
+      }
+    }
+
     revalidatePath('/admin/enrollments');
-    return { ok: true, data: { created, graduated, skipped, feesGenerated, errors } };
+    return {
+      ok: true,
+      data: {
+        created,
+        graduated,
+        skipped,
+        blockedByDebt,
+        rejectedNoSeat,
+        rejectedNoClass,
+        activated: activatedIds.length,
+        feesGenerated,
+        errors,
+      },
+    };
   } catch (e: unknown) {
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur inconnue' };
   }
+}
+
+/**
+ * Défait une réinscription en lot : annule les dossiers créés sur l'année
+ * cible, ou en retire les élèves.
+ *
+ * Le pendant du lot de réinscription. Une erreur de niveau ou de classe sur
+ * 150 dossiers ne se rattrape pas dossier par dossier, et sans ce geste la
+ * seule issue serait la base de données.
+ *
+ * En mode `DELETE`, un dossier qui porte quelque chose — échéancier généré,
+ * règlement encaissé, pièce déposée — est ÉCARTÉ, pas supprimé : il a une
+ * histoire comptable qu'aucune annulation ne doit effacer en silence. L'écran
+ * le dit et propose le retrait, qui conserve la trace.
+ */
+export async function bulkCancelReenrollAction(
+  formData: FormData,
+): Promise<
+  Result<{
+    deleted: number;
+    withdrawn: number;
+    skipped: { name: string; reason: string }[];
+  }>
+> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requirePermission('tenants.manage');
+
+  const raw = formData.get('payload');
+  if (typeof raw !== 'string') return { ok: false, error: 'Payload manquant' };
+  let json;
+  try {
+    json = JSON.parse(raw);
+  } catch {
+    return { ok: false, error: 'JSON invalide' };
+  }
+  const parsed = bulkCancelSchema.safeParse(json);
+  if (!parsed.success) {
+    return { ok: false, error: 'Données invalides.', fieldErrors: flatten(parsed) };
+  }
+  const { targetYearId, mode, studentIds } = parsed.data;
+  const reason = parsed.data.reason?.trim();
+  if (mode === 'WITHDRAW' && !reason) {
+    return { ok: false, error: 'Motif requis pour un retrait.' };
+  }
+
+  const tenantId = session.user.tenantId;
+  let deleted = 0;
+  let withdrawn = 0;
+  const skipped: { name: string; reason: string }[] = [];
+
+  try {
+    await withTenant(tenantId, async (tx) => {
+      const rows = await tx.enrollment.findMany({
+        where: { academicYearId: targetYearId, studentId: { in: studentIds } },
+        select: {
+          id: true,
+          studentId: true,
+          classId: true,
+          status: true,
+          feesGenerated: true,
+          student: { select: { firstName: true, lastName: true } },
+          documents: { select: { id: true } },
+        },
+      });
+
+      const now = new Date();
+      for (const e of rows) {
+        const name = `${e.student.lastName} ${e.student.firstName}`;
+
+        if (e.status === 'WITHDRAWN' || e.status === 'GRADUATED') {
+          skipped.push({ name, reason: 'dossier déjà clos' });
+          continue;
+        }
+
+        if (mode === 'DELETE') {
+          // Un règlement encaissé rend l'annulation impossible : l'argent est
+          // entré, la trace doit rester. Le retrait est alors la bonne porte.
+          const paid = await tx.payment.count({
+            where: { installment: { studentId: e.studentId } },
+          });
+          if (paid > 0) {
+            skipped.push({ name, reason: 'règlement déjà encaissé — retirer plutôt qu\'annuler' });
+            continue;
+          }
+          if (e.feesGenerated) {
+            skipped.push({ name, reason: 'échéancier généré — retirer plutôt qu\'annuler' });
+            continue;
+          }
+          if (e.documents.length > 0) {
+            skipped.push({ name, reason: 'pièces déposées — retirer plutôt qu\'annuler' });
+            continue;
+          }
+
+          // Les échéances de l'élève sur cette année n'ont pas de lien direct
+          // avec le dossier : elles ne partiraient pas d'elles-mêmes.
+          await tx.installment.deleteMany({
+            where: { studentId: e.studentId, feeScheduleItemId: null, payments: { none: {} } },
+          });
+          if (e.classId) {
+            await tx.studentClass.deleteMany({
+              where: { studentId: e.studentId, classId: e.classId },
+            });
+          }
+          await tx.enrollment.delete({ where: { id: e.id } });
+          deleted += 1;
+          continue;
+        }
+
+        // WITHDRAW : on clôt, on libère la place, on annule le reste dû.
+        await tx.installment.updateMany({
+          where: { studentId: e.studentId, status: { in: ['PENDING', 'PARTIAL'] } },
+          data: { status: 'CANCELLED' },
+        });
+        if (e.classId) {
+          await tx.studentClass.updateMany({
+            where: { studentId: e.studentId, classId: e.classId, unenrolledAt: null },
+            data: { unenrolledAt: now },
+          });
+        }
+        await tx.enrollment.update({
+          where: { id: e.id },
+          data: {
+            status: 'WITHDRAWN',
+            classId: null,
+            withdrawnAt: now,
+            withdrawalReason: reason,
+          },
+        });
+        withdrawn += 1;
+      }
+
+      const missing = studentIds.length - rows.length;
+      if (missing > 0) {
+        skipped.push({ name: `${missing} élève(s)`, reason: 'aucun dossier sur l’année cible' });
+      }
+
+      await logAudit(tx, {
+        tenantId,
+        userId: session.user.id,
+        action: 'bulkCancelReenroll',
+        entityType: 'Enrollment',
+        entityId: targetYearId,
+        after: { mode, requested: studentIds.length, deleted, withdrawn, skipped: skipped.length, reason },
+      });
+    });
+  } catch (e: unknown) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur inconnue' };
+  }
+
+  revalidatePath('/admin/enrollments');
+  revalidatePath('/admin/persons');
+  revalidatePath('/admin/finance/unpaid');
+  return { ok: true, data: { deleted, withdrawn, skipped } };
 }

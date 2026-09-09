@@ -117,7 +117,7 @@ export async function generateMultiTimetableAction(
               metadata: true,
             },
           },
-          class: { select: { id: true, name: true, nameAr: true, levelId: true } },
+          class: { select: { id: true, name: true, nameAr: true, levelId: true, trackId: true } },
         },
       });
 
@@ -125,18 +125,35 @@ export async function generateMultiTimetableAction(
         throw new Error('Aucune affectation pédagogique pour ces classes.');
       }
 
-      // Volume horaire avec fallback CurriculumSubject
-      const levelIds = [...new Set(classes.map((c) => c.levelId))];
-      const curriculum = await tx.curriculumSubject.findMany({
-        where: { levelId: { in: levelIds } },
-      });
+      // Volume horaire par cascade : affectation → filière → niveau.
+      // Cf. lib/timetable-load. La génération globale mêle des classes de
+      // cycles différents : chacune doit résoudre sur SA source.
+      const levelIds = [...new Set(assignments.map((a) => a.class.levelId))];
+      const trackIds = [
+        ...new Set(assignments.map((a) => a.class.trackId).filter((x): x is string => !!x)),
+      ];
+      const [curriculum, trackRows] = await Promise.all([
+        tx.curriculumSubject.findMany({ where: { levelId: { in: levelIds } } }),
+        trackIds.length
+          ? tx.trackSubjectCoefficient.findMany({
+              where: { trackId: { in: trackIds } },
+              select: { trackId: true, subjectId: true, weeklyHours: true },
+            })
+          : Promise.resolve([]),
+      ]);
       const curriculumByKey = new Map(
         curriculum.map((c) => [`${c.levelId}|${c.subjectId}`, c.weeklyHours]),
       );
+      const trackByKey = new Map(
+        trackRows.map((r) => [`${r.trackId}|${r.subjectId}`, r.weeklyHours]),
+      );
 
       const solverAssignments: SolverAssignment[] = assignments.map((a) => {
-        const fallback = curriculumByKey.get(`${a.class.levelId}|${a.subjectId}`) ?? 0;
-        const hours = a.hoursPerWeek ?? fallback;
+        const fromTrack = a.class.trackId
+          ? trackByKey.get(`${a.class.trackId}|${a.subjectId}`)
+          : undefined;
+        const fromCurriculum = curriculumByKey.get(`${a.class.levelId}|${a.subjectId}`);
+        const hours = a.hoursPerWeek ?? fromTrack ?? fromCurriculum ?? 0;
         return {
           id: a.id,
           teacher_id: a.teacherId,

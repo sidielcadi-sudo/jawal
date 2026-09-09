@@ -7,10 +7,20 @@ import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
+import { checkSlotComposition } from '@/lib/class-groups';
 
 type Result<T = void> =
   | { ok: true; data?: T }
   | { ok: false; error: string; fieldErrors?: Record<string, string> };
+
+/** Refus de composition d'une case — cf. lib/class-groups. */
+const SLOT_ERRORS: Record<string, string> = {
+  WHOLE_CLASS_PRESENT:
+    "Une séance en classe entière occupe déjà ce créneau. Supprimez-la avant d'y placer des groupes.",
+  GROUP_ALREADY_PLACED: 'Ce groupe a déjà une séance sur ce créneau.',
+  GROUPS_PRESENT:
+    'Des séances de groupe occupent ce créneau. Supprimez-les avant de repasser en classe entière.',
+};
 
 function flatten<T>(parsed: z.SafeParseError<T>): Record<string, string> {
   const out: Record<string, string> = {};
@@ -57,16 +67,44 @@ export async function upsertTimetableEntryAction(formData: FormData): Promise<Re
       const isEmpty =
         !parsed.data.subjectId && !parsed.data.teacherId && !parsed.data.roomId && !parsed.data.note;
 
-      const existing = await tx.timetableEntry.findUnique({
+      const groupId = parsed.data.groupId ?? null;
+
+      // Un groupe doit appartenir à CETTE classe : une séance de « Groupe 1 »
+      // de la 2AC-B placée sur la 2AC-A n'aurait aucun public.
+      if (groupId) {
+        const g = await tx.classGroup.findUnique({
+          where: { id: groupId },
+          select: { classId: true, name: true },
+        });
+        if (!g) throw new Error('Groupe introuvable.');
+        if (g.classId !== parsed.data.classId) {
+          throw new Error(`Le groupe « ${g.name} » n'appartient pas à cette classe.`);
+        }
+      }
+
+      // Toutes les séances de la case : le dédoublement en autorise plusieurs.
+      const occupants = await tx.timetableEntry.findMany({
         where: {
-          classId_academicYearId_dayOfWeek_slotId: {
-            classId: parsed.data.classId,
-            academicYearId: parsed.data.academicYearId,
-            dayOfWeek: parsed.data.dayOfWeek,
-            slotId: parsed.data.slotId,
-          },
+          classId: parsed.data.classId,
+          academicYearId: parsed.data.academicYearId,
+          dayOfWeek: parsed.data.dayOfWeek,
+          slotId: parsed.data.slotId,
         },
+        select: { id: true, groupId: true },
       });
+      const existing = occupants.find((o) => o.groupId === groupId) ?? null;
+
+      // Composition de la case. Les index partiels refusent les doublons
+      // stricts ; mêler classe entière et groupes ne les viole pas, alors que
+      // c'est incohérent — les élèves du groupe seraient attendus deux fois.
+      if (!isEmpty) {
+        const verdict = checkSlotComposition(
+          occupants.map((o) => ({ entryId: o.id, groupId: o.groupId })),
+          { groupId },
+          existing?.id,
+        );
+        if (!verdict.ok) throw new Error(SLOT_ERRORS[verdict.reason]);
+      }
 
       if (isEmpty) {
         if (existing) {
@@ -103,6 +141,7 @@ export async function upsertTimetableEntryAction(formData: FormData): Promise<Re
             subjectId: parsed.data.subjectId ?? null,
             teacherId: parsed.data.teacherId ?? null,
             roomId: parsed.data.roomId ?? null,
+            groupId,
             note: parsed.data.note ?? null,
           },
         });
@@ -113,7 +152,9 @@ export async function upsertTimetableEntryAction(formData: FormData): Promise<Re
         userId: session.user.id,
         action: 'upsert',
         entityType: 'TimetableEntry',
-        entityId: `${parsed.data.classId}|${parsed.data.dayOfWeek}|${parsed.data.slotId}`,
+        entityId: `${parsed.data.classId}|${parsed.data.dayOfWeek}|${parsed.data.slotId}${
+          groupId ? `|${groupId}` : ''
+        }`,
         after: {
           subjectId: parsed.data.subjectId,
           teacherId: parsed.data.teacherId,

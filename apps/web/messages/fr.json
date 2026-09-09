@@ -229,7 +229,8 @@
       "bourse": "Bourse aux livres",
       "comptabilite": "Comptabilité",
       "soutien": "Soutien scolaire",
-      "competences": "Compétences et aptitudes"
+      "competences": "Compétences et aptitudes",
+      "exams": "Examens"
     },
     "surveys": {
       "title": "Enquêtes de satisfaction",
@@ -900,8 +901,8 @@
         "archivedTitle": "Historique — dossier archivé",
         "archivedHint": "Ce dossier a été radié et archivé : il reste consultable mais n’est plus modifiable.",
         "viewFinance": "Voir dans Finance",
-        "previousDueTitle": "Créance antérieure non soldée",
-        "previousDueHint": "Cet élève a un solde impayé d'années précédentes : {amount} {currency}.",
+        "previousDueTitle": "Créances antérieures non soldées",
+        "previousDueHint": "Cet élève, ou sa fratrie, traîne un solde impayé d'années précédentes : {amount} {currency}.",
         "regimeEdit": {
           "button": "Modifier régime / transport",
           "title": "Régime & transport",
@@ -932,6 +933,17 @@
           "MOTHER": "Mère",
           "LEGAL_GUARDIAN": "Tuteur légal",
           "GUARDIAN": "Tuteur"
+        },
+        "previousDueTable": {
+          "year": "Année",
+          "label": "Échéance",
+          "dueDate": "Échue le",
+          "amount": "Montant",
+          "paid": "Payé",
+          "remaining": "Reste dû",
+          "total": "Total à solder",
+          "thisStudent": "ce dossier",
+          "lines": "{count} échéance(s)"
         }
       },
       "actions": {
@@ -986,14 +998,22 @@
           "current": "Niveau / classe actuels",
           "decision": "Décision",
           "targetLevel": "Niveau cible",
-          "balance": "Solde"
+          "balance": "Solde",
+          "targetClass": "Classe affectée",
+          "noClass": "— Aucune classe —",
+          "classFull": "pleine",
+          "noClassForLevel": "Aucune classe ouverte sur ce niveau",
+          "noTargetYearShort": "Choisir l'année cible"
         },
         "filter": {
           "currentClass": "Classe actuelle",
           "currentLevel": "Niveau actuel",
           "allClasses": "Toutes les classes",
           "allLevels": "Tous les niveaux",
-          "active": "{shown} ligne(s) affichée(s) sur {total}. « Appliquer à tous » ne porte que sur les lignes affichées ; les décisions des lignes masquées sont conservées et enregistrées."
+          "active": "{shown} ligne(s) affichée(s) sur {total}. « Appliquer à tous » ne porte que sur les lignes affichées ; les décisions des lignes masquées sont conservées et enregistrées.",
+          "clear": "Tout désélectionner",
+          "multiHint": "sélectionné(s)",
+          "selectAll": "Tout cocher"
         },
         "fees": {
           "title": "Génération Échéancier",
@@ -1013,7 +1033,52 @@
           "DRAFT": "En attente",
           "INSCRIPTION_VALIDEE": "Inscription validée",
           "hint": "Statut appliqué aux dossiers créés par le lot.",
-          "required": "Choisissez un statut cible avant de lancer la réinscription."
+          "required": "Choisissez un statut cible avant de lancer la réinscription.",
+          "AFFECTE": "Affecté (inscrit et placé en classe)",
+          "classPromotes": "⚠ Une classe attribuée fait passer le dossier en « Affecté » : le reste du produit considère qu'un élève placé dans une classe est affecté.",
+          "ACTIVE": "Actif — inscrire, affecter et activer",
+          "activeWarning": "Ce statut va au bout : le dossier est intégré (classe, EDT, comptes) et les accès au portail sont envoyés par e-mail à la famille et à l'élève. Une classe est requise pour chaque élève traité.",
+          "activatedResult": "{count, plural, one {# dossier activé, accès au portail envoyés} other {# dossiers activés, accès au portail envoyés}}."
+        },
+        "blocked": {
+          "title": "Créances à solder",
+          "hint": "{count} élève(s) sont écartés du traitement — {amount} restant dû. Ils réintégreront le lot une fois la créance soldée ou effacée.",
+          "rowBadge": "Créance à solder — hors lot",
+          "result": "{count} élève(s) ignoré(s) pour créance non soldée."
+        },
+        "noTargetYear": {
+          "title": "Aucune année cible.",
+          "hint": "Choisissez l'année d'arrivée ci-dessus. Si elle n'existe pas encore, créez-la : c'est elle qui porte les classes proposées dans la colonne « Classe affectée ».",
+          "createYear": "Créer une année scolaire"
+        },
+        "noClasses": {
+          "title": "L'année cible n'a aucune classe.",
+          "hint": "Les élèves seront réinscrits sans classe. Créez les classes de cette année pour pouvoir les affecter dès le lot.",
+          "createClasses": "Gérer les classes"
+        },
+        "noSeat": {
+          "result": "{count, plural, one {# élève rejeté : la classe demandée est pleine} other {# élèves rejetés : la classe demandée est pleine}}. Aucun dossier créé — augmentez la capacité ou choisissez une autre classe, puis relancez."
+        },
+        "noClass": {
+          "result": "{count, plural, one {# élève rejeté : statut « Actif » demandé sans classe} other {# élèves rejetés : statut « Actif » demandé sans classe}}. Choisissez une classe pour chaque ligne, puis relancez."
+        },
+        "done": {
+          "hidden": "{count, plural, one {# élève a déjà un dossier sur l’année cible : il est masqué} other {# élèves ont déjà un dossier sur l’année cible : ils sont masqués}} — le lot ne peut rien en faire.",
+          "show": "Les afficher",
+          "hide": "Les masquer"
+        },
+        "cancelBatch": {
+          "selectAll": "Tout sélectionner",
+          "clear": "Vider la sélection",
+          "selected": "{count, plural, =0 {aucun dossier sélectionné} one {# dossier sélectionné} other {# dossiers sélectionnés}}",
+          "pick": "défaire",
+          "reason": "Motif",
+          "reasonPlaceholder": "Erreur de niveau, départ de l’élève…",
+          "reasonRequired": "Le motif est requis pour un retrait.",
+          "delete": "Annuler la réinscription",
+          "withdraw": "Désinscrire",
+          "hint": "« Annuler » supprime le dossier de l’année cible, comme s’il n’avait jamais existé — réservé aux dossiers vierges. « Désinscrire » le clôt en retrait : la place en classe est libérée, le reste dû annulé, la trace conservée.",
+          "result": "{deleted} annulé(s), {withdrawn} désinscrit(s), {skipped} écarté(s)."
         }
       },
       "pagination": {
@@ -1324,7 +1389,15 @@
       },
       "history": "Historique",
       "archiveNotice": "Année {year} — consultation en lecture seule. La génération est réservée à l’année active.",
-      "backToActive": "Revenir à l’année active"
+      "backToActive": "Revenir à l’année active",
+      "cyclePicker": {
+        "label": "Cycle",
+        "placeholder": "— Choisir un cycle —",
+        "submit": "Voir",
+        "hint": "Les indicateurs se lisent cycle par cycle : la couverture horaire du collège et celle du lycée ne s'additionnent pas.",
+        "empty": "Choisissez un cycle puis cliquez sur « Voir » pour afficher les indicateurs de préparation."
+      },
+      "generateForCycle": "Générer l'EDT — {cycle}"
     },
     "timetable": {
       "title": "Emploi du temps",
@@ -1521,7 +1594,10 @@
         "SUN": "Dimanche"
       },
       "overrideSubTag": "Remplacement",
-      "overrideCancelledTag": "Annulé"
+      "overrideCancelledTag": "Annulé",
+      "group": "Groupe",
+      "wholeClass": "Classe entière",
+      "addGroup": "un groupe"
     },
     "classConstraints": {
       "title": "Contraintes EDT",
@@ -1976,6 +2052,33 @@
           "page": "Page {page} / {total}",
           "prev": "Précédent",
           "next": "Suivant"
+        },
+        "year": "Année",
+        "previousTotal": "Créances antérieures :",
+        "previousFilterOn": "Antérieures uniquement ✓",
+        "previousFilterOff": "Antérieures uniquement",
+        "previousBadge": "dont {amount} antérieur",
+        "installment": "Échéance",
+        "dueOn": "Échue le",
+        "previousSection": "Créances des années antérieures",
+        "previousSectionHint": "Reportées des exercices précédents : elles n'entrent pas dans les indicateurs de l'année en cours.",
+        "currentSection": "Année scolaire en cours",
+        "previousTag": "antérieure",
+        "settle": {
+          "action": "Régler",
+          "title": "Régler des créances",
+          "hint": "Chaque échéance cochée est encaissée pour son reliquat exact. Pour un versement partiel, passez par la fiche de l'élève.",
+          "selectionRequired": "Cochez au moins une échéance à régler.",
+          "selectedCount": "{count, plural, =0 {Aucune échéance sélectionnée} one {# échéance sélectionnée} other {# échéances sélectionnées}}",
+          "selectYear": "Cocher l'année",
+          "unselectYear": "Décocher l'année",
+          "method": "Moyen de paiement",
+          "paidAt": "Date du règlement",
+          "reference": "Référence",
+          "referencePlaceholder": "N° de chèque, référence de virement…",
+          "saving": "Encaissement…",
+          "confirm": "Encaisser {amount}",
+          "partial": "{done} échéance(s) déjà encaissée(s), puis interruption : {error}. Rouvrez la fenêtre, les lignes réglées ont disparu."
         }
       },
       "topUnpaid": "Élèves avec impayés",
@@ -2126,6 +2229,11 @@
         "students": "{count} élèves actifs",
         "topActivities": "Activités les plus rentables",
         "noActivity": "Aucun encaissement sur l'année."
+      },
+      "scopeHint": "Tous les chiffres de cette page portent sur l’année scolaire {year} — pas sur l’année civile.",
+      "previousYears": {
+        "title": "Créances des années antérieures",
+        "hint": "{amount} restent dus par {count} élève(s) sur des exercices antérieurs. Ces montants sont exclus des indicateurs ci-dessous et se traitent dans la gestion des impayés."
       }
     },
     "studentFinance": {
@@ -2190,8 +2298,20 @@
         "reasonRequired": "Le motif est obligatoire.",
         "confirm": "Effacer la créance",
         "waiving": "Effacement…",
-        "cancel": "Annuler"
-      }
+        "cancel": "Annuler",
+        "closedHint": "L'effacement de créance n'est proposé qu'en fin d'année scolaire, à partir du {date} (année {year}).",
+        "noActiveYear": "Aucune année scolaire active : l'effacement de créance est indisponible.",
+        "selectionRequired": "Cochez au moins une créance à effacer.",
+        "selectedCount": "{count, plural, =0 {Aucune créance sélectionnée} one {# créance sélectionnée} other {# créances sélectionnées}}",
+        "selectAll": "Tout sélectionner",
+        "selectYear": "Cocher l'année",
+        "unselectYear": "Décocher l'année",
+        "lockedYear": "Année en cours — hors fenêtre",
+        "confirmSelection": "{count, plural, =0 {Effacer} one {Effacer # créance} other {Effacer # créances}}",
+        "partial": "{waived} créance(s) effacée(s), {skipped} écartée(s) — {first}.",
+        "previousStillOpen": "Les créances des années antérieures restent effaçables : l'exercice est clos, il n'y a plus rien à recouvrer."
+      },
+      "yearCount": "{count, plural, one {# échéance} other {# échéances}}"
     },
     "announcements": {
       "title": "Annonces",
@@ -2302,7 +2422,10 @@
         "allLevels": "Tous les niveaux",
         "allClasses": "Toutes les classes",
         "status": "Statut",
-        "allStatuses": "Tous les statuts"
+        "allStatuses": "Tous les statuts",
+        "clearAll": "Tout décocher",
+        "selectAll": "Tout cocher",
+        "searchOption": "Rechercher…"
       },
       "pagination": {
         "page": "Page {page} sur {total}",
@@ -2455,6 +2578,13 @@
         "attendanceScope": {
           "year": "année",
           "period": "trimestre"
+        },
+        "availability": {
+          "title": "Disponibilités",
+          "weekly": "{hours} h / semaine",
+          "closed": "Fermé",
+          "none": "Aucune disponibilité saisie.",
+          "define": "Les définir"
         }
       },
       "parentAccess": {
@@ -2894,7 +3024,8 @@
         "viewStudents": "Élèves",
         "viewDetail": "Détail",
         "levelLabel": "Niveau",
-        "yearLabel": "Année scolaire"
+        "yearLabel": "Année scolaire",
+        "groups": "Groupes"
       },
       "duplicate": {
         "button": "Dupliquer classes",
@@ -2908,6 +3039,40 @@
         "running": "Duplication…",
         "cancel": "Annuler",
         "close": "Fermer"
+      },
+      "groups": {
+        "title": "Groupes",
+        "headcount": "{count} élèves",
+        "intro": "Certaines séances se font en demi-classe — langues, TP de physique ou de SVT. L'élève garde sa classe pour l'appel, le bulletin et les effectifs ; le groupe ne vaut que pour la matière choisie, et seulement à l'emploi du temps.",
+        "allSubjects": "Toutes matières",
+        "newGroup": "Nouveau groupe",
+        "newGroupPlaceholder": "Groupe 1",
+        "add": "Créer",
+        "autoSplit": "Répartition automatique",
+        "splitOption": "{count} groupes",
+        "splitAction": "Répartir",
+        "autoSplitHint": "La répartition remplace les groupes existants de « {subject} » et distribue l'effectif par ordre alphabétique, à un élève près. Elle est refusée si des séances d'emploi du temps y sont déjà accrochées.",
+        "splitDone": "{groups} groupes créés, {students} élèves répartis.",
+        "empty": "Aucun groupe pour « {subject} » — cette matière se fait en classe entière.",
+        "members": "{count} élèves",
+        "rename": "Renommer",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "delete": "Supprimer",
+        "confirmDelete": "Supprimer",
+        "deleteOne": "Supprimer ce groupe ?",
+        "deleteWithEntries": "Supprime aussi {count} séance(s) d’emploi du temps — elles n’auraient plus de public.",
+        "takenBy": "Déjà dans {group}",
+        "coverageOk": "Tous les élèves sont affectés à un groupe.",
+        "coverageKo": "{count} élève(s) sans groupe",
+        "coverageKoHint": "Ils n'auraient pas cours sur les séances dédoublées, et rien ne le signalerait au moment de l'appel.",
+        "split": {
+          "label": "Heures dédoublées — {subject} ({total} h au programme)",
+          "all": "Toutes les heures",
+          "hours": "{count} h sur le volume",
+          "load": "Charge à placer : {load} h ({groups} groupes)",
+          "hint": "Un dédoublement n'est pas toujours permanent : sur 3 h, une seule peut se faire en demi-groupes. Le reste se tient en classe entière. La valeur s'applique à tous les groupes de la matière."
+        }
       }
     },
     "gradeBook": {
@@ -3211,7 +3376,8 @@
         "users": "Utilisateurs",
         "audit": "Journal d'audit",
         "timetable": "Emploi du temps",
-        "competences": "Compétences et aptitudes"
+        "competences": "Compétences et aptitudes",
+        "tracks": "Filières & barèmes"
       },
       "appearance": {
         "title": "Couleur du thème",
@@ -3443,13 +3609,15 @@
         "addSubject": "Ajouter une matière",
         "addSubjectHint": "Choisissez la matière, son volume horaire et son coefficient pour ce niveau.",
         "allSubjectsAdded": "Toutes les matières sont déjà au programme.",
-        "confirmDelete": "Retirer cette matière du programme ?",
+        "confirmDelete": "Confirmer",
         "table": {
           "subject": "Matière",
           "hours": "Heures/sem",
           "coefficient": "Coefficient",
           "order": "Ordre",
-          "actions": "Actions"
+          "actions": "Actions",
+          "ccCoefficient": "Coef. CC",
+          "examCoefficient": "Coef. examen"
         },
         "actions": {
           "save": "Enregistrer",
@@ -3461,7 +3629,16 @@
           "coefficient": "Coefficient",
           "add": "Ajouter au programme",
           "creating": "Ajout…"
-        }
+        },
+        "emptyTrack": "Aucune matière au programme de cette filière.",
+        "addSubjectHintTrack": "Ajoutez une matière avec son volume horaire et son coefficient de moyenne semestrielle.",
+        "examCoefficientHint": "Le coefficient d'examen (colonne grise) est celui du Bac : il se règle dans Paramétrage → Filières & barèmes, car il diffère du coefficient de contrôle continu.",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "remove": "Retirer",
+        "add": "Ajouter",
+        "trackSelect": "Filière :",
+        "trackCount": "{count} filière(s)"
       },
       "subjects": {
         "table": {
@@ -3500,7 +3677,10 @@
           "cancel": "Annuler",
           "labelAr": "Libellé (arabe)"
         },
-        "labelAr": "Libellé (arabe)"
+        "labelAr": "Libellé (arabe)",
+        "tabs": {
+          "unassigned": "Non rattachées"
+        }
       },
       "roles": {
         "tabs": {
@@ -3617,6 +3797,32 @@
           "saving": "Enregistrement…",
           "cancel": "Annuler",
           "confirmDelete": "Supprimer cette réduction ?"
+        },
+        "debtWaiver": {
+          "title": "Effacement de créance",
+          "hint": "Quand la remise gracieuse est-elle autorisée ? Le réglage est appliqué côté serveur : hors fenêtre, l'action est refusée même en forçant l'appel.",
+          "windowDays": "Fenêtre (jours avant la fin de l'année) :",
+          "save": "Enregistrer",
+          "saved": "Enregistré.",
+          "modes": {
+            "END_OF_YEAR": "Seulement en fin d'année scolaire",
+            "endOfYearHint": "Tant que l'année tourne, une créance non soldée reste un impayé à recouvrer, pas une perte à acter.",
+            "ANYTIME": "À tout moment",
+            "anytimeHint": "L'établissement arbitre au fil de l'eau. Chaque effacement reste tracé (montant, motif, auteur) et comptabilisé en remise."
+          }
+        },
+        "filter": {
+          "cycle": "Cycle",
+          "year": "Année scolaire",
+          "allYears": "Toutes les années"
+        },
+        "duplicate": {
+          "action": "Dupliquer les {count} frais sur l'année suivante",
+          "confirm": "Copier les {count} frais de {year} vers l'année suivante ?",
+          "confirmAction": "Dupliquer",
+          "cancel": "Annuler",
+          "running": "Copie en cours…",
+          "done": "{created} frais créé(s) sur {year}, {skipped} déjà présent(s)."
         }
       },
       "rooms": {
@@ -3767,6 +3973,50 @@
           "PersonPhoto": "Photo"
         },
         "pagination": "Page {page} / {total}"
+      },
+      "tracks": {
+        "title": "Filières, coefficients et barèmes",
+        "subtitle": "Le coefficient d’une matière dépend de la filière ; la pondération CC / examen dépend du niveau.",
+        "year": "Année scolaire active : {year}",
+        "noActiveYear": "Aucune année scolaire active : les barèmes ne peuvent pas être enregistrés.",
+        "empty": "Aucune filière déclarée. Importez le référentiel marocain pour démarrer.",
+        "trackCount": "{count} filière(s)",
+        "subjectCount": "{count} matière(s)",
+        "subject": "Matière",
+        "coefficient": "Coefficient",
+        "certifying": "Épreuve certificative",
+        "zeroHint": "Coefficient à 0 = matière hors programme de la filière : elle retombe alors sur le coefficient du niveau, puis sur celui de la matière.",
+        "save": "Enregistrer",
+        "saved": "Enregistré.",
+        "cancel": "Annuler",
+        "lock": "Verrouiller la saisie",
+        "unlock": "Déverrouiller",
+        "weights": {
+          "cc": "Contrôle continu",
+          "semester": "Semestriel",
+          "regional": "Régional",
+          "national": "National"
+        },
+        "import": {
+          "title": "Référentiel du lycée marocain",
+          "hint": "Crée le cycle Lycée, les niveaux Tronc commun / 1BAC / 2BAC, les matières manquantes, les filières officielles et leurs coefficients, ainsi que les barèmes réglementaires.",
+          "action": "Importer le référentiel",
+          "confirm": "L’import est relançable sans risque de doublon : il remet les coefficients officiels et écrase vos ajustements locaux. Les barèmes verrouillés ne sont pas touchés.",
+          "confirmAction": "Confirmer l’import",
+          "running": "Import en cours…",
+          "done": "{tracks} filière(s), {coefficients} coefficient(s), {subjects} matière(s) créée(s)."
+        },
+        "examDuration": "Durée",
+        "paperGroup": "Sujet partagé",
+        "ownPaper": "sujet propre",
+        "examType": "Type",
+        "examCount": "{count} épreuve(s)",
+        "groupHint": "Sujet partagé : deux filières portant le même code sur la même matière composent sur le MÊME sujet et ne donnent qu'une seule épreuve à organiser. Laisser vide isole la filière, même à durée identique.",
+        "types": {
+          "SPECIALITY": "Spécialité",
+          "SECONDARY": "Secondaire",
+          "LITERARY": "Littéraire"
+        }
       }
     },
     "teacherKpis": {
@@ -4741,7 +4991,171 @@
       "enrollGroup": "Inscrire les {count} élèves",
       "enrolling": "Inscription…",
       "enrolled": "{count} inscrits, {failed} ignorés (déjà inscrits).",
-      "noCourse": "Aucun cours de soutien actif."
+      "noCourse": "Aucun cours de soutien actif.",
+      "import": {
+        "title": "Reprendre un référentiel existant",
+        "hint": "Reconduire le référentiel d'une année précédente pour {year}, puis l'ajuster.",
+        "action": "Reprendre pour {year}",
+        "running": "Copie en cours…",
+        "done": "{nodes} nœud(s) et {levels} activation(s) de niveau copiés.",
+        "nodes": "{count} nœuds",
+        "noSource": "Aucun référentiel d'une autre année à reprendre.",
+        "safeNote": "Le référentiel source n'est pas modifié : les évaluations déjà saisies y restent rattachées."
+      },
+      "template": {
+        "createTitle": "Créer le référentiel modèle",
+        "createHint": "Le modèle est le référentiel de travail de l'établissement. Il est repris depuis le dernier référentiel d'année s'il en existe un, puis se modifie librement.",
+        "createAction": "Créer le modèle",
+        "creating": "Création…",
+        "sourceLabel": "Référentiel modèle",
+        "alreadyImported": "Le référentiel de {year} est déjà en place. Le modèle sert de base aux années suivantes ; les modifications faites ici ne rétroagissent pas sur une année déjà importée.",
+        "addAction": "Ajouter",
+        "saving": "Enregistrement…",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "confirmDelete": "Supprimer",
+        "deleteOne": "Supprimer cet élément ?",
+        "deleteWithChildren": "Supprime aussi {count} élément(s) rattaché(s).",
+        "add": {
+          "domain": "Ajouter un domaine",
+          "branch": "Ajouter une compétence",
+          "leaf": "Ajouter un item"
+        },
+        "field": {
+          "labelFr": "Libellé (FR)",
+          "labelAr": "Libellé (AR)",
+          "descriptor": "Descripteur",
+          "descriptorHint": "Ce que l'élève doit savoir faire",
+          "subject": "Matière",
+          "noSubject": "— Aucune —"
+        }
+      },
+      "goToSettings": "Créer le référentiel dans Paramétrage"
+    },
+    "exams": {
+      "title": "Sessions d’examen",
+      "subtitle": "Examens semestriels, Régional (1BAC) et National (2BAC).",
+      "year": "Année scolaire active : {year}",
+      "settingsLink": "Filières & barèmes",
+      "newSession": "Nouvelle session",
+      "empty": "Aucune session d’examen sur cette année.",
+      "anonymizedTag": "anonymé",
+      "cancel": "Annuler",
+      "save": "Créer la session",
+      "saving": "Création…",
+      "nextPhase": "Prochaine étape : les épreuves (matière, date, durée, coefficient) avec contrôle d’incompatibilité horaire, puis les salles, les surveillants et l’anonymat.",
+      "kinds": {
+        "SEMESTRIEL": "Semestriel",
+        "REGIONAL": "Régional",
+        "NATIONAL": "National",
+        "BLANC": "Blanc"
+      },
+      "status": {
+        "DRAFT": "Brouillon",
+        "PUBLISHED": "Publiée",
+        "CLOSED": "Clôturée"
+      },
+      "table": {
+        "label": "Intitulé",
+        "kind": "Type",
+        "level": "Niveau",
+        "dates": "Dates",
+        "papers": "Épreuves",
+        "status": "Statut",
+        "actions": "Actions"
+      },
+      "actions": {
+        "publish": "Publier",
+        "unpublish": "Repasser en brouillon",
+        "close": "Clôturer",
+        "closeConfirm": "La clôture verrouille la saisie des notes du niveau."
+      },
+      "form": {
+        "label": "Intitulé",
+        "kind": "Type d’examen",
+        "level": "Niveau",
+        "period": "Période de rattachement",
+        "noPeriod": "— Aucune —",
+        "startDate": "Début",
+        "endDate": "Fin",
+        "tracks": "Filières concernées",
+        "tracksHint": "Aucune filière cochée = toutes les filières du niveau.",
+        "noTracks": "Aucune filière déclarée pour ce niveau.",
+        "mixClasses": "Mélanger les classes en salle (anti-fraude)",
+        "anonymized": "Anonymer les copies"
+      },
+      "noTracks": {
+        "title": "Aucune filière déclarée.",
+        "hint": "Les sessions d’examen certificatif reposent sur les filières : ce sont elles qui portent les coefficients et déterminent les épreuves applicables.",
+        "action": "Paramétrer les filières"
+      },
+      "papers": {
+        "add": "Ajouter une épreuve",
+        "addAction": "Ajouter",
+        "saving": "Enregistrement…",
+        "save": "Enregistrer",
+        "cancel": "Annuler",
+        "subject": "Matière",
+        "date": "Date",
+        "startTime": "Heure de début",
+        "slot": "Créneau",
+        "duration": "Durée (min)",
+        "coefficient": "Coefficient",
+        "maxValue": "Note sur",
+        "marks": "Notes",
+        "actions": "Actions",
+        "reschedule": "Replanifier",
+        "delete": "Supprimer",
+        "confirmDelete": "Confirmer",
+        "empty": "Aucune épreuve planifiée. Ajoutez la première ci-dessus.",
+        "paperCount": "{count} épreuve(s)",
+        "allTracks": "Toutes les filières du niveau",
+        "closedHint": "Session clôturée : le planning ne peut plus être modifié.",
+        "nextPhase": "Prochaine étape : réservation des salles avec capacité « examen », répartition des élèves et plans de table.",
+        "noSubjects": {
+          "title": "Aucune matière applicable.",
+          "hint": "Les filières de cette session n’ont aucun coefficient renseigné : impossible de proposer des matières.",
+          "action": "Renseigner les coefficients"
+        },
+        "conflict": {
+          "title": "Incompatibilité horaire",
+          "shared": "Élèves concernés des deux côtés : {tracks}",
+          "hint": "Un élève ne peut pas composer à deux endroits en même temps. Décalez l’épreuve, ou forcez si vous savez que les publics ne se recoupent pas réellement.",
+          "change": "Changer le créneau",
+          "force": "Programmer quand même"
+        }
+      },
+      "generate": {
+        "title": "Génération depuis la maquette",
+        "summary": "{papers} épreuve(s) à organiser au lieu de {ungrouped} — {saved} mutualisée(s), dont {grouped} couvrant plusieurs filières.",
+        "action": "Générer les épreuves",
+        "confirm": "Créer {count} épreuve(s)",
+        "include": "Créer",
+        "tracks": "Filières couvertes",
+        "mutualized": "{count} filières",
+        "alreadyPlanned": "Déjà planifiée",
+        "partial": "Certaines épreuves n’ont pas été créées (conflit horaire)",
+        "noBlueprint": "Aucune maquette d’épreuve pour : {tracks}. Importez le référentiel ou renseignez les durées.",
+        "types": {
+          "SPECIALITY": "Spécialité",
+          "SECONDARY": "Secondaire",
+          "LITERARY": "Littéraire"
+        }
+      },
+      "planner": {
+        "poolTitle": "Épreuves à poser",
+        "poolHint": "Glissez une épreuve vers un créneau. Reglissez-la ici pour la retirer du planning.",
+        "poolEmpty": "Toutes les épreuves sont posées.",
+        "gridTitle": "Grille de planification",
+        "gridHint": "{placed} / {total} épreuve(s) posée(s)",
+        "addSlot": "Créneau",
+        "save": "Enregistrer ({count})",
+        "saved": "déjà enregistrée",
+        "common": "Commune",
+        "slotCount": "{count} épreuve(s)"
+      }
     }
   },
   "superAdmin": {

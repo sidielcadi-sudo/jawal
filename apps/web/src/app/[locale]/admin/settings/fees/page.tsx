@@ -3,6 +3,9 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { refundableMap } from '@/lib/refund';
+import { DuplicateFeesButton } from './duplicate-fees';
+import { FeeYearSelect } from './year-select';
+import { readDebtWaiverPolicy } from '@/lib/school-year';
 import { localizedLabel } from '@/lib/localized-name';
 import {
   FeeCreateForm,
@@ -10,6 +13,7 @@ import {
   DiscountCreateForm,
   DiscountRowActions,
   RefundableConfig,
+  DebtWaiverConfig,
 } from './client';
 
 export default async function FeesPage({
@@ -17,7 +21,7 @@ export default async function FeesPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ subtab?: string }>;
+  searchParams: Promise<{ subtab?: string; cycle?: string; year?: string }>;
 }) {
   const { locale } = await params;
   const sp = await searchParams;
@@ -28,12 +32,18 @@ export default async function FeesPage({
   const tc = await getTranslations('admin.settings.fees.form.categories');
 
   const session = (await auth())!;
-  const { fees, years, levels, currency, discounts, annualFeeOptions, refundable } = await withTenant(
+  const { fees, years, levels, cycles, currency, discounts, annualFeeOptions, refundable, debtWaiver } = await withTenant(
     session.user.tenantId,
     async (tx) => {
       const [fees, years, levels, tenant, discounts] = await Promise.all([
         tx.feeScheduleItem.findMany({
-          where: { kind },
+          where: {
+            kind,
+            // Onglet annuel : la liste se lit cycle par cycle et année par
+            // année — une grille tous cycles confondus est illisible.
+            ...(subtab === 'annual' && sp.year ? { academicYearId: sp.year } : {}),
+            ...(subtab === 'annual' && sp.cycle ? { level: { cycleId: sp.cycle } } : {}),
+          },
           include: { academicYear: { select: { label: true } } },
           orderBy: [{ academicYearId: 'desc' }, { label: 'asc' }],
         }),
@@ -70,10 +80,14 @@ export default async function FeesPage({
         })),
         years,
         levels,
+        cycles: [...new Map(levels.map((l) => [l.cycle.id, l.cycle])).values()].sort(
+          (a, b) => a.order - b.order,
+        ),
         currency: tenant?.currency ?? 'MAD',
         // Passe par refundableMap pour appliquer les défauts (inscription non
         // remboursable) → la case reflète le calcul réel.
         refundable: refundableMap(tenant?.settings) as Record<string, boolean>,
+        debtWaiver: readDebtWaiverPolicy(tenant?.settings),
         discounts: discounts.map((d) => ({
           id: d.id,
           label: d.label,
@@ -112,6 +126,58 @@ export default async function FeesPage({
           </Link>
         ))}
       </div>
+
+      {/* Sélecteur cycle + année : la grille annuelle se lit et se reconduit
+          cycle par cycle, pas toutes filières confondues. */}
+      {subtab === 'annual' && (
+        <div className="flex flex-wrap items-end justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+          <div className="flex flex-wrap items-end gap-3">
+            <div>
+              <span className="block text-xs font-medium text-slate-600">{t('filter.cycle')}</span>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {cycles.map((c) => {
+                  const on = sp.cycle === c.id;
+                  const qs = new URLSearchParams({ subtab: 'annual' });
+                  if (!on) qs.set('cycle', c.id);
+                  if (sp.year) qs.set('year', sp.year);
+                  return (
+                    <Link
+                      key={c.id}
+                      href={`${tabBase}?${qs.toString()}`}
+                      className={`rounded-lg px-3 py-1.5 text-sm transition-colors ${
+                        on
+                          ? 'bg-brand-600 text-white shadow'
+                          : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      {localizedLabel(locale, c.label, c.labelAr)}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+            <label className="block text-xs font-medium text-slate-600">
+              {t('filter.year')}
+              <FeeYearSelect
+                years={years.map((y) => ({ id: y.id, label: y.label, active: y.active }))}
+                selected={sp.year ?? ''}
+                cycleId={sp.cycle ?? ''}
+                base={tabBase}
+                allLabel={t('filter.allYears')}
+              />
+            </label>
+          </div>
+
+          {sp.cycle && sp.year && (
+            <DuplicateFeesButton
+              cycleId={sp.cycle}
+              sourceYearId={sp.year}
+              sourceYearLabel={years.find((y) => y.id === sp.year)?.label ?? ''}
+              feeCount={fees.length}
+            />
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <section className="lg:col-span-2">
@@ -251,8 +317,9 @@ export default async function FeesPage({
 
       {/* Remboursabilité par catégorie (calcul remboursement radiation) */}
       {subtab === 'annual' && (
-        <div className="max-w-md">
+        <div className="grid max-w-3xl gap-4 md:grid-cols-2">
           <RefundableConfig initial={refundable} />
+          <DebtWaiverConfig initial={debtWaiver} />
         </div>
       )}
     </div>

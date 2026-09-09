@@ -11,12 +11,20 @@ import {
   updateDiscountRuleAction,
   deleteDiscountRuleAction,
   saveRefundableCategoriesAction,
+  saveDebtWaiverPolicyAction,
 } from './actions';
 
 const inputCls =
   'mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500';
 
-const FEE_CATEGORIES = ['TUITION', 'INSCRIPTION', 'TRANSPORT', 'CANTEEN', 'DAYCARE', 'OTHER'] as const;
+const FEE_CATEGORIES = [
+  'TUITION',
+  'INSCRIPTION',
+  'TRANSPORT',
+  'CANTEEN',
+  'DAYCARE',
+  'OTHER',
+] as const;
 type FeeCategoryKey = (typeof FEE_CATEGORIES)[number];
 
 export function FeeCreateForm({
@@ -117,7 +125,9 @@ export function FeeCreateForm({
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-700">{t('installmentCount')}</label>
+          <label className="block text-xs font-medium text-slate-700">
+            {t('installmentCount')}
+          </label>
           <input
             type="number"
             name="installmentCount"
@@ -139,16 +149,22 @@ export function FeeCreateForm({
         </select>
       </div>
       <label className="flex items-center gap-2 text-sm text-slate-700">
-        <input type="checkbox" name="installmentLocked" className="h-4 w-4 rounded border-slate-300" />
+        <input
+          type="checkbox"
+          name="installmentLocked"
+          className="h-4 w-4 rounded border-slate-300"
+        />
         {t('installmentLocked')}
       </label>
       {error && (
-        <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">{error}</div>
+        <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">
+          {error}
+        </div>
       )}
       <button
         type="submit"
         disabled={isPending}
-        className="w-full rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-brand-700 disabled:opacity-50"
+        className="bg-brand-600 hover:bg-brand-700 w-full rounded-lg px-3 py-2 text-sm font-medium text-white shadow disabled:opacity-50"
       >
         {isPending ? t('creating') : t('create')}
       </button>
@@ -209,7 +225,7 @@ export function FeeRowActions({
       <button
         type="button"
         onClick={() => setEditing(true)}
-        className="text-xs text-slate-500 hover:text-brand-700"
+        className="hover:text-brand-700 text-xs text-slate-500"
       >
         {t('actions.edit')}
       </button>
@@ -235,10 +251,18 @@ export function FeeRowActions({
             <form action={onSave} className="mt-4 space-y-3">
               <div>
                 <label className="block text-xs font-medium text-slate-700">{tForm('label')}</label>
-                <input type="text" name="label" required defaultValue={initial.label} className={inputCls} />
+                <input
+                  type="text"
+                  name="label"
+                  required
+                  defaultValue={initial.label}
+                  className={inputCls}
+                />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700">{tForm('category')}</label>
+                <label className="block text-xs font-medium text-slate-700">
+                  {tForm('category')}
+                </label>
                 <select name="category" defaultValue={initial.category} className={inputCls}>
                   {FEE_CATEGORIES.map((c) => (
                     <option key={c} value={c}>
@@ -263,7 +287,9 @@ export function FeeRowActions({
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-700">{tForm('installmentCount')}</label>
+                  <label className="block text-xs font-medium text-slate-700">
+                    {tForm('installmentCount')}
+                  </label>
                   <input
                     type="number"
                     name="installmentCount"
@@ -275,8 +301,14 @@ export function FeeRowActions({
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700">{tForm('firstDueMonth')}</label>
-                <select name="firstDueMonth" defaultValue={initial.firstDueMonth} className={inputCls}>
+                <label className="block text-xs font-medium text-slate-700">
+                  {tForm('firstDueMonth')}
+                </label>
+                <select
+                  name="firstDueMonth"
+                  defaultValue={initial.firstDueMonth}
+                  className={inputCls}
+                >
                   {Array.from({ length: 12 }).map((_, i) => (
                     <option key={i + 1} value={i + 1}>
                       {new Date(2000, i, 1).toLocaleString('fr', { month: 'long' })}
@@ -294,7 +326,9 @@ export function FeeRowActions({
                 {tForm('installmentLocked')}
               </label>
               {error && (
-                <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">{error}</div>
+                <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">
+                  {error}
+                </div>
               )}
               <div className="flex justify-end gap-2 border-t border-slate-200 pt-3">
                 <button
@@ -307,7 +341,7 @@ export function FeeRowActions({
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-brand-700 disabled:opacity-50"
+                  className="bg-brand-600 hover:bg-brand-700 rounded-lg px-3 py-1.5 text-sm font-medium text-white shadow disabled:opacity-50"
                 >
                   {isPending ? tForm('saving') : tForm('save')}
                 </button>
@@ -415,7 +449,13 @@ export function DiscountCreateForm({ fees }: { fees: FeeOption[] }) {
     <form ref={ref} action={onSubmit} className="space-y-3">
       <div>
         <label className="block text-xs font-medium text-slate-700">{t('label')}</label>
-        <input type="text" name="label" required placeholder={t('labelPlaceholder')} className={inputCls} />
+        <input
+          type="text"
+          name="label"
+          required
+          placeholder={t('labelPlaceholder')}
+          className={inputCls}
+        />
       </div>
       <FeeScopePicker
         fees={fees}
@@ -427,24 +467,47 @@ export function DiscountCreateForm({ fees }: { fees: FeeOption[] }) {
       <div className="grid grid-cols-2 gap-2">
         <div>
           <label className="block text-xs font-medium text-slate-700">{t('pct')} (%)</label>
-          <input type="number" name="pct" required min={0} max={100} step="0.01" defaultValue={10} className={inputCls} />
+          <input
+            type="number"
+            name="pct"
+            required
+            min={0}
+            max={100}
+            step="0.01"
+            defaultValue={10}
+            className={inputCls}
+          />
         </div>
         <div>
           <label className="block text-xs font-medium text-slate-700">{t('order')}</label>
-          <input type="number" name="order" min={0} max={999} defaultValue={0} className={inputCls} />
+          <input
+            type="number"
+            name="order"
+            min={0}
+            max={999}
+            defaultValue={0}
+            className={inputCls}
+          />
         </div>
       </div>
       <label className="flex items-center gap-2 text-sm text-slate-700">
-        <input type="checkbox" name="active" defaultChecked className="h-4 w-4 rounded border-slate-300" />
+        <input
+          type="checkbox"
+          name="active"
+          defaultChecked
+          className="h-4 w-4 rounded border-slate-300"
+        />
         {t('active')}
       </label>
       {error && (
-        <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">{error}</div>
+        <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">
+          {error}
+        </div>
       )}
       <button
         type="submit"
         disabled={isPending}
-        className="w-full rounded-lg bg-brand-600 px-3 py-2 text-sm font-medium text-white shadow hover:bg-brand-700 disabled:opacity-50"
+        className="bg-brand-600 hover:bg-brand-700 w-full rounded-lg px-3 py-2 text-sm font-medium text-white shadow disabled:opacity-50"
       >
         {isPending ? t('creating') : t('create')}
       </button>
@@ -493,7 +556,11 @@ export function DiscountRowActions({
 
   return (
     <div className="flex justify-end gap-3">
-      <button type="button" onClick={() => setEditing(true)} className="text-xs text-slate-500 hover:text-brand-700">
+      <button
+        type="button"
+        onClick={() => setEditing(true)}
+        className="hover:text-brand-700 text-xs text-slate-500"
+      >
         {tFees('actions.edit')}
       </button>
       <button
@@ -506,7 +573,10 @@ export function DiscountRowActions({
       </button>
 
       {editing && (
-        <div className="fixed inset-0 z-20 grid place-items-center bg-slate-900/40 p-4" onClick={() => setEditing(false)}>
+        <div
+          className="fixed inset-0 z-20 grid place-items-center bg-slate-900/40 p-4"
+          onClick={() => setEditing(false)}
+        >
           <div
             className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 text-start shadow-xl"
             onClick={(e) => e.stopPropagation()}
@@ -515,7 +585,13 @@ export function DiscountRowActions({
             <form action={onSave} className="mt-4 space-y-3">
               <div>
                 <label className="block text-xs font-medium text-slate-700">{t('label')}</label>
-                <input type="text" name="label" required defaultValue={initial.label} className={inputCls} />
+                <input
+                  type="text"
+                  name="label"
+                  required
+                  defaultValue={initial.label}
+                  className={inputCls}
+                />
               </div>
               <FeeScopePicker
                 fees={fees}
@@ -527,19 +603,42 @@ export function DiscountRowActions({
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-xs font-medium text-slate-700">{t('pct')} (%)</label>
-                  <input type="number" name="pct" required min={0} max={100} step="0.01" defaultValue={initial.pct} className={inputCls} />
+                  <input
+                    type="number"
+                    name="pct"
+                    required
+                    min={0}
+                    max={100}
+                    step="0.01"
+                    defaultValue={initial.pct}
+                    className={inputCls}
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-slate-700">{t('order')}</label>
-                  <input type="number" name="order" min={0} max={999} defaultValue={initial.order} className={inputCls} />
+                  <input
+                    type="number"
+                    name="order"
+                    min={0}
+                    max={999}
+                    defaultValue={initial.order}
+                    className={inputCls}
+                  />
                 </div>
               </div>
               <label className="flex items-center gap-2 text-sm text-slate-700">
-                <input type="checkbox" name="active" defaultChecked={initial.active} className="h-4 w-4 rounded border-slate-300" />
+                <input
+                  type="checkbox"
+                  name="active"
+                  defaultChecked={initial.active}
+                  className="h-4 w-4 rounded border-slate-300"
+                />
                 {t('active')}
               </label>
               {error && (
-                <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">{error}</div>
+                <div className="rounded border border-red-200 bg-red-50 px-2 py-1 text-xs text-red-700">
+                  {error}
+                </div>
               )}
               <div className="flex justify-end gap-2 border-t border-slate-200 pt-3">
                 <button
@@ -552,7 +651,7 @@ export function DiscountRowActions({
                 <button
                   type="submit"
                   disabled={isPending}
-                  className="rounded-lg bg-brand-600 px-3 py-1.5 text-sm font-medium text-white shadow hover:bg-brand-700 disabled:opacity-50"
+                  className="bg-brand-600 hover:bg-brand-700 rounded-lg px-3 py-1.5 text-sm font-medium text-white shadow disabled:opacity-50"
                 >
                   {isPending ? t('saving') : t('save')}
                 </button>
@@ -606,7 +705,89 @@ export function RefundableConfig({ initial }: { initial: Record<string, boolean>
         <button
           onClick={save}
           disabled={pending}
-          className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+          className="bg-brand-600 hover:bg-brand-700 rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          {t('save')}
+        </button>
+        {msg && <span className="text-xs text-slate-500">{msg}</span>}
+      </div>
+    </div>
+  );
+}
+
+/** Réglage : quand l'effacement d'une créance (remise gracieuse) est autorisé. */
+export function DebtWaiverConfig({
+  initial,
+}: {
+  initial: { mode: 'END_OF_YEAR' | 'ANYTIME'; windowDays: number };
+}) {
+  const t = useTranslations('admin.settings.fees.debtWaiver');
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [mode, setMode] = useState(initial.mode);
+  const [days, setDays] = useState(String(initial.windowDays));
+  const [msg, setMsg] = useState('');
+
+  function save() {
+    setMsg('');
+    start(async () => {
+      const r = await saveDebtWaiverPolicyAction(mode, Number(days));
+      if (!r.ok) return setMsg(r.error ?? 'Erreur');
+      setMsg(t('saved'));
+      router.refresh();
+    });
+  }
+
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-5">
+      <h2 className="text-base font-semibold text-slate-900">{t('title')}</h2>
+      <p className="mt-1 text-xs text-slate-500">{t('hint')}</p>
+      <div className="mt-4 space-y-2">
+        <label className="flex items-start gap-2 text-sm text-slate-700">
+          <input
+            type="radio"
+            name="waiver-mode"
+            className="mt-1"
+            checked={mode === 'END_OF_YEAR'}
+            onChange={() => setMode('END_OF_YEAR')}
+          />
+          <span>
+            {t('modes.END_OF_YEAR')}
+            <span className="block text-xs text-slate-500">{t('modes.endOfYearHint')}</span>
+          </span>
+        </label>
+        {mode === 'END_OF_YEAR' && (
+          <label className="ms-6 flex items-center gap-2 text-sm text-slate-700">
+            {t('windowDays')}
+            <input
+              type="number"
+              min={1}
+              max={365}
+              value={days}
+              onChange={(e) => setDays(e.target.value)}
+              className="w-24 rounded-lg border border-slate-300 px-2 py-1 text-sm"
+            />
+          </label>
+        )}
+        <label className="flex items-start gap-2 text-sm text-slate-700">
+          <input
+            type="radio"
+            name="waiver-mode"
+            className="mt-1"
+            checked={mode === 'ANYTIME'}
+            onChange={() => setMode('ANYTIME')}
+          />
+          <span>
+            {t('modes.ANYTIME')}
+            <span className="block text-xs text-slate-500">{t('modes.anytimeHint')}</span>
+          </span>
+        </label>
+      </div>
+      <div className="mt-4 flex items-center gap-3">
+        <button
+          onClick={save}
+          disabled={pending}
+          className="bg-brand-600 hover:bg-brand-700 rounded-lg px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {t('save')}
         </button>

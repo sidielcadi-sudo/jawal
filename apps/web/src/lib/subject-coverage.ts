@@ -1,12 +1,16 @@
 import 'server-only';
 import type { Prisma } from '@/lib/db';
+import { loadDemand } from '@/lib/timetable-demand';
 
 type Tx = Prisma.TransactionClient;
 
 export type SubjectCoverageRow = {
   subjectId: string;
   label: string;
-  /** Heures/semaine demandées par le programme (Σ weeklyHours × nb classes du niveau). */
+  /**
+   * Heures/semaine réellement demandées, calculées classe par classe et
+   * dédoublements compris (deux demi-groupes = deux heures-professeur).
+   */
   demandHours: number;
   /** Heures/semaine offertes par les profs de la matière (Σ heures contractuelles). */
   supplyHours: number;
@@ -25,11 +29,16 @@ export type SubjectCoverageRow = {
 export async function loadSubjectCoverage(
   tx: Tx,
   academicYearId: string,
+  /** Borne le calcul à un cycle — mêmes raisons que computeKpis. */
+  cycleId?: string | null,
 ): Promise<SubjectCoverageRow[]> {
-  const [subjects, classes, curriculum, specialties] = await Promise.all([
+  const [subjects, demandResult, specialties] = await Promise.all([
     tx.subject.findMany({ select: { id: true, label: true } }),
-    tx.class.findMany({ where: { academicYearId, deletedAt: null }, select: { levelId: true } }),
-    tx.curriculumSubject.findMany({ select: { levelId: true, subjectId: true, weeklyHours: true } }),
+    // La demande vient de lib/timetable-demand : cascade affectation → filière
+    // → niveau, et une séance dédoublée compte par groupe. L'ancien calcul
+    // « programme du niveau × nombre de classes » rendait 0 pour tout le lycée
+    // et ignorait les dédoublements.
+    loadDemand(tx, academicYearId, cycleId),
     tx.teacherSpecialty.findMany({
       select: {
         subjectId: true,
@@ -39,18 +48,7 @@ export async function loadSubjectCoverage(
   ]);
 
   const labelById = new Map(subjects.map((s) => [s.id, s.label]));
-
-  // Nombre de classes par niveau (année active).
-  const classCountByLevel = new Map<string, number>();
-  for (const c of classes) classCountByLevel.set(c.levelId, (classCountByLevel.get(c.levelId) ?? 0) + 1);
-
-  // Demande : heures programme × nombre de classes du niveau.
-  const demand = new Map<string, number>();
-  for (const cs of curriculum) {
-    const n = classCountByLevel.get(cs.levelId) ?? 0;
-    if (n === 0) continue;
-    demand.set(cs.subjectId, (demand.get(cs.subjectId) ?? 0) + cs.weeklyHours * n);
-  }
+  const demand = demandResult.bySubject;
 
   // Offre : par matière, somme des heures contractuelles des profs spécialistes
   // (un prof n'est compté qu'une fois par matière).

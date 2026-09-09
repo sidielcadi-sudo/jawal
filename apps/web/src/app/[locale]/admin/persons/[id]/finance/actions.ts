@@ -9,45 +9,166 @@ import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
 import { postInstallmentPayment, postDebtWaiver } from '@/lib/accounting-hooks';
 import { computeInstallmentStatus } from '@/lib/finance';
+import {
+  activeSchoolYear,
+  isPreviousYearDue,
+  isWaiveOpenForDueDate,
+  loadDebtWaiverPolicy,
+  waiverWindowStart,
+} from '@/lib/school-year';
 
-type Result = { ok: true } | { ok: false; error: string };
+type Result<T = void> = { ok: true; data?: T } | { ok: false; error: string };
+
+export type WaiveOutcome = {
+  /** Échéances effectivement effacées. */
+  waived: number;
+  /** Total du reliquat abandonné. */
+  total: number;
+  /** Lignes écartées, avec le motif — l'écran doit pouvoir le dire. */
+  skipped: { label: string; reason: string }[];
+};
 
 /**
- * Efface une créance (remise gracieuse) : le reliquat impayé d'une échéance est
- * annulé — l'échéance passe en CANCELLED mais reste **tracée** (montant, motif,
- * auteur, date) et une écriture OD est passée (Débit 7119 remise / Crédit 34211).
+ * Efface une ou plusieurs créances (remise gracieuse) : le reliquat impayé de
+ * chaque échéance est annulé — l'échéance passe en CANCELLED mais reste
+ * **tracée** (montant, motif, auteur, date) et une écriture OD est passée
+ * (Débit 7119 remise / Crédit 34211).
+ *
+ * Le lot est **atomique** : une seule transaction, donc soit toutes les
+ * écritures comptables passent, soit aucune. En revanche une ligne inéligible
+ * (déjà soldée, déjà effacée, hors fenêtre) n'annule pas le lot : elle est
+ * écartée et remontée dans `skipped`. Refuser 40 effacements parce que le 12ᵉ
+ * a été réglé entre-temps serait une punition, pas une garantie.
  */
-export async function waiveInstallmentDebtAction(installmentId: string, reason: string): Promise<Result> {
+export async function waiveInstallmentDebtsAction(
+  installmentIds: string[],
+  reason: string,
+): Promise<Result<WaiveOutcome>> {
   const session = await auth();
   if (!session?.user) return { ok: false, error: 'Non authentifié' };
   await requirePermission('finance.write');
   const motif = reason?.trim();
   if (!motif) return { ok: false, error: 'Motif requis.' };
+  const ids = [...new Set(installmentIds)].filter(Boolean);
+  if (ids.length === 0) return { ok: false, error: 'Aucune créance sélectionnée.' };
   const tenantId = session.user.tenantId;
-  let studentId: string | null = null;
+
+  let studentIds: string[] = [];
+  let outcome: WaiveOutcome;
   try {
-    studentId = await withTenant(tenantId, async (tx) => {
-      const inst = await tx.installment.findUnique({ where: { id: installmentId }, include: { payments: true } });
-      if (!inst) throw new Error('Échéance introuvable.');
-      if (inst.status === 'CANCELLED') throw new Error('Échéance déjà annulée / effacée.');
-      const paid = inst.payments.reduce((s, p) => s + Number(p.amount), 0);
-      const remaining = Math.round((Number(inst.amount) - paid) * 100) / 100;
-      if (remaining <= 0) throw new Error('Aucun reliquat à effacer (échéance soldée).');
-      const now = new Date();
-      await tx.installment.update({
-        where: { id: installmentId },
-        data: { status: 'CANCELLED', waivedAmount: remaining, waivedReason: motif, waivedByUserId: session.user.id, waivedAt: now },
+    const res = await withTenant(tenantId, async (tx) => {
+      // Garde-fou serveur : l'effacement suit la politique de l'établissement
+      // (Paramétrage → Frais). Masquer la case ne suffit pas — l'action est
+      // appelable directement et le geste est irréversible.
+      const [year, policy] = await Promise.all([activeSchoolYear(tx), loadDebtWaiverPolicy(tx)]);
+      const opensAt = waiverWindowStart(year, policy);
+      const closedMsg =
+        opensAt && year
+          ? `créance de l'année en cours — effacement ouvert le ${opensAt.toLocaleDateString('fr-FR')} (fin de l'année ${year.label})`
+          : "aucune année scolaire active : effacement indisponible";
+
+      const rows = await tx.installment.findMany({
+        where: { id: { in: ids } },
+        include: { payments: true },
       });
-      await postDebtWaiver(tx, tenantId, { id: inst.id, label: inst.label }, remaining, now, session.user.id);
-      await logAudit(tx, { tenantId, userId: session.user.id, action: 'waive_debt', entityType: 'Installment', entityId: installmentId, after: { amount: remaining, reason: motif } });
-      return inst.studentId;
+      const found = new Set(rows.map((r) => r.id));
+
+      const skipped: { label: string; reason: string }[] = [];
+      for (const id of ids) {
+        if (!found.has(id)) skipped.push({ label: id, reason: 'échéance introuvable' });
+      }
+
+      const now = new Date();
+      const students = new Set<string>();
+      let waived = 0;
+      let total = 0;
+
+      for (const inst of rows) {
+        if (inst.status === 'CANCELLED') {
+          skipped.push({ label: inst.label, reason: 'déjà effacée' });
+          continue;
+        }
+        // La fenêtre de fin d'année ne protège que l'exercice en cours ; les
+        // créances antérieures restent effaçables à tout moment.
+        if (!isWaiveOpenForDueDate(year, policy, inst.dueDate, now)) {
+          skipped.push({ label: inst.label, reason: closedMsg });
+          continue;
+        }
+        const paid = inst.payments.reduce((s2, p2) => s2 + Number(p2.amount), 0);
+        const remaining = Math.round((Number(inst.amount) - paid) * 100) / 100;
+        if (remaining <= 0) {
+          skipped.push({ label: inst.label, reason: 'soldée, aucun reliquat' });
+          continue;
+        }
+
+        await tx.installment.update({
+          where: { id: inst.id },
+          data: {
+            status: 'CANCELLED',
+            waivedAmount: remaining,
+            waivedReason: motif,
+            waivedByUserId: session.user.id,
+            waivedAt: now,
+          },
+        });
+        await postDebtWaiver(
+          tx,
+          tenantId,
+          { id: inst.id, label: inst.label },
+          remaining,
+          now,
+          session.user.id,
+        );
+        await logAudit(tx, {
+          tenantId,
+          userId: session.user.id,
+          action: 'waive_debt',
+          entityType: 'Installment',
+          entityId: inst.id,
+          after: {
+            amount: remaining,
+            reason: motif,
+            previousYear: isPreviousYearDue(year, inst.dueDate),
+          },
+        });
+        students.add(inst.studentId);
+        waived += 1;
+        total = Math.round((total + remaining) * 100) / 100;
+      }
+
+      return { students: [...students], outcome: { waived, total, skipped } };
     });
+    studentIds = res.students;
+    outcome = res.outcome;
   } catch (e: unknown) {
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
   }
-  if (studentId) revalidatePath(`/admin/persons/${studentId}/finance`);
+
+  // Rien d'effacé : c'est un échec du point de vue de l'utilisateur, même si
+  // la transaction s'est bien passée. On lui rend le premier motif.
+  if (outcome.waived === 0) {
+    return {
+      ok: false,
+      error: outcome.skipped[0]
+        ? `Aucune créance effacée — ${outcome.skipped[0].reason}.`
+        : 'Aucune créance effacée.',
+    };
+  }
+
+  for (const id of studentIds) revalidatePath(`/admin/persons/${id}/finance`);
   revalidatePath('/admin/finance');
-  return { ok: true };
+  revalidatePath('/admin/finance/unpaid');
+  revalidatePath('/admin/enrollments/bulk-reenroll');
+  return { ok: true, data: outcome };
+}
+
+/** Effacement d'une seule créance — le cas courant, depuis la fiche élève. */
+export async function waiveInstallmentDebtAction(
+  installmentId: string,
+  reason: string,
+): Promise<Result> {
+  const r = await waiveInstallmentDebtsAction([installmentId], reason);
+  return r.ok ? { ok: true } : r;
 }
 
 /**

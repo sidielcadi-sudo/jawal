@@ -755,9 +755,27 @@ export async function affectEnrollmentAction(
       if (cls.academicYearId !== enr.academicYearId)
         throw new Error('La classe n’est pas de cette année scolaire.');
       if (cls.levelId !== enr.levelId) throw new Error('La classe n’est pas au bon niveau.');
+      // Au lycée, la filière du dossier fait autorité : affecter un élève de
+      // SMA dans une classe de Lettres fausserait tous ses coefficients.
+      if (enr.trackId && cls.trackId && cls.trackId !== enr.trackId) {
+        throw new Error('La classe n’est pas de la filière du dossier.');
+      }
       if (cls._count.students >= cls.capacity)
         throw new Error(`Classe pleine (capacité ${cls.capacity}).`);
 
+      // Une réaffectation doit VIDER l'ancienne classe. Sans ça l'élève reste
+      // dans les deux listes de la même année : il compte deux fois à l'effectif,
+      // apparaît à deux appels, et les filtres de la liste Élèves le ramènent
+      // sur un niveau qu'il a quitté.
+      await tx.studentClass.updateMany({
+        where: {
+          studentId: enr.studentId,
+          unenrolledAt: null,
+          classId: { not: classId },
+          class: { academicYearId: enr.academicYearId },
+        },
+        data: { unenrolledAt: new Date() },
+      });
       await tx.studentClass.upsert({
         where: { studentId_classId: { studentId: enr.studentId, classId } },
         update: { unenrolledAt: null },

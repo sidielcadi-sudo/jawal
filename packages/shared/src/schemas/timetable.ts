@@ -55,6 +55,16 @@ export const timetableEntryUpsertSchema = z.object({
   roomId: z
     .preprocess((v) => (v === '' || v === null ? undefined : v), z.string().uuid().optional())
     .optional(),
+  /**
+   * Groupe visé par la séance. Absent = la classe entière.
+   *
+   * Une même case peut porter plusieurs séances dès qu'elles visent des groupes
+   * distincts : c'est le dédoublement (langues, TP). Mêler « classe entière »
+   * et groupes sur une même case est refusé côté serveur.
+   */
+  groupId: z
+    .preprocess((v) => (v === '' || v === null ? undefined : v), z.string().uuid().optional())
+    .optional(),
   note: optionalString(300),
 });
 export type TimetableEntryUpsertInput = z.infer<typeof timetableEntryUpsertSchema>;

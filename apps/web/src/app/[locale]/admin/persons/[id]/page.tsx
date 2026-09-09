@@ -12,6 +12,7 @@ import { ParentAccess } from './parent-access';
 import { TeacherAccess } from './teacher-access';
 import { StudentAccess } from './student-access';
 import { HealthSection, type Health } from './health-section';
+import { AvailabilitySection } from './availability-section';
 import { DocumentsPanel } from '@/components/documents-panel';
 import { pickPeriodId } from '@/lib/periods';
 import { personDisplayName, type BilingualNameFields, localizedLabel } from '@/lib/localized-name';
@@ -502,6 +503,16 @@ export default async function PersonDetailPage({
             )}
           </dl>
         </section>
+
+        {/* Disponibilités : juste sous l'état civil arabe, comme demandé. Elles ne
+            concernent que les enseignants — c'est ce que le solveur d'EDT
+            consomme pour placer les séances. */}
+        {person.type === 'TEACHER' && (
+          <AvailabilitySection
+            availability={person.availability}
+            editHref={`/${locale}/admin/persons/${person.id}/edit`}
+          />
+        )}
 
         {/* Informations employeur — enseignant / personnel (remplit la colonne) */}
         {isEmployee && (

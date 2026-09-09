@@ -1,9 +1,11 @@
+import { Fragment } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { computeStudentFinance } from '@/lib/finance';
+import { loadWaiveContext } from '@/lib/school-year';
 import { GenerateForm, RecordPaymentButton, WaiveDebtButton } from './client';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
@@ -28,13 +30,23 @@ export default async function StudentFinancePage({
     const student = await tx.person.findUnique({ where: { id } });
     if (!student || student.type !== 'STUDENT') return null;
 
-    // Trouver la classe active de l'élève (1ère inscription active)
-    const enrollment = await tx.studentClass.findFirst({
-      where: { studentId: id, unenrolledAt: null },
-      include: {
-        class: { include: { level: true, academicYear: true } },
-      },
-    });
+    // Classe de l'élève sur l'ANNÉE ACTIVE.
+    //
+    // Un élève garde une ligne de classe par année scolaire : sans ce tri, un
+    // findFirst rendait celle que la base sortait en premier — souvent l'année
+    // précédente. L'en-tête annonçait alors « 1AC-D · 2025-2026 » sur un élève
+    // passé en 2AC-E, et les grilles tarifaires proposées étaient celles du
+    // mauvais niveau. On retient l'année active, à défaut la plus récente.
+    const enrollment =
+      (await tx.studentClass.findFirst({
+        where: { studentId: id, unenrolledAt: null, class: { academicYear: { active: true } } },
+        include: { class: { include: { level: true, academicYear: true } } },
+      })) ??
+      (await tx.studentClass.findFirst({
+        where: { studentId: id, unenrolledAt: null },
+        orderBy: { class: { academicYear: { startDate: 'desc' } } },
+        include: { class: { include: { level: true, academicYear: true } } },
+      }));
 
     // Grilles tarifaires disponibles (pour générer un échéancier)
     const fees = enrollment
@@ -47,12 +59,74 @@ export default async function StudentFinancePage({
       : [];
 
     const finance = await computeStudentFinance(tx, id);
+    // Bornes de chaque année, pour ranger les échéances par exercice : la fiche
+    // les empilait toutes, et « Scolarité (1/3) » de 2025-2026 juste au-dessus
+    // de « Scolarité (1/9) » de 2026-2027 se lit comme un doublon.
+    const years = await tx.academicYear.findMany({
+      select: { id: true, label: true, startDate: true, endDate: true, active: true },
+      orderBy: { startDate: 'asc' },
+    });
     const tenant = await tx.tenant.findFirst();
-    return { student, enrollment, fees, finance, currency: tenant?.currency ?? 'MAD' };
+    // L'effacement de créance (remise gracieuse) suit la politique de
+    // l'établissement — cf. lib/school-year, réglable dans Paramétrage → Frais.
+    const waive = await loadWaiveContext(tx);
+    return {
+      student,
+      enrollment,
+      fees,
+      finance,
+      years,
+      currency: tenant?.currency ?? 'MAD',
+      canWaive: waive.canWaive,
+      canWaivePrevious: waive.canWaivePrevious,
+      yearStart: waive.yearStart,
+      waiveOpensAt: waive.opensAt,
+      activeYearLabel: waive.yearLabel,
+    };
   });
 
   if (!data) notFound();
-  const { student, enrollment, fees, finance, currency } = data;
+  const {
+    student,
+    enrollment,
+    fees,
+    finance,
+    years,
+    currency,
+    canWaive,
+    canWaivePrevious,
+    yearStart,
+    waiveOpensAt,
+    activeYearLabel,
+  } = data;
+
+  /**
+   * Effacement autorisé pour cette échéance. La fenêtre de fin d'année ne
+   * protège que l'exercice en cours : une créance antérieure reste effaçable.
+   */
+  const canWaiveLine = (dueDate: string | Date) =>
+    yearStart && new Date(dueDate).getTime() < yearStart.getTime() ? canWaivePrevious : canWaive;
+
+  /** Année scolaire d'une échéance, d'après sa date. */
+  const yearLabelOf = (dueDate: string | Date) => {
+    const d = new Date(dueDate);
+    return years.find((y) => d >= y.startDate && d <= y.endDate)?.label ?? '—';
+  };
+
+  /**
+   * Échéances groupées par exercice, le plus récent en tête : c'est l'année en
+   * cours qu'on consulte, l'historique vient après.
+   */
+  const byYear = (() => {
+    const map = new Map<string, typeof finance.installments>();
+    for (const i of finance.installments) {
+      const k = yearLabelOf(i.dueDate);
+      const arr = map.get(k) ?? [];
+      arr.push(i);
+      map.set(k, arr);
+    }
+    return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0]));
+  })();
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-8">
@@ -128,7 +202,19 @@ export default async function StudentFinancePage({
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {finance.installments.map((i) => (
+              {byYear.map(([yearLabel, items]) => (
+                <Fragment key={yearLabel}>
+                  {/* Bandeau d exercice : sans lui, deux séries d échéances de
+                      deux années se suivent et passent pour un doublon. */}
+                  <tr className="bg-slate-50">
+                    <td colSpan={7} className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                      {yearLabel}
+                      <span className="ms-2 font-normal normal-case text-slate-400">
+                        {t('yearCount', { count: items.length })}
+                      </span>
+                    </td>
+                  </tr>
+                  {items.map((i) => (
                 <tr key={i.id}>
                   <td className="px-4 py-3">{i.label}</td>
                   <td className="px-4 py-3 text-xs text-slate-600">
@@ -152,7 +238,10 @@ export default async function StudentFinancePage({
                           remaining={i.remaining}
                           currency={currency}
                         />
-                        {i.remaining > 0 && (
+                        {/* Effacement de créance : uniquement sur un reliquat
+                            non soldé, et — pour l'année en cours — uniquement
+                            en fin d'année scolaire. */}
+                        {i.remaining > 0 && canWaiveLine(i.dueDate) && (
                           <WaiveDebtButton
                             installmentId={i.id}
                             remaining={i.remaining}
@@ -182,6 +271,8 @@ export default async function StudentFinancePage({
                     )}
                   </td>
                 </tr>
+                  ))}
+                </Fragment>
               ))}
               {finance.installments.length === 0 && (
                 <tr>
@@ -195,6 +286,18 @@ export default async function StudentFinancePage({
             </tbody>
           </table>
         </div>
+        {/* Le bouton « Effacer » manque à l'appel une bonne partie de l'année :
+            on dit pourquoi, sinon l'agent croit à un bug de droits. */}
+        {!canWaive && finance.installments.some((i) => i.remaining > 0 && !canWaiveLine(i.dueDate)) && (
+          <p className="mt-2 text-xs text-slate-500">
+            {waiveOpensAt && activeYearLabel
+              ? t('waive.closedHint', {
+                  date: waiveOpensAt.toLocaleDateString(locale),
+                  year: activeYearLabel,
+                })
+              : t('waive.noActiveYear')}
+          </p>
+        )}
       </section>
     </div>
   );
