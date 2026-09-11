@@ -9,8 +9,13 @@ Contraintes dures :
  1. Pour chaque affectation `a` : sum sur (d, s) x[a,d,s] ≤ weekly_hours
     (≤ et non = pour permettre le mode "PARTIAL" : on relâche puis on
     maximise pour atteindre les heures cibles)
- 2. Pour chaque (d, s) : sum sur a x[a,d,s] ≤ 1
-    (pas 2 cours simultanés dans la même classe — c'est notre périmètre)
+ 2. Pour chaque (d, s) : la classe n'accueille qu'UNE occupation.
+    Une occupation est soit une séance en classe entière, soit un
+    **dédoublement** (toutes les moitiés d'un même groupe-parallèle, qui se
+    tiennent ensemble). Deux demi-groupes de français au même créneau ne
+    comptent donc que pour une occupation de la classe ; un cours en classe
+    entière et un demi-groupe au même créneau restent interdits — les élèves
+    du groupe seraient attendus à deux endroits.
  3. Pour chaque (teacher t, d, s) : sum sur a tels que a.teacher = t :
     x[a,d,s] ≤ 1 (anti double-booking prof, déjà ailleurs ou ici)
  4. Si t est busy ailleurs sur (d, s) : x[a,d,s] = 0 pour tout a de t
@@ -96,10 +101,50 @@ def solve(request: GenerateRequest) -> GenerateResponse:
         if vars_for_a:
             model.Add(sum(vars_for_a) <= a.weekly_hours)
 
-    # Contrainte 2 : ≤ 1 cours par (day, slot) dans la classe
+    # ── Dédoublements : les moitiés d'un même groupe-parallèle sont liées ──
+    #
+    # Toutes les affectations d'un `parallel_key` sont placées sur exactement
+    # les mêmes créneaux. On les contraint deux à deux à l'égalité, en prenant
+    # la première comme référence : c'est ce qui garantit que les deux moitiés
+    # de la classe ont cours en même temps.
+    bundles: Dict[str, List[AssignmentInput]] = {}
+    for a in request.assignments:
+        if a.parallel_key:
+            bundles.setdefault(a.parallel_key, []).append(a)
+
+    for members in bundles.values():
+        head = members[0]
+        for other in members[1:]:
+            for d in days:
+                for s in placeable_slots:
+                    v_head = x.get((head.id, d, s.id))
+                    v_other = x.get((other.id, d, s.id))
+                    if v_head is not None and v_other is not None:
+                        model.Add(v_head == v_other)
+                    elif v_head is not None:
+                        # L'un des profs n'est pas disponible ici : le
+                        # dédoublement ne peut pas s'y tenir du tout.
+                        model.Add(v_head == 0)
+                    elif v_other is not None:
+                        model.Add(v_other == 0)
+
+    # Contrainte 2 : ≤ 1 occupation de la classe par (day, slot).
+    #
+    # Un dédoublement ne compte qu'une fois : on ne retient qu'un représentant
+    # par groupe-parallèle, puisque ses membres sont désormais synchronisés.
+    representative_of: Dict[str, str] = {
+        key: members[0].id for key, members in bundles.items()
+    }
+    counted_ids = {
+        a.id
+        for a in request.assignments
+        if not a.parallel_key or representative_of.get(a.parallel_key) == a.id
+    }
     for d in days:
         for s in placeable_slots:
-            vars_for_ds = [x[k] for k in x if k[1] == d and k[2] == s.id]
+            vars_for_ds = [
+                x[k] for k in x if k[1] == d and k[2] == s.id and k[0] in counted_ids
+            ]
             if vars_for_ds:
                 model.Add(sum(vars_for_ds) <= 1)
 
@@ -175,6 +220,7 @@ def solve(request: GenerateRequest) -> GenerateResponse:
                     teacher_id=a_obj.teacher_id,
                     day=d,  # type: ignore[arg-type]
                     slot_id=sid,
+                    group_id=a_obj.group_id,
                 )
             )
             placed_hours_by_assignment[aid] += 1

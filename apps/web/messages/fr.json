@@ -212,7 +212,7 @@
       "classes": "Classes",
       "enrollments": "Inscriptions",
       "timetable": "Emploi du temps",
-      "attendance": "Présences",
+      "attendance": "Absences",
       "justifications": "Justifications",
       "staffAttendance": "Pointage personnel",
       "announcements": "Annonces",
@@ -230,7 +230,8 @@
       "comptabilite": "Comptabilité",
       "soutien": "Soutien scolaire",
       "competences": "Compétences et aptitudes",
-      "exams": "Examens"
+      "exams": "Examens",
+      "grades": "Notes & Évaluations"
     },
     "surveys": {
       "title": "Enquêtes de satisfaction",
@@ -599,41 +600,91 @@
       }
     },
     "attendanceIndex": {
-      "title": "Présences",
-      "date": "Date",
-      "apply": "Voir",
+      "title": "Absences et présences",
+      "subtitle": "Suivi des présences des élèves",
+      "export": "Exporter le rapport",
+      "allClasses": "Toutes les classes",
+      "todayIs": "Aujourd'hui",
+      "noYear": "Aucune année scolaire active.",
+      "noCallThatDay": "Aucun appel n'a été fait ce jour-là.",
+      "goToLastDay": "Voir le dernier jour pointé ({date})",
       "kpi": {
-        "classesTaken": "Appels saisis",
-        "finalized": "dont {count} validés",
-        "attendanceRate": "Taux de présence",
-        "records": "{count, plural, =0 {Aucun pointage} one {# pointage} other {# pointages}}",
-        "absentToday": "Absents + retards",
-        "absentSub": "{absent} absences · {late} retards",
-        "pendingJustifications": "Justifications à valider",
-        "pendingSub": "À traiter en vie scolaire",
-        "allReviewed": "Tout est traité"
-      },
-      "reviewQueue": "Traiter les {count, plural, one {# justification en attente} other {# justifications en attente}}",
-      "classes": {
-        "title": "Détail par classe",
-        "name": "Classe",
-        "level": "Cycle · Niveau",
-        "enrolled": "Effectif",
-        "status": "Appel",
+        "presentToday": "Présents",
         "absent": "Absents",
         "late": "Retards",
-        "action": "",
-        "open": "Voir",
-        "start": "Faire l'appel",
-        "empty": "Aucune classe pour l'année active."
+        "notices": "Notifications envoyées",
+        "noticesHint": "Ce jour"
+      },
+      "byClass": {
+        "title": "Vue d'ensemble par classe",
+        "class": "Classe",
+        "present": "Présents",
+        "absent": "Absents",
+        "late": "Retards",
+        "rate": "Taux de présence",
+        "empty": "Aucune classe pour cette année."
+      },
+      "legend": {
+        "good": "Bon (≥ 90 %)",
+        "medium": "Moyen (75 % - 89 %)",
+        "weak": "Faible (< 75 %)"
       },
       "status": {
-        "notTaken": "Non fait",
-        "draft": "Brouillon",
-        "finalized": "Validé"
+        "notTaken": "Appel non fait",
+        "finalized": "Validé",
+        "draft": "Brouillon"
       },
-      "totalEnrolled": "{count} élèves inscrits sur l'ensemble des classes",
-      "totalExcused": "{count} dispensés"
+      "detail": {
+        "title": "Détail des absences et retards",
+        "search": "Rechercher un élève…",
+        "student": "Nom de l'élève",
+        "class": "Classe",
+        "time": "Heure",
+        "status": "Statut",
+        "reason": "Motif",
+        "notified": "Parent informé",
+        "action": "Action",
+        "noReason": "Non communiqué",
+        "yes": "Oui",
+        "no": "Non",
+        "failed": "Échec de l'envoi",
+        "noContact": "Pas de contact",
+        "notify": "Prévenir les parents",
+        "notifyDone": "Parents prévenus",
+        "openStudent": "Voir la fiche de l'élève",
+        "openSheet": "Ouvrir la feuille d'appel",
+        "empty": "Aucune absence ni retard ce jour.",
+        "count": "Affichage de {from} à {to} sur {total} élèves",
+        "countEmpty": "Aucun élève à afficher"
+      },
+      "donut": {
+        "title": "Répartition globale",
+        "total": "Total"
+      },
+      "trend": {
+        "title": "Tendances des présences",
+        "window": "7 derniers jours",
+        "presence": "Taux de présence",
+        "absence": "Taux d'absence",
+        "empty": "Pas encore assez de relevés pour tracer une tendance."
+      },
+      "alerts": {
+        "title": "Alertes récentes",
+        "seeAll": "Voir toutes",
+        "empty": "Aucun signalement sur les 30 derniers jours.",
+        "kind": {
+          "PROLONGED": "Absence prolongée",
+          "UNJUSTIFIED": "Absence non justifiée",
+          "FREQUENT_LATE": "Retards fréquents",
+          "MISSING_DOC": "Justificatif manquant"
+        },
+        "detail": {
+          "PROLONGED": "{count} jours consécutifs",
+          "UNJUSTIFIED": "Non justifiée",
+          "FREQUENT_LATE": "{count} retards cette semaine",
+          "MISSING_DOC": "Pièce jointe non fournie"
+        }
+      }
     },
     "justifications": {
       "title": "File des justifications",
@@ -1452,7 +1503,12 @@
           "BALANCED": "Équilibrage",
           "NO_SPECIALIST": "Aucun spécialiste",
           "OVER_CAPACITY": "Surcharge"
-        }
+        },
+        "resetTitle": "Réinitialiser l’allocation ?",
+        "resetBody": "Sur {classes, plural, one {# classe} other {# classes}} : {assignments, plural, =0 {aucune affectation} one {# affectation de professeur} other {# affectations de professeurs}} et {entries, plural, =0 {aucune séance} one {# séance d’emploi du temps} other {# séances d’emploi du temps}} seront supprimées.",
+        "resetIrreversible": "Aucune restauration possible : le journal conserve le nombre supprimé, pas le contenu.",
+        "resetCancel": "Annuler",
+        "resetConfirmAction": "Supprimer"
       },
       "generateMulti": {
         "title": "Génération automatique des emplois du temps",
@@ -2398,7 +2454,11 @@
         "status": "Statut",
         "father": "Père",
         "mother": "Mère",
-        "actions": "Actions"
+        "actions": "Actions",
+        "massar": "Matricule",
+        "level": "Niveau",
+        "parent": "Parent",
+        "phone": "Téléphone"
       },
       "studentStatus": {
         "ACTIVE": "Actif",
@@ -2935,7 +2995,57 @@
       "classLabel": "Classe de l'élève",
       "classNone": "— Choisir —",
       "classChange": "Changer de classe",
-      "classChanged": "Classe mise à jour."
+      "classChanged": "Classe mise à jour.",
+      "tabs": {
+        "all": "Tous",
+        "active": "Actifs",
+        "inactive": "Inactifs"
+      },
+      "kpi": {
+        "total": "Total élèves",
+        "totalHint": "Inscrits et affectés à une classe",
+        "new": "Nouveaux inscrits",
+        "newHint": "Première inscription cette année",
+        "active": "Élèves actifs",
+        "activeHint": "{pct}% du total",
+        "alerts": "Alertes administratives",
+        "alertsHint": "Dossier ouvert sans classe affectée"
+      },
+      "detailPanel": {
+        "empty": "Sélectionnez un élève pour afficher sa fiche.",
+        "massar": "Matricule",
+        "bornOn": "Né(e) le {date}",
+        "age": "{age} ans",
+        "personal": "Informations personnelles",
+        "birthDate": "Date de naissance",
+        "birthPlace": "Lieu de naissance",
+        "gender": "Genre",
+        "level": "Niveau",
+        "address": "Adresse",
+        "genders": {
+          "M": "Masculin",
+          "F": "Féminin",
+          "X": "Autre"
+        },
+        "parents": "Contact des parents",
+        "noParent": "Aucun parent rattaché.",
+        "relation": {
+          "FATHER": "Père",
+          "MOTHER": "Mère",
+          "LEGAL_GUARDIAN": "Tuteur légal",
+          "GUARDIAN": "Tuteur"
+        },
+        "payments": "Statut des paiements",
+        "upToDate": "À jour",
+        "due": "{amount} dus",
+        "lastPayment": "Dernier paiement",
+        "nextDue": "Prochaine échéance",
+        "seePayments": "Voir l’historique des paiements",
+        "attendance": "Présences récentes",
+        "noAttendance": "Aucun appel enregistré.",
+        "on": "Le {date}",
+        "openFile": "Ouvrir la fiche complète"
+      }
     },
     "classes": {
       "title": "Classes",
@@ -3072,7 +3182,11 @@
           "hours": "{count} h sur le volume",
           "load": "Charge à placer : {load} h ({groups} groupes)",
           "hint": "Un dédoublement n'est pas toujours permanent : sur 3 h, une seule peut se faire en demi-groupes. Le reste se tient en classe entière. La valeur s'applique à tous les groupes de la matière."
-        }
+        },
+        "teacher": "Enseignant",
+        "teacherInherited": "— celui de la matière —",
+        "teacherClash": "Même enseignant sur {groups}",
+        "teacherClashHint": "Deux groupes se tiennent au même moment : ils ont besoin d'enseignants différents. Sans quoi le solveur ne placera ni l'un ni l'autre — un professeur ne peut pas être à deux endroits à la fois."
       }
     },
     "gradeBook": {
@@ -5155,6 +5269,55 @@
         "saved": "déjà enregistrée",
         "common": "Commune",
         "slotCount": "{count} épreuve(s)"
+      }
+    },
+    "gradesOverview": {
+      "year": "Année scolaire",
+      "title": "Notes et évaluations",
+      "subtitle": "Consultez les notes, évaluations et bulletins des élèves",
+      "noYear": "Aucune année scolaire active.",
+      "noClass": "Aucune classe sur l’année active.",
+      "enterGrades": "Saisir des notes",
+      "printReports": "Imprimer les bulletins",
+      "class": "Classe",
+      "subject": "Matière",
+      "period": "Période",
+      "noSubject": "— Aucune matière au programme —",
+      "book": "Carnet de notes",
+      "evalCount": "{count, plural, =0 {aucun devoir} one {# devoir} other {# devoirs}}",
+      "noEval": "Aucun devoir saisi pour cette matière sur la période.",
+      "student": "Élève",
+      "average": "Moyenne /20",
+      "mention": "Appréciation",
+      "classAverage": "Moyenne de la classe",
+      "generalAverage": "Moyenne générale",
+      "generalAverageHint": "Moyenne de la classe sur la matière affichée",
+      "successRate": "Taux de réussite",
+      "successHint": "{passed} élèves sur {total} ont la moyenne",
+      "weakSubjects": "Matières en difficulté",
+      "noSubjectAverage": "Aucune moyenne calculable sur la période.",
+      "currentEval": "Évaluation en cours",
+      "date": "Date",
+      "weight": "Coefficient",
+      "scale": "Barème",
+      "optional": "Facultatif",
+      "yes": "Oui",
+      "no": "Non",
+      "entryStatus": "Statut de saisie",
+      "seeEval": "Voir les détails de l’évaluation",
+      "shortcuts": "Raccourcis",
+      "scEnter": "Saisir des notes",
+      "scBook": "Voir le carnet complet",
+      "scReports": "Voir les bulletins",
+      "scCompetences": "Compétences et aptitudes",
+      "distribution": "Distribution des notes",
+      "noGrade": "Aucune note sur la période.",
+      "ratedOf": "{rated} élèves notés sur {total}",
+      "bucket": {
+        "0": "moins de 10",
+        "50": "10 – 13,9",
+        "70": "14 – 17,9",
+        "90": "18 – 20"
       }
     }
   },

@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
+import { parseSplitId, splitAssignment } from '@/lib/timetable-split-load';
 import {
   proposeAllocation,
   applyAllocation,
@@ -148,13 +149,44 @@ export async function generateMultiTimetableAction(
         trackRows.map((r) => [`${r.trackId}|${r.subjectId}`, r.weeklyHours]),
       );
 
-      const solverAssignments: SolverAssignment[] = assignments.map((a) => {
+      // Groupes des classes du lot : une matière dédoublée devient plusieurs
+      // lignes synchronisées (cf. lib/timetable-split-load).
+      const groupRows = await tx.classGroup.findMany({
+        where: { classId: { in: classIds } },
+        select: { id: true, classId: true, subjectId: true, splitHours: true, teacherId: true },
+        orderBy: [{ order: 'asc' }, { name: 'asc' }],
+      });
+      const groupsByKey = new Map<string, typeof groupRows>();
+      for (const g of groupRows) {
+        if (!g.subjectId) continue;
+        const k = `${g.classId}|${g.subjectId}`;
+        const arr = groupsByKey.get(k) ?? [];
+        arr.push(g);
+        groupsByKey.set(k, arr);
+      }
+
+      const solverAssignments: SolverAssignment[] = assignments.flatMap((a) => {
         const fromTrack = a.class.trackId
           ? trackByKey.get(`${a.class.trackId}|${a.subjectId}`)
           : undefined;
         const fromCurriculum = curriculumByKey.get(`${a.class.levelId}|${a.subjectId}`);
         const hours = a.hoursPerWeek ?? fromTrack ?? fromCurriculum ?? 0;
-        return {
+        const groups = groupsByKey.get(`${a.classId}|${a.subjectId}`) ?? [];
+        if (groups.length >= 2) {
+          return splitAssignment({
+            assignmentId: a.id,
+            teacherId: a.teacherId,
+            subjectId: a.subjectId,
+            subjectLabel: a.subject.label,
+            classId: a.classId,
+            className: a.class.name,
+            weeklyHours: hours,
+            groups: groups.map((g) => ({ id: g.id, teacherId: g.teacherId })),
+            splitHours: groups[0]?.splitHours ?? null,
+            requiredRoomType: subjectRoomRequirement(a.subject.label),
+          });
+        }
+        return [{
           id: a.id,
           teacher_id: a.teacherId,
           subject_id: a.subjectId,
@@ -164,10 +196,13 @@ export async function generateMultiTimetableAction(
           weekly_hours: Math.max(0, Math.round(hours)),
           // Phase 4E4 : type de salle requis déduit du libellé matière.
           required_room_type: subjectRoomRequirement(a.subject.label),
-        };
+        }];
       });
 
-      // Profs uniques avec leurs dispos
+      // Profs uniques avec leurs dispos.
+      //
+      // Les enseignants de groupe s'ajoutent : un dédoublement confie souvent
+      // une moitié à un professeur qui n'est affecté à aucune classe du lot.
       const teacherMap = new Map<string, SolverTeacher>();
       for (const a of assignments) {
         if (teacherMap.has(a.teacherId)) continue;
@@ -176,6 +211,23 @@ export async function generateMultiTimetableAction(
           name: `${a.teacher.lastName} ${a.teacher.firstName}`,
           availability: (a.teacher.availability as SolverTeacher['availability']) ?? {},
         });
+      }
+
+      const extraTeacherIds = [
+        ...new Set(solverAssignments.map((sa) => sa.teacher_id)),
+      ].filter((id) => !teacherMap.has(id));
+      if (extraTeacherIds.length > 0) {
+        const extras = await tx.person.findMany({
+          where: { id: { in: extraTeacherIds } },
+          select: { id: true, firstName: true, lastName: true, availability: true },
+        });
+        for (const t of extras) {
+          teacherMap.set(t.id, {
+            id: t.id,
+            name: `${t.lastName} ${t.firstName}`,
+            availability: (t.availability as SolverTeacher['availability']) ?? {},
+          });
+        }
       }
 
       const rooms = await tx.room.findMany({ orderBy: { code: 'asc' } });
@@ -356,6 +408,8 @@ export async function generateMultiTimetableAction(
           teacherId: a.teacher_id,
           classId: a.class_id,
           requiredRoomType: a.required_room_type ?? null,
+          // Groupe visé, pour les séances issues d'un dédoublement.
+          groupId: a.group_id ?? null,
         },
       ]),
     );
@@ -439,6 +493,9 @@ export async function generateMultiTimetableAction(
             dayOfWeek: p.day,
             subjectId: data.subjectId,
             teacherId: data.teacherId,
+            // Le solveur renvoie le groupe ; l'identifiant composite sert de
+            // repli si le moteur ne le propage pas (cas de FET).
+            groupId: p.group_id ?? data.groupId ?? parseSplitId(p.assignment_id).groupId,
             roomId: allocRoom(data, p.day, p.slot_id),
           },
         });
@@ -542,6 +599,38 @@ type ResetResult = { ok: true; deleted: number } | { ok: false; error: string };
  * (`TeacherAssignment`) **et** l'emploi du temps généré (`TimetableEntry`)
  * pour ces classes → vrai retour à zéro avant une nouvelle pré-affectation.
  */
+/**
+ * Ce que la réinitialisation détruirait, avant de la lancer.
+ *
+ * Une suppression qui annonce « action irréversible » sans dire ce qu'elle
+ * emporte n'informe personne : on clique en pensant remettre à zéro un
+ * brouillon, et 252 affectations disparaissent. Le journal ne conserve que le
+ * compte, pas le contenu — il n'y a pas de retour en arrière.
+ */
+export async function previewResetAllocationAction(
+  academicYearId: string,
+  classIds: string[],
+): Promise<
+  { ok: true; assignments: number; entries: number; classes: number } | { ok: false; error: string }
+> {
+  const session = await auth();
+  if (!session?.user) return { ok: false, error: 'Non authentifié' };
+  await requirePermission('tenants.manage');
+  if (classIds.length === 0) return { ok: true, assignments: 0, entries: 0, classes: 0 };
+
+  try {
+    return await withTenant(session.user.tenantId, async (tx) => {
+      const [assignments, entries] = await Promise.all([
+        tx.teacherAssignment.count({ where: { classId: { in: classIds }, academicYearId } }),
+        tx.timetableEntry.count({ where: { classId: { in: classIds }, academicYearId } }),
+      ]);
+      return { ok: true as const, assignments, entries, classes: classIds.length };
+    });
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
+  }
+}
+
 export async function resetAllocationAction(
   academicYearId: string,
   classIds: string[],

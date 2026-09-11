@@ -50,6 +50,15 @@ class AssignmentInput(BaseModel):
     class_id: str
     class_name: str
     weekly_hours: int = Field(..., ge=0, le=40)
+    # ── Dédoublement (demi-groupes) ────────────────────────────────────
+    # group_id : groupe visé par la séance. None = la classe entière.
+    #
+    # parallel_key : identifiant du dédoublement. Les affectations qui le
+    # partagent DOIVENT être placées sur exactement les mêmes créneaux — les
+    # deux moitiés d'une classe se tiennent au même moment, sinon l'autre
+    # moitié n'aurait rien à faire pendant ce temps.
+    group_id: str | None = None
+    parallel_key: str | None = None
 
 
 class GenerateRequest(BaseModel):
@@ -93,6 +102,8 @@ class PlacedEntry(BaseModel):
     teacher_id: str
     day: DayKey
     slot_id: str
+    # Groupe visé par la séance. None = classe entière.
+    group_id: str | None = None
 
 
 class UnplacedAssignment(BaseModel):
@@ -142,6 +153,15 @@ class MultiAssignmentInput(BaseModel):
     weekly_hours: int = Field(..., ge=0, le=40)
     # Phase 4E4 : type de salle requis (heuristique). None = indifférent.
     required_room_type: str | None = None
+    # ── Dédoublement (demi-groupes) ────────────────────────────────────
+    # group_id : groupe visé par la séance. None = la classe entière.
+    #
+    # parallel_key : identifiant du dédoublement. Les affectations qui le
+    # partagent DOIVENT être placées sur exactement les mêmes créneaux — les
+    # deux moitiés d'une classe se tiennent au même moment, sinon l'autre
+    # moitié n'aurait rien à faire pendant ce temps.
+    group_id: str | None = None
+    parallel_key: str | None = None
 
 
 class ConstraintsInput(BaseModel):
@@ -252,6 +272,8 @@ class MultiPlacedEntry(BaseModel):
     room_id: str | None = None
     day: DayKey
     slot_id: str
+    # Groupe visé par la séance. None = classe entière.
+    group_id: str | None = None
 
 
 class TeacherDiagnostic(BaseModel):

@@ -40,10 +40,16 @@ export type AllocationPlan = {
 const keyOf = (classId: string, subjectId: string) => `${classId}|${subjectId}`;
 
 /**
- * Propose une allocation prof→(classe×matière) à partir du programme
- * (`CurriculumSubject`), des spécialités, des heures contractuelles et des
- * classes prioritaires. **Lecture seule** (aucune écriture). Respecte les
- * affectations existantes (épinglées). À appeler dans un `withTenant`.
+ * Propose une allocation prof→(classe×matière) à partir du programme, des
+ * spécialités, des heures contractuelles et des classes prioritaires.
+ *
+ * Le programme d'une classe vient de sa **filière** quand elle en a une, du
+ * niveau sinon. Au lycée marocain, `CurriculumSubject` est vide : n'interroger
+ * que le niveau ne proposait aucune ligne, et le bouton « Pré-affecter
+ * automatiquement » restait sans effet.
+ *
+ * **Lecture seule** (aucune écriture). Respecte les affectations existantes
+ * (épinglées). À appeler dans un `withTenant`.
  */
 export async function proposeAllocation(
   tx: Tx,
@@ -54,25 +60,61 @@ export async function proposeAllocation(
 
   const classes = await tx.class.findMany({
     where: { id: { in: classIds }, academicYearId, deletedAt: null },
-    select: { id: true, name: true, nameAr: true, levelId: true },
+    select: { id: true, name: true, nameAr: true, levelId: true, trackId: true },
   });
   const levelIds = [...new Set(classes.map((c) => c.levelId))];
+  const trackIds = [...new Set(classes.map((c) => c.trackId).filter((x): x is string => !!x))];
 
-  const curriculum = await tx.curriculumSubject.findMany({
-    where: { levelId: { in: levelIds } },
-    select: {
-      levelId: true,
-      subjectId: true,
-      weeklyHours: true,
-      subject: { select: { label: true, labelAr: true } },
-    },
-  });
-  const needsByLevel = new Map<string, typeof curriculum>();
+  const [curriculum, trackRows] = await Promise.all([
+    tx.curriculumSubject.findMany({
+      where: { levelId: { in: levelIds } },
+      select: {
+        levelId: true,
+        subjectId: true,
+        weeklyHours: true,
+        subject: { select: { label: true, labelAr: true } },
+      },
+    }),
+    trackIds.length
+      ? tx.trackSubjectCoefficient.findMany({
+          where: { trackId: { in: trackIds } },
+          select: {
+            trackId: true,
+            subjectId: true,
+            weeklyHours: true,
+            subject: { select: { label: true, labelAr: true } },
+          },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  /** Besoin d'une matière pour une classe : matière, volume, libellé. */
+  type ProgramLine = {
+    subjectId: string;
+    weeklyHours: number;
+    subject: { label: string; labelAr: string | null };
+  };
+
+  const needsByLevel = new Map<string, ProgramLine[]>();
   for (const c of curriculum) {
     const arr = needsByLevel.get(c.levelId) ?? [];
     arr.push(c);
     needsByLevel.set(c.levelId, arr);
   }
+  const needsByTrack = new Map<string, ProgramLine[]>();
+  for (const r of trackRows) {
+    const arr = needsByTrack.get(r.trackId) ?? [];
+    // Une matière déclarée sans volume ne se place pas : on la porte à 0 h
+    // plutôt que de l'écarter, pour qu'elle reste visible dans le plan.
+    arr.push({ subjectId: r.subjectId, weeklyHours: r.weeklyHours ?? 0, subject: r.subject });
+    needsByTrack.set(r.trackId, arr);
+  }
+
+  /** Programme applicable à une classe : la filière prime sur le niveau. */
+  const programOf = (cls: { levelId: string; trackId: string | null }): ProgramLine[] =>
+    (cls.trackId ? needsByTrack.get(cls.trackId) : undefined) ??
+    needsByLevel.get(cls.levelId) ??
+    [];
 
   const teachers = await tx.person.findMany({
     where: { type: 'TEACHER', deletedAt: null },
@@ -97,6 +139,9 @@ export async function proposeAllocation(
       class: { select: { levelId: true } },
     },
   });
+  // Charge déjà engagée : le volume négocié sur l'affectation, à défaut celui
+  // du programme du niveau. La filière n'est pas consultée ici — cette charge
+  // porte sur TOUTES les classes de l'année, dont on n'a pas la filière.
   const curHoursByKey = new Map(
     curriculum.map((c) => [`${c.levelId}|${c.subjectId}`, c.weeklyHours]),
   );
@@ -171,7 +216,7 @@ export async function proposeAllocation(
   };
   const needs: Need[] = [];
   for (const cls of classes) {
-    for (const n of needsByLevel.get(cls.levelId) ?? []) {
+    for (const n of programOf(cls)) {
       if (pinnedSet.has(keyOf(cls.id, n.subjectId))) continue;
       needs.push({
         classId: cls.id,

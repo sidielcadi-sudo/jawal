@@ -31,6 +31,14 @@ export type SolverAssignment = {
   weekly_hours: number;
   // Phase 4E4 : type de salle requis (heuristique), null = indifférent.
   required_room_type?: string | null;
+  /** Groupe visé. Null/absent = la classe entière. */
+  group_id?: string | null;
+  /**
+   * Identifiant du dédoublement. Les affectations qui le partagent sont placées
+   * sur exactement les mêmes créneaux — les deux moitiés d'une classe ont cours
+   * en même temps.
+   */
+  parallel_key?: string | null;
 };
 
 export type SolverBusySlot = {
@@ -50,6 +58,8 @@ export type SolverRequest = {
 };
 
 export type SolverPlacedEntry = {
+  /** Groupe de la séance placée. Null = classe entière. */
+  group_id?: string | null;
   assignment_id: string;
   class_id: string;
   subject_id: string;

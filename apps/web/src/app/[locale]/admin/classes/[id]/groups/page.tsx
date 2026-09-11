@@ -88,6 +88,7 @@ export default async function ClassGroupsPage({
           nameAr: true,
           subjectId: true,
           splitHours: true,
+          teacherId: true,
           subject: { select: { label: true, labelAr: true } },
           members: { select: { studentId: true } },
           _count: { select: { entries: true } },
@@ -96,11 +97,19 @@ export default async function ClassGroupsPage({
       }),
     ]);
 
-    return { cls, curriculum, groups };
+    // Enseignants de l'établissement : le dédoublement demande un second
+    // professeur, qui n'est pas forcément déjà affecté à la classe.
+    const teachers = await tx.person.findMany({
+      where: { type: 'TEACHER', deletedAt: null },
+      select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
+      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
+    });
+
+    return { cls, curriculum, groups, teachers };
   });
 
   if (!data?.cls) notFound();
-  const { cls, curriculum, groups } = data;
+  const { cls, curriculum, groups, teachers } = data;
 
   const students: StudentRow[] = cls.students.map((sc) => ({
     id: sc.student.id,
@@ -121,6 +130,7 @@ export default async function ClassGroupsPage({
       memberIds: g.members.map((m) => m.studentId),
       entryCount: g._count.entries,
       splitHours: g.splitHours,
+      teacherId: g.teacherId,
     }));
 
   // Élèves qu'aucun groupe de cette matière ne couvre : sans ce contrôle, un
@@ -193,6 +203,7 @@ export default async function ClassGroupsPage({
         students={students}
         groups={rows}
         uncoveredIds={uncovered}
+        teachers={teachers.map((t) => ({ id: t.id, label: personDisplayName(locale, t) }))}
       />
     </div>
   );

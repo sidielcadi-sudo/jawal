@@ -15,6 +15,7 @@ import {
   type SolverTeacher,
 } from '@/lib/solver-client';
 import { buildLoadReport, explainEmptyLoad, type HoursBySubject } from '@/lib/timetable-load';
+import { parseSplitId, splitAssignment } from '@/lib/timetable-split-load';
 
 type Result =
   | {
@@ -152,17 +153,44 @@ export async function generateTimetableAction(
       }
 
       const hoursByAssignment = new Map(load.rows.map((r, i) => [assignments[i]!.id, r.hours]));
-      const solverAssignments: SolverAssignment[] = assignments.map((a) => ({
-        id: a.id,
-        teacher_id: a.teacherId,
-        subject_id: a.subjectId,
-        subject_label: a.subject.label,
-        class_id: cls.id,
-        class_name: cls.name,
-        weekly_hours: hoursByAssignment.get(a.id) ?? 0,
-      }));
 
-      // Profs uniques avec dispo
+      // Groupes de la classe : une matière dédoublée devient plusieurs lignes,
+      // synchronisées entre elles. Sans ça le solveur ne produisait que des
+      // séances en classe entière.
+      const groupRows = await tx.classGroup.findMany({
+        where: { classId },
+        select: { id: true, subjectId: true, splitHours: true, teacherId: true },
+        orderBy: [{ order: 'asc' }, { name: 'asc' }],
+      });
+      const groupsBySubject = new Map<string, typeof groupRows>();
+      for (const g of groupRows) {
+        if (!g.subjectId) continue;
+        const arr = groupsBySubject.get(g.subjectId) ?? [];
+        arr.push(g);
+        groupsBySubject.set(g.subjectId, arr);
+      }
+
+      const solverAssignments: SolverAssignment[] = assignments.flatMap((a) => {
+        const groups = groupsBySubject.get(a.subjectId) ?? [];
+        return splitAssignment({
+          assignmentId: a.id,
+          teacherId: a.teacherId,
+          subjectId: a.subjectId,
+          subjectLabel: a.subject.label,
+          classId: cls.id,
+          className: cls.name,
+          weeklyHours: hoursByAssignment.get(a.id) ?? 0,
+          groups: groups.map((g) => ({ id: g.id, teacherId: g.teacherId })),
+          splitHours: groups[0]?.splitHours ?? null,
+        });
+      });
+
+      // Profs uniques avec dispo.
+      //
+      // On part des lignes envoyées au solveur, pas des affectations : un
+      // groupe peut avoir son propre enseignant, qui n'est pas forcément
+      // affecté à la classe. L'oublier faisait répondre au solveur « prof
+      // introuvable » et le dédoublement n'était jamais placé.
       const teacherMap = new Map<string, SolverTeacher>();
       for (const a of assignments) {
         if (teacherMap.has(a.teacherId)) continue;
@@ -172,6 +200,23 @@ export async function generateTimetableAction(
           availability:
             (a.teacher.availability as SolverTeacher['availability']) ?? {},
         });
+      }
+
+      const extraTeacherIds = [
+        ...new Set(solverAssignments.map((sa) => sa.teacher_id)),
+      ].filter((id) => !teacherMap.has(id));
+      if (extraTeacherIds.length > 0) {
+        const extras = await tx.person.findMany({
+          where: { id: { in: extraTeacherIds } },
+          select: { id: true, firstName: true, lastName: true, availability: true },
+        });
+        for (const t of extras) {
+          teacherMap.set(t.id, {
+            id: t.id,
+            name: `${t.lastName} ${t.firstName}`,
+            availability: (t.availability as SolverTeacher['availability']) ?? {},
+          });
+        }
       }
 
       // Busy slots : autres classes de l'année, même prof
@@ -251,6 +296,9 @@ export async function generateTimetableAction(
 
       // Insère les nouvelles
       for (const p of placed) {
+        // L'identifiant rendu par le solveur peut porter le groupe
+        // (`<affectation>::<groupe>`) : on le sépare pour retrouver la matière.
+        const { assignmentId, groupId } = parseSplitId(p.assignment_id);
         await tx.timetableEntry.create({
           data: {
             tenantId,
@@ -258,8 +306,9 @@ export async function generateTimetableAction(
             classId,
             slotId: p.slot_id,
             dayOfWeek: p.day,
-            subjectId: assignmentToSubject.get(p.assignment_id) ?? p.subject_id,
+            subjectId: assignmentToSubject.get(assignmentId) ?? p.subject_id,
             teacherId: p.teacher_id,
+            groupId: p.group_id ?? groupId,
           },
         });
       }

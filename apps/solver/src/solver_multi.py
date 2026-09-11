@@ -128,27 +128,97 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
         if cc.min_hours_per_day is not None:
             min_h_per_class[cc.class_id] = cc.min_hours_per_day
 
-    # C2 : ≤ 1 cours par (classe × d × s)
-    classes = set(class_of.values())
-    for cls_id in classes:
+    # ── Dédoublements : les moitiés d'un même groupe-parallèle sont liées ──
+    #
+    # Les affectations partageant un `parallel_key` sont placées sur exactement
+    # les mêmes (jour, créneau, salle non comprise) : les deux moitiés d'une
+    # classe se tiennent au même moment, sinon l'autre moitié n'aurait rien à
+    # faire pendant ce temps. On lie la SOMME sur les salles, un demi-groupe
+    # pouvant occuper une autre salle que l'autre.
+    bundles: Dict[str, List[str]] = {}
+    for a in request.assignments:
+        if a.parallel_key:
+            bundles.setdefault(a.parallel_key, []).append(a.id)
+
+    # Index (affectation, jour, créneau) → variables, construit UNE fois.
+    #
+    # Balayer `x` à l'intérieur des boucles coûtait O(bundles × jours × créneaux
+    # × |x|). Avec une centaine d'affectations et une quinzaine de salles, la
+    # construction du modèle consommait tout le temps imparti et le solveur
+    # rendait une solution vide — 0 heure placée sur 284.
+    # Ces index remplacent des balayages de `x` imbriqués dans des boucles.
+    # Le coût était rédhibitoire : la contrainte « une seule salle par séance »
+    # scannait les ~70 000 variables pour chacune des 117 affectations × 42
+    # cellules, soit plusieurs centaines de millions d'opérations Python. La
+    # construction du modèle prenait deux minutes et mangeait le temps destiné
+    # à la recherche — le solveur rendait alors une solution vide.
+    by_ads: Dict[Tuple[str, str, str], List[cp_model.IntVar]] = {}
+    by_tds: Dict[Tuple[str, str, str], List[cp_model.IntVar]] = {}
+    by_rds: Dict[Tuple[str, str, str], List[cp_model.IntVar]] = {}
+    by_cd: Dict[Tuple[str, str], List[cp_model.IntVar]] = {}
+    for (aid, day, sid, room), var in x.items():
+        by_ads.setdefault((aid, day, sid), []).append(var)
+        by_tds.setdefault((teacher_of[aid], day, sid), []).append(var)
+        if room != NO_ROOM:
+            by_rds.setdefault((room, day, sid), []).append(var)
+        by_cd.setdefault((class_of[aid], day), []).append(var)
+
+    # Une variable de décision PAR dédoublement et par créneau : `z` vaut 1
+    # quand le dédoublement se tient là, et chaque moitié y est liée.
+    #
+    # Lier les moitiés deux à deux (`sum(A) == sum(B)`) exprimait la même chose,
+    # mais CP-SAT le propageait mal : sur dix classes, il rendait une solution
+    # vide — 0 heure placée sur 284 — alors qu'une classe seule passait. Avec
+    # `z`, le solveur a un point de décision explicite sur lequel brancher, et
+    # la contrainte d'occupation de la classe s'écrit directement dessus.
+    bundle_z: Dict[Tuple[str, str, str], cp_model.IntVar] = {}
+    for key, member_ids in bundles.items():
         for d in days:
             for s in placeable_slots:
-                vars_cell = [
-                    v
-                    for k, v in x.items()
-                    if class_of[k[0]] == cls_id and k[1] == d and k[2] == s.id
-                ]
-                if vars_cell:
-                    model.Add(sum(vars_cell) <= 1)
+                z = model.NewBoolVar(f"z_{key[:8]}_{d}_{s.id[:6]}")
+                bundle_z[(key, d, s.id)] = z
+                for m in member_ids:
+                    vars_m = by_ads.get((m, d, s.id))
+                    if vars_m:
+                        model.Add(sum(vars_m) == z)
+                    else:
+                        # Un des profs ne peut pas être là : le dédoublement ne
+                        # peut pas s'y tenir du tout.
+                        model.Add(z == 0)
+
+    # C2 : ≤ 1 occupation de la classe par (classe × d × s).
+    #
+    # Un dédoublement ne compte qu'une fois — ses membres étant synchronisés,
+    # on ne retient qu'un représentant par groupe-parallèle. Deux demi-groupes
+    # au même créneau occupent bien la classe une seule fois ; en revanche un
+    # cours en classe entière ne peut pas cohabiter avec un demi-groupe.
+    # L'occupation de la classe compte les séances ordinaires et, pour les
+    # dédoublements, la variable `z` — une seule fois, quel que soit le nombre
+    # de groupes.
+    counted_ids = {a.id for a in request.assignments if not a.parallel_key}
+    classes = set(class_of.values())
+
+    # Même souci de coût : on regroupe par (classe, jour, créneau) en une passe.
+    by_cds: Dict[Tuple[str, str, str], List[cp_model.IntVar]] = {}
+    for (aid, day, sid), vars_list in by_ads.items():
+        if aid not in counted_ids:
+            continue
+        by_cds.setdefault((class_of[aid], day, sid), []).extend(vars_list)
+
+    for key, member_ids in bundles.items():
+        cls_id = class_of[member_ids[0]]
+        for d in days:
+            for s in placeable_slots:
+                by_cds.setdefault((cls_id, d, s.id), []).append(bundle_z[(key, d, s.id)])
+
+    for vars_cell in by_cds.values():
+        if vars_cell:
+            model.Add(sum(vars_cell) <= 1)
 
     # E2 : MAX heures par jour par classe (dure)
     for cls_id, max_h in max_h_per_class.items():
         for d in days:
-            vars_day = [
-                v
-                for k, v in x.items()
-                if class_of[k[0]] == cls_id and k[1] == d
-            ]
+            vars_day = by_cd.get((cls_id, d))
             if vars_day:
                 model.Add(sum(vars_day) <= max_h)
 
@@ -160,11 +230,7 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
     # variable booléenne et reified constraints.
     for cls_id, min_h in min_h_per_class.items():
         for d in days:
-            vars_day = [
-                v
-                for k, v in x.items()
-                if class_of[k[0]] == cls_id and k[1] == d
-            ]
+            vars_day = by_cd.get((cls_id, d))
             if not vars_day:
                 continue
             # y = 1 ⇔ au moins 1 cours ce (cls, d)
@@ -176,42 +242,21 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
             model.Add(sum(vars_day) >= min_h).OnlyEnforceIf(y)
 
     # C3 : ≤ 1 cours par (prof × d × s)
-    for t_id in teachers_by_id:
-        for d in days:
-            for s in placeable_slots:
-                vars_cell = [
-                    v
-                    for k, v in x.items()
-                    if teacher_of[k[0]] == t_id and k[1] == d and k[2] == s.id
-                ]
-                if vars_cell:
-                    model.Add(sum(vars_cell) <= 1)
+    for vars_cell in by_tds.values():
+        if len(vars_cell) > 1:
+            model.Add(sum(vars_cell) <= 1)
 
     # C4 : ≤ 1 cours par (salle réelle × d × s)
-    for r_id in room_ids:
-        if r_id == NO_ROOM:
-            continue
-        for d in days:
-            for s in placeable_slots:
-                vars_cell = [
-                    v
-                    for k, v in x.items()
-                    if k[3] == r_id and k[1] == d and k[2] == s.id
-                ]
-                if vars_cell:
-                    model.Add(sum(vars_cell) <= 1)
+    for vars_cell in by_rds.values():
+        if len(vars_cell) > 1:
+            model.Add(sum(vars_cell) <= 1)
 
     # Implicite : pour un (a, d, s) donné, au plus une salle est choisie
     # (découle de C2 vu que tous les (a,d,s,r) sont dans la même cellule classe)
     # mais on l'ajoute explicitement pour clarté :
-    for a in request.assignments:
-        for d in days:
-            for s in placeable_slots:
-                vars_room = [
-                    v for k, v in x.items() if k[0] == a.id and k[1] == d and k[2] == s.id
-                ]
-                if vars_room:
-                    model.Add(sum(vars_room) <= 1)
+    for vars_room in by_ads.values():
+        if len(vars_room) > 1:
+            model.Add(sum(vars_room) <= 1)
 
     # ─── Contraintes paramétrables (phase C) ─────────────────────────
     cons = request.constraints
@@ -457,10 +502,41 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
     #   + minimize_room_changes_weight par salle conservée (E5a)
     #   - balance_daily_load_weight × journée la plus chargée par classe (E5b)
     if x:
+        # ── Dominance du placement sur les préférences ──────────────────────
+        #
+        # Placer les cours n'est pas une préférence parmi d'autres : c'est
+        # l'objet même de la génération. Or les pénalités douces (trous,
+        # équilibrage de la journée la plus chargée) sont paramétrées jusqu'à
+        # 100, quand une heure placée ne rapportait que 10. Sur dix classes, la
+        # somme des pénalités dépassait largement le gain, et l'optimum du
+        # modèle était de NE RIEN PLACER — le solveur rendait un emploi du
+        # temps vide, ce qui est mathématiquement juste et pratiquement absurde.
+        #
+        # On donne donc au placement un poids strictement supérieur au total des
+        # pénalités possibles : une heure de plus l'emporte toujours, quels que
+        # soient les réglages du tenant. Les préférences continuent d'arbitrer
+        # entre deux solutions plaçant le même nombre d'heures.
+        max_soft = 0
+        if cons.no_gaps_weight:
+            max_soft += int(cons.no_gaps_weight) * len(gaps_vars)
+        if cons.balance_daily_load_weight:
+            max_soft += (
+                int(cons.balance_daily_load_weight)
+                * len(balance_penalties)
+                * max(1, len(placeable_slots))
+            )
+        if request.consecutive_bonus > 0:
+            max_soft += request.consecutive_bonus * len(pairs)
+        if cons.minimize_room_changes_weight:
+            max_soft += int(cons.minimize_room_changes_weight) * len(room_change_rewards)
+        placement_weight = max_soft + 10
+
         objective_terms: List[cp_model.IntVar | int] = []
         for (aid, d, sid, r), v in x.items():
-            weight = 10
+            weight = placement_weight
             if r != NO_ROOM:
+                # Départage à égalité d'heures : une salle attribuée vaut mieux
+                # qu'une séance sans salle.
                 weight += 1
             objective_terms.append(v * weight)
         if request.consecutive_bonus > 0 and pairs:
@@ -527,6 +603,7 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
                 room_id=None if r == NO_ROOM else r,
                 day=d,  # type: ignore[arg-type]
                 slot_id=sid,
+                group_id=a_obj.group_id,
             )
         )
         placed_hours[aid] += 1

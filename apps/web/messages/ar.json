@@ -212,7 +212,7 @@
       "classes": "الأقسام",
       "enrollments": "التسجيلات",
       "timetable": "الجدول الزمني",
-      "attendance": "الحضور",
+      "attendance": "الغيابات",
       "justifications": "المبررات",
       "staffAttendance": "تسجيل دوام الموظفين",
       "announcements": "إعلانات",
@@ -230,7 +230,8 @@
       "comptabilite": "المحاسبة",
       "soutien": "الدعم المدرسي",
       "competences": "الكفايات والقدرات",
-      "exams": "الامتحانات"
+      "exams": "الامتحانات",
+      "grades": "النقط والتقييمات"
     },
     "surveys": {
       "title": "استبيانات الرضا",
@@ -599,41 +600,91 @@
       }
     },
     "attendanceIndex": {
-      "title": "الحضور",
-      "date": "التاريخ",
-      "apply": "عرض",
+      "title": "الغيابات والحضور",
+      "subtitle": "تتبع حضور التلاميذ",
+      "export": "تصدير التقرير",
+      "allClasses": "جميع الأقسام",
+      "todayIs": "اليوم",
+      "noYear": "لا توجد سنة دراسية نشطة.",
+      "noCallThatDay": "لم يتم أخذ الحضور في هذا اليوم.",
+      "goToLastDay": "عرض آخر يوم تم تسجيله ({date})",
       "kpi": {
-        "classesTaken": "أقسام تم نداؤها",
-        "finalized": "منها {count} مُصادق عليها",
-        "attendanceRate": "نسبة الحضور",
-        "records": "{count, plural, =0 {لا توجد تسجيلات} one {تسجيل واحد} other {# تسجيلات}}",
-        "absentToday": "غياب + تأخر",
-        "absentSub": "{absent} غياب · {late} تأخر",
-        "pendingJustifications": "مبررات قيد المعالجة",
-        "pendingSub": "تخص الإدارة التربوية",
-        "allReviewed": "تمت معالجة الكل"
+        "presentToday": "الحاضرون",
+        "absent": "الغائبون",
+        "late": "المتأخرون",
+        "notices": "الإشعارات المرسلة",
+        "noticesHint": "هذا اليوم"
       },
-      "reviewQueue": "معالجة {count, plural, one {# مبرر} other {# مبررات}}",
-      "classes": {
-        "title": "التفاصيل حسب القسم",
-        "name": "القسم",
-        "level": "السلك · المستوى",
-        "enrolled": "العدد",
-        "status": "النداء",
-        "absent": "غياب",
-        "late": "تأخر",
-        "action": "",
-        "open": "عرض",
-        "start": "بدء النداء",
-        "empty": "لا توجد أقسام للسنة الحالية."
+      "byClass": {
+        "title": "نظرة عامة حسب القسم",
+        "class": "القسم",
+        "present": "الحاضرون",
+        "absent": "الغائبون",
+        "late": "المتأخرون",
+        "rate": "نسبة الحضور",
+        "empty": "لا يوجد أي قسم لهذه السنة."
+      },
+      "legend": {
+        "good": "جيد (≥ 90 %)",
+        "medium": "متوسط (75 % - 89 %)",
+        "weak": "ضعيف (< 75 %)"
       },
       "status": {
-        "notTaken": "لم يتم",
-        "draft": "مسودة",
-        "finalized": "مُصادق"
+        "notTaken": "لم يتم أخذ الحضور",
+        "finalized": "مُصادق عليه",
+        "draft": "مسودة"
       },
-      "totalEnrolled": "إجمالي التلاميذ المسجلين : {count}",
-      "totalExcused": "{count} معفون"
+      "detail": {
+        "title": "تفاصيل الغيابات والتأخرات",
+        "search": "البحث عن تلميذ…",
+        "student": "اسم التلميذ",
+        "class": "القسم",
+        "time": "الساعة",
+        "status": "الحالة",
+        "reason": "السبب",
+        "notified": "تم إخبار ولي الأمر",
+        "action": "إجراء",
+        "noReason": "غير مُحدَّد",
+        "yes": "نعم",
+        "no": "لا",
+        "failed": "فشل الإرسال",
+        "noContact": "لا توجد وسيلة اتصال",
+        "notify": "إخبار ولي الأمر",
+        "notifyDone": "تم إخبار ولي الأمر",
+        "openStudent": "عرض بطاقة التلميذ",
+        "openSheet": "فتح ورقة الحضور",
+        "empty": "لا غياب ولا تأخر في هذا اليوم.",
+        "count": "عرض {from} إلى {to} من أصل {total} تلميذ",
+        "countEmpty": "لا يوجد تلميذ للعرض"
+      },
+      "donut": {
+        "title": "التوزيع العام",
+        "total": "المجموع"
+      },
+      "trend": {
+        "title": "تطور الحضور",
+        "window": "آخر 7 أيام",
+        "presence": "نسبة الحضور",
+        "absence": "نسبة الغياب",
+        "empty": "لا توجد بيانات كافية لرسم منحنى."
+      },
+      "alerts": {
+        "title": "التنبيهات الأخيرة",
+        "seeAll": "عرض الكل",
+        "empty": "لا تنبيه خلال الثلاثين يوما الأخيرة.",
+        "kind": {
+          "PROLONGED": "غياب طويل",
+          "UNJUSTIFIED": "غياب غير مبرر",
+          "FREQUENT_LATE": "تأخرات متكررة",
+          "MISSING_DOC": "وثيقة التبرير ناقصة"
+        },
+        "detail": {
+          "PROLONGED": "{count} أيام متتالية",
+          "UNJUSTIFIED": "غير مبرر",
+          "FREQUENT_LATE": "{count} تأخرات هذا الأسبوع",
+          "MISSING_DOC": "لم تُرفَق أي وثيقة"
+        }
+      }
     },
     "justifications": {
       "title": "قائمة المبررات",
@@ -1452,7 +1503,12 @@
           "BALANCED": "موازنة",
           "NO_SPECIALIST": "لا يوجد متخصص",
           "OVER_CAPACITY": "زيادة في الحمولة"
-        }
+        },
+        "resetTitle": "إعادة تهيئة الإسناد؟",
+        "resetBody": "على {classes, plural, one {قسم واحد} other {# أقسام}}: سيُحذف {assignments, plural, =0 {لا إسناد} one {إسناد أستاذ واحد} other {# إسنادات أساتذة}} و{entries, plural, =0 {لا حصة} one {حصة واحدة من جدول الزمن} other {# حصص من جدول الزمن}}.",
+        "resetIrreversible": "لا يمكن الاسترجاع: السجل يحتفظ بالعدد المحذوف لا بالمحتوى.",
+        "resetCancel": "إلغاء",
+        "resetConfirmAction": "حذف"
       },
       "generateMulti": {
         "title": "التوليد الآلي للجداول الزمنية",
@@ -2398,7 +2454,11 @@
         "status": "الحالة",
         "father": "الأب",
         "mother": "الأم",
-        "actions": "إجراءات"
+        "actions": "إجراءات",
+        "massar": "رقم التسجيل",
+        "level": "المستوى",
+        "parent": "ولي الأمر",
+        "phone": "الهاتف"
       },
       "studentStatus": {
         "ACTIVE": "نشِط",
@@ -2935,7 +2995,57 @@
       "classLabel": "قسم التلميذ",
       "classNone": "— اختر —",
       "classChange": "تغيير القسم",
-      "classChanged": "تم تحديث القسم."
+      "classChanged": "تم تحديث القسم.",
+      "tabs": {
+        "all": "الكل",
+        "active": "النشطون",
+        "inactive": "غير النشطين"
+      },
+      "kpi": {
+        "total": "مجموع التلاميذ",
+        "totalHint": "مسجَّلون ومُسنَدون إلى قسم",
+        "new": "المسجَّلون الجدد",
+        "newHint": "تسجيل أول هذه السنة",
+        "active": "التلاميذ النشطون",
+        "activeHint": "{pct}% من المجموع",
+        "alerts": "تنبيهات إدارية",
+        "alertsHint": "ملف مفتوح بدون قسم"
+      },
+      "detailPanel": {
+        "empty": "اختر تلميذًا لعرض بطاقته.",
+        "massar": "رقم التسجيل",
+        "bornOn": "من مواليد {date}",
+        "age": "{age} سنة",
+        "personal": "المعلومات الشخصية",
+        "birthDate": "تاريخ الازدياد",
+        "birthPlace": "مكان الازدياد",
+        "gender": "الجنس",
+        "level": "المستوى",
+        "address": "العنوان",
+        "genders": {
+          "M": "ذكر",
+          "F": "أنثى",
+          "X": "آخر"
+        },
+        "parents": "الاتصال بالأولياء",
+        "noParent": "لا يوجد ولي أمر مرتبط.",
+        "relation": {
+          "FATHER": "الأب",
+          "MOTHER": "الأم",
+          "LEGAL_GUARDIAN": "الوصي القانوني",
+          "GUARDIAN": "الوصي"
+        },
+        "payments": "حالة الأداءات",
+        "upToDate": "في وضعية سليمة",
+        "due": "{amount} مستحقة",
+        "lastPayment": "آخر أداء",
+        "nextDue": "الاستحقاق المقبل",
+        "seePayments": "عرض سجل الأداءات",
+        "attendance": "الحضور الأخير",
+        "noAttendance": "لم تُسجَّل أي مناداة.",
+        "on": "بتاريخ {date}",
+        "openFile": "فتح البطاقة الكاملة"
+      }
     },
     "classes": {
       "title": "الأقسام",
@@ -3072,7 +3182,11 @@
           "hours": "{count} ساعة من الحجم",
           "load": "الحمل المطلوب: {load} ساعة ({groups} مجموعات)",
           "hint": "الازدواج ليس دائمًا: من 3 ساعات، يمكن أن تُنجَز واحدة فقط بنصف القسم، والباقي بالقسم كاملًا. تسري القيمة على كل مجموعات المادة."
-        }
+        },
+        "teacher": "الأستاذ",
+        "teacherInherited": "— أستاذ المادة —",
+        "teacherClash": "نفس الأستاذ على {groups}",
+        "teacherClashHint": "المجموعتان تُنجزان في الوقت نفسه: تحتاجان أستاذين مختلفين. وإلا فلن يضع المحرّك أيًّا منهما — لا يمكن للأستاذ أن يكون في مكانين معًا."
       }
     },
     "gradeBook": {
@@ -5155,6 +5269,55 @@
         "saved": "محفوظ سلفًا",
         "common": "مشتركة",
         "slotCount": "{count} اختبار"
+      }
+    },
+    "gradesOverview": {
+      "year": "السنة الدراسية",
+      "title": "النقط والتقييمات",
+      "subtitle": "اطّلع على نقط التلاميذ وتقييماتهم وبيانات نتائجهم",
+      "noYear": "لا توجد سنة دراسية نشطة.",
+      "noClass": "لا يوجد قسم في السنة النشطة.",
+      "enterGrades": "إدخال النقط",
+      "printReports": "طباعة بيانات النتائج",
+      "class": "القسم",
+      "subject": "المادة",
+      "period": "الفترة",
+      "noSubject": "— لا توجد مادة في البرنامج —",
+      "book": "دفتر النقط",
+      "evalCount": "{count, plural, =0 {لا فرض} one {فرض واحد} two {فرضان} few {# فروض} many {# فرضًا} other {# فرض}}",
+      "noEval": "لم يُسجَّل أي فرض لهذه المادة في الفترة.",
+      "student": "التلميذ",
+      "average": "المعدل /20",
+      "mention": "التقدير",
+      "classAverage": "معدل القسم",
+      "generalAverage": "المعدل العام",
+      "generalAverageHint": "معدل القسم في المادة المعروضة",
+      "successRate": "نسبة النجاح",
+      "successHint": "{passed} تلميذًا من {total} حصلوا على المعدل",
+      "weakSubjects": "المواد المتعثرة",
+      "noSubjectAverage": "لا يمكن احتساب أي معدل في الفترة.",
+      "currentEval": "التقييم الجاري",
+      "date": "التاريخ",
+      "weight": "المعامل",
+      "scale": "السلم",
+      "optional": "اختياري",
+      "yes": "نعم",
+      "no": "لا",
+      "entryStatus": "حالة الإدخال",
+      "seeEval": "عرض تفاصيل التقييم",
+      "shortcuts": "اختصارات",
+      "scEnter": "إدخال النقط",
+      "scBook": "عرض الدفتر الكامل",
+      "scReports": "عرض بيانات النتائج",
+      "scCompetences": "الكفايات والقدرات",
+      "distribution": "توزيع النقط",
+      "noGrade": "لا توجد نقط في الفترة.",
+      "ratedOf": "{rated} تلميذًا مُنقَّطًا من {total}",
+      "bucket": {
+        "0": "أقل من 10",
+        "50": "10 – 13.9",
+        "70": "14 – 17.9",
+        "90": "18 – 20"
       }
     }
   },

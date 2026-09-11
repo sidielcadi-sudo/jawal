@@ -233,14 +233,27 @@ export async function computeKpis(
     },
   });
 
-  // Enseignants du périmètre : ceux qui interviennent dans le cycle. Sinon la
-  // capacité de l'établissement entier écraserait la demande d'un seul cycle.
-  const cycleTeacherIds = cycleId ? [...new Set(assignments.map((a) => a.teacherId))] : null;
+  // Enseignants du périmètre : ceux **rattachés au cycle** (fiche enseignant →
+  // cycles), plus ceux qui y ont une affectation.
+  //
+  // Le rattachement prime, et pour une raison concrète : les affectations
+  // peuvent être remises à zéro avant une nouvelle allocation. S'appuyer sur
+  // elles seules faisait alors tomber le périmètre à zéro enseignant, et tous
+  // les indicateurs annonçaient « aucun prof disponible » alors que le vrai
+  // sujet était l'absence d'affectation.
+  const assignedTeacherIds = [...new Set(assignments.map((a) => a.teacherId))];
   const teachers = await tx.person.findMany({
     where: {
       type: 'TEACHER',
       deletedAt: null,
-      ...(cycleTeacherIds ? { id: { in: cycleTeacherIds } } : {}),
+      ...(cycleId
+        ? {
+            OR: [
+              { teacherCycles: { some: { cycleId } } },
+              ...(assignedTeacherIds.length ? [{ id: { in: assignedTeacherIds } }] : []),
+            ],
+          }
+        : {}),
     },
     select: {
       id: true,
@@ -394,10 +407,10 @@ export async function computeKpis(
   // Couverture prévisionnelle : demande = volume du programme sur les classes
   // de l'année (chaque classe « pèse » le total hebdo du programme de son niveau),
   // indépendante des affectations.
-  let programHours = 0;
-  for (const cls of classes) {
-    programHours += programHoursByLevel.get(cls.levelId) ?? 0;
-  }
+  // Programme du périmètre : la demande calculée (cascade filière → niveau,
+  // dédoublements compris). L'ancien calcul sommait CurriculumSubject par
+  // niveau, vide au lycée : la couverture prévisionnelle y affichait 0 h.
+  const programHours = demand.totalHours;
   const forecastUtilizationPct =
     contractualHours > 0 ? Math.round((programHours / contractualHours) * 100) : 0;
 

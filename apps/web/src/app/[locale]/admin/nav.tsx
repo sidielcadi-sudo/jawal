@@ -21,6 +21,7 @@ type IntlMessages = {
       pilotage: string;
       vieScolaire: string;
       carnet: string;
+      grades: string;
       absenceMgmt: string;
       students: string;
       teachers: string;
@@ -123,6 +124,16 @@ function buildItems(locale: string, roleCodes: string[]): NavItem[] {
       match: (p, _s) => p.startsWith(`${prefix}/carnet`),
       roles: ['cpe', 'tenant_admin', 'direction', 'scolarite'],
     },
+    // Tableau de bord des présences du jour. Distinct de « Justifications »
+    // (attendance/management), qui traite les pièces déposées : ici on
+    // constate, là on arbitre.
+    {
+      href: `${prefix}/attendance`,
+      labelKey: 'attendance',
+      match: (p, _s) =>
+        p === `${prefix}/attendance` || p.startsWith(`${prefix}/attendance?`),
+      roles: ['cpe', 'tenant_admin', 'direction', 'scolarite'],
+    },
     // « Justifications » = ancienne « Gestion des absences » (attendance/management),
     // renommée. Placée juste après le carnet de correspondance.
     {
@@ -130,6 +141,12 @@ function buildItems(locale: string, roleCodes: string[]): NavItem[] {
       labelKey: 'justifications',
       match: (p, _s) => p.startsWith(`${prefix}/attendance/management`),
       roles: ['cpe', 'tenant_admin', 'direction'],
+    },
+    {
+      href: `${prefix}/grades`,
+      labelKey: 'grades',
+      match: (p, _s) => p.startsWith(`${prefix}/grades`),
+      roles: ['tenant_admin', 'direction', 'scolarite'],
     },
     {
       href: `${prefix}/competences/bilan`,

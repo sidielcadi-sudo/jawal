@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 import re
+import os
 import shutil
 import subprocess
 import tempfile
@@ -144,14 +145,32 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
         ET.SubElement(node, "Name").text = slug
         ET.SubElement(node, "Comments").text = t.name
 
-    # ─ Students Sets (Year + Group) ─
-    # On simplifie : 1 année "All" + 1 groupe par classe (FET requiert ce nesting)
+    # ─ Students Sets (Year + Group + Subgroup) ─
+    #
+    # 1 année "All", 1 groupe par classe, et 1 SOUS-GROUPE par demi-groupe.
+    #
+    # Le sous-groupe est la façon dont FET exprime le dédoublement : une
+    # activité rattachée à un sous-groupe n'occupe que lui, et deux sous-groupes
+    # d'une même classe peuvent donc avoir cours en même temps. Une activité
+    # rattachée au groupe (la classe entière) bloque nativement tous ses
+    # sous-groupes — FET gère l'imbrication.
+    #
+    # Sans ça, toutes les séances portaient sur la classe entière : les deux
+    # moitiés d'un dédoublement devenaient deux cours à placer l'un après
+    # l'autre, et FET échouait à trouver une solution.
     students_list = ET.SubElement(root, "Students_List")
     year_node = ET.SubElement(students_list, "Year")
     ET.SubElement(year_node, "Name").text = "All"
     ET.SubElement(year_node, "Number_of_Students").text = "0"
     ET.SubElement(year_node, "Comments").text = ""
     class_slugs: Dict[str, str] = {}
+    group_slugs: Dict[str, str] = {}
+    # Demi-groupes déclarés dans la requête, par classe.
+    groups_of_class: Dict[str, list[str]] = {}
+    for a in req.assignments:
+        if a.group_id and a.group_id not in groups_of_class.get(a.class_id, []):
+            groups_of_class.setdefault(a.class_id, []).append(a.group_id)
+
     for cid in req.class_ids:
         slug = _slug(cid, "c")
         class_slugs[cid] = slug
@@ -162,6 +181,13 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
         ET.SubElement(group, "Name").text = slug
         ET.SubElement(group, "Number_of_Students").text = "0"
         ET.SubElement(group, "Comments").text = comment
+        for gid in groups_of_class.get(cid, []):
+            gslug = _slug(gid, "g")
+            group_slugs[gid] = gslug
+            sub = ET.SubElement(group, "Subgroup")
+            ET.SubElement(sub, "Name").text = gslug
+            ET.SubElement(sub, "Number_of_Students").text = "0"
+            ET.SubElement(sub, "Comments").text = f"{comment} — groupe"
 
     # ─ Activities ─ FET 7.x exige l'ordre strict :
     # Teacher, Subject, Activity_Tag, Students, Duration, Total_Duration,
@@ -170,7 +196,15 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
     act_to_assignment: Dict[int, str] = {}
     # Ids d'activités par (classe, matière) — sert à imposer la répartition sur
     # des jours distincts (MAX_SAME_SUBJECT_PER_DAY) via ConstraintMinDaysBetweenActivities.
-    acts_by_class_subject: Dict[tuple[str, str], list[int]] = {}
+    acts_by_class_subject: Dict[tuple[str, str, str], list[int]] = {}
+    # (classe, matière) dont la répartition « 1 par jour » est arithmétiquement
+    # impossible — remontée plutôt que silencieuse.
+    skipped_min_days: list[tuple[str, str, int]] = []
+    # Ids d'activités par dédoublement ET par rang : la n-ième heure du Groupe 1
+    # doit tomber en même temps que la n-ième heure du Groupe 2. Les apparier
+    # rang par rang est ce qui rend la simultanéité exprimable — FET impose des
+    # départs identiques entre activités nommées, pas entre ensembles.
+    acts_by_parallel: Dict[str, list[list[int]]] = {}
     next_id = 1
     for a in req.assignments:
         teacher_slug = teacher_slugs.get(a.teacher_id)
@@ -178,14 +212,28 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
         cls_slug = class_slugs.get(a.class_id)
         if not teacher_slug or not subj_slug or not cls_slug:
             continue
-        for _ in range(a.weekly_hours):
+        for rank in range(a.weekly_hours):
             act_to_assignment[next_id] = a.id
-            acts_by_class_subject.setdefault((a.class_id, a.subject_id), []).append(next_id)
+            # Clé par COHORTE : la classe entière et chaque demi-groupe sont
+            # comptés séparément. Les confondre imposerait des jours distincts
+            # aux deux moitiés d un dédoublement, ce qui contredit la contrainte
+            # qui les veut simultanées.
+            acts_by_class_subject.setdefault(
+                (a.class_id, a.subject_id, a.group_id or ""), []
+            ).append(next_id)
+            if a.parallel_key:
+                slots_for_key = acts_by_parallel.setdefault(a.parallel_key, [])
+                while len(slots_for_key) <= rank:
+                    slots_for_key.append([])
+                slots_for_key[rank].append(next_id)
             node = ET.SubElement(activities_list, "Activity")
             ET.SubElement(node, "Teacher").text = teacher_slug
             ET.SubElement(node, "Subject").text = subj_slug
             ET.SubElement(node, "Activity_Tag").text = subject_tag.get(a.subject_id, "")
-            ET.SubElement(node, "Students").text = cls_slug
+            # Une séance de demi-groupe vise le sous-groupe, pas la classe.
+            ET.SubElement(node, "Students").text = (
+                group_slugs.get(a.group_id, cls_slug) if a.group_id else cls_slug
+            )
             ET.SubElement(node, "Duration").text = "1"
             ET.SubElement(node, "Total_Duration").text = "1"
             ET.SubElement(node, "Id").text = str(next_id)
@@ -313,6 +361,23 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
             ET.SubElement(cons, "Active").text = "true"
             ET.SubElement(cons, "Comments").text = ""
 
+    # ─ Dédoublements : les moitiés démarrent en même temps ─
+    #
+    # Les sous-groupes AUTORISENT le parallélisme, ils ne l'imposent pas : sans
+    # cette contrainte FET plaçait les deux moitiés à des heures différentes, ce
+    # qui laisse la moitié de la classe sans cours pendant que l'autre travaille.
+    for ranks in acts_by_parallel.values():
+        for act_ids in ranks:
+            if len(act_ids) < 2:
+                continue
+            cons = ET.SubElement(time_constraints, "ConstraintActivitiesSameStartingTime")
+            ET.SubElement(cons, "Weight_Percentage").text = "100"
+            ET.SubElement(cons, "Number_of_Activities").text = str(len(act_ids))
+            for aid in act_ids:
+                ET.SubElement(cons, "Activity_Id").text = str(aid)
+            ET.SubElement(cons, "Active").text = "true"
+            ET.SubElement(cons, "Comments").text = "Dedoublement : memes horaires"
+
     # MAX_SAME_SUBJECT_PER_DAY.
     # NB : ConstraintStudentsSetMaxHoursDailyWithAnActivityTag est silencieusement
     # ignorée par fet-cl à l'échelle (testé : 57 violations). On utilise la
@@ -321,8 +386,17 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
     if cons_params.max_same_subject_per_day is not None:
         max_same = cons_params.max_same_subject_per_day
         if max_same <= 1:
-            for (cid, sub_id), ids in acts_by_class_subject.items():
+            n_days = len(days)
+            for (cid, sub_id, _gid), ids in acts_by_class_subject.items():
                 if len(ids) < 2:
+                    continue
+                # Une matière qui revient plus souvent qu il n y a de jours ne
+                # PEUT pas tenir un jour par séance. FET rejette alors le
+                # fichier ENTIER avec « data is wrong », sans dire laquelle ni
+                # que la cause est arithmétique. On écarte le cas plutôt que de
+                # rendre tout l emploi du temps ingénérable.
+                if len(ids) > n_days:
+                    skipped_min_days.append((cid, sub_id, len(ids)))
                     continue
                 cons = ET.SubElement(
                     time_constraints, "ConstraintMinDaysBetweenActivities"
@@ -372,6 +446,14 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
     # FET attend la balise racine en minuscule selon les versions ; on tente
     # le format standard et fallback majuscule si nécessaire.
     full = '<?xml version="1.0" encoding="UTF-8"?>\n' + body
+    if skipped_min_days:
+        log.warning(
+            "Repartition « 1 seance/jour » impossible pour %d couple(s) "
+            "(plus de seances que de jours) : %s",
+            len(skipped_min_days),
+            skipped_min_days[:10],
+        )
+
     return full, act_to_assignment, [DAY_KEY_TO_FET[d] for d in days]
 
 
@@ -441,6 +523,9 @@ def parse_fet_activities(
                     room_id=room_id,
                     day=day_key,  # type: ignore[arg-type]
                     slot_id=slot_id,
+                    # Le groupe vient de l'affectation : FET place l'activité,
+                    # il ne réinvente pas son public.
+                    group_id=meta.group_id,
                 )
             )
     return placed
@@ -503,14 +588,34 @@ def solve_with_fet(request: MultiGenerateRequest) -> MultiGenerateResponse:
         solver_time_ms = int((time.time() - started) * 1000)
 
         if proc.returncode != 0:
-            stderr_tail = (proc.stderr or "")[-500:]
-            log.warning("FET returncode=%s stderr=%s", proc.returncode, stderr_tail)
+            # fet-cl écrit ses diagnostics sur STDOUT, pas sur stderr : le
+            # message ne disait donc jamais rien. On garde les deux, et on
+            # conserve le XML pour pouvoir rejouer le cas.
+            stderr_tail = (proc.stderr or "").strip()
+            stdout_tail = (proc.stdout or "").strip()
+            detail = (stderr_tail or stdout_tail or "aucun message de FET")[-800:]
+            log.warning(
+                "FET returncode=%s\n--- stdout ---\n%s\n--- stderr ---\n%s",
+                proc.returncode,
+                stdout_tail[-4000:],
+                stderr_tail[-2000:],
+            )
+            dump_dir = os.environ.get("JAWAL_DUMP_DIR")
+            if dump_dir:
+                try:
+                    os.makedirs(dump_dir, exist_ok=True)
+                    with open(
+                        os.path.join(dump_dir, "last_failed.fet"), "w", encoding="utf-8"
+                    ) as fh:
+                        fh.write(xml_str)
+                except Exception:  # noqa: BLE001
+                    pass
             return MultiGenerateResponse(
                 status="INFEASIBLE",
                 solver_time_ms=solver_time_ms,
                 placed=[],
                 unplaced=[],
-                message=f"FET n'a pas trouvé de solution : {stderr_tail[:200]}",
+                message=f"FET n'a pas trouvé de solution : {detail[:400]}",
             )
 
         placed = parse_fet_activities(

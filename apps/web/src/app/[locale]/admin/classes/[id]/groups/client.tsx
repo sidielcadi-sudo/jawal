@@ -9,6 +9,7 @@ import {
   deleteGroupAction,
   renameGroupAction,
   setGroupMembersAction,
+  setGroupTeacherAction,
   setSplitHoursAction,
 } from './actions';
 
@@ -22,7 +23,11 @@ export type GroupRow = {
   entryCount: number;
   /** Heures dédoublées déclarées. Null = tout le volume. */
   splitHours: number | null;
+  /** Enseignant du groupe. Null = celui de la matière. */
+  teacherId: string | null;
 };
+
+export type TeacherRow = { id: string; label: string };
 
 /**
  * Composition des groupes d'une classe pour une matière.
@@ -41,6 +46,7 @@ export function GroupsClient({
   uncoveredIds,
   programHours,
   splitHours,
+  teachers,
 }: {
   classId: string;
   subjectId: string | null;
@@ -52,6 +58,7 @@ export function GroupsClient({
   programHours: number;
   /** Heures dédoublées déclarées. Null = tout le volume. */
   splitHours: number | null;
+  teachers: TeacherRow[];
 }) {
   const t = useTranslations('admin.classes.groups');
   const router = useRouter();
@@ -256,7 +263,27 @@ export function GroupsClient({
                   </h2>
                 )}
 
-                <span className="flex items-center gap-2">
+                <span className="flex flex-wrap items-center gap-2">
+                  {/* Deux moitiés simultanées exigent deux professeurs : sans
+                      ça le solveur ne peut placer ni l'une ni l'autre. */}
+                  <label className="flex items-center gap-1.5 text-[11px] text-slate-600">
+                    {t('teacher')}
+                    <select
+                      value={open.teacherId ?? ''}
+                      disabled={pending}
+                      onChange={(e) =>
+                        run(() => setGroupTeacherAction(open.id, e.target.value || null))
+                      }
+                      className="rounded-lg border border-slate-300 bg-white px-2 py-1 text-xs"
+                    >
+                      <option value="">{t('teacherInherited')}</option>
+                      {teachers.map((tt) => (
+                        <option key={tt.id} value={tt.id}>
+                          {tt.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                   {renaming !== open.id && (
                     <button
                       type="button"
@@ -317,6 +344,30 @@ export function GroupsClient({
           )}
         </>
       )}
+
+      {/* Deux groupes qui partagent un professeur ne peuvent pas se tenir en
+          parallèle. Le solveur les écarterait sans rien produire ; on le dit
+          ici, au moment de la saisie. */}
+      {groups.length > 1 &&
+        (() => {
+          const seen = new Map<string, string[]>();
+          for (const g of groups) {
+            const k = g.teacherId ?? '__inherited__';
+            const arr = seen.get(k) ?? [];
+            arr.push(g.name);
+            seen.set(k, arr);
+          }
+          const clashes = [...seen.values()].filter((v) => v.length > 1);
+          if (clashes.length === 0) return null;
+          return (
+            <section className="rounded-2xl border border-amber-300 bg-amber-50 p-4">
+              <p className="text-sm font-semibold text-amber-900">
+                ⚠ {t('teacherClash', { groups: clashes[0]!.join(' + ') })}
+              </p>
+              <p className="mt-0.5 text-[11px] text-amber-800">{t('teacherClashHint')}</p>
+            </section>
+          );
+        })()}
 
       {/* Le contrôle qui compte : personne ne doit rester sur le carreau. */}
       {groups.length > 0 && (

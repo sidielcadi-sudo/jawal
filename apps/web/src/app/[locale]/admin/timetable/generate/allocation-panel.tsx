@@ -6,6 +6,7 @@ import { useTranslations } from 'next-intl';
 import {
   proposeAllocationAction,
   applyAllocationAction,
+  previewResetAllocationAction,
   resetAllocationAction,
 } from './actions';
 
@@ -51,6 +52,10 @@ export function AllocationPanel({
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [error, setError] = useState('');
   const [applied, setApplied] = useState<number | null>(null);
+  /** Décompte de ce que la réinitialisation détruirait, avant confirmation. */
+  const [resetPreview, setResetPreview] = useState<
+    { assignments: number; entries: number; classes: number } | null
+  >(null);
 
   function propose() {
     setError('');
@@ -67,8 +72,26 @@ export function AllocationPanel({
     });
   }
 
+  /**
+   * Étape 1 : on compte ce qui va disparaître et on l'affiche. Le
+   * `window.confirm` d'avant ne disait pas combien de lignes partaient, et
+   * rien ne les restaure.
+   */
+  function askReset() {
+    setError('');
+    startTransition(async () => {
+      const r = await previewResetAllocationAction(academicYearId, selectedIds);
+      if (!r.ok) {
+        setError(r.error);
+        return;
+      }
+      setResetPreview({ assignments: r.assignments, entries: r.entries, classes: r.classes });
+    });
+  }
+
+  /** Étape 2 : l'utilisateur a vu les chiffres et confirme. */
   function reset() {
-    if (!window.confirm(t('resetConfirm'))) return;
+    setResetPreview(null);
     setError('');
     setApplied(null);
     startTransition(async () => {
@@ -140,7 +163,7 @@ export function AllocationPanel({
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={reset}
+            onClick={askReset}
             disabled={pending || selectedIds.length === 0}
             className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
           >
@@ -284,6 +307,47 @@ export function AllocationPanel({
           </div>
         </div>
       )}
+      {/* Confirmation chiffrée : une suppression irréversible doit annoncer ce
+          qu'elle emporte, pas seulement se déclarer irréversible. */}
+      {resetPreview && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4"
+          onClick={() => setResetPreview(null)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl border border-red-200 bg-white p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-semibold text-red-800">{t('resetTitle')}</h3>
+            <p className="mt-2 text-sm text-slate-700">
+              {t('resetBody', {
+                classes: resetPreview.classes,
+                assignments: resetPreview.assignments,
+                entries: resetPreview.entries,
+              })}
+            </p>
+            <p className="mt-2 text-xs text-red-700">{t('resetIrreversible')}</p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setResetPreview(null)}
+                className="rounded-lg border border-slate-300 bg-white px-4 py-1.5 text-sm hover:bg-slate-50"
+              >
+                {t('resetCancel')}
+              </button>
+              <button
+                type="button"
+                disabled={pending}
+                onClick={reset}
+                className="rounded-lg bg-red-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+              >
+                {t('resetConfirmAction')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </section>
   );
 }

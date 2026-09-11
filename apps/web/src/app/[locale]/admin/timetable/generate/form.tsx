@@ -75,17 +75,21 @@ export function GenerateGlobalForm({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [engine, setEngine] = useState<'ortools' | 'fet'>('fet');
   /**
-   * Présélection : les classes du cycle demandé qui ont des affectations.
+   * Présélection.
    *
-   * Arriver du tableau de bord après avoir préparé le collège, et trouver les
-   * 25 classes cochées, ferait générer les deux cycles d'un coup — l'inverse
-   * de ce qu'on venait de faire. Sans cycle, on retombe sur toutes les classes
-   * prêtes, comme avant.
+   * Avec un cycle (on arrive du tableau de bord) : TOUTES ses classes, y
+   * compris celles sans affectation. On vient de choisir « Lycée », on veut
+   * ses dix classes cochées — les écarter parce qu'elles n'ont pas encore de
+   * professeur affiche un écran vide au moment précis où l'on vient préparer
+   * l'allocation.
+   *
+   * Sans cycle : les classes prêtes, comme avant. Cocher les 25 d'un coup
+   * ferait générer les deux cycles ensemble.
    */
   const [selected, setSelected] = useState<Set<string>>(
     new Set(
       classes
-        .filter((c) => c.assignmentCount > 0 && (!cycleId || c.cycleId === cycleId))
+        .filter((c) => (cycleId ? c.cycleId === cycleId : c.assignmentCount > 0))
         .map((c) => c.id),
     ),
   );

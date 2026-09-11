@@ -87,6 +87,11 @@ services:
       dockerfile: Dockerfile
     container_name: jawal-solver
     restart: unless-stopped
+    # Diagnostic : conserve les requêtes reçues et le XML FET des échecs.
+    environment:
+      JAWAL_DUMP_DIR: /tmp/jawal-dump
+    volumes:
+      - ./solver-dump:/tmp/jawal-dump
     ports:
       - "8001:8000"
     healthcheck:

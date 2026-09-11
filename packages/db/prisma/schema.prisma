@@ -676,6 +676,7 @@ model Person {
   enrollments               Enrollment[]                @relation("StudentEnrollments")
   timetableEntries          TimetableEntry[]            @relation("TeacherTimetable")
   classGroupMemberships     ClassGroupMember[]          @relation("StudentClassGroups")
+  classGroupsTaught         ClassGroup[]                @relation("ClassGroupTeacher")
   substitutionsAsTeacher    TimetableOverride[]         @relation("SubstituteTeacher")
   /// Liens de parenté où cette personne est l'enfant (FROM = student/PARENT-child)
   relationsAsChild          PersonRelation[]            @relation("ChildRelations")
@@ -1140,12 +1141,22 @@ model ClassGroup {
   /// chemin d'écriture et les met à jour ensemble ; le calcul retient le
   /// maximum, pour rester juste si une divergence apparaissait malgré tout.
   splitHours Int?    @map("split_hours")
+  /// Enseignant du groupe.
+  ///
+  /// Un dédoublement se tient en parallèle : ses groupes ont donc besoin de
+  /// professeurs DIFFÉRENTS. Sans cette colonne, les deux moitiés retombaient
+  /// sur l'enseignant de la matière, et le solveur ne pouvait rien placer — un
+  /// professeur ne peut pas être à deux endroits à la fois.
+  ///
+  /// Null = on reprend l'enseignant de l'affectation de la matière.
+  teacherId  String?  @map("teacher_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   tenant  Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   class   Class              @relation(fields: [classId], references: [id], onDelete: Cascade)
   subject Subject?           @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  teacher Person?            @relation("ClassGroupTeacher", fields: [teacherId], references: [id], onDelete: SetNull)
   members            ClassGroupMember[]
   entries            TimetableEntry[]
   attendanceSessions AttendanceSession[]

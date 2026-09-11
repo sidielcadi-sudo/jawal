@@ -358,3 +358,43 @@ export async function setSplitHoursAction(input: {
     return { ok: false, error: message(e) };
   }
 }
+
+/**
+ * Désigne l'enseignant d'un groupe.
+ *
+ * Un dédoublement se tient en parallèle : ses groupes ont besoin de professeurs
+ * **différents**. Deux moitiés confiées au même enseignant ne peuvent pas être
+ * placées — il ne peut pas être à deux endroits à la fois — et le solveur les
+ * laisse simplement de côté.
+ *
+ * `null` reprend l'enseignant de l'affectation de la matière.
+ */
+export async function setGroupTeacherAction(
+  groupId: string,
+  teacherId: string | null,
+): Promise<Result> {
+  const session = await guard();
+  if (!session) return { ok: false, error: 'Non autorisé' };
+
+  try {
+    const classId = await withTenant(session.user.tenantId, async (tx) => {
+      if (teacherId) {
+        const t = await tx.person.findFirst({
+          where: { id: teacherId, type: 'TEACHER', deletedAt: null },
+          select: { id: true },
+        });
+        if (!t) throw new Error('Enseignant introuvable.');
+      }
+      const g = await tx.classGroup.update({
+        where: { id: groupId },
+        data: { teacherId },
+        select: { classId: true },
+      });
+      return g.classId;
+    });
+    touch(classId);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}

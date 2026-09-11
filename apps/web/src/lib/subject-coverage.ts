@@ -39,7 +39,11 @@ export async function loadSubjectCoverage(
     // « programme du niveau × nombre de classes » rendait 0 pour tout le lycée
     // et ignorait les dédoublements.
     loadDemand(tx, academicYearId, cycleId),
+    // Offre bornée au cycle : compter les heures contractuelles de tous les
+    // enseignants de l'établissement face à la demande d'un seul cycle
+    // afficherait une marge qui n'existe pas.
     tx.teacherSpecialty.findMany({
+      where: cycleId ? { teacher: { teacherCycles: { some: { cycleId } } } } : {},
       select: {
         subjectId: true,
         teacher: { select: { id: true, contractualHoursPerWeek: true, type: true, deletedAt: true } },
