@@ -3,7 +3,6 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { requireRoleCode } from '@/lib/auth/rbac';
 import { withTenant } from '@/lib/db';
-import { ClassNav } from '../class-nav';
 import {
   GroupsClient,
   type GroupRow,
@@ -14,7 +13,7 @@ import {
 } from './client';
 import { findUncoveredStudents } from '@/lib/class-groups';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
-import { ClassCrumb } from '../class-crumb';
+import { ClassHeader, CLASS_PAGE_SHELL } from '../class-header';
 
 /**
  * Groupes d'une classe — le dédoublement.
@@ -185,27 +184,8 @@ export default async function ClassGroupsPage({
   for (const g of groups) bySubject.set(g.subjectId, (bySubject.get(g.subjectId) ?? 0) + 1);
 
   return (
-    <div className="px-3 py-3">
-      <ClassCrumb
-        locale={locale}
-        classId={cls.id}
-        className={localizedLabel(locale, cls.name, cls.nameAr)}
-        current={tCrumb('groups')}
-      />
-      <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-base font-bold text-slate-900">
-              {t('title')} — {localizedLabel(locale, cls.name, cls.nameAr)}
-            </h1>
-            <p className="mt-0.5 text-sm text-slate-600">
-              {localizedLabel(locale, cls.level.label, cls.level.labelAr)} ·{' '}
-              {cls.academicYear.label} · {t('headcount', { count: students.length })}
-            </p>
-          </div>
-          <ClassNav classId={cls.id} locale={locale} isArchived={!!cls.deletedAt} />
-        </div>
-      </header>
+    <div className={CLASS_PAGE_SHELL}>
+      <ClassHeader cls={cls} locale={locale} current={tCrumb('groups')} />
 
       <p className="mb-3 max-w-3xl text-xs text-slate-500">{t('intro')}</p>
 

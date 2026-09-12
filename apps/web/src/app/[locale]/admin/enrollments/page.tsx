@@ -7,6 +7,41 @@ import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
 const PAGE_SIZE = 20;
 
+/**
+ * Statuts du dossier d'inscription, dans l'ordre du parcours.
+ *
+ * L'ordre suit le cycle réel : dossier ouvert → pièces → acceptation →
+ * paiement → affectation → activation, puis les sorties. Trier par volume
+ * ferait sauter les pastilles de place d'une année sur l'autre.
+ */
+const ENROLLMENT_STATUSES = [
+  'ALL',
+  'DRAFT',
+  'DOCUMENTS_MANQUANTS',
+  'DOSSIER_COMPLET',
+  'ACCEPTE',
+  'INSCRIPTION_VALIDEE',
+  'AFFECTE',
+  'ACTIVE',
+  'WITHDRAWN',
+  'GRADUATED',
+  'REFUSE',
+] as const;
+type EnrollmentStatusKey = (typeof ENROLLMENT_STATUSES)[number];
+
+const STATUS_PILL_COLOR: Partial<Record<EnrollmentStatusKey, 'amber' | 'emerald' | 'red' | 'blue'>> = {
+  DRAFT: 'amber',
+  DOCUMENTS_MANQUANTS: 'amber',
+  DOSSIER_COMPLET: 'blue',
+  ACCEPTE: 'blue',
+  INSCRIPTION_VALIDEE: 'blue',
+  AFFECTE: 'amber',
+  ACTIVE: 'emerald',
+  WITHDRAWN: 'red',
+  GRADUATED: 'blue',
+  REFUSE: 'red',
+};
+
 export default async function EnrollmentsListPage({
   params,
   searchParams,
@@ -21,13 +56,9 @@ export default async function EnrollmentsListPage({
   const session = (await auth())!;
   const t = await getTranslations('admin.enrollments');
 
-  const filterStatus = (sp.status ?? 'ALL') as
-    | 'ALL'
-    | 'DRAFT'
-    | 'ACTIVE'
-    | 'WITHDRAWN'
-    | 'GRADUATED'
-    | 'REFUSE';
+  const filterStatus = ENROLLMENT_STATUSES.includes(sp.status as EnrollmentStatusKey)
+    ? (sp.status as EnrollmentStatusKey)
+    : 'ALL';
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
 
   const { years, currentYearId, items, counts } = await withTenant(
@@ -65,25 +96,23 @@ export default async function EnrollmentsListPage({
           })
         : [];
 
-      const counts = currentYearId
-        ? {
-            DRAFT: await tx.enrollment.count({
-              where: { academicYearId: currentYearId, status: 'DRAFT' },
-            }),
-            ACTIVE: await tx.enrollment.count({
-              where: { academicYearId: currentYearId, status: 'ACTIVE' },
-            }),
-            WITHDRAWN: await tx.enrollment.count({
-              where: { academicYearId: currentYearId, status: 'WITHDRAWN' },
-            }),
-            GRADUATED: await tx.enrollment.count({
-              where: { academicYearId: currentYearId, status: 'GRADUATED' },
-            }),
-            REFUSE: await tx.enrollment.count({
-              where: { academicYearId: currentYearId, status: 'REFUSE' },
-            }),
-          }
-        : { DRAFT: 0, ACTIVE: 0, WITHDRAWN: 0, GRADUATED: 0, REFUSE: 0 };
+      // Un comptage par statut, tous statuts confondus.
+      //
+      // Cinq compteurs étaient écrits à la main (brouillon, inscrit, retiré,
+      // diplômé, refusé) : les dossiers AFFECTE — et tous les états
+      // intermédiaires du dossier — n'étaient comptés nulle part. « Tous »
+      // annonçait donc 561 là où la liste en affichait 610, et la pagination,
+      // calculée sur 561, rendait les derniers dossiers inatteignables.
+      const grouped = currentYearId
+        ? await tx.enrollment.groupBy({
+            by: ['status'],
+            where: { academicYearId: currentYearId },
+            _count: { _all: true },
+          })
+        : [];
+      const counts: Record<string, number> = {};
+      for (const st of ENROLLMENT_STATUSES) if (st !== 'ALL') counts[st] = 0;
+      for (const g of grouped) counts[g.status] = g._count._all;
 
       return { years, currentYearId, items, counts };
     },
@@ -91,9 +120,11 @@ export default async function EnrollmentsListPage({
 
   const total =
     filterStatus === 'ALL'
-      ? counts.DRAFT + counts.ACTIVE + counts.WITHDRAWN + counts.GRADUATED + counts.REFUSE
-      : counts[filterStatus];
+      ? Object.values(counts).reduce((n, v) => n + v, 0)
+      : (counts[filterStatus] ?? 0);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const statusHref = (st: EnrollmentStatusKey) =>
+    `/${locale}/admin/enrollments?year=${currentYearId ?? ''}&status=${st}`;
   const pageHref = (p: number) =>
     `/${locale}/admin/enrollments?year=${currentYearId ?? ''}&status=${filterStatus}&page=${p}`;
 
@@ -160,49 +191,27 @@ export default async function EnrollmentsListPage({
         </div>
       </header>
 
-      {/* Filtres par statut */}
+      {/* Filtres par statut — tous les statuts du dossier, pas une sélection.
+          Sans « Affecté », impossible d'isoler les élèves qui ont une classe
+          mais ne sont pas encore actifs, ce qui est précisément la population
+          qu'on vient chercher ici. */}
       <div className="mb-4 flex flex-wrap items-center gap-1 text-xs">
         <FilterPill
-          href={`/${locale}/admin/enrollments?year=${currentYearId ?? ''}&status=ALL`}
+          href={statusHref('ALL')}
           active={filterStatus === 'ALL'}
           label={t('filter.all')}
-          count={counts.DRAFT + counts.ACTIVE + counts.WITHDRAWN + counts.GRADUATED + counts.REFUSE}
+          count={total}
         />
-        <FilterPill
-          href={`/${locale}/admin/enrollments?year=${currentYearId ?? ''}&status=DRAFT`}
-          active={filterStatus === 'DRAFT'}
-          label={t('filter.draft')}
-          count={counts.DRAFT}
-          color="amber"
-        />
-        <FilterPill
-          href={`/${locale}/admin/enrollments?year=${currentYearId ?? ''}&status=ACTIVE`}
-          active={filterStatus === 'ACTIVE'}
-          label={t('filter.active')}
-          count={counts.ACTIVE}
-          color="emerald"
-        />
-        <FilterPill
-          href={`/${locale}/admin/enrollments?year=${currentYearId ?? ''}&status=WITHDRAWN`}
-          active={filterStatus === 'WITHDRAWN'}
-          label={t('filter.withdrawn')}
-          count={counts.WITHDRAWN}
-          color="red"
-        />
-        <FilterPill
-          href={`/${locale}/admin/enrollments?year=${currentYearId ?? ''}&status=GRADUATED`}
-          active={filterStatus === 'GRADUATED'}
-          label={t('filter.graduated')}
-          count={counts.GRADUATED}
-          color="blue"
-        />
-        <FilterPill
-          href={`/${locale}/admin/enrollments?year=${currentYearId ?? ''}&status=REFUSE`}
-          active={filterStatus === 'REFUSE'}
-          label={t('filter.refused')}
-          count={counts.REFUSE}
-          color="red"
-        />
+        {ENROLLMENT_STATUSES.filter((st) => st !== 'ALL').map((st) => (
+          <FilterPill
+            key={st}
+            href={statusHref(st)}
+            active={filterStatus === st}
+            label={t(`filter.status.${st}` as never)}
+            count={counts[st] ?? 0}
+            color={STATUS_PILL_COLOR[st]}
+          />
+        ))}
       </div>
 
       {items.length === 0 ? (

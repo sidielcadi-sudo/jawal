@@ -12,6 +12,7 @@ import {
   validateDocumentAction,
   reenrollRefusedEnrollmentAction,
 } from '../admission-actions';
+import { changeStudentClassAction } from '../../persons/actions';
 
 export type DocRow = {
   requiredId: string;
@@ -46,6 +47,7 @@ const PRE_DECISION = ['DRAFT', 'DOCUMENTS_MANQUANTS', 'DOSSIER_COMPLET'];
 
 export function AdmissionPanel({
   enrollmentId,
+  studentId,
   status,
   docs,
   classes,
@@ -54,6 +56,8 @@ export function AdmissionPanel({
   otherDocs,
 }: {
   enrollmentId: string;
+  /** Élève du dossier : le changement de classe s'opère sur lui. */
+  studentId: string;
   status: string;
   docs: DocRow[];
   classes: ClassOption[];
@@ -413,6 +417,43 @@ export function AdmissionPanel({
               className="rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700 disabled:opacity-50"
             >
               {t('affect')}
+            </button>
+          </>
+        )}
+
+        {/* Changer de classe après affectation.
+            //
+            // Le sélecteur de classe ne s'affichait qu'au statut
+            // INSCRIPTION_VALIDEE : une fois l'élève affecté — a fortiori
+            // actif — plus aucun écran ne permettait de le déplacer, alors que
+            // c'est un geste courant de rentrée. On garde le statut intact ;
+            // seule la classe change. */}
+        {(status === 'AFFECTE' || status === 'ACTIVE') && (
+          <>
+            <select
+              value={classId}
+              onChange={(e) => setClassId(e.target.value)}
+              className="rounded-lg border border-slate-300 px-2 py-2 text-sm"
+            >
+              <option value="">
+                {classes.length === 0 ? t('noClass') : t('movePlaceholder')}
+              </option>
+              {classes.map((c) => (
+                <option key={c.id} value={c.id} disabled={c.count >= c.capacity}>
+                  {c.name} ({c.count}/{c.capacity})
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={pending || !classId}
+              onClick={() => {
+                if (!window.confirm(t('moveConfirm'))) return;
+                run(() => changeStudentClassAction(studentId, classId));
+              }}
+              className="rounded-lg border border-brand-600 bg-white px-4 py-2 text-sm font-medium text-brand-700 hover:bg-brand-50 disabled:opacity-50"
+            >
+              {t('moveClass')}
             </button>
           </>
         )}

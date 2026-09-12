@@ -892,7 +892,10 @@
           "OTHER": "أخرى"
         },
         "reenrollHint": "ملف مرفوض — يمكنكم إعادة تسجيله (إعادة فتح الملف).",
-        "reenroll": "إعادة التسجيل"
+        "reenroll": "إعادة التسجيل",
+        "moveClass": "تغيير القسم",
+        "movePlaceholder": "— القسم الجديد —",
+        "moveConfirm": "هل تريد نقل هذا التلميذ إلى القسم الجديد؟ يبقى سجله (الحضور والنقاط) مرتبطا بالقسم الحالي."
       },
       "filter": {
         "all": "الكل",
@@ -900,7 +903,19 @@
         "active": "مُسجلون",
         "withdrawn": "منسحبون",
         "graduated": "متخرجون",
-        "refused": "مرفوضون"
+        "refused": "مرفوضون",
+        "status": {
+          "DRAFT": "مسودات",
+          "DOCUMENTS_MANQUANTS": "وثائق ناقصة",
+          "DOSSIER_COMPLET": "ملف كامل",
+          "ACCEPTE": "مقبولون",
+          "INSCRIPTION_VALIDEE": "تسجيل مُصادق عليه",
+          "AFFECTE": "مُسنَدون",
+          "ACTIVE": "مسجَّلون",
+          "WITHDRAWN": "منسحبون",
+          "GRADUATED": "متخرجون",
+          "REFUSE": "مرفوضون"
+        }
       },
       "table": {
         "student": "التلميذ",
@@ -2470,7 +2485,14 @@
         "massar": "رقم التسجيل",
         "level": "المستوى",
         "parent": "ولي الأمر",
-        "phone": "الهاتف"
+        "phone": "الهاتف",
+        "dayStatus": "حالة اليوم",
+        "contract": "العقد",
+        "hrFile": "الملف الإداري",
+        "children": "التلاميذ المرتبطون",
+        "directContact": "معطيات الاتصال المباشرة",
+        "portal": "حساب البوابة",
+        "financial": "الوضعية المالية"
       },
       "studentStatus": {
         "ACTIVE": "نشِط",
@@ -3021,7 +3043,22 @@
         "active": "التلاميذ النشطون",
         "activeHint": "{pct}% من المجموع",
         "alerts": "تنبيهات إدارية",
-        "alertsHint": "ملف مفتوح بدون قسم"
+        "alertsHint": "ملف مفتوح بدون قسم",
+        "staffTotal": "عدد الموظفين",
+        "staffPresent": "الحاضرون اليوم",
+        "staffPresentHint": "{pct} % من العدد",
+        "staffContracts": "عقود تنتهي قريبا",
+        "staffContractsHint": "خلال 30 يوما أو منتهية",
+        "staffFiles": "ملفات إدارية ناقصة",
+        "staffFilesHint": "وثيقة إدارية ناقصة",
+        "portal": "حسابات البوابة المفعَّلة",
+        "portalHint": "{active} / {total} أسرة نشطة",
+        "emergency": "اتصالات الطوارئ",
+        "emergencyHint": "{count} بطاقة يجب إكمالها",
+        "settlement": "أداء المصاريف الدراسية",
+        "settlementHint": "{count} أسرة متأخرة",
+        "delegates": "الآباء المندوبون",
+        "delegatesHint": "لا سجل لممثلي مجلس القسم"
       },
       "detailPanel": {
         "empty": "اختر تلميذًا لعرض بطاقته.",
@@ -3087,6 +3124,64 @@
         "seeAttendance": "عرض تتبع حضور الموظفين",
         "openFile": "فتح البطاقة الكاملة",
         "empty": "اختر أستاذا لعرض بطاقته."
+      },
+      "staffPanel": {
+        "contact": "معطيات الاتصال",
+        "cin": "رقم البطاقة الوطنية",
+        "phone": "الهاتف",
+        "email": "البريد الإلكتروني",
+        "birthDate": "تاريخ الازدياد",
+        "hireDate": "تاريخ التوظيف",
+        "address": "العنوان",
+        "hrFile": "الملف الإداري",
+        "hrComplete": "جميع الوثائق الإدارية مُسجَّلة.",
+        "month": "تتبع الحضور هذا الشهر",
+        "noRecord": "لم يُسجَّل أي حضور هذا الشهر.",
+        "lateMinutes": "مجموع {count} دقيقة تأخر",
+        "absences": "غيابات الشهر",
+        "noAbsence": "لا غياب هذا الشهر.",
+        "seeAttendance": "عرض تتبع حضور الموظفين",
+        "openFile": "فتح البطاقة الكاملة",
+        "empty": "اختر أحد الموظفين لعرض بطاقته.",
+        "day": {
+          "PRESENT": "حاضر",
+          "ABSENT": "غائب",
+          "LATE": "متأخر",
+          "LEAVE": "عطلة",
+          "EXCUSED": "معذور",
+          "NOT_RECORDED": "غير مُسجَّل"
+        }
+      },
+      "parentPanel": {
+        "childCount": "{count} تلميذ مرتبط",
+        "contact": "معطيات الاتصال",
+        "toComplete": "يجب إكماله",
+        "phone": "الهاتف",
+        "whatsapp": "واتساب",
+        "email": "البريد الإلكتروني",
+        "cin": "رقم البطاقة الوطنية",
+        "profession": "المهنة",
+        "address": "العنوان",
+        "missing": "ناقص: {fields}",
+        "children": "التلاميذ المرتبطون",
+        "noChild": "لا تلميذ مرتبط.",
+        "noClass": "بدون قسم",
+        "portal": "حساب البوابة",
+        "portalActive": "مفعَّل",
+        "portalInactive": "غير مفعَّل",
+        "portalEmail": "المُعرِّف",
+        "lastLogin": "آخر اتصال",
+        "neverLogged": "لم يتصل قط",
+        "finance": "الوضعية المالية",
+        "status": "الحالة",
+        "overdue": "المتأخر",
+        "seeFinance": "عرض المصاريف الدراسية",
+        "openFile": "فتح البطاقة الكاملة",
+        "empty": "اختر أحد الآباء لعرض بطاقته."
+      },
+      "portal": {
+        "active": "مفعَّل",
+        "inactive": "غير مفعَّل"
       }
     },
     "classes": {
@@ -3100,7 +3195,10 @@
         "level": "المستوى",
         "year": "السنة",
         "mainTeacher": "الأستاذ الرئيسي",
-        "enrolled": "العدد"
+        "enrolled": "العدد",
+        "homeRoom": "القاعة المخصصة",
+        "average": "المعدل العام",
+        "attendance": "المواظبة"
       },
       "filters": {
         "year": "السنة",
@@ -3180,7 +3278,8 @@
         "yearLabel": "السنة الدراسية",
         "groups": "المجموعات",
         "programmeFromTrack": "برنامج الشعبة",
-        "programmeFromLevel": "برنامج المستوى"
+        "programmeFromLevel": "برنامج المستوى",
+        "view": "عرض"
       },
       "duplicate": {
         "button": "نسخ الأقسام",
@@ -3240,6 +3339,37 @@
           "overflow": "{count} حصص مُصرَّح بها مقابل {total} ساعة في البرنامج: عدد الحصص المُضاعَفة يفوق ساعات البرنامج.",
           "noSlots": "لم يتم تحديد أي حصة زمنية. املأ الجدول الزمني في الإعدادات قبل التصريح بالحصص المُضاعَفة."
         }
+      },
+      "overview": {
+        "fill": "نسبة الملء العامة",
+        "enrolled": "المسجلون",
+        "capacity": "الطاقة الاستيعابية",
+        "alerts": "تنبيهات الأعداد",
+        "classCount": "{count} أقسام",
+        "overfilled": "{count} مكتظ",
+        "underfilled": "{count} ناقص",
+        "attendance": "متوسط المواظبة",
+        "attendanceHint": "نسبة المواظبة هذا الشهر",
+        "noAttendance": "لم يتم أخذ الحضور هذا الشهر",
+        "supervision": "التأطير (الأساتذة الرئيسيون والمندوبون)",
+        "ppRate": "{pct} % أستاذ رئيسي",
+        "mainTeachers": "الأساتذة الرئيسيون",
+        "noDelegate": "{count} بدون مندوب"
+      },
+      "kpi": {
+        "headcount": "عدد تلاميذ القسم",
+        "ofMax": "/ {capacity} كأقصى",
+        "fill": "{pct} % من الطاقة",
+        "average": "المعدل العام",
+        "averageOn": "المعدل العام ({period})",
+        "vsGroup": "{delta} مقارنة بالمؤسسة",
+        "noComparison": "لا قسم آخر منقَّط",
+        "attendance": "نسبة المواظبة",
+        "absences": "{count} غياب وتأخر",
+        "noAttendance": "لم يتم أخذ الحضور في هذه الفترة",
+        "settlement": "أداء المصاريف الدراسية",
+        "dueToDate": "على الأقساط المستحقة",
+        "noDue": "لا قسط مستحق"
       }
     },
     "gradeBook": {
@@ -3319,7 +3449,10 @@
           "PARTIAL": "جزئي",
           "PAID": "مُؤدى"
         }
-      }
+      },
+      "noPeriodOption": "— لا أسدس —",
+      "noPeriodHint": "لم يتم تحديد أي أسدس في السنة الدراسية النشطة: لا يمكن إصدار شهادات الفترة.",
+      "configurePeriods": "تحديد الأسدس →"
     },
     "bulletin": {
       "classes": "الأقسام",

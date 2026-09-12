@@ -892,7 +892,10 @@
           "OTHER": "Autre"
         },
         "reenrollHint": "Dossier refusé — vous pouvez le réinscrire (rouvrir le dossier).",
-        "reenroll": "Réinscrire"
+        "reenroll": "Réinscrire",
+        "moveClass": "Changer de classe",
+        "movePlaceholder": "— nouvelle classe —",
+        "moveConfirm": "Déplacer cet élève vers la nouvelle classe ? Son historique (appels, notes) reste rattaché à la classe actuelle."
       },
       "filter": {
         "all": "Tous",
@@ -900,7 +903,19 @@
         "active": "Inscrits",
         "withdrawn": "Retirés",
         "graduated": "Diplômés",
-        "refused": "Refusés"
+        "refused": "Refusés",
+        "status": {
+          "DRAFT": "Brouillons",
+          "DOCUMENTS_MANQUANTS": "Pièces manquantes",
+          "DOSSIER_COMPLET": "Dossier complet",
+          "ACCEPTE": "Acceptés",
+          "INSCRIPTION_VALIDEE": "Inscription validée",
+          "AFFECTE": "Affectés",
+          "ACTIVE": "Inscrits",
+          "WITHDRAWN": "Retirés",
+          "GRADUATED": "Diplômés",
+          "REFUSE": "Refusés"
+        }
       },
       "table": {
         "student": "Élève",
@@ -2470,7 +2485,14 @@
         "massar": "Matricule",
         "level": "Niveau",
         "parent": "Parent",
-        "phone": "Téléphone"
+        "phone": "Téléphone",
+        "dayStatus": "Statut jour",
+        "contract": "Contrat",
+        "hrFile": "Dossier RH",
+        "children": "Élève(s) rattaché(s)",
+        "directContact": "Coordonnées directes",
+        "portal": "Compte portail",
+        "financial": "Statut financier"
       },
       "studentStatus": {
         "ACTIVE": "Actif",
@@ -3021,7 +3043,22 @@
         "active": "Élèves actifs",
         "activeHint": "{pct}% du total",
         "alerts": "Alertes administratives",
-        "alertsHint": "Dossier ouvert sans classe affectée"
+        "alertsHint": "Dossier ouvert sans classe affectée",
+        "staffTotal": "Effectif personnel",
+        "staffPresent": "Présents aujourd’hui",
+        "staffPresentHint": "{pct} % de l’effectif",
+        "staffContracts": "Contrats à échéance",
+        "staffContractsHint": "Dans les 30 jours ou expirés",
+        "staffFiles": "Dossiers RH incomplets",
+        "staffFilesHint": "Pièce administrative manquante",
+        "portal": "Accès portail activés",
+        "portalHint": "{active} / {total} familles actives",
+        "emergency": "Contacts d’urgence",
+        "emergencyHint": "{count} fiches à compléter",
+        "settlement": "Règlement frais scolaires",
+        "settlementHint": "{count} familles en retard",
+        "delegates": "Parents délégués",
+        "delegatesHint": "Aucun registre des représentants au conseil de classe"
       },
       "detailPanel": {
         "empty": "Sélectionnez un élève pour afficher sa fiche.",
@@ -3087,6 +3124,64 @@
         "seeAttendance": "Voir le pointage du personnel",
         "openFile": "Ouvrir la fiche complète",
         "empty": "Sélectionnez un enseignant pour voir sa fiche."
+      },
+      "staffPanel": {
+        "contact": "Coordonnées",
+        "cin": "CIN",
+        "phone": "Téléphone",
+        "email": "E-mail",
+        "birthDate": "Date de naissance",
+        "hireDate": "Recruté le",
+        "address": "Adresse",
+        "hrFile": "Dossier RH",
+        "hrComplete": "Toutes les pièces administratives sont renseignées.",
+        "month": "Pointage du mois",
+        "noRecord": "Aucun pointage saisi ce mois-ci.",
+        "lateMinutes": "{count} minutes de retard cumulées",
+        "absences": "Absences du mois",
+        "noAbsence": "Aucune absence ce mois-ci.",
+        "seeAttendance": "Voir le pointage du personnel",
+        "openFile": "Ouvrir la fiche complète",
+        "empty": "Sélectionnez un membre du personnel pour voir sa fiche.",
+        "day": {
+          "PRESENT": "Présent",
+          "ABSENT": "Absent",
+          "LATE": "Retard",
+          "LEAVE": "Congé",
+          "EXCUSED": "Excusé",
+          "NOT_RECORDED": "Non pointé"
+        }
+      },
+      "parentPanel": {
+        "childCount": "{count} élève(s) rattaché(s)",
+        "contact": "Coordonnées",
+        "toComplete": "À compléter",
+        "phone": "Téléphone",
+        "whatsapp": "WhatsApp",
+        "email": "E-mail",
+        "cin": "CIN",
+        "profession": "Profession",
+        "address": "Adresse",
+        "missing": "Manque : {fields}",
+        "children": "Élèves rattachés",
+        "noChild": "Aucun élève rattaché.",
+        "noClass": "Sans classe",
+        "portal": "Compte portail",
+        "portalActive": "Activé",
+        "portalInactive": "Non activé",
+        "portalEmail": "Identifiant",
+        "lastLogin": "Dernière connexion",
+        "neverLogged": "Jamais connecté",
+        "finance": "Situation financière",
+        "status": "Statut",
+        "overdue": "Retard",
+        "seeFinance": "Voir les frais scolaires",
+        "openFile": "Ouvrir la fiche complète",
+        "empty": "Sélectionnez un parent pour voir sa fiche."
+      },
+      "portal": {
+        "active": "Activé",
+        "inactive": "Non activé"
       }
     },
     "classes": {
@@ -3100,7 +3195,10 @@
         "level": "Niveau",
         "year": "Année",
         "mainTeacher": "Prof principal",
-        "enrolled": "Effectif"
+        "enrolled": "Effectif",
+        "homeRoom": "Salle attitrée",
+        "average": "Moy. générale",
+        "attendance": "Assiduité"
       },
       "filters": {
         "year": "Année",
@@ -3180,7 +3278,8 @@
         "yearLabel": "Année scolaire",
         "groups": "Groupes",
         "programmeFromTrack": "Programme de la filière",
-        "programmeFromLevel": "Programme du niveau"
+        "programmeFromLevel": "Programme du niveau",
+        "view": "Voir"
       },
       "duplicate": {
         "button": "Dupliquer classes",
@@ -3240,6 +3339,37 @@
           "overflow": "{count} séances déclarées pour {total} h de programme : il y a plus de séances dédoublées que d’heures au programme.",
           "noSlots": "Aucun créneau horaire n’est défini. Renseignez la grille horaire dans Paramétrage avant de déclarer des séances dédoublées."
         }
+      },
+      "overview": {
+        "fill": "Remplissage global",
+        "enrolled": "Inscrits",
+        "capacity": "Capacité",
+        "alerts": "Alertes effectifs",
+        "classCount": "{count} classes",
+        "overfilled": "{count} sur-chargée(s)",
+        "underfilled": "{count} sous-chargée(s)",
+        "attendance": "Assiduité moyenne",
+        "attendanceHint": "Taux d’assiduité du mois",
+        "noAttendance": "Aucun appel ce mois-ci",
+        "supervision": "Encadrement (PP & délégués)",
+        "ppRate": "{pct} % PP",
+        "mainTeachers": "Prof. principaux",
+        "noDelegate": "{count} sans délégué"
+      },
+      "kpi": {
+        "headcount": "Effectif classe",
+        "ofMax": "/ {capacity} max",
+        "fill": "{pct} % de remplissage",
+        "average": "Moyenne générale",
+        "averageOn": "Moyenne générale ({period})",
+        "vsGroup": "{delta} vs établissement",
+        "noComparison": "Aucune autre classe notée",
+        "attendance": "Taux d’assiduité",
+        "absences": "{count} absences et retards",
+        "noAttendance": "Aucun appel sur la période",
+        "settlement": "Règlement frais scolaires",
+        "dueToDate": "Sur les échéances tombées",
+        "noDue": "Aucune échéance échue"
       }
     },
     "gradeBook": {
@@ -3319,7 +3449,10 @@
           "PARTIAL": "Partiel",
           "PAID": "Payé"
         }
-      }
+      },
+      "noPeriodOption": "— aucun trimestre —",
+      "noPeriodHint": "Aucun trimestre n’est défini sur l’année scolaire active : les attestations de période ne peuvent pas être générées.",
+      "configurePeriods": "Définir les trimestres →"
     },
     "bulletin": {
       "classes": "Classes",

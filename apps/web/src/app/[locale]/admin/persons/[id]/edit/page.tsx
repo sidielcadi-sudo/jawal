@@ -7,7 +7,7 @@ import { HealthSection, type Health } from '../health-section';
 import { EditTabs } from './edit-tabs';
 import { ChangeStudentClass } from './change-class';
 import { localizedLabel } from '@/lib/localized-name';
-import { PersonHeader } from '../person-header';
+import { PersonHeader, PERSON_PAGE_SHELL } from '../person-header';
 
 export default async function EditPersonPage({
   params,
@@ -135,7 +135,7 @@ export default async function EditPersonPage({
   };
 
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
+    <div className={PERSON_PAGE_SHELL}>
       <PersonHeader personId={id} locale={locale} active="edit" />
 
       {person.type === 'STUDENT' && (

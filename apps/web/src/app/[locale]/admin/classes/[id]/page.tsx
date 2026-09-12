@@ -4,8 +4,8 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { ClassActions } from './class-actions';
-import { ClassNav } from './class-nav';
-import { EnrollmentManager } from './enrollment-manager';
+import { ClassHeader, CLASS_PAGE_SHELL } from './class-header';
+import { ClassKpis } from './class-kpis-cards';
 import { DelegateSelect } from './delegate-select';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 
@@ -22,7 +22,7 @@ export default async function ClassDetailPage({
   const t = await getTranslations('admin.classes');
   const tDetail = await getTranslations('admin.classes.detail');
 
-  const { cls, availableStudents, lastSession, curriculum, assignments, programSource } = await withTenant(tenantId, async (tx) => {
+  const { cls, lastSession, curriculum, assignments, programSource, kpiData } = await withTenant(tenantId, async (tx) => {
     const cls = await tx.class.findUnique({
       where: { id },
       include: {
@@ -39,11 +39,11 @@ export default async function ClassDetailPage({
     if (!cls)
       return {
         cls: null,
-        availableStudents: [],
         lastSession: null,
         curriculum: [],
         assignments: [],
         programSource: 'level' as const,
+        kpiData: null,
       };
 
     // Programme de la classe : au lycée il est porté par la FILIÈRE, ailleurs
@@ -96,18 +96,110 @@ export default async function ClassDetailPage({
           }));
     const programSource = trackProgram.length > 0 ? ('track' as const) : ('level' as const);
 
-    // Élèves disponibles : tous les STUDENT actifs qui ne sont PAS déjà
-    // inscrits activement à cette classe (pas dans la liste students[]).
-    const enrolledIds = cls.students.map((sc) => sc.studentId);
-    const availableStudents = await tx.person.findMany({
-      where: {
-        type: 'STUDENT',
-        deletedAt: null,
-        id: { notIn: enrolledIds },
-      },
-      orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
-      take: 200,
+    /* ── Mesures des cartes ─────────────────────────────────────────── */
+    //
+    // Période courante : celle qui contient la date du jour, sinon la dernière
+    // commencée. Hors période (vacances), un indicateur vide ne dirait rien
+    // alors que le trimestre écoulé a du sens.
+    const periods = await tx.period.findMany({
+      where: { academicYearId: cls.academicYearId },
+      orderBy: { startDate: 'asc' },
+      select: { id: true, label: true, startDate: true, endDate: true },
     });
+    const now = new Date();
+    const period =
+      periods.find((x) => x.startDate <= now && now <= x.endDate) ??
+      [...periods].reverse().find((x) => x.startDate <= now) ??
+      periods[0] ??
+      null;
+
+    const studentIds = cls.students.map((sc) => sc.studentId);
+
+    const [classGrades, schoolGrades, attendanceRows, dueRows] = await Promise.all([
+      period
+        ? tx.grade.findMany({
+            where: { value: { not: null }, evaluation: { periodId: period.id, classId: id } },
+            select: {
+              studentId: true,
+              value: true,
+              evaluation: {
+                select: { weight: true, maxValue: true, subject: { select: { coefficient: true } } },
+              },
+            },
+          })
+        : Promise.resolve([]),
+      // Référence de comparaison : tout l'établissement sur la même période.
+      // averageWithDelta en retire ensuite les élèves de la classe.
+      period
+        ? tx.grade.findMany({
+            where: { value: { not: null }, evaluation: { periodId: period.id } },
+            select: {
+              studentId: true,
+              value: true,
+              evaluation: {
+                select: { weight: true, maxValue: true, subject: { select: { coefficient: true } } },
+              },
+            },
+          })
+        : Promise.resolve([]),
+      tx.attendanceRecord.groupBy({
+        by: ['status'],
+        where: {
+          session: {
+            classId: id,
+            ...(period ? { date: { gte: period.startDate, lte: period.endDate } } : {}),
+          },
+        },
+        _count: { _all: true },
+      }),
+      // Règlement : les échéances DÉJÀ TOMBÉES des élèves de la classe.
+      studentIds.length > 0
+        ? tx.installment.findMany({
+            where: {
+              studentId: { in: studentIds },
+              status: { not: 'CANCELLED' },
+              dueDate: { gte: cls.academicYear.startDate, lte: now },
+            },
+            select: { amount: true, payments: { select: { amount: true } } },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    const toGradeRow = (r: {
+      studentId: string;
+      value: number | null;
+      evaluation: { weight: number; maxValue: number; subject: { coefficient: number } };
+    }) => ({
+      studentId: r.studentId,
+      value: Number(r.value),
+      weight: r.evaluation.weight,
+      maxValue: r.evaluation.maxValue,
+      coefficient: r.evaluation.subject.coefficient,
+    });
+
+    const counts = { present: 0, absent: 0, late: 0, excused: 0 };
+    for (const r of attendanceRows) {
+      if (r.status === 'PRESENT') counts.present += r._count._all;
+      else if (r.status === 'ABSENT') counts.absent += r._count._all;
+      else if (r.status === 'LATE') counts.late += r._count._all;
+      else counts.excused += r._count._all;
+    }
+
+    let dueToDate = 0;
+    let paidToDate = 0;
+    for (const i of dueRows) {
+      dueToDate += Number(i.amount);
+      paidToDate += i.payments.reduce((n, x) => n + Number(x.amount), 0);
+    }
+
+    const kpiData = {
+      periodLabel: period?.label ?? null,
+      classGrades: classGrades.map(toGradeRow),
+      schoolGrades: schoolGrades.map(toGradeRow),
+      counts,
+      dueToDate,
+      paidToDate,
+    };
 
     // Dernier appel finalisé sur cette classe
     const lastSession = await tx.attendanceSession.findFirst({
@@ -116,7 +208,7 @@ export default async function ClassDetailPage({
       include: { records: { select: { status: true } } },
     });
 
-    return { cls, availableStudents, lastSession, curriculum, assignments, programSource };
+    return { cls, lastSession, curriculum, assignments, programSource, kpiData };
   });
 
   if (!cls) notFound();
@@ -124,39 +216,10 @@ export default async function ClassDetailPage({
   const usagePct = (cls.students.length / cls.capacity) * 100;
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
-      <nav className="mb-4 text-xs text-slate-500">
-        <Link href={`/${locale}/admin/classes`} className="hover:text-brand-700">
-          {t('title')}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <span>{localizedLabel(locale, cls.name, cls.nameAr)}</span>
-      </nav>
+    <div className={CLASS_PAGE_SHELL}>
+      <ClassHeader cls={cls} locale={locale} />
 
-      <header className="-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-6 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
-            {localizedLabel(locale, cls.name, cls.nameAr)}
-            {cls.deletedAt && (
-              <span className="ms-3 rounded bg-slate-200 px-2 py-0.5 align-middle text-xs text-slate-600">
-                {t('archived')}
-              </span>
-            )}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {localizedLabel(locale, cls.level.cycle.label, cls.level.cycle.labelAr)} — {localizedLabel(locale, cls.level.label, cls.level.labelAr)} · {cls.academicYear.label}
-            {cls.mainTeacher
-              ? ` · ${tDetail('mainTeacher')} : ${personDisplayName(locale, cls.mainTeacher)}`
-              : ''}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <ClassNav classId={cls.id} locale={locale} isArchived={!!cls.deletedAt} />
-          <ClassActions classId={cls.id} isArchived={!!cls.deletedAt} locale={locale} />
-        </div>
-      </header>
-
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div className="mt-6 grid grid-cols-1 gap-6 md:grid-cols-3">
         <div className="md:col-span-2">
           <section className="rounded-2xl border border-slate-200 bg-white">
             <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
@@ -178,6 +241,17 @@ export default async function ClassDetailPage({
                 {cls.students.map((sc) => (
                   <tr key={sc.id}>
                     <td className="px-4 py-2">
+                      {/* Le délégué est marqué d'un D : il est l'interlocuteur
+                          de la classe, et le retrouver dans une liste de trente
+                          noms sans repère visuel est une perte de temps. */}
+                      {sc.student.id === cls.delegateId && (
+                        <span
+                          title={tDetail('delegate')}
+                          className="me-2 inline-grid h-5 w-5 place-items-center rounded-full bg-brand-600 text-[11px] font-bold text-white"
+                        >
+                          D
+                        </span>
+                      )}
                       <Link
                         href={`/${locale}/admin/persons/${sc.student.id}`}
                         className="hover:text-brand-700 hover:underline"
@@ -189,11 +263,15 @@ export default async function ClassDetailPage({
                       {new Date(sc.enrolledAt).toLocaleDateString(locale)}
                     </td>
                     <td className="px-4 py-2 text-end">
-                      <UnenrollButton
-                        classId={cls.id}
-                        studentId={sc.studentId}
-                        label={tDetail('unenroll')}
-                      />
+                      {/* « Désinscrire » retiré : la désinscription se fait
+                          depuis la scolarité de l'élève, où l'on voit ce qu'elle
+                          entraîne (créances, EDT, dossier). Ici on consulte. */}
+                      <Link
+                        href={`/${locale}/admin/persons/${sc.student.id}`}
+                        className="rounded-lg border border-slate-300 bg-white px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      >
+                        {tDetail('view')}
+                      </Link>
                     </td>
                   </tr>
                 ))}
@@ -210,27 +288,22 @@ export default async function ClassDetailPage({
         </div>
 
         <aside>
-          <section className="rounded-2xl border border-slate-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-slate-700">{tDetail('enroll')}</h2>
-            <p className="mt-1 text-xs text-slate-500">
-              {tDetail('availableCount', { count: availableStudents.length })}
-            </p>
-            <div className="mt-3">
-              <EnrollmentManager
-                classId={cls.id}
-                students={availableStudents.map((s) => ({
-                  id: s.id,
-                  label: personDisplayName(locale, s),
-                }))}
-                disabled={
-                  !!cls.deletedAt || cls.students.length >= cls.capacity
-                }
-              />
-              {cls.students.length >= cls.capacity && !cls.deletedAt && (
-                <p className="mt-2 text-xs text-amber-700">{tDetail('capacityReached')}</p>
-              )}
-            </div>
-          </section>
+          {/* Les mesures de la classe, en tête de colonne. Elles remplacent le
+              bloc « Inscrire un élève » : rattacher un élève se fait depuis son
+              dossier — où l'on voit son niveau, sa filière et ses frais — et
+              non depuis la classe, où rien de tout cela n'est visible. */}
+          {kpiData && (
+            <ClassKpis
+              enrolled={cls.students.length}
+              capacity={cls.capacity}
+              periodLabel={kpiData.periodLabel}
+              classGrades={kpiData.classGrades}
+              schoolGrades={kpiData.schoolGrades}
+              counts={kpiData.counts}
+              dueToDate={kpiData.dueToDate}
+              paidToDate={kpiData.paidToDate}
+            />
+          )}
 
           <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-5">
             <h2 className="text-sm font-semibold text-slate-700">{tDetail('delegate')}</h2>
@@ -366,33 +439,6 @@ export default async function ClassDetailPage({
         </div>
       </section>
     </div>
-  );
-}
-
-function UnenrollButton({
-  classId,
-  studentId,
-  label,
-}: {
-  classId: string;
-  studentId: string;
-  label: string;
-}) {
-  return (
-    <form
-      action={async () => {
-        'use server';
-        const { unenrollStudentAction } = await import('../actions');
-        await unenrollStudentAction(classId, studentId);
-      }}
-    >
-      <button
-        type="submit"
-        className="text-xs text-red-600 hover:text-red-800 hover:underline"
-      >
-        {label}
-      </button>
-    </form>
   );
 }
 

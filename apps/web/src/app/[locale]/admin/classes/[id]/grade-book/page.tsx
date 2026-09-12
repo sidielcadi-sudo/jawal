@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { ClassNav } from '../class-nav';
 import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
@@ -8,6 +7,7 @@ import { computeClassBook } from '@/lib/grades';
 import { pickPeriodId } from '@/lib/periods';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 import { PeriodButtons } from '@/components/period-buttons';
+import { ClassHeader, CLASS_PAGE_SHELL } from '../class-header';
 
 export default async function GradeBookPage({
   params,
@@ -16,6 +16,7 @@ export default async function GradeBookPage({
   params: Promise<{ locale: string; id: string }>;
   searchParams: Promise<{ period?: string }>;
 }) {
+  const tCrumb = await getTranslations('admin.classes.detail');
   const { locale, id } = await params;
   const sp = await searchParams;
   setRequestLocale(locale);
@@ -76,30 +77,8 @@ export default async function GradeBookPage({
   const baseHref = `/${locale}/admin/classes/${id}`;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
-      <nav className="mb-4 text-xs text-slate-500">
-        <Link href={`/${locale}/admin/classes`} className="hover:text-brand-700">
-          {t('classes')}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <Link href={baseHref} className="hover:text-brand-700">
-          {localizedLabel(locale, cls.name, cls.nameAr)}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <span>{t('title')}</span>
-      </nav>
-
-      <header className="-mx-4 sm:-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
-            {t('title')} — {localizedLabel(locale, cls.name, cls.nameAr)}
-          </h1>
-          <p className="mt-1 text-sm text-slate-500">
-            {localizedLabel(locale, cls.level.cycle.label, cls.level.cycle.labelAr)} · {localizedLabel(locale, cls.level.label, cls.level.labelAr)} · {cls.academicYear.label}
-          </p>
-        </div>
-        <ClassNav classId={id} locale={locale} />
-      </header>
+    <div className={CLASS_PAGE_SHELL}>
+      <ClassHeader cls={cls} locale={locale} current={tCrumb('gradeBook')} />
 
       <div className="mb-4">
         <PeriodButtons periods={periods} selectedId={selectedPeriodId} locale={locale} />

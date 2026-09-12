@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { ClassNav } from '../class-nav';
 import { notFound, redirect } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
@@ -8,6 +7,7 @@ import { getClassDaySessions, loadClassAppel } from '@/lib/teacher-attendance';
 import { AttendanceCallSheet } from './call-sheet';
 import { SessionPicker } from './session-picker';
 import { localizedLabel } from '@/lib/localized-name';
+import { ClassHeader, CLASS_PAGE_SHELL } from '../class-header';
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -18,6 +18,7 @@ export default async function AttendancePage({
   params: Promise<{ locale: string; id: string }>;
   searchParams: Promise<{ date?: string; entry?: string }>;
 }) {
+  const tCrumb = await getTranslations('admin.classes.detail');
   const { locale, id } = await params;
   const sp = await searchParams;
   setRequestLocale(locale);
@@ -58,31 +59,8 @@ export default async function AttendancePage({
   const displayName = localizedLabel(locale, cls.name, cls.nameAr);
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-      <nav className="mb-4 text-xs text-slate-500">
-        <Link href={`/${locale}/admin/classes`} className="hover:text-brand-700">
-          {t('classes')}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <Link href={`/${locale}/admin/classes/${id}`} className="hover:text-brand-700">
-          {displayName}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <span>{t('callOf', { date: new Date(`${date}T00:00:00.000Z`).toLocaleDateString(locale) })}</span>
-      </nav>
-
-      <header className="mb-5">
-        <div className="-mx-6 mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden rounded-2xl border border-brand-200 title-band px-4 py-3 shadow-sm">
-          <h1 className="text-2xl font-semibold text-slate-900">
-            {t('title')} — {displayName}
-          </h1>
-          <ClassNav classId={id} locale={locale} />
-        </div>
-        <p className="mt-1 text-sm text-slate-500">
-          {localizedLabel(locale, cls.level.cycle.label, cls.level.cycle.labelAr)} ·{' '}
-          {localizedLabel(locale, cls.level.label, cls.level.labelAr)} · {cls.academicYear.label}
-        </p>
-      </header>
+    <div className={CLASS_PAGE_SHELL}>
+      <ClassHeader cls={cls} locale={locale} current={tCrumb('takeAttendance')} />
 
       <SessionPicker
         basePath={`/${locale}/admin/classes/${id}/attendance`}

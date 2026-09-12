@@ -5,7 +5,7 @@ import { withTenant } from '@/lib/db';
 import { pickPeriodId } from '@/lib/periods';
 import { computeTeacherDashboard } from '@/lib/kpi-teacher';
 import { TeacherDashboardView } from '@/components/teacher-dashboard-view';
-import { PersonHeader } from '../person-header';
+import { PersonHeader, PERSON_PAGE_SHELL } from '../person-header';
 import { PeriodButtons } from '@/components/period-buttons';
 
 export default async function TeacherDashboardPage({
@@ -46,7 +46,7 @@ export default async function TeacherDashboardPage({
   if (!data) notFound();
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
+    <div className={PERSON_PAGE_SHELL}>
       <PersonHeader personId={id} locale={locale} active="dashboard" />
 
       <header className="-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-6 flex flex-wrap items-end justify-between gap-4">

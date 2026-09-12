@@ -636,6 +636,7 @@ export default async function PersonDetailPage({
                 years={documentYears}
                 periods={documentPeriods}
                 defaultPeriodId={documentPeriodId ?? undefined}
+                periodsHref={`/${locale}/admin/settings/years`}
               />
             </section>
           )}

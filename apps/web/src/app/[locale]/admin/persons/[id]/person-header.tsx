@@ -2,9 +2,18 @@ import Link from 'next/link';
 import { getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
-import { personDisplayName } from '@/lib/localized-name';
+import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 import { computeContractStatus } from '@/lib/contract-status';
 import { PersonActions } from './person-actions';
+
+/**
+ * Largeur commune à tous les écrans d'une personne — celle de la fiche.
+ *
+ * La bande d'en-tête déborde de son conteneur (`-mx-3`) pour aller au bord :
+ * elle prend donc la largeur de la page qui la rend. Avec quatre largeurs
+ * différentes, le même bandeau paraissait changer de taille à chaque onglet.
+ */
+export const PERSON_PAGE_SHELL = 'px-3 py-3';
 
 /** Onglet actif de la fiche — pilote la mise en évidence du bouton. */
 export type PersonTab = 'fiche' | 'dashboard' | 'timetable' | 'edit' | 'finance';
@@ -59,6 +68,22 @@ export async function PersonHeader({
         contractEndDate: true,
         role: { select: { labelFr: true, labelAr: true } },
         serviceRef: { select: { labelFr: true, labelAr: true } },
+        // Classe et niveau de l'année active : c'est la première chose qu'on
+        // cherche sur la fiche d'un élève, et elle obligeait jusqu'ici à
+        // descendre dans l'onglet Scolarité.
+        studentClasses: {
+          where: { unenrolledAt: null, class: { academicYear: { active: true } } },
+          take: 1,
+          select: {
+            class: {
+              select: {
+                name: true,
+                nameAr: true,
+                level: { select: { label: true, labelAr: true } },
+              },
+            },
+          },
+        },
       },
     }),
   );
@@ -70,6 +95,14 @@ export async function PersonHeader({
   const serviceLabel = label(person.serviceRef);
   const contract = computeContractStatus(person, new Date());
   const name = personDisplayName(locale, person);
+  const enrolled = person.studentClasses[0]?.class ?? null;
+  const schooling = enrolled
+    ? `${localizedLabel(locale, enrolled.name, enrolled.nameAr)} · ${localizedLabel(
+        locale,
+        enrolled.level.label,
+        enrolled.level.labelAr,
+      )}`
+    : null;
 
   const base = `/${locale}/admin/persons/${person.id}`;
   const backHref = `/${locale}/admin/persons?type=${person.type}`;
@@ -119,6 +152,7 @@ export async function PersonHeader({
               {serviceLabel && ` · ${serviceLabel}`}
               {person.birthDate &&
                 ` · ${tDetail('bornOn', { date: new Date(person.birthDate).toLocaleDateString(locale) })}`}
+              {schooling && ` · ${schooling}`}
             </p>
             {contract && contract.status !== 'NO_CONTRACT' && (
               <p className="mt-2">

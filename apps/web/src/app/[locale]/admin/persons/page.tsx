@@ -12,6 +12,17 @@ import {
   TeacherDetailEmpty,
   type TeacherDetail,
 } from './teacher-detail';
+import { StaffDetailPanel, StaffDetailEmpty, type StaffDetail } from './staff-detail';
+import { hrFileStatus, hrFileLabel, dayStatus, contractLabel } from '@/lib/hr-file';
+import { ParentDetailPanel, ParentDetailEmpty, type ParentDetail } from './parent-detail';
+import {
+  isReachable,
+  missingContacts,
+  familyFinancialStatus,
+  financialLabel,
+  parentKpis,
+  type FinancialStatus,
+} from '@/lib/parent-file';
 import {
   StudentDetailPanel,
   StudentDetailEmpty,
@@ -62,13 +73,16 @@ function Kpi({
   tone,
   label,
   value,
+  suffix,
   hint,
   alert = false,
 }: {
   icon: string;
   tone: keyof typeof KPI_TONE | string;
   label: string;
-  value: number;
+  /** `null` quand la mesure n'a pas de source : on affiche « — », pas 0. */
+  value: number | null;
+  suffix?: string;
   hint?: string;
   alert?: boolean;
 }) {
@@ -88,11 +102,34 @@ function Kpi({
             alert ? 'text-red-700' : 'text-slate-900'
           }`}
         >
-          {value.toLocaleString('fr-FR')}
+          {value === null ? '—' : value.toLocaleString('fr-FR')}
+          {value !== null && suffix && <span className="ms-0.5 text-sm font-normal">{suffix}</span>}
         </p>
         {hint && <p className="truncate text-[11px] text-slate-500">{hint}</p>}
       </div>
     </div>
+  );
+}
+
+/**
+ * Statut du jour d'un agent.
+ *
+ * « Non pointé » se distingue de « absent » : sur un établissement qui pointe
+ * en fin de matinée, tout le monde serait déclaré absent au réveil.
+ */
+function DayBadge({ status, t }: { status: string; t: (k: string) => string }) {
+  const tone: Record<string, string> = {
+    PRESENT: 'bg-emerald-100 text-emerald-800',
+    ABSENT: 'bg-red-100 text-red-800',
+    LATE: 'bg-amber-100 text-amber-800',
+    LEAVE: 'bg-sky-100 text-sky-800',
+    EXCUSED: 'bg-slate-200 text-slate-700',
+    NOT_RECORDED: 'bg-slate-100 text-slate-500',
+  };
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${tone[status] ?? tone.NOT_RECORDED}`}>
+      {t(status)}
+    </span>
   );
 }
 
@@ -463,6 +500,10 @@ export default async function PersonsListPage({
   // Statut : dossier d'inscription côté élève, statut d'emploi côté personnel.
   const statusFilter = asList(sp.status);
   const isStaffView = isTeacherView || typeFilter === 'STAFF';
+  /** Vue « Personnel » seule : colonnes RH et fiche latérale propres. */
+  const isStaffOnly = typeFilter === 'STAFF';
+  /** Vue « Parents » : colonnes famille et fiche latérale propres. */
+  const isParentView = typeFilter === 'PARENT';
 
   type StudentRow = {
     className: string | null;
@@ -490,6 +531,12 @@ export default async function PersonsListPage({
     kpis,
     detail,
     teacherDetail,
+    staffDetail,
+    staffKpis,
+    staffExtras,
+    parentDetail,
+    parentKpiData,
+    parentExtras,
   } = await withTenant(
     tenantId,
     async (tx) => {
@@ -770,6 +817,387 @@ export default async function PersonsListPage({
       } | null = null;
       let detail: StudentDetail | null = null;
       let teacherDetail: TeacherDetail | null = null;
+      let staffDetail: StaffDetail | null = null;
+      let parentDetail: ParentDetail | null = null;
+      let parentKpiData: ReturnType<typeof parentKpis> | null = null;
+      const parentExtras = new Map<
+        string,
+        {
+          children: Array<{ id: string; name: string; className: string | null }>;
+          contacts: { phone?: string; email?: string; whatsapp?: string };
+          portal: { active: boolean; email: string } | null;
+          financial: FinancialStatus;
+        }
+      >();
+      let staffKpis: {
+        total: number;
+        presentToday: number;
+        contractsEnding: number;
+        incompleteFiles: number;
+      } | null = null;
+      const staffExtras = new Map<
+        string,
+        {
+          day: ReturnType<typeof dayStatus>;
+          contract: ReturnType<typeof contractLabel>;
+          hrFile: ReturnType<typeof hrFileStatus>;
+        }
+      >();
+
+      if (isStaffOnly) {
+        const ids = persons.map((x) => x.id);
+        const today = new Date();
+        const dayStart = new Date(
+          Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()),
+        );
+        const monthStart = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1));
+        const monthEnd = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() + 1, 1));
+
+        const todayRows = ids.length
+          ? await tx.staffAttendance.findMany({
+              where: { personId: { in: ids }, date: dayStart },
+              select: { personId: true, status: true },
+            })
+          : [];
+        const byPerson = new Map(todayRows.map((r) => [r.personId, r]));
+        for (const x of persons) {
+          staffExtras.set(x.id, {
+            day: dayStatus(byPerson.get(x.id)),
+            contract: contractLabel(
+              { contractType: x.contractType, contractEndDate: x.contractEndDate },
+              today,
+            ),
+            hrFile: hrFileStatus({
+              cin: x.cin,
+              hireDate: x.hireDate,
+              contractType: x.contractType,
+              rib: x.rib,
+              bankName: x.bankName,
+            }),
+          });
+        }
+
+        // Indicateurs de tête : comptés sur TOUT le personnel, pas sur la page
+        // ni sur les filtres — un total qui bouge quand on filtre ne mesure
+        // plus rien.
+        const allStaff = await tx.person.findMany({
+          where: { type: 'STAFF', deletedAt: null },
+          select: {
+            id: true,
+            cin: true,
+            hireDate: true,
+            contractType: true,
+            contractEndDate: true,
+            rib: true,
+            bankName: true,
+          },
+        });
+        const presentToday = await tx.staffAttendance.count({
+          where: {
+            date: dayStart,
+            status: 'PRESENT',
+            person: { type: 'STAFF', deletedAt: null },
+          },
+        });
+        staffKpis = {
+          total: allStaff.length,
+          presentToday,
+          // Échéances à surveiller : un contrat qui se termine dans le mois,
+          // ou déjà expiré sans que personne ne l'ait vu.
+          contractsEnding: allStaff.filter((x) => {
+            const c = contractLabel(x, today);
+            return c.endsInDays !== null && c.endsInDays <= 30;
+          }).length,
+          incompleteFiles: allStaff.filter((x) => !hrFileStatus(x).complete).length,
+        };
+
+        if (sp.selected) {
+          const person = await tx.person.findFirst({
+            where: { id: sp.selected, type: 'STAFF' },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              firstNameAr: true,
+              lastNameAr: true,
+              photoFileId: true,
+              employmentStatus: true,
+              cin: true,
+              contacts: true,
+              address: true,
+              birthDate: true,
+              hireDate: true,
+              contractType: true,
+              contractEndDate: true,
+              rib: true,
+              bankName: true,
+              role: { select: { labelFr: true, labelAr: true } },
+              serviceRef: { select: { labelFr: true, labelAr: true } },
+            },
+          });
+          if (person) {
+            const month = await tx.staffAttendance.findMany({
+              where: { personId: person.id, date: { gte: monthStart, lt: monthEnd } },
+              orderBy: { date: 'asc' },
+              select: {
+                date: true,
+                status: true,
+                lateMinutes: true,
+                absenceReason: { select: { label: true, labelAr: true } },
+              },
+            });
+            const count = (st: string) => month.filter((m) => m.status === st).length;
+            const c = (x: { labelFr: string; labelAr: string } | null) =>
+              x ? (locale === 'ar' ? x.labelAr : x.labelFr) : null;
+            const contacts = (person.contacts ?? {}) as { phone?: string; email?: string };
+            const addr = (person.address ?? {}) as { line1?: string; city?: string };
+            const contract = contractLabel(person, today);
+            staffDetail = {
+              id: person.id,
+              name: personDisplayName(locale, person),
+              photo: Boolean(person.photoFileId),
+              employmentStatus: person.employmentStatus,
+              roleLabel: c(person.role),
+              serviceLabel: c(person.serviceRef),
+              cin: person.cin,
+              phone: contacts.phone ?? null,
+              email: contacts.email ?? null,
+              address: [addr.line1, addr.city].filter(Boolean).join(', ') || null,
+              birthDate: person.birthDate,
+              hireDate: person.hireDate,
+              contractLabel: contract.label,
+              contractUrgent: contract.urgent,
+              hrFile: hrFileStatus(person),
+              month: {
+                label: monthStart.toLocaleDateString(locale, { month: 'long', year: 'numeric' }),
+                present: count('PRESENT'),
+                absent: count('ABSENT'),
+                late: count('LATE'),
+                leave: count('LEAVE'),
+                lateMinutes: month.reduce((n, m) => n + (m.lateMinutes ?? 0), 0),
+                recorded: month.length,
+              },
+              absences: month
+                .filter((m) => m.status !== 'PRESENT')
+                .map((m) => ({
+                  date: m.date,
+                  status: m.status,
+                  reason: m.absenceReason
+                    ? localizedLabel(locale, m.absenceReason.label, m.absenceReason.labelAr)
+                    : null,
+                })),
+            };
+          }
+        }
+      }
+
+      if (isParentView) {
+        // Une « famille » = un parent rattaché à au moins un élève inscrit sur
+        // l'année active. C'est le dénominateur commun des trois taux : les
+        // comparer suppose qu'ils portent sur la même population.
+        const relations = await tx.personRelation.findMany({
+          where: activeYear
+            ? {
+                child: {
+                  type: 'STUDENT',
+                  deletedAt: null,
+                  studentClasses: {
+                    some: { unenrolledAt: null, class: { academicYearId: activeYear.id } },
+                  },
+                },
+              }
+            : { child: { type: 'STUDENT', deletedAt: null } },
+          select: {
+            parentId: true,
+            type: true,
+            child: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                firstNameAr: true,
+                lastNameAr: true,
+                studentClasses: {
+                  where: {
+                    unenrolledAt: null,
+                    ...(activeYear ? { class: { academicYearId: activeYear.id } } : {}),
+                  },
+                  take: 1,
+                  select: {
+                    class: {
+                      select: {
+                        name: true,
+                        nameAr: true,
+                        level: { select: { label: true, labelAr: true } },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        const childrenByParent = new Map<string, typeof relations>();
+        for (const r of relations) {
+          const arr = childrenByParent.get(r.parentId) ?? [];
+          arr.push(r);
+          childrenByParent.set(r.parentId, arr);
+        }
+
+        // Échéances des enfants, regroupées par famille.
+        const childIds = [...new Set(relations.map((r) => r.child.id))];
+        const installments = childIds.length
+          ? await tx.installment.findMany({
+              where: {
+                studentId: { in: childIds },
+                status: { not: 'CANCELLED' },
+                ...(activeYear
+                  ? { dueDate: { gte: activeYear.startDate, lt: yearInstallmentEnd(activeYear) } }
+                  : {}),
+              },
+              select: { studentId: true, amount: true, dueDate: true, payments: { select: { amount: true } } },
+            })
+          : [];
+        const instByChild = new Map<string, Array<{ amount: number; paid: number; dueDate: Date }>>();
+        for (const i of installments) {
+          const arr = instByChild.get(i.studentId) ?? [];
+          arr.push({
+            amount: Number(i.amount),
+            paid: i.payments.reduce((n, x) => n + Number(x.amount), 0),
+            dueDate: i.dueDate,
+          });
+          instByChild.set(i.studentId, arr);
+        }
+
+        // Comptes portail des parents.
+        const parentIds = [...childrenByParent.keys()];
+        const links = parentIds.length
+          ? await tx.userPerson.findMany({
+              where: { personId: { in: parentIds } },
+              select: {
+                personId: true,
+                user: { select: { email: true, lastLoginAt: true, disabledAt: true } },
+              },
+            })
+          : [];
+        // Un compte désactivé ne donne plus accès au portail : on le compte
+        // comme absent plutôt que comme actif.
+        const portalByParent = new Map(
+          links.map((l) => [
+            l.personId,
+            { email: l.user.email, lastLoginAt: l.user.lastLoginAt, isActive: !l.user.disabledAt },
+          ]),
+        );
+
+        const contactsOf = (x: { contacts: unknown }) =>
+          (x.contacts ?? {}) as { phone?: string; email?: string; whatsapp?: string };
+
+        const statusOf = (parentId: string): FinancialStatus => {
+          const kids = childrenByParent.get(parentId) ?? [];
+          const lines = kids.flatMap((k) => instByChild.get(k.child.id) ?? []);
+          return familyFinancialStatus(lines);
+        };
+
+        // Lignes du tableau, pour les parents affichés.
+        for (const x of persons) {
+          const kids = childrenByParent.get(x.id) ?? [];
+          const portal = portalByParent.get(x.id);
+          parentExtras.set(x.id, {
+            children: kids.map((k) => ({
+              id: k.child.id,
+              name: personDisplayName(locale, k.child),
+              className: k.child.studentClasses[0]
+                ? localizedLabel(
+                    locale,
+                    k.child.studentClasses[0].class.name,
+                    k.child.studentClasses[0].class.nameAr,
+                  )
+                : null,
+            })),
+            contacts: contactsOf(x),
+            portal: portal ? { active: portal.isActive, email: portal.email } : null,
+            financial: statusOf(x.id),
+          });
+        }
+
+        // Indicateurs : sur TOUTES les familles, pas sur la page affichée.
+        const allParents = await tx.person.findMany({
+          where: { type: 'PARENT', deletedAt: null, id: { in: parentIds } },
+          select: { id: true, contacts: true },
+        });
+        parentKpiData = parentKpis(
+          allParents.map((x) => ({
+            hasPortal: Boolean(portalByParent.get(x.id)?.isActive),
+            reachable: isReachable(contactsOf(x)),
+            financial: statusOf(x.id).state,
+          })),
+        );
+
+        if (sp.selected) {
+          const person = await tx.person.findFirst({
+            where: { id: sp.selected, type: 'PARENT' },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              firstNameAr: true,
+              lastNameAr: true,
+              photoFileId: true,
+              cin: true,
+              contacts: true,
+              address: true,
+              metadata: true,
+            },
+          });
+          if (person) {
+            const kids = childrenByParent.get(person.id) ?? [];
+            const c = contactsOf(person);
+            const addr = (person.address ?? {}) as { line1?: string; city?: string };
+            const meta = (person.metadata ?? {}) as { profession?: string };
+            const portal = portalByParent.get(person.id);
+            const tenant = await tx.tenant.findFirst({ select: { currency: true } });
+            parentDetail = {
+              id: person.id,
+              name: personDisplayName(locale, person),
+              photo: Boolean(person.photoFileId),
+              relation: kids[0] ? tForm(`relations.${kids[0].type}` as never) : null,
+              cin: person.cin,
+              phone: c.phone ?? null,
+              whatsapp: c.whatsapp ?? null,
+              email: c.email ?? null,
+              address: [addr.line1, addr.city].filter(Boolean).join(', ') || null,
+              profession: meta.profession ?? null,
+              portal: {
+                active: Boolean(portal?.isActive),
+                email: portal?.email ?? null,
+                lastLoginAt: portal?.lastLoginAt ?? null,
+              },
+              children: kids.map((k) => ({
+                id: k.child.id,
+                name: personDisplayName(locale, k.child),
+                className: k.child.studentClasses[0]
+                  ? localizedLabel(
+                      locale,
+                      k.child.studentClasses[0].class.name,
+                      k.child.studentClasses[0].class.nameAr,
+                    )
+                  : null,
+                levelLabel: k.child.studentClasses[0]
+                  ? localizedLabel(
+                      locale,
+                      k.child.studentClasses[0].class.level.label,
+                      k.child.studentClasses[0].class.level.labelAr,
+                    )
+                  : null,
+              })),
+              financial: statusOf(person.id),
+              currency: tenant?.currency ?? 'MAD',
+              missing: missingContacts(c),
+            };
+          }
+        }
+      }
 
       if (isTeacherView && sp.selected) {
         teacherDetail = await loadTeacherDetail(tx, sp.selected, locale, activeYear?.id ?? null);
@@ -841,6 +1269,12 @@ export default async function PersonsListPage({
         kpis,
         detail,
         teacherDetail,
+        staffDetail,
+        staffKpis,
+        staffExtras,
+        parentDetail,
+        parentKpiData,
+        parentExtras,
         teacherExtras,
         studentExtras,
         services,
@@ -893,6 +1327,7 @@ export default async function PersonsListPage({
 
   // Options de statut : dossier d'inscription côté élève, statut d'emploi
   // côté personnel — deux référentiels distincts sous un même libellé.
+  const tStaff = await getTranslations('admin.persons.staffPanel.day');
   const statusOptions = isStudentView
     ? STUDENT_STATUSES.map((st) => ({ id: st, label: t(`studentStatus.${st}` as never) }))
     : isStaffView
@@ -970,6 +1405,89 @@ export default async function PersonsListPage({
         </div>
       )}
 
+      {/* Indicateurs des familles. Le dénominateur est partout le même —
+          les parents rattachés à au moins un élève inscrit — pour que les
+          trois taux se comparent entre eux. */}
+      {parentKpiData && (
+        <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <Kpi
+            icon="💻"
+            tone="emerald"
+            label={t('kpi.portal')}
+            value={parentKpiData.portalRate ?? 0}
+            suffix="%"
+            hint={t('kpi.portalHint', {
+              active: parentKpiData.withPortal,
+              total: parentKpiData.families,
+            })}
+          />
+          <Kpi
+            icon="📞"
+            tone="sky"
+            label={t('kpi.emergency')}
+            value={parentKpiData.contactRate ?? 0}
+            suffix="%"
+            hint={t('kpi.emergencyHint', { count: parentKpiData.toComplete })}
+          />
+          <Kpi
+            icon="💳"
+            tone={parentKpiData.lateFamilies > 0 ? 'red' : 'emerald'}
+            label={t('kpi.settlement')}
+            value={parentKpiData.settlementRate ?? 0}
+            suffix="%"
+            hint={t('kpi.settlementHint', { count: parentKpiData.lateFamilies })}
+          />
+          {/* Aucun registre des parents délégués n'existe en base : on le dit
+              plutôt que d'afficher un zéro qui passerait pour une mesure. */}
+          <Kpi
+            icon="🏛"
+            tone="slate"
+            label={t('kpi.delegates')}
+            value={null}
+            hint={t('kpi.delegatesHint')}
+          />
+        </div>
+      )}
+
+      {/* Indicateurs du personnel. Faute de la maquette, ils reprennent les
+          quatre questions que posent les colonnes demandées : combien
+          d'agents, qui est là aujourd'hui, quels contrats arrivent à terme,
+          quels dossiers ne tiendront pas la paie. */}
+      {staffKpis && (
+        <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+          <Kpi icon="🧑‍💼" tone="sky" label={t('kpi.staffTotal')} value={staffKpis.total} />
+          <Kpi
+            icon="✅"
+            tone="emerald"
+            label={t('kpi.staffPresent')}
+            value={staffKpis.presentToday}
+            hint={
+              staffKpis.total > 0
+                ? t('kpi.staffPresentHint', {
+                    pct: Math.round((staffKpis.presentToday / staffKpis.total) * 100),
+                  })
+                : undefined
+            }
+          />
+          <Kpi
+            icon="📄"
+            tone={staffKpis.contractsEnding > 0 ? 'red' : 'slate'}
+            alert={staffKpis.contractsEnding > 0}
+            label={t('kpi.staffContracts')}
+            value={staffKpis.contractsEnding}
+            hint={t('kpi.staffContractsHint')}
+          />
+          <Kpi
+            icon="⚠"
+            tone={staffKpis.incompleteFiles > 0 ? 'red' : 'slate'}
+            alert={staffKpis.incompleteFiles > 0}
+            label={t('kpi.staffFiles')}
+            value={staffKpis.incompleteFiles}
+            hint={t('kpi.staffFilesHint')}
+          />
+        </div>
+      )}
+
       {/* Onglets de cycle : le raccourci le plus fréquent, au-dessus des
           filtres détaillés qui restent disponibles en dessous. */}
       {isStudentView && cycles.length > 0 && (
@@ -983,17 +1501,6 @@ export default async function PersonsListPage({
               active={cycleFilter.length === 1 && cycleFilter[0] === c.id}
             />
           ))}
-          <span className="mx-1 h-5 w-px bg-slate-200" />
-          <CycleTab
-            href={qs({ status: 'ACTIVE', page: '1' })}
-            label={t('tabs.active')}
-            active={statusFilter.length === 1 && statusFilter[0] === 'ACTIVE'}
-          />
-          <CycleTab
-            href={qs({ status: 'WITHDRAWN', page: '1' })}
-            label={t('tabs.inactive')}
-            active={statusFilter.length === 1 && statusFilter[0] === 'WITHDRAWN'}
-          />
         </nav>
       )}
 
@@ -1060,6 +1567,7 @@ export default async function PersonsListPage({
             classes={classOptions}
             statuses={statusOptions}
             showSchool={isStudentView}
+            cycleScope={cycleFilter}
             initial={{
               cycle: cycleFilter,
               level: levelFilter,
@@ -1084,7 +1592,7 @@ export default async function PersonsListPage({
 
       <div
         className={
-          isStudentView || isTeacherView
+          isStudentView || isTeacherView || isStaffOnly || isParentView
             ? 'flex flex-col gap-4 xl:flex-row xl:items-start'
             : undefined
         }
@@ -1110,6 +1618,21 @@ export default async function PersonsListPage({
                   <th className="px-4 py-3 text-end">{t('table.weeklyHours')}</th>
                   <th className="px-4 py-3 text-start">{t('table.classes')}</th>
                   <th className="px-4 py-3 text-start">{t('table.status')}</th>
+                </>
+              ) : isParentView ? (
+                <>
+                  <th className="px-4 py-3 text-start">{t('table.children')}</th>
+                  <th className="px-4 py-3 text-start">{t('table.directContact')}</th>
+                  <th className="px-4 py-3 text-start">{t('table.portal')}</th>
+                  <th className="px-4 py-3 text-start">{t('table.financial')}</th>
+                </>
+              ) : isStaffOnly ? (
+                <>
+                  <th className="px-4 py-3 text-start">{t('table.type')}</th>
+                  <th className="px-4 py-3 text-start">{t('table.contact')}</th>
+                  <th className="px-4 py-3 text-start">{t('table.dayStatus')}</th>
+                  <th className="px-4 py-3 text-start">{t('table.contract')}</th>
+                  <th className="px-4 py-3 text-start">{t('table.hrFile')}</th>
                 </>
               ) : (
                 <>
@@ -1164,7 +1687,7 @@ export default async function PersonsListPage({
                         complète. */}
                     <Link
                       href={
-                        isStudentView || isTeacherView
+                        isStudentView || isTeacherView || isStaffOnly || isParentView
                           ? qs({ selected: p.id })
                           : `${baseHref}/${p.id}`
                       }
@@ -1231,6 +1754,100 @@ export default async function PersonsListPage({
                         </>
                       );
                     })()
+                  ) : isParentView ? (
+                    (() => {
+                      const x = parentExtras.get(p.id);
+                      const fin = x?.financial;
+                      return (
+                        <>
+                          <td className="px-4 py-3 text-xs text-slate-600">
+                            {x && x.children.length > 0
+                              ? x.children
+                                  .map((k) => (k.className ? `${k.name} (${k.className})` : k.name))
+                                  .join(', ')
+                              : '—'}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-600">
+                            <div className="tabular-nums">
+                              {x?.contacts.phone ?? x?.contacts.whatsapp ?? '—'}
+                            </div>
+                            <div className="truncate text-[11px] text-slate-400">
+                              {x?.contacts.email ?? ''}
+                            </div>
+                          </td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                x?.portal?.active
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-slate-200 text-slate-600'
+                              }`}
+                            >
+                              {x?.portal?.active ? t('portal.active') : t('portal.inactive')}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3">
+                            {fin ? (
+                              <span
+                                className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                                  fin.state === 'LATE'
+                                    ? 'bg-red-100 text-red-800'
+                                    : fin.state === 'UP_TO_DATE'
+                                      ? 'bg-emerald-100 text-emerald-800'
+                                      : 'bg-slate-200 text-slate-600'
+                                }`}
+                              >
+                                {financialLabel(fin)}
+                              </span>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                        </>
+                      );
+                    })()
+                  ) : isStaffOnly ? (
+                    (() => {
+                      const x = staffExtras.get(p.id);
+                      return (
+                        <>
+                          <td className="px-4 py-3">
+                            <TypeBadge type={p.type} />
+                            {p.serviceRef && (
+                              <span className="ms-1.5 rounded bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700">
+                                {locale === 'ar' ? p.serviceRef.labelAr : p.serviceRef.labelFr}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-4 py-3 text-xs text-slate-600">
+                            {contacts.email ?? contacts.phone ?? '—'}
+                          </td>
+                          <td className="px-4 py-3">
+                            <DayBadge status={x?.day ?? 'NOT_RECORDED'} t={tStaff} />
+                          </td>
+                          <td className="px-4 py-3 text-xs">
+                            <span className={x?.contract.urgent ? 'font-medium text-red-700' : 'text-slate-600'}>
+                              {x?.contract.label ?? '—'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-xs">
+                            {x ? (
+                              <span
+                                className={`rounded px-1.5 py-0.5 font-medium ${
+                                  x.hrFile.complete
+                                    ? 'bg-emerald-50 text-emerald-700'
+                                    : 'bg-amber-50 text-amber-800'
+                                }`}
+                              >
+                                {hrFileLabel(x.hrFile)}
+                              </span>
+                            ) : (
+                              '—'
+                            )}
+                          </td>
+                        </>
+                      );
+                    })()
                   ) : (
                     <>
                       <td className="px-4 py-3">
@@ -1288,6 +1905,21 @@ export default async function PersonsListPage({
           <TeacherDetailPanel detail={teacherDetail} locale={locale} baseHref={baseHref} />
         ) : (
           <TeacherDetailEmpty />
+        ))}
+
+      {isParentView &&
+        (parentDetail ? (
+          <ParentDetailPanel detail={parentDetail} locale={locale} baseHref={baseHref} />
+        ) : (
+          <ParentDetailEmpty />
+        ))}
+
+      {/* Même disposition que pour les élèves et les enseignants. */}
+      {isStaffOnly &&
+        (staffDetail ? (
+          <StaffDetailPanel detail={staffDetail} locale={locale} baseHref={baseHref} />
+        ) : (
+          <StaffDetailEmpty />
         ))}
       </div>
     </div>

@@ -13,6 +13,7 @@ import { sendNotifications, parentRecipient, emailRecipient, type NotifyItem } f
 import { renderTemplate } from '@/lib/notify-templates';
 import { sendDirectMessage } from '@/lib/inapp-message';
 import { alertRole } from '@/lib/staff-alerts';
+import { checkMove, moveRefusalMessage } from '@/lib/class-move';
 
 type Tx = Parameters<Parameters<typeof withTenant>[1]>[0];
 
@@ -61,7 +62,42 @@ export async function changeStudentClassAction(
       });
       if (current?.classId === classId) return; // déjà dans cette classe
 
-      if (cls._count.students >= cls.capacity) throw new Error(`Capacité atteinte (${cls.capacity}).`);
+      // Garde-fous du déplacement. Seule la capacité était vérifiée : on
+      // pouvait donc glisser un élève de 2AC dans une classe de 3AC, ou un
+      // élève de Sciences Maths dans une classe de Lettres — et fausser tous
+      // ses coefficients sans qu'aucun écran ne le signale.
+      const enr = await tx.enrollment.findFirst({
+        where: {
+          studentId,
+          academicYearId: cls.academicYearId,
+          status: { notIn: ['WITHDRAWN', 'GRADUATED', 'REFUSE'] },
+        },
+        select: {
+          status: true,
+          academicYearId: true,
+          levelId: true,
+          trackId: true,
+          classId: true,
+        },
+      });
+      if (enr) {
+        const verdict = checkMove(
+          { ...enr, classId: current?.classId ?? enr.classId },
+          {
+            id: cls.id,
+            academicYearId: cls.academicYearId,
+            levelId: cls.levelId,
+            trackId: cls.trackId,
+            capacity: cls.capacity,
+            enrolled: cls._count.students,
+          },
+        );
+        if (!verdict.ok) throw new Error(moveRefusalMessage(verdict.reason, cls.capacity));
+      } else if (cls._count.students >= cls.capacity) {
+        // Pas de dossier sur l'année (cas d'un élève sans inscription) : au
+        // moins la capacité doit tenir.
+        throw new Error(`Capacité atteinte (${cls.capacity}).`);
+      }
 
       // Désactive l'appartenance de classe courante.
       if (current) {

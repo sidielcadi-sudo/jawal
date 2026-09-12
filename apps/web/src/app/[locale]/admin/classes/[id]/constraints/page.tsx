@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { ClassNav } from '../class-nav';
 import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
@@ -7,12 +6,14 @@ import { withTenant } from '@/lib/db';
 import { readClassTimetableConstraints } from '@jawal/shared';
 import { ConstraintsForm } from './client';
 import { localizedLabel } from '@/lib/localized-name';
+import { ClassHeader, CLASS_PAGE_SHELL } from '../class-header';
 
 export default async function ClassConstraintsPage({
   params,
 }: {
   params: Promise<{ locale: string; id: string }>;
 }) {
+  const tCrumb = await getTranslations('admin.classes.detail');
   const { locale, id } = await params;
   setRequestLocale(locale);
 
@@ -36,31 +37,9 @@ export default async function ClassConstraintsPage({
   const constraints = readClassTimetableConstraints(cls.metadata);
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-8">
-      <nav className="mb-3 text-xs text-slate-500">
-        <Link href={`/${locale}/admin/classes`} className="hover:text-brand-700">
-          {t('breadcrumbClasses')}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <Link href={`/${locale}/admin/classes/${cls.id}`} className="hover:text-brand-700">
-          {localizedLabel(locale, cls.name, cls.nameAr)}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <span>{t('title')}</span>
-      </nav>
-
-      <header className="mb-5">
-        <header className="mb-4 -mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-semibold text-slate-900">
-          {t('title')} — {localizedLabel(locale, cls.name, cls.nameAr)}
-        </h1>
-        <ClassNav classId={id} locale={locale} />
-      </header>
-        <p className="mt-1 text-sm text-slate-500">
-          {localizedLabel(locale, cls.level.cycle.label, cls.level.cycle.labelAr)} · {localizedLabel(locale, cls.level.label, cls.level.labelAr)} · {cls.academicYear.label}
-        </p>
-        <p className="mt-3 text-sm text-slate-600">{t('subtitle')}</p>
-      </header>
+    <div className={CLASS_PAGE_SHELL}>
+      <ClassHeader cls={cls} locale={locale} current={tCrumb('timetableConstraints')} />
+      <p className="mt-4 text-sm text-slate-600">{t('subtitle')}</p>
 
       <ConstraintsForm
         classId={cls.id}

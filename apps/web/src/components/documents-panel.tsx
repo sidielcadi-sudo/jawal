@@ -17,12 +17,15 @@ export function DocumentsPanel({
   years,
   periods,
   defaultPeriodId,
+  periodsHref,
 }: {
   hrefBase: string;
   years: Opt[];
   periods: Opt[];
   /** Trimestre présélectionné (par défaut le trimestre en cours). */
   defaultPeriodId?: string;
+  /** Lien vers le paramétrage de l'année, quand aucune période n'existe. */
+  periodsHref?: string;
 }) {
   const t = useTranslations('admin.documents');
   const [year, setYear] = useState(years[0]?.id ?? '');
@@ -56,7 +59,7 @@ export function DocumentsPanel({
             disabled={periods.length === 0}
             className={selectCls}
           >
-            {periods.length === 0 && <option value="">—</option>}
+            {periods.length === 0 && <option value="">{t('noPeriodOption')}</option>}
             {periods.map((p) => (
               <option key={p.id} value={p.id}>
                 {p.label}
@@ -65,6 +68,23 @@ export function DocumentsPanel({
           </select>
         </label>
       </div>
+
+      {/* Sans trimestre défini sur l'année, le sélecteur reste inerte et les
+          attestations de période sont hors d'atteinte. Le dire — et dire où
+          corriger — vaut mieux qu'un menu vide sur lequel on s'acharne. */}
+      {periods.length === 0 && (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+          {t('noPeriodHint')}
+          {periodsHref && (
+            <>
+              {' '}
+              <a href={periodsHref} className="font-medium underline">
+                {t('configurePeriods')}
+              </a>
+            </>
+          )}
+        </p>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {YEAR_TYPES.map((type) => (

@@ -669,6 +669,7 @@ export default async function EnrollmentDetailPage({
       {!archived && (
         <AdmissionPanel
           enrollmentId={enrollment.id}
+          studentId={enrollment.studentId}
           status={enrollment.status}
           docs={docRows}
           classes={classOptions}

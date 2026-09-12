@@ -9,7 +9,7 @@ import {
   computeAssignmentDeltas,
   slotDurationMinutes,
 } from '@/lib/timetable-validation';
-import { PersonHeader } from '../person-header';
+import { PersonHeader, PERSON_PAGE_SHELL } from '../person-header';
 
 const DAYS: DayKey[] = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
 
@@ -113,7 +113,7 @@ export default async function TeacherTimetablePage({
   const distinctSubjects = new Set(entries.map((e) => e.subjectId).filter(Boolean)).size;
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+    <div className={PERSON_PAGE_SHELL}>
       <PersonHeader personId={id} locale={locale} active="timetable" />
 
       <header className="-mx-4 sm:-mx-6 overflow-hidden rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3 mb-5 flex flex-wrap items-end justify-between gap-3">

@@ -8,6 +8,7 @@ import { computeStudentFinance } from '@/lib/finance';
 import { loadWaiveContext } from '@/lib/school-year';
 import { GenerateForm, RecordPaymentButton, WaiveDebtButton } from './client';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
+import { PersonHeader, PERSON_PAGE_SHELL } from '../person-header';
 
 export default async function StudentFinancePage({
   params,
@@ -162,36 +163,13 @@ export default async function StudentFinancePage({
   })();
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8">
-      <nav className="mb-4 text-xs text-slate-500">
-        <Link href={`/${locale}/admin/persons?type=STUDENT`} className="hover:text-brand-700">
-          {tPersons('title.STUDENT')}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <Link href={`/${locale}/admin/persons/${id}`} className="hover:text-brand-700">
-          {personDisplayName(locale, student)}
-        </Link>
-        <span className="mx-1.5">›</span>
-        <span>{t('title')}</span>
-      </nav>
+    <div className={PERSON_PAGE_SHELL}>
+      {/* La même bande que les autres onglets du dossier : la page recopiait
+          l'identité à sa façon, et changer d'onglet donnait l'impression de
+          changer d'écran — titre différent, boutons absents, largeur autre. */}
+      <PersonHeader personId={id} locale={locale} active="finance" />
 
-      <header className="mb-6 overflow-hidden -mx-6 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-3">
-        <h1 className="text-2xl font-semibold text-slate-900">
-          {t('title')} — {personDisplayName(locale, student)}
-        </h1>
-        {enrollment && (
-          <p className="mt-1 text-sm text-slate-500">
-            {localizedLabel(locale, enrollment.class.name, enrollment.class.nameAr)} · {localizedLabel(locale, enrollment.class.level.label, enrollment.class.level.labelAr)} · {enrollment.class.academicYear.label}
-          </p>
-        )}
-        {/* Même ligne d'identité que sur la fiche élève, pour reconnaître le
-            dossier sans remonter à la fiche. */}
-        <p className="mt-0.5 text-sm text-slate-500">
-          {tForm('types.STUDENT')}
-          {student.birthDate &&
-            ` · ${tDetail('bornOn', { date: new Date(student.birthDate).toLocaleDateString(locale) })}`}
-        </p>
-      </header>
+      <h2 className="mb-4 text-base font-semibold text-slate-900">{t('title')}</h2>
 
       <div className="grid grid-cols-3 gap-3">
         <Kpi
