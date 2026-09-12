@@ -11,7 +11,7 @@ export default async function ClassesListPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ year?: string; level?: string; archived?: string }>;
+  searchParams: Promise<{ year?: string; cycle?: string; level?: string; archived?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -23,17 +23,27 @@ export default async function ClassesListPage({
 
   const showArchived = sp.archived === '1';
 
-  const { classes, years, levels, activeYear } = await withTenant(tenantId, async (tx) => {
-    const [years, levels, activeYear] = await Promise.all([
+  const { classes, years, cycles, levels, activeYear } = await withTenant(tenantId, async (tx) => {
+    const [years, cycles, levels, activeYear] = await Promise.all([
       tx.academicYear.findMany({ orderBy: { startDate: 'desc' } }),
-      tx.level.findMany({ orderBy: { order: 'asc' } }),
+      tx.cycle.findMany({ orderBy: { order: 'asc' } }),
+      tx.level.findMany({ orderBy: [{ cycle: { order: 'asc' } }, { order: 'asc' }] }),
       tx.academicYear.findFirst({ where: { active: true } }),
     ]);
+
+    // Le niveau est plus précis que le cycle : quand les deux sont posés, le
+    // niveau gagne — sinon un lien de niveau resterait sans effet tant qu'un
+    // cycle est sélectionné.
+    const levelScope = sp.level
+      ? { levelId: sp.level }
+      : sp.cycle
+        ? { level: { cycleId: sp.cycle } }
+        : {};
 
     const where: Prisma.ClassWhereInput = {
       deletedAt: showArchived ? { not: null } : null,
       ...(sp.year ? { academicYearId: sp.year } : activeYear ? { academicYearId: activeYear.id } : {}),
-      ...(sp.level ? { levelId: sp.level } : {}),
+      ...levelScope,
     };
 
     const classes = await tx.class.findMany({
@@ -47,10 +57,38 @@ export default async function ClassesListPage({
       },
     });
 
-    return { classes, years, levels, activeYear };
+    return { classes, years, cycles, levels, activeYear };
   });
 
   const baseHref = `/${locale}/admin/classes`;
+
+  // Cycle courant : celui demandé, ou celui du niveau sélectionné — arriver sur
+  // un niveau sans que son cycle soit surligné serait déroutant.
+  const currentCycleId =
+    sp.cycle ?? (sp.level ? (levels.find((l) => l.id === sp.level)?.cycleId ?? null) : null);
+  const cycleLevels = currentCycleId ? levels.filter((l) => l.cycleId === currentCycleId) : [];
+  const cycleTabs = cycles.filter((c) => levels.some((l) => l.cycleId === c.id));
+
+  /** Lien de filtre : conserve l'année et le mode archivé. */
+  const filterHref = (patch: { cycle?: string | null; level?: string | null }) => {
+    const qs = new URLSearchParams();
+    if (sp.year) qs.set('year', sp.year);
+    const cycle = patch.cycle === undefined ? currentCycleId : patch.cycle;
+    const level = patch.level === undefined ? (sp.level ?? null) : patch.level;
+    if (cycle) qs.set('cycle', cycle);
+    if (level) qs.set('level', level);
+    if (showArchived) qs.set('archived', '1');
+    const q = qs.toString();
+    return q ? `${baseHref}?${q}` : baseHref;
+  };
+
+  const tabCls = (active: boolean) =>
+    [
+      'rounded-lg px-3 py-1.5 text-sm transition-colors',
+      active
+        ? 'bg-brand-600 text-white shadow'
+        : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50',
+    ].join(' ');
 
   return (
     <div className="px-3 py-3">
@@ -73,6 +111,41 @@ export default async function ClassesListPage({
         </div>
       </div>
 
+      {/* Cycle puis niveau, comme dans Paramétrage → Programme par niveau :
+          deux clics au lieu d'un menu déroulant qu'il faut ouvrir pour voir
+          ce qu'il contient. */}
+      <div className="mb-2 flex flex-wrap gap-2">
+        <Link href={filterHref({ cycle: null, level: null })} className={tabCls(!currentCycleId)}>
+          {t('filters.allCycles')}
+        </Link>
+        {cycleTabs.map((c) => (
+          <Link
+            key={c.id}
+            href={filterHref({ cycle: c.id, level: null })}
+            className={tabCls(currentCycleId === c.id)}
+          >
+            {localizedLabel(locale, c.label, c.labelAr)}
+          </Link>
+        ))}
+      </div>
+
+      {cycleLevels.length > 0 && (
+        <div className="mb-4 flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+          <Link href={filterHref({ level: null })} className={tabCls(!sp.level)}>
+            {t('filters.allLevels')}
+          </Link>
+          {cycleLevels.map((l) => (
+            <Link
+              key={l.id}
+              href={filterHref({ level: l.id })}
+              className={tabCls(sp.level === l.id)}
+            >
+              {localizedLabel(locale, l.label, l.labelAr)}
+            </Link>
+          ))}
+        </div>
+      )}
+
       <form method="get" className="mb-4 flex flex-wrap items-end gap-3">
         <div>
           <label htmlFor="year" className="block text-xs font-medium text-slate-600">
@@ -91,24 +164,8 @@ export default async function ClassesListPage({
             ))}
           </select>
         </div>
-        <div>
-          <label htmlFor="level" className="block text-xs font-medium text-slate-600">
-            {t('filters.level')}
-          </label>
-          <select
-            name="level"
-            id="level"
-            defaultValue={sp.level ?? ''}
-            className="mt-1 rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500"
-          >
-            <option value="">{t('filters.allLevels')}</option>
-            {levels.map((l) => (
-              <option key={l.id} value={l.id}>
-                {localizedLabel(locale, l.label, l.labelAr)}
-              </option>
-            ))}
-          </select>
-        </div>
+        {currentCycleId && <input type="hidden" name="cycle" value={currentCycleId} />}
+        {sp.level && <input type="hidden" name="level" value={sp.level} />}
         {showArchived && <input type="hidden" name="archived" value="1" />}
         <button
           type="submit"
@@ -119,6 +176,7 @@ export default async function ClassesListPage({
         <Link
           href={`${baseHref}?${new URLSearchParams({
             ...(sp.year ? { year: sp.year } : {}),
+            ...(currentCycleId ? { cycle: currentCycleId } : {}),
             ...(sp.level ? { level: sp.level } : {}),
             archived: showArchived ? '0' : '1',
           }).toString()}`}

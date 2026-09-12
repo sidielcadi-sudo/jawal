@@ -1,6 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import {
+  runPreflight,
+  blockingMessage,
+  warningMessage,
+} from '@/lib/timetable-preflight';
+
 import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
@@ -170,6 +176,20 @@ export async function generateTimetableAction(
         groupsBySubject.set(g.subjectId, arr);
       }
 
+      // Séances déclarées en groupes : elles imposent la case au solveur.
+      // « 1 h de français en demi-groupes » ne dit pas laquelle ; « le lundi
+      // de 10 h à 12 h » le dit, et l'appel comme les notes s'y rattachent.
+      const splitSlotRows = await tx.classGroupSlot.findMany({
+        where: { classId },
+        select: { subjectId: true, dayOfWeek: true, slotId: true },
+      });
+      const splitSlotsBySubject = new Map<string, Array<{ day: string; slotId: string }>>();
+      for (const r of splitSlotRows) {
+        const arr = splitSlotsBySubject.get(r.subjectId) ?? [];
+        arr.push({ day: r.dayOfWeek, slotId: r.slotId });
+        splitSlotsBySubject.set(r.subjectId, arr);
+      }
+
       const solverAssignments: SolverAssignment[] = assignments.flatMap((a) => {
         const groups = groupsBySubject.get(a.subjectId) ?? [];
         return splitAssignment({
@@ -182,6 +202,7 @@ export async function generateTimetableAction(
           weeklyHours: hoursByAssignment.get(a.id) ?? 0,
           groups: groups.map((g) => ({ id: g.id, teacherId: g.teacherId })),
           splitHours: groups[0]?.splitHours ?? null,
+          fixedSlots: splitSlotsBySubject.get(a.subjectId) ?? [],
         });
       });
 
@@ -262,6 +283,28 @@ export async function generateTimetableAction(
   }
 
   // 2. Appel solveur
+
+  // ── Diagnostic avant solveur ──────────────────────────────────────────
+  //
+  // Les solveurs disent mal pourquoi ils échouent : FET rejette le fichier
+  // entier sur « Cannot precompute - data is wrong » sans nommer la classe ni
+  // la contrainte fautive. On regarde donc les données d'abord, et on rend un
+  // message qui désigne ce qu'il faut corriger. Les avertissements, eux, ne
+  // retiennent pas la génération : ils accompagnent son résultat.
+  const preflight = runPreflight({
+    slots: payload.slots,
+    days: payload.days,
+    teachers: payload.teachers,
+    assignments: payload.assignments,
+    // Le payload mono-classe ne porte ni cases interdites ni contraintes
+    // paramétrables : ces deux contrôles ne s'appliquent qu'au mode multi.
+    forbiddenClassSlots: [],
+    maxSameSubjectPerDay: null,
+  });
+  const blocked = blockingMessage(preflight);
+  if (blocked) return { ok: false, error: blocked };
+  const preflightWarning = warningMessage(preflight);
+
   let solverResp;
   try {
     solverResp = await callSolver(payload);
@@ -273,7 +316,8 @@ export async function generateTimetableAction(
   }
 
   if (solverResp.status === 'INFEASIBLE' || solverResp.status === 'ERROR') {
-    return { ok: false, error: solverResp.message || 'Aucune solution trouvée.' };
+    const detail = solverResp.message || 'Aucune solution trouvée.';
+    return { ok: false, error: preflightWarning ? `${detail}\n${preflightWarning}` : detail };
   }
 
   // 3. Persiste : wipe + recreate (remplacement complet pour cette classe)
@@ -340,7 +384,12 @@ export async function generateTimetableAction(
     ok: true,
     data: {
       status: solverResp.status,
-      message: solverResp.message,
+      // Ce que le pré-diagnostic a relevé accompagne le résultat : la
+      // génération a bien abouti, mais l'utilisateur doit savoir ce qui a été
+      // dégradé au passage.
+      message: preflightWarning
+        ? `${solverResp.message}\n${preflightWarning}`
+        : solverResp.message,
       placed: solverResp.placed.length,
       unplaced: solverResp.unplaced.map((u) => ({
         subject: u.subject_label,

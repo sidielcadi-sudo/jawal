@@ -113,6 +113,39 @@ export default async function StudentFinancePage({
     return years.find((y) => d >= y.startDate && d <= y.endDate)?.label ?? '—';
   };
 
+  const activeYear = years.find((y) => y.active) ?? null;
+
+  /** Une échéance appartient-elle à l'exercice en cours ? */
+  const isCurrentYear = (dueDate: string | Date) => {
+    if (!activeYear) return true;
+    const d = new Date(dueDate);
+    return d >= activeYear.startDate && d <= activeYear.endDate;
+  };
+
+  /**
+   * Les trois indicateurs portent sur l'ANNÉE ACTIVE seulement.
+   *
+   * Ils cumulaient tous les exercices : un « reste dû » de 9 000 MAD pouvait
+   * n'être que l'arriéré d'une année close, et la fiche donnait à croire que
+   * la famille était en retard sur l'année en cours. Les créances antérieures
+   * restent visibles dans le tableau, sous leur propre bandeau, et se traitent
+   * dans Finances → Gestion des impayés.
+   */
+  const today = new Date();
+  const current = finance.installments.filter((i) => isCurrentYear(i.dueDate));
+  const yearTotals = {
+    due: current.reduce((s, i) => s + i.amount, 0),
+    paid: current.reduce((s, i) => s + i.totalPaid, 0),
+    remaining: current.reduce((s, i) => s + i.remaining, 0),
+    overdue: current
+      .filter((i) => i.remaining > 0 && new Date(i.dueDate) < today)
+      .reduce((s, i) => s + i.remaining, 0),
+  };
+  /** Arriéré des exercices clos — dit à part, jamais mélangé à l'année. */
+  const previousRemaining = finance.installments
+    .filter((i) => !isCurrentYear(i.dueDate))
+    .reduce((s, i) => s + i.remaining, 0);
+
   /**
    * Échéances groupées par exercice, le plus récent en tête : c'est l'année en
    * cours qu'on consulte, l'historique vient après.
@@ -161,19 +194,38 @@ export default async function StudentFinancePage({
       </header>
 
       <div className="grid grid-cols-3 gap-3">
-        <Kpi label={t('kpi.totalDue')} value={`${finance.totalDue.toFixed(2)} ${currency}`} color="slate" />
-        <Kpi label={t('kpi.totalPaid')} value={`${finance.totalPaid.toFixed(2)} ${currency}`} color="emerald" />
+        <Kpi
+          label={t('kpi.totalDue')}
+          value={`${yearTotals.due.toFixed(2)} ${currency}`}
+          color="slate"
+          hint={activeYearLabel ?? undefined}
+        />
+        <Kpi
+          label={t('kpi.totalPaid')}
+          value={`${yearTotals.paid.toFixed(2)} ${currency}`}
+          color="emerald"
+          hint={activeYearLabel ?? undefined}
+        />
         <Kpi
           label={t('kpi.totalRemaining')}
-          value={`${finance.totalRemaining.toFixed(2)} ${currency}`}
-          color={finance.totalRemaining > 0 ? 'red' : 'emerald'}
+          value={`${yearTotals.remaining.toFixed(2)} ${currency}`}
+          color={yearTotals.remaining > 0 ? 'red' : 'emerald'}
           hint={
-            finance.totalOverdue > 0
-              ? t('kpi.overdueHint', { amount: `${finance.totalOverdue.toFixed(2)} ${currency}` })
-              : undefined
+            yearTotals.overdue > 0
+              ? t('kpi.overdueHint', { amount: `${yearTotals.overdue.toFixed(2)} ${currency}` })
+              : (activeYearLabel ?? undefined)
           }
         />
       </div>
+
+      {/* L'arriéré des exercices clos n'entre pas dans les trois cartes : il se
+          dit ici, pour qu'on sache qu'il existe sans le confondre avec la
+          situation de l'année. */}
+      {previousRemaining > 0.01 && (
+        <p className="mt-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2 text-xs text-amber-900">
+          {t('previousYearsDue', { amount: `${previousRemaining.toFixed(2)} ${currency}` })}
+        </p>
+      )}
 
       <section className="mt-6">
         <div className="mb-3 flex flex-wrap items-end justify-between gap-2">
@@ -206,11 +258,20 @@ export default async function StudentFinancePage({
                 <Fragment key={yearLabel}>
                   {/* Bandeau d exercice : sans lui, deux séries d échéances de
                       deux années se suivent et passent pour un doublon. */}
-                  <tr className="bg-slate-50">
-                    <td colSpan={7} className="px-4 py-1.5 text-xs font-semibold uppercase tracking-wide text-slate-600">
+                  {/* Couleur distincte pour un exercice clos : sur une fiche
+                      qui empile deux années, la seule taille du libellé ne
+                      suffit pas à voir qu'on a changé de périmètre. */}
+                  <tr className={yearLabel === activeYearLabel ? 'title-band' : 'bg-amber-100'}>
+                    <td
+                      colSpan={7}
+                      className={`px-4 py-1.5 text-xs font-semibold uppercase tracking-wide ${
+                        yearLabel === activeYearLabel ? 'text-slate-700' : 'text-amber-900'
+                      }`}
+                    >
                       {yearLabel}
-                      <span className="ms-2 font-normal normal-case text-slate-400">
+                      <span className="ms-2 font-normal normal-case opacity-70">
                         {t('yearCount', { count: items.length })}
+                        {yearLabel !== activeYearLabel ? ` · ${t('previousYear')}` : ''}
                       </span>
                     </td>
                   </tr>

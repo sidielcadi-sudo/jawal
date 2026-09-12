@@ -411,6 +411,7 @@ model Tenant {
   enrollmentDocuments         EnrollmentDocument[]
   timetableSlots              TimetableSlot[]
   classGroups                 ClassGroup[]
+  classGroupSlots             ClassGroupSlot[]
   classGroupMembers           ClassGroupMember[]
   timetableEntries            TimetableEntry[]
   timetableOverrides          TimetableOverride[]
@@ -1102,6 +1103,7 @@ model Class {
   lessonEntries          LessonEntry[]
   teacherPriorityClasses TeacherPriorityClass[]
   groups                 ClassGroup[]
+  groupSlots             ClassGroupSlot[]
 
   @@unique([tenantId, academicYearId, name])
   @@index([tenantId, levelId])
@@ -1164,6 +1166,38 @@ model ClassGroup {
   @@unique([classId, subjectId, name])
   @@index([tenantId, classId])
   @@map("class_groups")
+}
+
+/// Séance dédoublée : quel créneau de la semaine se tient en groupes.
+///
+/// Déclarer « 1 h de français en demi-groupes » ne suffit pas à faire un
+/// emploi du temps cohérent : il faut savoir LAQUELLE des trois heures. Sans
+/// cette précision, le solveur choisissait un créneau au hasard, et l'appel,
+/// les notes et la salle se rattachaient à une séance que personne n'avait
+/// décidée. On déclare donc la séance elle-même — « le lundi de 10 h à 12 h
+/// est dédoublé » — et tout le reste en découle.
+///
+/// Toutes les colonnes sont obligatoires : l'unicité tient sur un index
+/// ordinaire, sans le piège du NULL qui ne s'oppose pas à NULL.
+model ClassGroupSlot {
+  id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @db.Uuid
+  classId   String   @map("class_id") @db.Uuid
+  subjectId String   @map("subject_id") @db.Uuid
+  /// Même énumération que TimetableEntry : la séance déclarée et la séance
+  /// placée doivent se comparer sans conversion.
+  dayOfWeek DayOfWeek @map("day_of_week")
+  slotId    String   @map("slot_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant  Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  class   Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
+  subject Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  slot    TimetableSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+
+  @@unique([classId, subjectId, dayOfWeek, slotId])
+  @@index([tenantId, classId])
+  @@map("class_group_slots")
 }
 
 /// Appartenance d'un élève à un groupe.
@@ -1537,6 +1571,7 @@ model Subject {
   timetableEntries       TimetableEntry[]
   substitutionsAsSubject TimetableOverride[] @relation("SubstituteSubject")
   classGroups            ClassGroup[]
+  classGroupSlots        ClassGroupSlot[]
   books                  Book[]
   trackCoefficients      TrackSubjectCoefficient[]
   examPapers             ExamPaper[]
@@ -1867,8 +1902,9 @@ model TimetableSlot {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  tenant  Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  entries TimetableEntry[]
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entries    TimetableEntry[]
+  groupSlots ClassGroupSlot[]
 
   @@unique([tenantId, startTime, endTime])
   @@index([tenantId, order])

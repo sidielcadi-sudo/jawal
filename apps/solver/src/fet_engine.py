@@ -80,10 +80,13 @@ def _is_teacher_available_on(teacher, day: str, slot) -> bool:
 # ─── Construction du XML FET ────────────────────────────────────────
 
 
-def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[str]]:
+def build_fet_xml(
+    req: MultiGenerateRequest,
+) -> Tuple[str, Dict[int, str], List[str], List[str]]:
     """Construit un document FET 7.x à partir de la requête.
 
-    Retourne (xml_string, activity_id_to_assignment_id, day_order).
+    Retourne (xml_string, activity_id_to_assignment_id, day_order,
+    dédoublements écartés faute d'un second enseignant).
 
     Format attendu par FET 7.x : balise racine `<fet>` (minuscule), ordre
     des éléments Activity strict (Teacher, Subject, Activity_Tag, Students,
@@ -205,6 +208,20 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
     # rang par rang est ce qui rend la simultanéité exprimable — FET impose des
     # départs identiques entre activités nommées, pas entre ensembles.
     acts_by_parallel: Dict[str, list[list[int]]] = {}
+    # (id d'activité, jour FET, nom d'heure FET) pour les séances déclarées.
+    # La n-ième séance d'une affectation va sur la n-ième case déclarée ; les
+    # deux moitiés d'un dédoublement portant la même liste, elles tombent
+    # d'elles-mêmes au même moment.
+    locked_acts: list[tuple[int, str, str, str]] = []
+    # Prof de chaque affectation, et libellé lisible de chaque dédoublement :
+    # servent au contrôle « deux groupes, deux professeurs » plus bas.
+    teacher_by_assignment: Dict[str, str] = {a.id: a.teacher_id for a in req.assignments}
+    split_label: Dict[str, str] = {
+        a.parallel_key: f"{a.class_name} / {a.subject_label}"
+        for a in req.assignments
+        if a.parallel_key
+    }
+    hour_name_by_slot = {s.id: _hour_name(s.start_time) for s in placeable_slots_sorted}
     next_id = 1
     for a in req.assignments:
         teacher_slug = teacher_slugs.get(a.teacher_id)
@@ -221,6 +238,13 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
             acts_by_class_subject.setdefault(
                 (a.class_id, a.subject_id, a.group_id or ""), []
             ).append(next_id)
+            if a.fixed_slots and rank < len(a.fixed_slots):
+                f = a.fixed_slots[rank]
+                hour_name = hour_name_by_slot.get(f.slot_id)
+                if hour_name:
+                    locked_acts.append(
+                        (next_id, DAY_KEY_TO_FET[f.day], hour_name, a.parallel_key or "")
+                    )
             if a.parallel_key:
                 slots_for_key = acts_by_parallel.setdefault(a.parallel_key, [])
                 while len(slots_for_key) <= rank:
@@ -361,12 +385,62 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
             ET.SubElement(cons, "Active").text = "true"
             ET.SubElement(cons, "Comments").text = ""
 
+    # ─ Dédoublements impossibles : deux groupes, un seul professeur ─
+    #
+    # Deux activités simultanées ne peuvent pas partager d'enseignant : un
+    # professeur n'est pas à deux endroits à la fois. FET ne se contente pas de
+    # juger la contrainte insatisfaisable — il REJETTE LE FICHIER ENTIER avec
+    # « Cannot precompute - data is wrong », sans nommer le coupable. Un seul
+    # dédoublement sans second enseignant rendait ainsi tout l'établissement
+    # ingénérable. On écarte le couple, et on le remonte pour qu'on sache à
+    # quel groupe il manque un professeur.
+    teacher_of_act = {
+        act_id: teacher_by_assignment.get(assignment_id, "")
+        for act_id, assignment_id in act_to_assignment.items()
+    }
+    impossible_keys: set[str] = set()
+    for key, ranks in acts_by_parallel.items():
+        if any(
+            len({teacher_of_act.get(a, "") for a in act_ids}) < len(act_ids)
+            for act_ids in ranks
+            if len(act_ids) >= 2
+        ):
+            impossible_keys.add(key)
+    shared_teacher_splits: List[str] = [
+        split_label.get(k, k) for k in impossible_keys
+    ]
+
+    # ─ Séances imposées : on verrouille la case déclarée ─
+    #
+    # `Permanently_Locked` fige l'activité : FET ne la déplacera pas, même si
+    # cela lui coûte des séances ailleurs. C'est voulu — une séance dédoublée
+    # est une décision de l'établissement, pas une variable d'ajustement.
+    for act_id, day_name, hour_name, split_key in locked_acts:
+        # Un dédoublement qu'on vient d'écarter ne peut pas non plus honorer sa
+        # séance déclarée : verrouiller les deux moitiés sur la même case avec
+        # le même professeur est impossible, et FET renonce alors à presque
+        # tout le reste (1 heure placée sur 283, mesuré).
+        if split_key and split_key in impossible_keys:
+            continue
+        cons = ET.SubElement(
+            time_constraints, "ConstraintActivityPreferredStartingTime"
+        )
+        ET.SubElement(cons, "Weight_Percentage").text = "100"
+        ET.SubElement(cons, "Activity_Id").text = str(act_id)
+        ET.SubElement(cons, "Preferred_Day").text = day_name
+        ET.SubElement(cons, "Preferred_Hour").text = hour_name
+        ET.SubElement(cons, "Permanently_Locked").text = "true"
+        ET.SubElement(cons, "Active").text = "true"
+        ET.SubElement(cons, "Comments").text = "Seance dedoublee declaree"
+
     # ─ Dédoublements : les moitiés démarrent en même temps ─
     #
     # Les sous-groupes AUTORISENT le parallélisme, ils ne l'imposent pas : sans
     # cette contrainte FET plaçait les deux moitiés à des heures différentes, ce
     # qui laisse la moitié de la classe sans cours pendant que l'autre travaille.
-    for ranks in acts_by_parallel.values():
+    for key, ranks in acts_by_parallel.items():
+        if key in impossible_keys:
+            continue
         for act_ids in ranks:
             if len(act_ids) < 2:
                 continue
@@ -454,7 +528,12 @@ def build_fet_xml(req: MultiGenerateRequest) -> Tuple[str, Dict[int, str], List[
             skipped_min_days[:10],
         )
 
-    return full, act_to_assignment, [DAY_KEY_TO_FET[d] for d in days]
+    return (
+        full,
+        act_to_assignment,
+        [DAY_KEY_TO_FET[d] for d in days],
+        shared_teacher_splits,
+    )
 
 
 # ─── Parsing de la sortie FET ──────────────────────────────────────
@@ -552,7 +631,7 @@ def solve_with_fet(request: MultiGenerateRequest) -> MultiGenerateResponse:
     placeable_sorted = sorted(placeable, key=lambda s: s.start_time)
     placeable_by_start: Dict[str, str] = {s.start_time: s.id for s in placeable_sorted}
 
-    xml_str, act_to_assignment, _days_order = build_fet_xml(request)
+    xml_str, act_to_assignment, _days_order, shared_teacher_splits = build_fet_xml(request)
 
     with tempfile.TemporaryDirectory(prefix="jawal_fet_") as tmpdir_str:
         tmpdir = Path(tmpdir_str)
@@ -654,6 +733,16 @@ def solve_with_fet(request: MultiGenerateRequest) -> MultiGenerateResponse:
     else:
         status = "PARTIAL"
         msg = f"FET : {total_placed}/{total_req} heures placées."
+
+    if shared_teacher_splits:
+        # Sans second enseignant, les deux moitiés ne peuvent pas se tenir en
+        # même temps : l'une se retrouve sans cours pendant que l'autre
+        # travaille. Le dire vaut mieux que de le laisser découvrir sur la grille.
+        msg += (
+            " Dédoublement non simultané, faute d'un second enseignant : "
+            + ", ".join(sorted(set(shared_teacher_splits)))
+            + "."
+        )
 
     analysis = compute_analysis(request, placed)
 

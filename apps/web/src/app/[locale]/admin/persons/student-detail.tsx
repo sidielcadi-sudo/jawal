@@ -75,8 +75,12 @@ export async function StudentDetailPanel({
 
   return (
     <aside className="w-full shrink-0 space-y-4 xl:w-[380px]">
-      <section className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
-        <header className="flex items-center gap-3 border-b border-slate-100 px-4 py-4">
+      {/* Même bordure et même fond que la bande de titre : la fiche se lit
+          comme une extension de l'en-tête, pas comme un bloc rapporté. Les
+          sous-blocs restent sur un blanc translucide pour que le texte garde
+          son contraste sur le dégradé. */}
+      <section className="overflow-hidden rounded-2xl border border-brand-200 title-band">
+        <header className="flex items-center gap-3 border-b border-white/60 px-4 py-4">
           {detail.photo ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -133,7 +137,7 @@ export async function StudentDetailPanel({
               <p className="col-span-2 text-xs text-slate-400">{t('noParent')}</p>
             ) : (
               detail.parents.map((p) => (
-                <div key={p.name + p.role} className="col-span-2 rounded-lg bg-slate-50 px-3 py-2">
+                <div key={p.name + p.role} className="col-span-2 rounded-lg bg-white/80 px-3 py-2">
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-sm font-medium text-slate-800">{p.name}</span>
                     <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
@@ -232,7 +236,7 @@ function Block({
   children: React.ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-slate-200 p-3">
+    <div className="rounded-xl border border-white/70 bg-white/70 p-3">
       <div className="mb-2 flex items-center justify-between gap-2">
         <h3 className="text-sm font-semibold text-slate-800">{title}</h3>
         {badge}
@@ -264,7 +268,7 @@ export async function StudentDetailEmpty() {
   const t = await getTranslations('admin.persons.detailPanel');
   return (
     <aside className="w-full shrink-0 xl:w-[380px]">
-      <div className="rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center">
+      <div className="rounded-2xl border border-dashed border-brand-200 title-band p-8 text-center">
         <p className="text-sm text-slate-400">{t('empty')}</p>
       </div>
     </aside>

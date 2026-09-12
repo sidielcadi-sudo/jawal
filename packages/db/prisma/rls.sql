@@ -162,7 +162,8 @@ DECLARE
     'exam_blueprints',
     'exam_paper_tracks',
     'class_groups',
-    'class_group_members'
+    'class_group_members',
+    'class_group_slots'
   ];
 BEGIN
   FOREACH t IN ARRAY tenant_scoped

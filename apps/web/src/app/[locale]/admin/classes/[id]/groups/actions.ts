@@ -398,3 +398,108 @@ export async function setGroupTeacherAction(
     return { ok: false, error: message(e) };
   }
 }
+
+/* ── Séances dédoublées ──────────────────────────────────────────────────── */
+
+const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'] as const;
+type DayKey = (typeof DAYS)[number];
+
+/**
+ * Déclare LES SÉANCES qui se tiennent en groupes, pour une (classe, matière).
+ *
+ * Un nombre d'heures ne suffit pas à faire un emploi du temps : « 1 h de
+ * français en demi-groupes » laisse le solveur choisir laquelle, et l'appel,
+ * les notes et la salle se rattachent alors à une séance que personne n'a
+ * décidée. On nomme donc la case — lundi, 10 h-12 h — et le reste en découle.
+ *
+ * L'écriture est un remplacement complet de la déclaration : l'écran envoie
+ * l'état voulu de la grille, pas un delta. Deux clics concurrents se soldent
+ * ainsi par le dernier état cliqué, jamais par un mélange des deux.
+ *
+ * `splitHours` est recalculé ici et nulle part ailleurs : il vaut désormais le
+ * nombre de séances déclarées. Le laisser saisissable à côté aurait créé deux
+ * vérités pour la même question.
+ */
+export async function setSplitSlotsAction(input: {
+  classId: string;
+  subjectId: string;
+  slots: Array<{ day: string; slotId: string }>;
+}): Promise<Result<{ slots: number; groups: number }>> {
+  const session = await guard();
+  if (!session) return { ok: false, error: 'Non autorisé' };
+  if (!input.subjectId) {
+    return { ok: false, error: 'Le dédoublement d’une séance suppose une matière.' };
+  }
+  for (const sl of input.slots) {
+    if (!DAYS.includes(sl.day as DayKey)) return { ok: false, error: `Jour inconnu : ${sl.day}` };
+  }
+
+  // Dédoublonne : la grille ne peut cocher deux fois la même case, mais rien
+  // n'oblige un appelant à être propre.
+  const seen = new Set<string>();
+  const slots = input.slots.filter((sl) => {
+    const k = `${sl.day}|${sl.slotId}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+
+  try {
+    const data = await withTenant(session.user.tenantId, async (tx) => {
+      const cls = await tx.class.findUnique({
+        where: { id: input.classId },
+        select: { id: true },
+      });
+      if (!cls) throw new Error('Classe introuvable');
+
+      // Les créneaux doivent exister et ne pas être des pauses : on ne
+      // dédouble pas une récréation.
+      if (slots.length > 0) {
+        const known = await tx.timetableSlot.findMany({
+          where: { id: { in: slots.map((sl) => sl.slotId) }, isBreak: false },
+          select: { id: true },
+        });
+        const ok = new Set(known.map((k) => k.id));
+        const bad = slots.find((sl) => !ok.has(sl.slotId));
+        if (bad) throw new Error('Créneau inconnu ou non enseignable');
+      }
+
+      await tx.classGroupSlot.deleteMany({
+        where: { classId: input.classId, subjectId: input.subjectId },
+      });
+      if (slots.length > 0) {
+        await tx.classGroupSlot.createMany({
+          data: slots.map((sl) => ({
+            tenantId: session.user.tenantId,
+            classId: input.classId,
+            subjectId: input.subjectId,
+            dayOfWeek: sl.day as DayKey,
+            slotId: sl.slotId,
+          })),
+        });
+      }
+
+      // Le volume dédoublé se déduit des séances déclarées. Null quand aucune
+      // n'est cochée : on retombe sur « tout le volume est dédoublé », le
+      // comportement d'avant la déclaration par séance.
+      const r = await tx.classGroup.updateMany({
+        where: { classId: input.classId, subjectId: input.subjectId },
+        data: { splitHours: slots.length > 0 ? slots.length : null },
+      });
+
+      await logAudit(tx, {
+        tenantId: session.user.tenantId,
+        userId: session.user.id,
+        action: 'update',
+        entityType: 'Class',
+        entityId: input.classId,
+        after: { subjectId: input.subjectId, splitSlots: slots, groups: r.count },
+      });
+      return { slots: slots.length, groups: r.count };
+    });
+    touch(input.classId);
+    return { ok: true, data };
+  } catch (e) {
+    return { ok: false, error: message(e) };
+  }
+}

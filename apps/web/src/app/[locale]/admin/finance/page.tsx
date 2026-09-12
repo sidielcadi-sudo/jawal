@@ -70,11 +70,31 @@ export default async function FinanceDashboardPage({
     for (const p of allPayments) {
       paidByInst.set(p.installmentId, (paidByInst.get(p.installmentId) ?? 0) + Number(p.amount));
     }
+    // « À date » : on ne retient que les échéances déjà tombées. C'est la
+    // mesure qui juge le recouvrement — le total de l'année inclut des
+    // échéances à venir, dont l'absence de paiement n'est pas un retard.
+    //
+    // Le reste à date se calcule échéance par échéance, jamais comme
+    // « dû à date − encaissé total » : un versement d'avance sur une échéance
+    // de juin viendrait effacer un impayé d'octobre et masquerait l'arriéré.
+    let dueToDate = 0;
+    let paidToDate = 0;
+    let remainingToDate = 0;
     for (const i of yearInstallments) {
+      const paid = paidByInst.get(i.id) ?? 0;
       totalDue += Number(i.amount);
-      totalPaid += paidByInst.get(i.id) ?? 0;
+      totalPaid += paid;
+      if (i.dueDate <= today) {
+        dueToDate += Number(i.amount);
+        paidToDate += paid;
+        remainingToDate += Math.max(0, Number(i.amount) - paid);
+      }
     }
     const collectionRate = totalDue > 0 ? (totalPaid / totalDue) * 100 : 0;
+    // Le taux qui juge réellement le recouvrement : il rapporte l'encaissé aux
+    // seules échéances tombées. Le taux annuel, lui, part toujours très bas en
+    // début d'année puisque l'essentiel des échéances est encore à venir.
+    const collectionRateToDate = dueToDate > 0 ? (paidToDate / dueToDate) * 100 : 0;
 
     // Répartition des montants encaissés par moyen de paiement (sur l'année) —
     // même périmètre que « Encaissé » (paiements des échéances de l'année).
@@ -204,13 +224,25 @@ export default async function FinanceDashboardPage({
       for (let k = 0; k < nBuckets; k++) {
         const s = addMonths(ys0, k * monthsPer);
         const e = addMonths(ys0, (k + 1) * monthsPer);
+        // Dû ET encaissé sur le même axe : celui de l'ÉCHÉANCE.
+        //
+        // L'encaissé était auparavant ventilé par date de PAIEMENT. Les deux
+        // séries ne parlaient donc pas de la même chose, et « Impayé = Dû −
+        // Encaissé » soustrayait des grandeurs hétérogènes : un règlement
+        // d'octobre pour une échéance de septembre creusait un impayé de
+        // septembre qui n'existait pas. Pire, les régularisations d'arriérés
+        // d'un exercice antérieur entraient dans le graphe sans entrer dans
+        // les indicateurs — 18 189 MAD d'écart sur ce jeu de données.
+        //
+        // Conséquence assumée : le graphe ne décrit plus la trésorerie du mois
+        // mais le recouvrement des échéances du mois. C'est ce que mesurent
+        // les indicateurs de tête, et c'est avec eux qu'il doit concorder.
         let due = 0;
-        for (const i of allInstallments) {
-          if (instIds.has(i.id) && i.dueDate >= s && i.dueDate < e) due += Number(i.amount);
-        }
         let collected = 0;
-        for (const p of allPayments) {
-          if (instIds.has(p.installmentId) && p.paidAt >= s && p.paidAt < e) collected += Number(p.amount);
+        for (const i of allInstallments) {
+          if (!instIds.has(i.id) || i.dueDate < s || i.dueDate >= e) continue;
+          due += Number(i.amount);
+          collected += paidByInst.get(i.id) ?? 0;
         }
         out.push({ label: labelFn(k, s), due, collected });
       }
@@ -485,6 +517,10 @@ export default async function FinanceDashboardPage({
       totalDue,
       totalPaid,
       totalRemaining: Math.max(0, totalDue - totalPaid),
+      dueToDate,
+      paidToDate,
+      remainingToDate,
+      collectionRateToDate,
       collectionRate,
       installmentsCount: yearInstallments.length,
       paidCount: yearInstallments.filter((i) => i.status === 'PAID').length,
@@ -593,8 +629,12 @@ export default async function FinanceDashboardPage({
         </div>
       </header>
 
-      {/* Bandeau d'indicateurs — un pastel clair distinct par carte. */}
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+      {/* Bandeau d'indicateurs — un pastel clair distinct par carte.
+          Ligne du haut : l'ANNÉE entière. Ligne du bas : ce qui est déjà
+          exigible. Les deux mesures répondent à des questions différentes —
+          « combien l'année rapportera-t-elle » et « qu'est-ce qui aurait dû
+          être encaissé et ne l'est pas » — et ne doivent pas être confondues. */}
+      <div className="grid grid-cols-2 gap-2 lg:grid-cols-5">
         <Kpi
           label={t('kpi.totalDue')}
           value={`${formatNumber(data.totalDue)} ${data.currency}`}
@@ -607,7 +647,7 @@ export default async function FinanceDashboardPage({
           toneIndex={1}
         />
         <Kpi
-          label={t('kpi.totalRemaining')}
+          label={t('kpi.totalRemainingYear')}
           value={`${formatNumber(data.totalRemaining)} ${data.currency}`}
           color={data.totalRemaining > 0 ? 'red' : 'emerald'}
           toneIndex={2}
@@ -623,6 +663,35 @@ export default async function FinanceDashboardPage({
           label={t('unpaid.familiesKpi')}
           value={String(data.unpaidFamiliesCount)}
           color={data.unpaidFamiliesCount > 0 ? 'red' : 'emerald'}
+        />
+      </div>
+
+      {/* Échéances déjà tombées, colonne par colonne sous leur équivalent
+          annuel : « Reste à recouvrer à date » se lit ainsi juste sous
+          « Reste à recouvrer (année) », et la comparaison se fait d'un coup
+          d'œil vertical plutôt qu'en cherchant la carte. */}
+      <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-5">
+        <Kpi label={t('kpi.dueToDate')} value={`${formatNumber(data.dueToDate)} ${data.currency}`} />
+        <Kpi
+          label={t('kpi.paidToDate')}
+          value={`${formatNumber(data.paidToDate)} ${data.currency}`}
+          color="emerald"
+        />
+        <Kpi
+          label={t('kpi.remainingToDate')}
+          value={`${formatNumber(data.remainingToDate)} ${data.currency}`}
+          color={data.remainingToDate > 0 ? 'red' : 'emerald'}
+        />
+        <Kpi
+          label={t('kpi.collectionRateToDate')}
+          value={`${data.collectionRateToDate.toFixed(1)}%`}
+          color={
+            data.collectionRateToDate >= 80
+              ? 'emerald'
+              : data.collectionRateToDate >= 50
+                ? 'amber'
+                : 'red'
+          }
         />
       </div>
 
@@ -1494,10 +1563,10 @@ function Kpi({
   };
   const tone = toneIndex === undefined ? null : kpiTone(toneIndex);
   return (
-    <div className={`rounded-2xl border p-5 ${tone ? tone.card : 'border-slate-200 bg-white'}`}>
-      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
+    <div className={`rounded-xl border px-3 py-2.5 ${tone ? tone.card : 'border-slate-200 bg-white'}`}>
+      <div className="text-[11px] uppercase tracking-wide text-slate-500">{label}</div>
       <div
-        className={`mt-2 text-2xl font-semibold tabular-nums ${
+        className={`mt-0.5 text-lg font-semibold tabular-nums ${
           color ? colors[color] : (tone?.value ?? 'text-slate-900')
         }`}
       >

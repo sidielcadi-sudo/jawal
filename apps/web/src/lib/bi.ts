@@ -6,8 +6,24 @@ type Tx = Prisma.TransactionClient;
 
 /**
  * Effectifs : élèves actifs, enseignants, classes actives, capacité moyenne.
+ *
+ * **Bornés à l'année scolaire active.** Sans cette borne, l'indicateur
+ * « Élèves » comptait toutes les fiches jamais créées — 620 au tableau de bord
+ * contre 561 sur la page Élèves, les 59 de l'écart étant des dossiers d'années
+ * passées non réinscrits. Les classes et la capacité cumulaient de la même
+ * façon tous les exercices, et le taux d'occupation n'avait aucun sens.
+ *
+ * `activeYearId` est un paramètre et non une recherche interne : l'appelant
+ * connaît déjà l'année, et l'exiger empêche d'oublier la borne. `null` (aucune
+ * année active) rend un effectif vide plutôt qu'un total de tous les exercices.
+ *
+ * Enseignants, personnel et parents ne sont pas bornés : ce sont des personnes
+ * de l'établissement, pas des inscrits d'un exercice.
  */
-export async function computeHeadcount(tx: Tx): Promise<{
+export async function computeHeadcount(
+  tx: Tx,
+  activeYearId: string | null,
+): Promise<{
   students: number;
   teachers: number;
   staff: number;
@@ -17,13 +33,33 @@ export async function computeHeadcount(tx: Tx): Promise<{
   totalEnrolled: number;
   occupancyRate: number;
 }> {
+  const inYear = activeYearId ? { class: { academicYearId: activeYearId } } : null;
+
   const [students, teachers, staff, parents, classes, enrollments] = await Promise.all([
-    tx.person.count({ where: { type: 'STUDENT', deletedAt: null } }),
+    inYear
+      ? tx.person.count({
+          where: {
+            type: 'STUDENT',
+            deletedAt: null,
+            studentClasses: { some: { unenrolledAt: null, ...inYear } },
+          },
+        })
+      : Promise.resolve(0),
     tx.person.count({ where: { type: 'TEACHER', deletedAt: null } }),
     tx.person.count({ where: { type: 'STAFF', deletedAt: null } }),
     tx.person.count({ where: { type: 'PARENT', deletedAt: null } }),
-    tx.class.findMany({ where: { deletedAt: null }, select: { id: true, capacity: true } }),
-    tx.studentClass.findMany({ where: { unenrolledAt: null }, select: { classId: true } }),
+    activeYearId
+      ? tx.class.findMany({
+          where: { deletedAt: null, academicYearId: activeYearId },
+          select: { id: true, capacity: true },
+        })
+      : Promise.resolve([] as Array<{ id: string; capacity: number }>),
+    inYear
+      ? tx.studentClass.findMany({
+          where: { unenrolledAt: null, ...inYear },
+          select: { classId: true },
+        })
+      : Promise.resolve([] as Array<{ classId: string }>),
   ]);
 
   const totalCapacity = classes.reduce((s, c) => s + c.capacity, 0);

@@ -265,6 +265,12 @@ function DistTable({ data, currency }: { data: Bucket[]; currency: string }) {
   const cumulColl = cumulate(collArr);
   const cumulUnpaid = cumulate(unpaidArr);
 
+  // Taux de recouvrement : encaissé / dû. Null quand rien n'est dû sur la
+  // période — afficher 0 % laisserait croire à un échec de recouvrement là où
+  // il n'y avait simplement rien à recouvrer.
+  const rateArr = dueArr.map((d, i) => rateOf(collArr[i] ?? 0, d));
+  const cumulRateArr = cumulDue.map((d, i) => rateOf(cumulColl[i] ?? 0, d));
+
   return (
     <div className="mt-5 overflow-x-auto">
       <table className="w-full min-w-[640px] text-xs">
@@ -279,16 +285,66 @@ function DistTable({ data, currency }: { data: Bucket[]; currency: string }) {
             <th className="px-2 py-1.5 text-end font-semibold text-slate-700">{t('total')}</th>
           </tr>
         </thead>
+        {/* Deux blocs : la période, puis le cumul. Alterner les deux comme
+            avant obligeait à sauter une ligne sur deux pour suivre une série,
+            et les trois « Cumul » se ressemblaient sans qu'on sache de quoi. */}
         <tbody className="divide-y divide-slate-100">
           <SeriesRow dot="bg-blue-500" label={t('due')} values={dueArr} total={sum(dueArr)} fmt={fmt} />
-          <CumulRow tint="bg-blue-50 text-blue-700" label={t('cumul')} values={cumulDue} total={last(cumulDue)} fmt={fmt} />
           <SeriesRow dot="bg-gray-400" label={t('collected')} values={collArr} total={sum(collArr)} fmt={fmt} />
-          <CumulRow tint="bg-slate-100 text-slate-700" label={t('cumul')} values={cumulColl} total={last(cumulColl)} fmt={fmt} />
           <SeriesRow dot="bg-orange-500" label={t('unpaid')} values={unpaidArr} total={sum(unpaidArr)} fmt={fmt} />
-          <CumulRow tint="bg-orange-50 text-orange-700" label={t('cumul')} values={cumulUnpaid} total={last(cumulUnpaid)} fmt={fmt} />
+          <RateRow
+            label={t('rate')}
+            values={rateArr}
+            total={rateOf(sum(collArr), sum(dueArr))}
+          />
+
+          <CumulRow tint="bg-blue-50 text-blue-700" label={t('cumulDue')} values={cumulDue} total={last(cumulDue)} fmt={fmt} />
+          <CumulRow tint="bg-slate-100 text-slate-700" label={t('cumulCollected')} values={cumulColl} total={last(cumulColl)} fmt={fmt} />
+          <CumulRow tint="bg-orange-50 text-orange-700" label={t('cumulUnpaid')} values={cumulUnpaid} total={last(cumulUnpaid)} fmt={fmt} />
+          <RateRow
+            label={t('cumulRate')}
+            tint="bg-emerald-50 text-emerald-700"
+            values={cumulRateArr}
+            total={rateOf(last(cumulColl), last(cumulDue))}
+          />
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** Taux de recouvrement, ou null si le dénominateur est nul. */
+function rateOf(collected: number, due: number): number | null {
+  return due > 0 ? Math.round((collected / due) * 1000) / 10 : null;
+}
+
+function RateRow({
+  label,
+  values,
+  total,
+  tint,
+}: {
+  label: string;
+  values: Array<number | null>;
+  total: number | null;
+  tint?: string;
+}) {
+  const cell = (v: number | null) => (v === null ? '—' : `${v.toFixed(1)} %`);
+  return (
+    <tr className={tint ?? 'bg-emerald-50/50'}>
+      <td className="px-2 py-1.5 font-semibold text-emerald-800">{label}</td>
+      {values.map((v, i) => (
+        <td
+          key={i}
+          className={`px-2 py-1.5 text-end font-medium tabular-nums ${
+            v === null ? 'text-slate-300' : 'text-emerald-800'
+          }`}
+        >
+          {cell(v)}
+        </td>
+      ))}
+      <td className="px-2 py-1.5 text-end font-bold tabular-nums text-emerald-900">{cell(total)}</td>
+    </tr>
   );
 }
 

@@ -120,3 +120,74 @@ describe('parseSplitId', () => {
     });
   });
 });
+
+describe('séances déclarées', () => {
+  const base = {
+    assignmentId: 'a1',
+    teacherId: 't1',
+    subjectId: 's1',
+    subjectLabel: 'Français',
+    classId: 'c1',
+    className: 'TCS-A',
+    weeklyHours: 3,
+    groups: [
+      { id: 'g1', teacherId: 't1' },
+      { id: 'g2', teacherId: 't2' },
+    ],
+  };
+
+  it('déduit le volume dédoublé des séances déclarées', () => {
+    const out = splitAssignment({
+      ...base,
+      splitHours: null, // aurait dédoublé les 3 h
+      fixedSlots: [{ day: 'MON', slotId: 'sl1' }],
+    });
+    expect(out).toHaveLength(3);
+    expect(out[0]!.weekly_hours).toBe(2); // classe entière
+    expect(out[1]!.weekly_hours).toBe(1);
+    expect(out[2]!.weekly_hours).toBe(1);
+  });
+
+  it('impose le créneau aux deux groupes', () => {
+    const out = splitAssignment({
+      ...base,
+      splitHours: null,
+      fixedSlots: [{ day: 'MON', slotId: 'sl1' }],
+    });
+    const groups = out.filter((o) => o.group_id);
+    expect(groups).toHaveLength(2);
+    for (const g of groups) {
+      expect(g.fixed_slots).toEqual([{ day: 'MON', slot_id: 'sl1' }]);
+    }
+  });
+
+  it('la déclaration prime sur le nombre d’heures saisi', () => {
+    const out = splitAssignment({
+      ...base,
+      splitHours: 3,
+      fixedSlots: [{ day: 'TUE', slotId: 'sl2' }],
+    });
+    expect(out.filter((o) => o.group_id)[0]!.weekly_hours).toBe(1);
+  });
+
+  it('plafonne au volume de la matière', () => {
+    const out = splitAssignment({
+      ...base,
+      weeklyHours: 2,
+      splitHours: null,
+      fixedSlots: [
+        { day: 'MON', slotId: 'sl1' },
+        { day: 'TUE', slotId: 'sl2' },
+        { day: 'WED', slotId: 'sl3' },
+      ],
+    });
+    const g = out.filter((o) => o.group_id);
+    expect(g[0]!.weekly_hours).toBe(2);
+    expect(g[0]!.fixed_slots).toHaveLength(2);
+  });
+
+  it('sans déclaration, rien n’est imposé', () => {
+    const out = splitAssignment({ ...base, splitHours: 1 });
+    expect(out.filter((o) => o.group_id)[0]!.fixed_slots).toBeUndefined();
+  });
+});

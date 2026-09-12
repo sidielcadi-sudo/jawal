@@ -4,9 +4,17 @@ import { auth } from '@/lib/auth';
 import { requireRoleCode } from '@/lib/auth/rbac';
 import { withTenant } from '@/lib/db';
 import { ClassNav } from '../class-nav';
-import { GroupsClient, type GroupRow, type StudentRow, type SubjectRow } from './client';
+import {
+  GroupsClient,
+  type GroupRow,
+  type SlotRow,
+  type SplitSlot,
+  type StudentRow,
+  type SubjectRow,
+} from './client';
 import { findUncoveredStudents } from '@/lib/class-groups';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
+import { ClassCrumb } from '../class-crumb';
 
 /**
  * Groupes d'une classe — le dédoublement.
@@ -22,6 +30,7 @@ export default async function ClassGroupsPage({
   params: Promise<{ locale: string; id: string }>;
   searchParams: Promise<{ subject?: string }>;
 }) {
+  const tCrumb = await getTranslations('admin.classes.detail');
   const { locale, id } = await params;
   const sp = await searchParams;
   setRequestLocale(locale);
@@ -97,6 +106,20 @@ export default async function ClassGroupsPage({
       }),
     ]);
 
+    // Grille horaire de l'établissement : c'est elle qui donne les cases
+    // cochables. Les pauses sont écartées — on ne dédouble pas une récréation.
+    const [timeSlots, splitSlots] = await Promise.all([
+      tx.timetableSlot.findMany({
+        where: { isBreak: false },
+        select: { id: true, startTime: true, endTime: true, label: true },
+        orderBy: [{ order: 'asc' }, { startTime: 'asc' }],
+      }),
+      tx.classGroupSlot.findMany({
+        where: { classId: id },
+        select: { subjectId: true, dayOfWeek: true, slotId: true },
+      }),
+    ]);
+
     // Enseignants de l'établissement : le dédoublement demande un second
     // professeur, qui n'est pas forcément déjà affecté à la classe.
     const teachers = await tx.person.findMany({
@@ -105,11 +128,22 @@ export default async function ClassGroupsPage({
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });
 
-    return { cls, curriculum, groups, teachers };
+    return { cls, curriculum, groups, teachers, timeSlots, splitSlots };
   });
 
   if (!data?.cls) notFound();
-  const { cls, curriculum, groups, teachers } = data;
+  const { cls, curriculum, groups, teachers, timeSlots, splitSlots } = data;
+
+  const slotRows: SlotRow[] = timeSlots.map((sl) => ({
+    id: sl.id,
+    label: sl.label ?? `${sl.startTime}-${sl.endTime}`,
+  }));
+  // Jours ouvrés : du lundi au samedi. Le dimanche n'accueille aucun cours et
+  // une colonne vide n'aiderait personne.
+  const workingDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  const subjectSplitSlots: SplitSlot[] = splitSlots
+    .filter((x) => x.subjectId === selectedSubject)
+    .map((x) => ({ day: x.dayOfWeek, slotId: x.slotId }));
 
   const students: StudentRow[] = cls.students.map((sc) => ({
     id: sc.student.id,
@@ -152,6 +186,12 @@ export default async function ClassGroupsPage({
 
   return (
     <div className="px-3 py-3">
+      <ClassCrumb
+        locale={locale}
+        classId={cls.id}
+        className={localizedLabel(locale, cls.name, cls.nameAr)}
+        current={tCrumb('groups')}
+      />
       <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
@@ -196,7 +236,9 @@ export default async function ClassGroupsPage({
         programHours={
           selectedSubject ? (subjects.find((s) => s.id === selectedSubject)?.weeklyHours ?? 0) : 0
         }
-        splitHours={rows[0]?.splitHours ?? null}
+        slots={slotRows}
+        days={workingDays}
+        splitSlots={subjectSplitSlots}
         subjectLabel={
           selectedSubject ? (subjects.find((s) => s.id === selectedSubject)?.label ?? '') : t('allSubjects')
         }

@@ -1999,7 +1999,12 @@
         "total": "Total",
         "tabMethod": "Moyen de paiement",
         "methodEmpty": "Aucun encaissement sur l'année.",
-        "tabActivity": "Activité"
+        "tabActivity": "Activité",
+        "rate": "Tx rec",
+        "cumulDue": "Cumul dû",
+        "cumulCollected": "Cumul encaissé",
+        "cumulUnpaid": "Cumul impayé",
+        "cumulRate": "Tx rec cumulé"
       },
       "methods": {
         "CASH": "Espèces",
@@ -2013,7 +2018,12 @@
         "totalDue": "Total dû",
         "totalPaid": "Encaissé",
         "totalRemaining": "Reste à recouvrer",
-        "collectionRate": "Taux de recouvrement"
+        "collectionRate": "Taux de recouvrement",
+        "totalRemainingYear": "Reste à recouvrer (année)",
+        "dueToDate": "Dû à date",
+        "remainingToDate": "Reste à recouvrer à date",
+        "paidToDate": "Encaissé à date",
+        "collectionRateToDate": "Taux de recouvrement à date"
       },
       "periods": {
         "monthly": "Mensuel",
@@ -2367,7 +2377,9 @@
         "partial": "{waived} créance(s) effacée(s), {skipped} écartée(s) — {first}.",
         "previousStillOpen": "Les créances des années antérieures restent effaçables : l'exercice est clos, il n'y a plus rien à recouvrer."
       },
-      "yearCount": "{count, plural, one {# échéance} other {# échéances}}"
+      "yearCount": "{count, plural, one {# échéance} other {# échéances}}",
+      "previousYear": "exercice clos",
+      "previousYearsDue": "Créances des années antérieures : {amount}. Elles se traitent dans Finances → Gestion des impayés et n’entrent pas dans les indicateurs ci-dessus."
     },
     "announcements": {
       "title": "Annonces",
@@ -3045,6 +3057,36 @@
         "noAttendance": "Aucun appel enregistré.",
         "on": "Le {date}",
         "openFile": "Ouvrir la fiche complète"
+      },
+      "teacherPanel": {
+        "matricule": "MASSAR",
+        "personal": "Informations personnelles",
+        "birthDate": "Date de naissance",
+        "gender": "Sexe",
+        "phone": "Téléphone",
+        "email": "E-mail",
+        "hiredAt": "Recruté le",
+        "address": "Adresse",
+        "genders": {
+          "M": "Masculin",
+          "F": "Féminin",
+          "X": "Autre"
+        },
+        "specialties": "Spécialité",
+        "noSpecialty": "Aucune spécialité renseignée.",
+        "levels": "Niveaux enseignés",
+        "noLevel": "Aucun niveau cette année — ni affectation ni emploi du temps.",
+        "classesLine": "Classes : {classes}",
+        "attendance": "Pointage du mois",
+        "noAttendance": "Aucun pointage saisi ce mois-ci.",
+        "present": "Présences",
+        "absent": "Absences",
+        "late": "Retards",
+        "leave": "Congés",
+        "lateMinutes": "{count} minutes de retard cumulées",
+        "seeAttendance": "Voir le pointage du personnel",
+        "openFile": "Ouvrir la fiche complète",
+        "empty": "Sélectionnez un enseignant pour voir sa fiche."
       }
     },
     "classes": {
@@ -3066,7 +3108,8 @@
         "allLevels": "Tous les niveaux",
         "apply": "Filtrer",
         "showArchived": "Voir les archivées",
-        "showActive": "Voir les actives"
+        "showActive": "Voir les actives",
+        "allCycles": "Tous les cycles"
       },
       "actions": {
         "new": "Nouvelle classe",
@@ -3119,7 +3162,7 @@
         "takeAttendance": "Faire l'appel",
         "lastAttendance": "Dernier appel",
         "manageGrades": "Notes",
-        "gradeBook": "Carnet de notes",
+        "gradeBook": "Carnet",
         "timetable": "EDT/Remplacement",
         "timetableConstraints": "Contraintes EDT",
         "programme": "Programme & affectations",
@@ -3135,7 +3178,9 @@
         "viewDetail": "Détail",
         "levelLabel": "Niveau",
         "yearLabel": "Année scolaire",
-        "groups": "Groupes"
+        "groups": "Groupes",
+        "programmeFromTrack": "Programme de la filière",
+        "programmeFromLevel": "Programme du niveau"
       },
       "duplicate": {
         "button": "Dupliquer classes",
@@ -3185,8 +3230,16 @@
         },
         "teacher": "Enseignant",
         "teacherInherited": "— celui de la matière —",
-        "teacherClash": "Même enseignant sur {groups}",
-        "teacherClashHint": "Deux groupes se tiennent au même moment : ils ont besoin d'enseignants différents. Sans quoi le solveur ne placera ni l'un ni l'autre — un professeur ne peut pas être à deux endroits à la fois."
+        "teacherClash": "Deux groupes partagent le même enseignant. Ils ne peuvent pas se tenir en même temps — un professeur n’est pas à deux endroits à la fois — et la génération de l’emploi du temps les placera à des heures différentes, laissant une moitié de classe sans cours. Affectez un second enseignant à l’un des groupes.",
+        "teacherClashHint": "Deux groupes se tiennent au même moment : ils ont besoin d'enseignants différents. Sans quoi le solveur ne placera ni l'un ni l'autre — un professeur ne peut pas être à deux endroits à la fois.",
+        "splitSlots": {
+          "title": "Séances dédoublées — {subject}",
+          "count": "{count} séance(s) déclarée(s) sur {total} h de programme",
+          "on": "Gr.",
+          "hint": "Cochez les créneaux qui se tiennent en groupes. Le solveur y placera les deux groupes en parallèle, et l’appel comme les notes suivront cette séance précise.",
+          "overflow": "{count} séances déclarées pour {total} h de programme : il y a plus de séances dédoublées que d’heures au programme.",
+          "noSlots": "Aucun créneau horaire n’est défini. Renseignez la grille horaire dans Paramétrage avant de déclarer des séances dédoublées."
+        }
       }
     },
     "gradeBook": {
@@ -4258,6 +4311,49 @@
         "alertsHint": "Enseignants à surveiller : au moins 3 absences dans le mois, ou 10 journées cumulées sur l’année.",
         "noAlert": "Aucun enseignant au-dessus des seuils.",
         "empty": "Aucun pointage du personnel sur la période."
+      },
+      "kpi": {
+        "headcount": "Effectifs totaux",
+        "collection": "Encaissement global",
+        "unpaidShare": "Impayés : {pct}",
+        "unpaidFamilies": "{count} familles",
+        "teacherLoad": "Charge enseignants",
+        "perTeacher": "/ prof",
+        "teacherCount": "{count} enseignants",
+        "multiSite": "{count} multi-sites",
+        "occupancy": "Taux d’occupation",
+        "underfilled": "{count} sous-chargées",
+        "overfilled": "{count} sur-chargées",
+        "studentsShort": "{count} élèves"
+      },
+      "blocks": {
+        "bySite": "Performance par établissement",
+        "structure": "Effectif / structure",
+        "byCycle": "Effectifs par cycle",
+        "collectionTarget": "Taux d’encaissement vs objectif ({target} %)",
+        "targetLine": "Trait vertical : objectif {target} %",
+        "climate": "Vie scolaire & climat",
+        "globalPresence": "Présence globale",
+        "globalPresenceHint": "Assiduité moyenne, pondérée par les effectifs",
+        "latesPerMonth": "Retards / mois",
+        "incidentsPerMonth": "Incidents / mois",
+        "pedagogy": "Examens & performance pédagogique",
+        "successHint": "Élèves ayant la moyenne",
+        "progression": "Progression",
+        "progressionHint": "Écart avec la période précédente",
+        "points": "pts",
+        "averageHint": "Contrôle continu",
+        "infrastructure": "Infrastructures, salles & services",
+        "details": "Détail par établissement"
+      },
+      "infra": {
+        "classrooms": "Occupation salles",
+        "labs": "Laboratoires",
+        "computerRooms": "Salles informatique",
+        "gym": "Gymnase / sport",
+        "transport": "Ponctualité transport",
+        "canteen": "Souscription cantine",
+        "note": "Occupation = créneaux occupés à l’emploi du temps rapportés au potentiel (salles × créneaux × 6 jours). La cantine mesure la souscription, faute d’un pointage des passages."
       }
     },
     "transport": {

@@ -5,7 +5,13 @@ import { withTenant } from '@/lib/db';
 import type { Prisma } from '@/lib/db';
 import { Pagination } from '@/components/pagination';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
+import { yearInstallmentEnd } from '@/lib/school-year';
 import { SchoolFilters } from './school-filters';
+import {
+  TeacherDetailPanel,
+  TeacherDetailEmpty,
+  type TeacherDetail,
+} from './teacher-detail';
 import {
   StudentDetailPanel,
   StudentDetailEmpty,
@@ -25,6 +31,15 @@ const EMPLOYMENT_BADGE: Record<string, string> = {
   CONTRACT_END: 'bg-red-100 text-red-800',
 };
 
+/** Fond de la carte — une teinte par indicateur, pour les distinguer. */
+const KPI_CARD: Record<string, string> = {
+  sky: 'border-sky-200 bg-sky-50',
+  emerald: 'border-emerald-200 bg-emerald-50',
+  violet: 'border-violet-200 bg-violet-50',
+  red: 'border-rose-200 bg-rose-50',
+  slate: 'border-slate-200 bg-slate-50',
+};
+
 const KPI_TONE: Record<string, string> = {
   sky: 'bg-sky-50 text-sky-700',
   emerald: 'bg-emerald-50 text-emerald-700',
@@ -33,34 +48,50 @@ const KPI_TONE: Record<string, string> = {
   slate: 'bg-slate-100 text-slate-600',
 };
 
-/** Carte d'indicateur en tête de la liste Élèves. */
+/**
+ * Carte d'indicateur en tête de la liste Élèves.
+ *
+ * Disposition horizontale et fond teinté : les quatre cartes tenaient sur
+ * quatre hauteurs de texte empilées et poussaient le tableau sous la ligne de
+ * flottaison. La teinte ne porte aucune information — elle sert seulement à
+ * distinguer les cartes les unes des autres ; l'alerte reste signalée par la
+ * couleur de sa valeur.
+ */
 function Kpi({
   icon,
   tone,
   label,
   value,
   hint,
+  alert = false,
 }: {
   icon: string;
   tone: keyof typeof KPI_TONE | string;
   label: string;
   value: number;
   hint?: string;
+  alert?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-4">
+    <div className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${KPI_CARD[tone] ?? KPI_CARD.slate}`}>
       <span
-        className={`grid h-9 w-9 place-items-center rounded-xl text-base ${
+        className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/70 text-base ${
           KPI_TONE[tone] ?? KPI_TONE.slate
         }`}
       >
         {icon}
       </span>
-      <p className="mt-3 text-xs font-medium text-slate-500">{label}</p>
-      <p className="mt-0.5 text-2xl font-bold tabular-nums text-slate-900">
-        {value.toLocaleString('fr-FR')}
-      </p>
-      {hint && <p className="mt-0.5 text-[11px] text-slate-400">{hint}</p>}
+      <div className="min-w-0">
+        <p className="truncate text-[11px] font-medium text-slate-600">{label}</p>
+        <p
+          className={`text-xl font-bold leading-tight tabular-nums ${
+            alert ? 'text-red-700' : 'text-slate-900'
+          }`}
+        >
+          {value.toLocaleString('fr-FR')}
+        </p>
+        {hint && <p className="truncate text-[11px] text-slate-500">{hint}</p>}
+      </div>
     </div>
   );
 }
@@ -107,7 +138,7 @@ async function loadStudentDetail(
   tx: Prisma.TransactionClient,
   id: string,
   locale: string,
-  activeYear: { id: string; label: string } | null,
+  activeYear: { id: string; label: string; startDate: Date; endDate: Date } | null,
 ): Promise<StudentDetail | null> {
   const person = await tx.person.findFirst({
     where: { id, type: 'STUDENT' },
@@ -168,13 +199,30 @@ async function loadStudentDetail(
           select: { status: true },
         })
       : Promise.resolve(null),
+    // Situation financière de l'ANNÉE ACTIVE seulement. Cumuler les exercices
+    // faisait apparaître en « reste dû » des créances d'années closes, qui se
+    // traitent dans Finances → Gestion des impayés et n'ont rien à faire dans
+    // une fiche censée dire où en est l'élève cette année.
     tx.installment.findMany({
-      where: { studentId: id, status: { not: 'CANCELLED' } },
+      where: {
+        studentId: id,
+        status: { not: 'CANCELLED' },
+        ...(activeYear
+          ? { dueDate: { gte: activeYear.startDate, lt: yearInstallmentEnd(activeYear) } }
+          : {}),
+      },
       select: { amount: true, dueDate: true, payments: { select: { amount: true, paidAt: true } } },
       orderBy: { dueDate: 'asc' },
     }),
+    // Même borne pour l'assiduité : les quatre derniers appels de l'an dernier
+    // ne disent rien de l'élève d'aujourd'hui.
     tx.attendanceRecord.findMany({
-      where: { studentId: id },
+      where: {
+        studentId: id,
+        ...(activeYear
+          ? { session: { class: { academicYearId: activeYear.id } } }
+          : {}),
+      },
       orderBy: { session: { date: 'desc' } },
       take: 4,
       select: { status: true, session: { select: { date: true } } },
@@ -237,6 +285,131 @@ async function loadStudentDetail(
   };
 }
 
+/**
+ * Fiche de l'enseignant ouvert dans le panneau latéral.
+ *
+ * Requête large mais sur UN professeur : on peut se permettre d'aller chercher
+ * les spécialités, les classes de l'année et le pointage du mois sans peser
+ * sur la liste.
+ */
+async function loadTeacherDetail(
+  tx: Prisma.TransactionClient,
+  id: string,
+  locale: string,
+  activeYearId: string | null,
+): Promise<TeacherDetail | null> {
+  const person = await tx.person.findFirst({
+    where: { id, type: 'TEACHER' },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      firstNameAr: true,
+      lastNameAr: true,
+      massarId: true,
+      birthDate: true,
+      gender: true,
+      address: true,
+      contacts: true,
+      photoFileId: true,
+      employmentStatus: true,
+      hireDate: true,
+      teacherCycles: { select: { cycle: { select: { label: true, labelAr: true } } } },
+      teacherSpecialties: { select: { subject: { select: { label: true, labelAr: true } } } },
+    },
+  });
+  if (!person) return null;
+
+  // Le mois en cours : c'est la fenêtre sur laquelle on juge l'assiduité d'un
+  // agent. Un cumul annuel dirait autre chose et se lit ailleurs.
+  const now = new Date();
+  const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const monthEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+
+  const [assignments, entries, attendance] = await Promise.all([
+    activeYearId
+      ? tx.teacherAssignment.findMany({
+          where: { teacherId: id, academicYearId: activeYearId },
+          select: {
+            class: {
+              select: {
+                name: true,
+                nameAr: true,
+                level: { select: { label: true, labelAr: true, order: true } },
+              },
+            },
+          },
+        })
+      : Promise.resolve([]),
+    // L'emploi du temps généré survit à une réinitialisation des affectations :
+    // sans lui, un professeur en poste apparaîtrait sans aucun niveau.
+    activeYearId
+      ? tx.timetableEntry.findMany({
+          where: { teacherId: id, academicYearId: activeYearId },
+          select: {
+            class: {
+              select: {
+                name: true,
+                nameAr: true,
+                level: { select: { label: true, labelAr: true, order: true } },
+              },
+            },
+          },
+        })
+      : Promise.resolve([]),
+    tx.staffAttendance.findMany({
+      where: { personId: id, date: { gte: monthStart, lt: monthEnd } },
+      select: { status: true, lateMinutes: true },
+    }),
+  ]);
+
+  const levels = new Map<string, number>();
+  const classes = new Set<string>();
+  for (const a of [...assignments, ...entries]) {
+    classes.add(localizedLabel(locale, a.class.name, a.class.nameAr));
+    levels.set(
+      localizedLabel(locale, a.class.level.label, a.class.level.labelAr),
+      a.class.level.order,
+    );
+  }
+
+  const contacts = (person.contacts ?? {}) as { phone?: string; email?: string };
+  const addr = (person.address ?? {}) as { street?: string; city?: string };
+
+  const count = (st: string) => attendance.filter((a) => a.status === st).length;
+
+  return {
+    id: person.id,
+    name: personDisplayName(locale, person),
+    matricule: person.massarId,
+    birthDate: person.birthDate,
+    gender: person.gender,
+    phone: contacts.phone ?? null,
+    email: contacts.email ?? null,
+    address: [addr.street, addr.city].filter(Boolean).join(', ') || null,
+    photo: Boolean(person.photoFileId),
+    employmentStatus: person.employmentStatus,
+    hiredAt: person.hireDate,
+    cycles: person.teacherCycles.map((c) =>
+      localizedLabel(locale, c.cycle.label, c.cycle.labelAr),
+    ),
+    specialties: person.teacherSpecialties
+      .map((sp) => localizedLabel(locale, sp.subject.label, sp.subject.labelAr))
+      .sort((a, b) => a.localeCompare(b, locale)),
+    levels: [...levels.entries()].sort((a, b) => a[1] - b[1]).map(([label]) => label),
+    classes: [...classes].sort((a, b) => a.localeCompare(b, locale)),
+    attendance: {
+      monthLabel: monthStart.toLocaleDateString(locale, { month: 'long', year: 'numeric' }),
+      present: count('PRESENT'),
+      absent: count('ABSENT'),
+      late: count('LATE'),
+      leave: count('LEAVE'),
+      lateMinutes: attendance.reduce((n, a) => n + (a.lateMinutes ?? 0), 0),
+      recorded: attendance.length,
+    },
+  };
+}
+
 export default async function PersonsListPage({
   params,
   searchParams,
@@ -282,7 +455,9 @@ export default async function PersonsListPage({
     v === undefined ? [] : Array.isArray(v) ? v.filter(Boolean) : v ? [v] : [];
 
   // Filtres scolarité (vue Élèves) : cycle / niveau / classe.
-  const cycleFilter = isStudentView ? asList(sp.cycle) : [];
+  // Le cycle filtre les élèves par leur classe, les enseignants par leur
+  // rattachement (TeacherCycle) : deux chemins différents vers la même idée.
+  const cycleFilter = isStudentView || isTeacherView ? asList(sp.cycle) : [];
   const levelFilter = isStudentView ? asList(sp.level) : [];
   const classFilter = isStudentView ? asList(sp.classId) : [];
   // Statut : dossier d'inscription côté élève, statut d'emploi côté personnel.
@@ -314,6 +489,7 @@ export default async function PersonsListPage({
     classOptions,
     kpis,
     detail,
+    teacherDetail,
   } = await withTenant(
     tenantId,
     async (tx) => {
@@ -323,7 +499,7 @@ export default async function PersonsListPage({
       // que la liste affiche, à juste titre, en 3AC.
       const activeYear = await tx.academicYear.findFirst({
         where: { active: true },
-        select: { id: true, label: true },
+        select: { id: true, label: true, startDate: true, endDate: true },
       });
 
       const services = await tx.service.findMany({
@@ -356,6 +532,13 @@ export default async function PersonsListPage({
                 },
               },
             }
+          : {}),
+        // Enseignant : rattachement de cycle, saisi dans sa fiche. C'est lui
+        // qui dit « ce professeur est du lycée », indépendamment des classes
+        // qu'il tient cette année — une réinitialisation des affectations ne
+        // doit pas le faire disparaître des listes.
+        ...(isTeacherView && cycleFilter.length
+          ? { teacherCycles: { some: { cycleId: { in: cycleFilter } } } }
           : {}),
         // Élève : statut du dossier de l'année active. Personnel : colonne
         // dédiée `employmentStatus`.
@@ -539,6 +722,14 @@ export default async function PersonsListPage({
       let cycles: { id: string; label: string }[] = [];
       let levels: { id: string; cycleId: string; label: string }[] = [];
       let classOptions: { id: string; levelId: string; cycleId: string; name: string }[] = [];
+      if (typeFilter === 'TEACHER') {
+        // Seuls les cycles servent ici : les boutons Primaire / Collège /
+        // Lycée. Niveaux et classes restent propres à la vue Élèves.
+        cycles = await tx.cycle.findMany({
+          orderBy: { order: 'asc' },
+          select: { id: true, label: true },
+        });
+      }
       if (typeFilter === 'STUDENT') {
         const [cyc, lvl, cls] = await Promise.all([
           tx.cycle.findMany({ orderBy: { order: 'asc' }, select: { id: true, label: true } }),
@@ -578,6 +769,11 @@ export default async function PersonsListPage({
         alerts: number;
       } | null = null;
       let detail: StudentDetail | null = null;
+      let teacherDetail: TeacherDetail | null = null;
+
+      if (isTeacherView && sp.selected) {
+        teacherDetail = await loadTeacherDetail(tx, sp.selected, locale, activeYear?.id ?? null);
+      }
 
       if (isStudentView) {
         const enrolled = {
@@ -644,6 +840,7 @@ export default async function PersonsListPage({
         total,
         kpis,
         detail,
+        teacherDetail,
         teacherExtras,
         studentExtras,
         services,
@@ -765,6 +962,7 @@ export default async function PersonsListPage({
           <Kpi
             icon="⚠"
             tone={kpis.alerts > 0 ? 'red' : 'slate'}
+            alert={kpis.alerts > 0}
             label={t('kpi.alerts')}
             value={kpis.alerts}
             hint={t('kpi.alertsHint')}
@@ -796,6 +994,26 @@ export default async function PersonsListPage({
             label={t('tabs.inactive')}
             active={statusFilter.length === 1 && statusFilter[0] === 'WITHDRAWN'}
           />
+        </nav>
+      )}
+
+      {/* Primaire · Collège · Lycée : le tri le plus fréquent devant une
+          liste de professeurs, avant même la recherche par nom. */}
+      {isTeacherView && cycles.length > 0 && (
+        <nav className="mb-3 flex flex-wrap items-center gap-2">
+          <CycleTab
+            href={qs({ cycle: '', page: '1', selected: '' })}
+            label={t('tabs.all')}
+            active={cycleFilter.length === 0}
+          />
+          {cycles.map((c) => (
+            <CycleTab
+              key={c.id}
+              href={qs({ cycle: c.id, page: '1', selected: '' })}
+              label={c.label}
+              active={cycleFilter.length === 1 && cycleFilter[0] === c.id}
+            />
+          ))}
         </nav>
       )}
 
@@ -864,7 +1082,13 @@ export default async function PersonsListPage({
         </Link>
       </form>
 
-      <div className={isStudentView ? 'flex flex-col gap-4 xl:flex-row xl:items-start' : undefined}>
+      <div
+        className={
+          isStudentView || isTeacherView
+            ? 'flex flex-col gap-4 xl:flex-row xl:items-start'
+            : undefined
+        }
+      >
       <div className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-brand-200 bg-white">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
@@ -939,7 +1163,11 @@ export default async function PersonsListPage({
                         qu'on ne modifie. Le panneau garde un lien vers la fiche
                         complète. */}
                     <Link
-                      href={isStudentView ? qs({ selected: p.id }) : `${baseHref}/${p.id}`}
+                      href={
+                        isStudentView || isTeacherView
+                          ? qs({ selected: p.id })
+                          : `${baseHref}/${p.id}`
+                      }
                       className="hover:text-brand-700 font-medium text-slate-900 hover:underline"
                     >
                       {personDisplayName(locale, p)}
@@ -1051,6 +1279,15 @@ export default async function PersonsListPage({
           <StudentDetailPanel detail={detail} locale={locale} baseHref={baseHref} />
         ) : (
           <StudentDetailEmpty />
+        ))}
+
+      {/* Même disposition que pour les élèves : la fiche accompagne la liste
+          au lieu de la remplacer. */}
+      {isTeacherView &&
+        (teacherDetail ? (
+          <TeacherDetailPanel detail={teacherDetail} locale={locale} baseHref={baseHref} />
+        ) : (
+          <TeacherDetailEmpty />
         ))}
       </div>
     </div>

@@ -65,7 +65,7 @@ export default async function AdminDashboard({
     const periodId = selectedPeriod?.id ?? null;
 
     const [headcount, academic, attendance, atRisk] = await Promise.all([
-      computeHeadcount(tx),
+      computeHeadcount(tx, activeYear?.id ?? null),
       periodId
         ? computeAcademicOverview(tx, periodId)
         : Promise.resolve({
@@ -123,15 +123,37 @@ export default async function AdminDashboard({
     const totalDue = Number(dueAgg._sum.amount ?? 0);
     const totalPaid = Number(paidAgg._sum.amount ?? 0);
     const dueToDate = Number(dueToDateAgg._sum.amount ?? 0);
+
+    // Reste à recouvrer à date, échéance par échéance — jamais
+    // « dû à date − encaissé total ». Avec cette soustraction, un versement
+    // d'avance sur une échéance de juin venait effacer un impayé d'octobre :
+    // l'arriéré affiché était plus faible que la réalité, et l'écran ne
+    // concordait pas avec Finances, qui compte ligne à ligne.
+    const dueSoFar = { status: { not: 'CANCELLED' as const }, dueDate: yearWindow ? { ...yearWindow, lte: new Date() } : { lte: new Date() } };
+    const [dueRows, paidRows] = await Promise.all([
+      tx.installment.findMany({ where: dueSoFar, select: { id: true, amount: true } }),
+      tx.payment.groupBy({
+        by: ['installmentId'],
+        where: { installment: dueSoFar },
+        _sum: { amount: true },
+      }),
+    ]);
+    const paidOn = new Map(paidRows.map((r) => [r.installmentId, Number(r._sum.amount ?? 0)]));
+    let paidToDate = 0;
+    let remainingToDate = 0;
+    for (const i of dueRows) {
+      const paid = paidOn.get(i.id) ?? 0;
+      paidToDate += paid;
+      remainingToDate += Math.max(0, Number(i.amount) - paid);
+    }
+
     const finance = {
       totalDue,
       totalPaid,
       totalRemaining: Math.max(0, totalDue - totalPaid),
       dueToDate,
-      // Encaissé à date = tous les paiements reçus (un paiement est par
-      // définition déjà encaissé).
-      paidToDate: totalPaid,
-      remainingToDate: Math.max(0, dueToDate - totalPaid),
+      paidToDate,
+      remainingToDate,
     };
 
     // KPI de pilotage (taux de réussite, absentéisme, charge prof, satisfaction,

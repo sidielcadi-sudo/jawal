@@ -10,10 +10,14 @@ import {
   renameGroupAction,
   setGroupMembersAction,
   setGroupTeacherAction,
-  setSplitHoursAction,
+  setSplitSlotsAction,
 } from './actions';
 
 export type StudentRow = { id: string; name: string };
+/** Un créneau de la grille horaire (les pauses sont écartées en amont). */
+export type SlotRow = { id: string; label: string };
+/** Séance déclarée en groupes, pour la matière affichée. */
+export type SplitSlot = { day: string; slotId: string };
 export type SubjectRow = { id: string; label: string; weeklyHours: number };
 export type GroupRow = {
   id: string;
@@ -45,7 +49,9 @@ export function GroupsClient({
   groups,
   uncoveredIds,
   programHours,
-  splitHours,
+  slots,
+  days,
+  splitSlots,
   teachers,
 }: {
   classId: string;
@@ -56,8 +62,12 @@ export function GroupsClient({
   uncoveredIds: string[];
   /** Volume hebdomadaire de la matière au programme. */
   programHours: number;
-  /** Heures dédoublées déclarées. Null = tout le volume. */
-  splitHours: number | null;
+  /** Grille horaire de l'établissement, pauses exclues. */
+  slots: SlotRow[];
+  /** Jours ouvrés affichés en lignes. */
+  days: string[];
+  /** Séances déjà déclarées en groupes pour la matière affichée. */
+  splitSlots: SplitSlot[];
   teachers: TeacherRow[];
 }) {
   const t = useTranslations('admin.classes.groups');
@@ -74,6 +84,25 @@ export function GroupsClient({
 
   const nameById = useMemo(() => new Map(students.map((s) => [s.id, s.name])), [students]);
   const uncovered = useMemo(() => new Set(uncoveredIds), [uncoveredIds]);
+
+  // Deux groupes simultanés exigent deux professeurs : personne n'est à deux
+  // endroits à la fois. Un groupe sans enseignant propre reprend celui de la
+  // matière — si les deux font ce repli, ils désignent la même personne.
+  //
+  // Ce n'est pas un détail de confort : le générateur d'emploi du temps rejette
+  // alors le fichier ENTIER (« Cannot precompute - data is wrong ») sans nommer
+  // le coupable, et l'établissement complet devient ingénérable. Le dire ici,
+  // là où on peut corriger, vaut mieux que de le découvrir à la génération.
+  const teacherClash = useMemo(() => {
+    if (groups.length < 2) return false;
+    const seen = new Set<string>();
+    for (const g of groups) {
+      const key = g.teacherId ?? '__enseignant-de-la-matiere__';
+      if (seen.has(key)) return true;
+      seen.add(key);
+    }
+    return false;
+  }, [groups]);
 
   /** Groupe (autre que celui ouvert) qui contient déjà cet élève. */
   const takenBy = useMemo(() => {
@@ -181,6 +210,12 @@ export function GroupsClient({
         </p>
       ) : (
         <>
+          {teacherClash && (
+            <p className="rounded-2xl border border-amber-300 bg-amber-50 px-4 py-2.5 text-xs text-amber-900">
+              {t('teacherClash')}
+            </p>
+          )}
+
           {/* Onglets des groupes + effectif. */}
           <div className="flex flex-wrap items-center gap-2">
             {groups.map((g) => (
@@ -210,12 +245,14 @@ export function GroupsClient({
               français, une seule peut se faire en demi-groupes. Sans cette
               précision, la charge annoncée au tableau de bord multiplierait
               tout le volume. */}
-          {subjectId && programHours > 0 && (
-            <SplitHours
+          {subjectId && (
+            <SplitSlots
               classId={classId}
               subjectId={subjectId}
               programHours={programHours}
-              current={splitHours}
+              slots={slots}
+              days={days}
+              current={splitSlots}
               groupCount={groups.length}
               subjectLabel={subjectLabel}
             />
@@ -408,10 +445,25 @@ export function GroupsClient({
  * Écrite sur tous les groupes de la matière en un geste : la valeur appartient
  * au couple (classe, matière), pas au groupe. « Toutes » rétablit le défaut.
  */
-function SplitHours({
+/**
+ * Déclaration des séances dédoublées : une grille jour × créneau à cocher.
+ *
+ * C'est la règle de fond d'un emploi du temps cohérent : on ne dit pas
+ * « 1 h de français en demi-groupes », on dit « le lundi de 10 h à 12 h ».
+ * Un simple nombre d'heures laissait le solveur choisir la case ; l'appel,
+ * les notes et la salle se rattachaient alors à une séance que personne
+ * n'avait décidée, et un regroupement ultérieur cassait tout.
+ *
+ * Cocher écrit immédiatement : la grille est l'état voulu, pas un brouillon à
+ * valider — un bouton « Enregistrer » de plus laisserait la moitié des
+ * déclarations en attente sans que rien ne le signale.
+ */
+function SplitSlots({
   classId,
   subjectId,
   programHours,
+  slots,
+  days,
   current,
   groupCount,
   subjectLabel,
@@ -419,62 +471,114 @@ function SplitHours({
   classId: string;
   subjectId: string;
   programHours: number;
-  current: number | null;
+  slots: SlotRow[];
+  days: string[];
+  current: SplitSlot[];
   groupCount: number;
   subjectLabel: string;
 }) {
   const t = useTranslations('admin.classes.groups');
+  const tDay = useTranslations('admin.timetable.days');
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState('');
-  const [value, setValue] = useState<string>(current === null ? '' : String(current));
+  const [picked, setPicked] = useState<SplitSlot[]>(current);
 
-  const effective = current === null ? programHours : Math.min(programHours, Math.max(0, current));
-  const load = programHours - effective + effective * Math.max(1, groupCount);
+  const key = (day: string, slotId: string) => `${day}|${slotId}`;
+  const chosen = useMemo(() => new Set(picked.map((p) => key(p.day, p.slotId))), [picked]);
 
-  function save(hours: number | null) {
+  // Charge réelle : les heures non dédoublées, plus les dédoublées comptées
+  // une fois par groupe. C'est ce que le solveur devra placer.
+  const split = picked.length;
+  const load = Math.max(0, programHours - split) + split * Math.max(1, groupCount);
+
+  function toggle(day: string, slotId: string) {
+    const k = key(day, slotId);
+    const next = chosen.has(k)
+      ? picked.filter((p) => key(p.day, p.slotId) !== k)
+      : [...picked, { day, slotId }];
+    setPicked(next);
     setError('');
     start(async () => {
-      const r = await setSplitHoursAction({ classId, subjectId, hours });
+      const r = await setSplitSlotsAction({ classId, subjectId, slots: next });
       if (!r.ok) {
         setError(r.error);
+        setPicked(picked); // on revient à l'état connu du serveur
         return;
       }
       router.refresh();
     });
   }
 
+  if (slots.length === 0) {
+    return (
+      <section className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
+        {t('splitSlots.noSlots')}
+      </section>
+    );
+  }
+
   return (
     <section className="rounded-2xl border border-brand-200 bg-white px-4 py-3">
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="text-xs font-medium text-slate-700">
-          {t('split.label', { subject: subjectLabel, total: programHours })}
-          <span className="mt-1 flex items-center gap-2">
-            <select
-              value={value}
-              onChange={(e) => {
-                setValue(e.target.value);
-                save(e.target.value === '' ? null : Number(e.target.value));
-              }}
-              disabled={pending}
-              className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm"
-            >
-              <option value="">{t('split.all')}</option>
-              {Array.from({ length: programHours }, (_, i) => i + 1).map((h) => (
-                <option key={h} value={h}>
-                  {t('split.hours', { count: h })}
-                </option>
-              ))}
-            </select>
-          </span>
-        </label>
-        {groupCount > 1 && (
-          <p className="text-xs text-slate-600">
-            {t('split.load', { load, groups: groupCount })}
-          </p>
-        )}
+      <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
+        <h3 className="text-sm font-semibold text-slate-800">
+          {t('splitSlots.title', { subject: subjectLabel })}
+        </h3>
+        <span className="text-[11px] text-slate-500">
+          {t('splitSlots.count', { count: split, total: programHours })}
+          {groupCount > 1 && ` · ${t('split.load', { load, groups: groupCount })}`}
+        </span>
       </div>
-      <p className="mt-1 text-[11px] text-slate-500">{t('split.hint')}</p>
+
+      <div className="overflow-x-auto">
+        <table className="text-xs">
+          <thead>
+            <tr>
+              <th className="px-2 py-1 text-start font-medium text-slate-500" />
+              {slots.map((sl) => (
+                <th key={sl.id} className="px-1 py-1 font-medium text-slate-500">
+                  {sl.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {days.map((d) => (
+              <tr key={d}>
+                <td className="px-2 py-1 font-medium text-slate-600">{tDay(d as never)}</td>
+                {slots.map((sl) => {
+                  const on = chosen.has(key(d, sl.id));
+                  return (
+                    <td key={sl.id} className="px-1 py-1">
+                      <button
+                        type="button"
+                        disabled={pending}
+                        onClick={() => toggle(d, sl.id)}
+                        aria-pressed={on}
+                        title={`${tDay(d as never)} ${sl.label}`}
+                        className={`h-7 w-full min-w-[52px] rounded-md border text-[11px] font-medium transition-colors disabled:opacity-50 ${
+                          on
+                            ? 'border-brand-600 bg-brand-600 text-white'
+                            : 'border-slate-200 bg-white text-slate-400 hover:bg-slate-50'
+                        }`}
+                      >
+                        {on ? t('splitSlots.on') : '·'}
+                      </button>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <p className="mt-2 text-[11px] text-slate-500">{t('splitSlots.hint')}</p>
+      {split > programHours && programHours > 0 && (
+        <p className="mt-1 text-[11px] font-medium text-amber-700">
+          {t('splitSlots.overflow', { count: split, total: programHours })}
+        </p>
+      )}
       {error && <p className="mt-1 text-xs text-red-700">{error}</p>}
     </section>
   );

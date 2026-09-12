@@ -162,6 +162,25 @@ class MultiAssignmentInput(BaseModel):
     # moitié n'aurait rien à faire pendant ce temps.
     group_id: str | None = None
     parallel_key: str | None = None
+    # ── Séances imposées ────────────────────────────────────────────────
+    #
+    # Cases (jour, créneau) où cette affectation DOIT se tenir, dans l'ordre
+    # des séances. Un dédoublement se déclare dans l'établissement — « le
+    # lundi de 10 h à 12 h se fait en demi-groupes » — et non comme un simple
+    # volume d'heures : sans la case, le solveur en choisissait une au hasard
+    # et l'appel, les notes et la salle se rattachaient à une séance que
+    # personne n'avait décidée.
+    #
+    # Vide = le solveur place où il veut. Quand la liste est fournie, elle
+    # vaut aussi interdiction de placer ailleurs.
+    fixed_slots: list["FixedSlot"] = Field(default_factory=list)
+
+
+class FixedSlot(BaseModel):
+    """Une case (jour, créneau) imposée à une affectation."""
+
+    day: DayKey
+    slot_id: str
 
 
 class ConstraintsInput(BaseModel):

@@ -186,6 +186,30 @@ def solve_multi(request: MultiGenerateRequest) -> MultiGenerateResponse:
                         # peut pas s'y tenir du tout.
                         model.Add(z == 0)
 
+    # ── Séances imposées : la case déclarée, et rien d'autre ──────────────
+    #
+    # Une séance dédoublée est déclarée dans l'établissement, pas déduite d'un
+    # volume : quand la case est donnée, on l'impose ET on interdit les autres.
+    # Autoriser un repli ailleurs viderait la déclaration de son sens — c'est
+    # précisément le comportement qu'on remplace.
+    #
+    # Si la case est inatteignable (prof indisponible, créneau de pause), la
+    # séance reste non placée et ressort dans `unplaced` : mieux vaut une
+    # ligne signalée qu'un emploi du temps entier déclaré infaisable.
+    ads_by_a: Dict[str, List[Tuple[str, str, List[cp_model.IntVar]]]] = {}
+    for (aid, day, sid), vars_list in by_ads.items():
+        ads_by_a.setdefault(aid, []).append((day, sid, vars_list))
+
+    for a in request.assignments:
+        if not a.fixed_slots:
+            continue
+        wanted = {(f.day, f.slot_id) for f in a.fixed_slots}
+        for day, sid, vars_list in ads_by_a.get(a.id, []):
+            if (day, sid) in wanted:
+                model.Add(sum(vars_list) == 1)
+            else:
+                model.Add(sum(vars_list) == 0)
+
     # C2 : ≤ 1 occupation de la classe par (classe × d × s).
     #
     # Un dédoublement ne compte qu'une fois — ses membres étant synchronisés,

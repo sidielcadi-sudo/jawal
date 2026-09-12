@@ -27,6 +27,15 @@ export type SplitInput = {
   groups: Array<{ id: string; teacherId: string | null }>;
   /** Heures réellement dédoublées. Null = tout le volume. */
   splitHours: number | null;
+  /**
+   * Séances déclarées en groupes — « le lundi de 10 h à 12 h est dédoublé ».
+   *
+   * Quand elles sont renseignées, elles décident : le volume dédoublé vaut
+   * leur nombre et le solveur doit poser les groupes exactement là. Un simple
+   * compte d'heures le laissait choisir la case, et l'appel comme les notes se
+   * rattachaient ensuite à une séance que personne n'avait décidée.
+   */
+  fixedSlots?: Array<{ day: string; slotId: string }>;
   requiredRoomType?: string | null;
 };
 
@@ -40,6 +49,8 @@ export type SplitOutput = {
   weekly_hours: number;
   group_id?: string | null;
   parallel_key?: string | null;
+  /** Créneaux imposés à cette ligne. Vide = le solveur place où il veut. */
+  fixed_slots?: Array<{ day: string; slot_id: string }>;
   required_room_type?: string | null;
 };
 
@@ -66,9 +77,18 @@ export function splitAssignment(input: SplitInput): SplitOutput[] {
     return [{ ...base, id: input.assignmentId, weekly_hours: hours }];
   }
 
+  // Séances déclarées : elles fixent le volume dédoublé. Elles restent
+  // bornées au volume de la matière — déclarer quatre séances sur 3 h de
+  // programme est une erreur de saisie, pas une raison de déborder.
+  const declared = (input.fixedSlots ?? []).slice(0, hours);
+  const fixed = declared.map((f) => ({ day: f.day, slot_id: f.slotId }));
+
   // Part dédoublée, bornée au volume : une saisie aberrante est plafonnée
   // plutôt que propagée jusqu'au solveur.
-  const split = Math.min(hours, Math.max(0, input.splitHours ?? hours));
+  const split =
+    fixed.length > 0
+      ? fixed.length
+      : Math.min(hours, Math.max(0, input.splitHours ?? hours));
   const whole = hours - split;
 
   const out: SplitOutput[] = [];
@@ -88,6 +108,7 @@ export function splitAssignment(input: SplitInput): SplitOutput[] {
         weekly_hours: split,
         group_id: g.id,
         parallel_key: key,
+        ...(fixed.length > 0 ? { fixed_slots: fixed } : {}),
       });
     }
   }

@@ -1,6 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import {
+  runPreflight,
+  blockingMessage,
+  warningMessage,
+} from '@/lib/timetable-preflight';
+
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
@@ -165,6 +171,22 @@ export async function generateMultiTimetableAction(
         groupsByKey.set(k, arr);
       }
 
+      // Séances déclarées en groupes : « le lundi de 10 h à 12 h est
+      // dédoublé ». Elles imposent la case au solveur — sans elles il en
+      // choisissait une au hasard, et l'appel comme les notes se rattachaient
+      // à une séance que personne n'avait décidée.
+      const splitSlotRows = await tx.classGroupSlot.findMany({
+        where: { classId: { in: classIds } },
+        select: { classId: true, subjectId: true, dayOfWeek: true, slotId: true },
+      });
+      const splitSlotsByKey = new Map<string, Array<{ day: string; slotId: string }>>();
+      for (const r of splitSlotRows) {
+        const k = `${r.classId}|${r.subjectId}`;
+        const arr = splitSlotsByKey.get(k) ?? [];
+        arr.push({ day: r.dayOfWeek, slotId: r.slotId });
+        splitSlotsByKey.set(k, arr);
+      }
+
       const solverAssignments: SolverAssignment[] = assignments.flatMap((a) => {
         const fromTrack = a.class.trackId
           ? trackByKey.get(`${a.class.trackId}|${a.subjectId}`)
@@ -183,6 +205,7 @@ export async function generateMultiTimetableAction(
             weeklyHours: hours,
             groups: groups.map((g) => ({ id: g.id, teacherId: g.teacherId })),
             splitHours: groups[0]?.splitHours ?? null,
+            fixedSlots: splitSlotsByKey.get(`${a.classId}|${a.subjectId}`) ?? [],
             requiredRoomType: subjectRoomRequirement(a.subject.label),
           });
         }
@@ -384,6 +407,26 @@ export async function generateMultiTimetableAction(
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur préparation' };
   }
 
+
+  // ── Diagnostic avant solveur ──────────────────────────────────────────
+  //
+  // Les solveurs disent mal pourquoi ils échouent : FET rejette le fichier
+  // entier sur « Cannot precompute - data is wrong » sans nommer la classe ni
+  // la contrainte fautive. On regarde donc les données d'abord, et on rend un
+  // message qui désigne ce qu'il faut corriger. Les avertissements, eux, ne
+  // retiennent pas la génération : ils accompagnent son résultat.
+  const preflight = runPreflight({
+    slots: payload.slots,
+    days: payload.days,
+    teachers: payload.teachers,
+    assignments: payload.assignments,
+    forbiddenClassSlots: payload.forbidden_class_slots ?? [],
+    maxSameSubjectPerDay: payload.constraints?.max_same_subject_per_day ?? null,
+  });
+  const blocked = blockingMessage(preflight);
+  if (blocked) return { ok: false, error: blocked };
+  const preflightWarning = warningMessage(preflight);
+
   let solverResp;
   try {
     solverResp = await callSolverMulti(payload);
@@ -395,7 +438,11 @@ export async function generateMultiTimetableAction(
   }
 
   if (solverResp.status === 'INFEASIBLE' || solverResp.status === 'ERROR') {
-    return { ok: false, error: solverResp.message || 'Aucune solution trouvée.' };
+    // Rien n'a été détecté en amont et le solveur échoue quand même : on rend
+    // son message, mais on y joint ce qu'on sait de fragile dans les données —
+    // c'est en général là que se trouve l'explication.
+    const detail = solverResp.message || 'Aucune solution trouvée.';
+    return { ok: false, error: preflightWarning ? `${detail}\n${preflightWarning}` : detail };
   }
 
   // Persistance : wipe + recreate pour TOUTES les classes ciblées
@@ -558,7 +605,12 @@ export async function generateMultiTimetableAction(
     ok: true,
     data: {
       status: solverResp.status,
-      message: solverResp.message,
+      // Ce que le pré-diagnostic a relevé accompagne le résultat : la
+      // génération a bien abouti, mais l'utilisateur doit savoir ce qui a été
+      // dégradé au passage.
+      message: preflightWarning
+        ? `${solverResp.message}\n${preflightWarning}`
+        : solverResp.message,
       totalPlaced: solverResp.placed.length,
       consecutiveBlocks: solverResp.consecutive_blocks,
       solverTimeMs: solverResp.solver_time_ms,

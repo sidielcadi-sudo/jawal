@@ -22,7 +22,7 @@ export default async function ClassDetailPage({
   const t = await getTranslations('admin.classes');
   const tDetail = await getTranslations('admin.classes.detail');
 
-  const { cls, availableStudents, lastSession, curriculum, assignments } = await withTenant(tenantId, async (tx) => {
+  const { cls, availableStudents, lastSession, curriculum, assignments, programSource } = await withTenant(tenantId, async (tx) => {
     const cls = await tx.class.findUnique({
       where: { id },
       include: {
@@ -37,9 +37,27 @@ export default async function ClassDetailPage({
       },
     });
     if (!cls)
-      return { cls: null, availableStudents: [], lastSession: null, curriculum: [], assignments: [] };
+      return {
+        cls: null,
+        availableStudents: [],
+        lastSession: null,
+        curriculum: [],
+        assignments: [],
+        programSource: 'level' as const,
+      };
 
-    const [curriculum, assignments] = await Promise.all([
+    // Programme de la classe : au lycée il est porté par la FILIÈRE, ailleurs
+    // par le niveau. Lire le seul CurriculumSubject affichait « aucun programme
+    // défini » sur toutes les classes de lycée, dont le programme existe bel et
+    // bien — dans TrackSubjectCoefficient.
+    const [trackProgram, levelProgram, assignments] = await Promise.all([
+      cls.trackId
+        ? tx.trackSubjectCoefficient.findMany({
+            where: { trackId: cls.trackId },
+            include: { subject: true },
+            orderBy: { subject: { label: 'asc' } },
+          })
+        : Promise.resolve([]),
       tx.curriculumSubject.findMany({
         where: { levelId: cls.levelId },
         include: { subject: true },
@@ -50,6 +68,33 @@ export default async function ClassDetailPage({
         include: { subject: true, teacher: true },
       }),
     ]);
+
+    type ProgramRow = {
+      id: string;
+      subjectId: string;
+      subject: (typeof levelProgram)[number]['subject'];
+      coefficient: number;
+      weeklyHours: number;
+    };
+    const curriculum: ProgramRow[] =
+      trackProgram.length > 0
+        ? trackProgram.map((r) => ({
+            id: r.id,
+            subjectId: r.subjectId,
+            subject: r.subject,
+            // Au lycée le coefficient de contrôle continu est celui qui pèse
+            // sur la moyenne de la classe ; c'est donc lui qu'on affiche ici.
+            coefficient: r.ccCoefficient ?? 0,
+            weeklyHours: r.weeklyHours ?? 0,
+          }))
+        : levelProgram.map((r) => ({
+            id: r.id,
+            subjectId: r.subjectId,
+            subject: r.subject,
+            coefficient: r.coefficient,
+            weeklyHours: r.weeklyHours,
+          }));
+    const programSource = trackProgram.length > 0 ? ('track' as const) : ('level' as const);
 
     // Élèves disponibles : tous les STUDENT actifs qui ne sont PAS déjà
     // inscrits activement à cette classe (pas dans la liste students[]).
@@ -71,7 +116,7 @@ export default async function ClassDetailPage({
       include: { records: { select: { status: true } } },
     });
 
-    return { cls, availableStudents, lastSession, curriculum, assignments };
+    return { cls, availableStudents, lastSession, curriculum, assignments, programSource };
   });
 
   if (!cls) notFound();
@@ -241,7 +286,16 @@ export default async function ClassDetailPage({
 
       {/* Programme du niveau × profs affectés */}
       <section className="mt-6">
-        <h2 className="mb-3 text-base font-semibold text-slate-900">{tDetail('programme')}</h2>
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          <h2 className="text-base font-semibold text-slate-900">{tDetail('programme')}</h2>
+          {curriculum.length > 0 && (
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-600">
+              {programSource === 'track'
+                ? tDetail('programmeFromTrack')
+                : tDetail('programmeFromLevel')}
+            </span>
+          )}
+        </div>
         <div className="overflow-hidden rounded-2xl border border-brand-200 bg-white">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
@@ -295,7 +349,11 @@ export default async function ClassDetailPage({
                   <td colSpan={5} className="px-4 py-8 text-center text-xs text-slate-500">
                     {tDetail('programmeEmpty')}
                     <Link
-                      href={`/${locale}/admin/settings/curriculum/programme?level=${cls.levelId}`}
+                      href={
+                        cls.trackId
+                          ? `/${locale}/admin/settings/curriculum/programme?cycle=${cls.level.cycleId}&track=${cls.trackId}`
+                          : `/${locale}/admin/settings/curriculum/programme?level=${cls.levelId}`
+                      }
                       className="ms-2 text-brand-700 hover:underline"
                     >
                       {tDetail('configureProgramme')} →
