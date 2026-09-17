@@ -204,12 +204,12 @@ export function AppelSheet({
     });
   }
 
-  // Colonne Infirmerie masquée (les données existantes restent en base).
+  // Colonnes Infirmerie, Punition et Exclusion masquées : ce ne sont pas des
+  // absences. Les exclusions se signalent dans le carnet de correspondance,
+  // qui alimente les indicateurs. Les données existantes restent en base.
   const COLS: { cat: AttendanceCategory; label: string; color: keyof typeof BOX_COLOR }[] = [
     { cat: 'ABSENT', label: t('cols.absence'), color: 'red' },
     { cat: 'LATE', label: t('cols.retard'), color: 'amber' },
-    { cat: 'PUNISHMENT', label: t('cols.punition'), color: 'purple' },
-    { cat: 'EXCLUSION', label: t('cols.exclusion'), color: 'rose' },
     { cat: 'EXCUSED', label: t('cols.dispense'), color: 'green' },
   ];
 
@@ -241,18 +241,17 @@ export function AppelSheet({
       </div>
 
       {/* Bande de synthèse */}
-      <div className="grid grid-cols-3 gap-2 rounded-2xl border border-slate-200 bg-white p-3 text-center text-xs sm:grid-cols-5">
+      <div className="grid grid-cols-3 gap-2 rounded-2xl border border-brand-200 bg-white p-3 text-center text-xs sm:grid-cols-4">
         <SummaryPill label={t('summary.present')} value={summary.present} color="emerald" />
         <SummaryPill label={t('summary.absent')} value={summary.absent} color="red" />
         <SummaryPill label={t('summary.lateJustified')} value={summary.lateJust} color="amber" />
         <SummaryPill label={t('summary.lateUnjustified')} value={summary.lateUnjust} color="orange" />
-        <SummaryPill label={t('summary.excluded')} value={summary.excluded} color="rose" />
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-brand-200 bg-white">
         <table className="w-full border-collapse text-xs">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-medium text-slate-500">
+            <tr className="border-b border-slate-200 table-head text-[11px] font-medium uppercase tracking-wide text-slate-700">
               <th className="px-2 py-1.5 text-start">{t('studentsCount', { count: rows.length })}</th>
               {COLS.map((c) => (
                 <th key={c.cat} className="px-1 py-1.5 text-center font-medium">

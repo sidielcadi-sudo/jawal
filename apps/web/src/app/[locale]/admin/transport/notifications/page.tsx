@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { activeDriver } from '@/lib/notify-providers';
 import { ProcessQueueButton, RetryButton } from './notifications-client';
+import { activeYearStart } from '@/lib/active-year';
 
 const STATUS_BADGE: Record<string, string> = {
   SENT: 'bg-emerald-100 text-emerald-700',
@@ -19,9 +20,12 @@ export default async function TransportNotificationsPage({ params }: { params: P
   const t = await getTranslations('admin.transport');
 
   const { logs, pending } = await withTenant(session.user.tenantId, async (tx) => {
+    // Envois de l'année active seulement.
+    const since = await activeYearStart(tx);
+    const inYear = since ? { createdAt: { gte: since } } : {};
     const [logs, pending] = await Promise.all([
-      tx.notificationLog.findMany({ orderBy: { createdAt: 'desc' }, take: 100 }),
-      tx.notificationLog.count({ where: { status: { in: ['PENDING', 'FAILED'] } } }),
+      tx.notificationLog.findMany({ where: inYear, orderBy: { createdAt: 'desc' }, take: 100 }),
+      tx.notificationLog.count({ where: { status: { in: ['PENDING', 'FAILED'] }, ...inYear } }),
     ]);
     return { logs, pending };
   });

@@ -140,7 +140,7 @@ describe('séances déclarées', () => {
     const out = splitAssignment({
       ...base,
       splitHours: null, // aurait dédoublé les 3 h
-      fixedSlots: [{ day: 'MON', slotId: 'sl1' }],
+      fixedSlots: [{ day: 'MON', slotId: 'sl1', groupId: null }],
     });
     expect(out).toHaveLength(3);
     expect(out[0]!.weekly_hours).toBe(2); // classe entière
@@ -152,7 +152,7 @@ describe('séances déclarées', () => {
     const out = splitAssignment({
       ...base,
       splitHours: null,
-      fixedSlots: [{ day: 'MON', slotId: 'sl1' }],
+      fixedSlots: [{ day: 'MON', slotId: 'sl1', groupId: null }],
     });
     const groups = out.filter((o) => o.group_id);
     expect(groups).toHaveLength(2);
@@ -165,7 +165,7 @@ describe('séances déclarées', () => {
     const out = splitAssignment({
       ...base,
       splitHours: 3,
-      fixedSlots: [{ day: 'TUE', slotId: 'sl2' }],
+      fixedSlots: [{ day: 'TUE', slotId: 'sl2', groupId: null }],
     });
     expect(out.filter((o) => o.group_id)[0]!.weekly_hours).toBe(1);
   });
@@ -176,9 +176,9 @@ describe('séances déclarées', () => {
       weeklyHours: 2,
       splitHours: null,
       fixedSlots: [
-        { day: 'MON', slotId: 'sl1' },
-        { day: 'TUE', slotId: 'sl2' },
-        { day: 'WED', slotId: 'sl3' },
+        { day: 'MON', slotId: 'sl1', groupId: null },
+        { day: 'TUE', slotId: 'sl2', groupId: null },
+        { day: 'WED', slotId: 'sl3', groupId: null },
       ],
     });
     const g = out.filter((o) => o.group_id);
@@ -189,5 +189,133 @@ describe('séances déclarées', () => {
   it('sans déclaration, rien n’est imposé', () => {
     const out = splitAssignment({ ...base, splitHours: 1 });
     expect(out.filter((o) => o.group_id)[0]!.fixed_slots).toBeUndefined();
+  });
+});
+
+describe('séances successives', () => {
+  const base = {
+    assignmentId: 'a1',
+    teacherId: 't1',
+    subjectId: 's1',
+    subjectLabel: 'Physique',
+    classId: 'c1',
+    className: 'TCS-A',
+    weeklyHours: 3,
+    splitHours: null,
+    groups: [
+      { id: 'g1', teacherId: null },
+      { id: 'g2', teacherId: null },
+    ],
+  };
+
+  it('donne à chaque groupe son propre créneau', () => {
+    const out = splitAssignment({
+      ...base,
+      fixedSlots: [
+        { day: 'MON', slotId: 'sl1', groupId: 'g1' },
+        { day: 'MON', slotId: 'sl2', groupId: 'g2' },
+      ],
+    });
+    const g1 = out.find((o) => o.group_id === 'g1')!;
+    const g2 = out.find((o) => o.group_id === 'g2')!;
+    expect(g1.fixed_slots).toEqual([{ day: 'MON', slot_id: 'sl1' }]);
+    expect(g2.fixed_slots).toEqual([{ day: 'MON', slot_id: 'sl2' }]);
+  });
+
+  it('n’impose PAS la simultanéité', () => {
+    // C'est ce qui autorise le même professeur sur les deux moitiés.
+    const out = splitAssignment({
+      ...base,
+      fixedSlots: [
+        { day: 'MON', slotId: 'sl1', groupId: 'g1' },
+        { day: 'MON', slotId: 'sl2', groupId: 'g2' },
+      ],
+    });
+    for (const o of out.filter((x) => x.group_id)) {
+      expect(o.parallel_key).toBeUndefined();
+    }
+  });
+
+  it('ne retranche qu’une fois les heures de groupe au volume de classe', () => {
+    // 3 h dont 1 h par groupe : l'élève a 2 h en classe entière, pas 1 h.
+    const out = splitAssignment({
+      ...base,
+      fixedSlots: [
+        { day: 'MON', slotId: 'sl1', groupId: 'g1' },
+        { day: 'MON', slotId: 'sl2', groupId: 'g2' },
+      ],
+    });
+    expect(out.find((o) => !o.group_id)!.weekly_hours).toBe(2);
+    expect(out.filter((o) => o.group_id).every((o) => o.weekly_hours === 1)).toBe(true);
+  });
+
+  it('garde des identifiants distincts des lignes simultanées', () => {
+    const out = splitAssignment({
+      ...base,
+      fixedSlots: [
+        { day: 'MON', slotId: 'sl1', groupId: null },
+        { day: 'TUE', slotId: 'sl1', groupId: 'g1' },
+        { day: 'TUE', slotId: 'sl2', groupId: 'g2' },
+      ],
+    });
+    const ids = out.map((o) => o.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toContain('a1::g1');
+    expect(ids).toContain('a1::g1::seq');
+  });
+
+  it('accepte les deux modes sur la même matière', () => {
+    // 1 h simultanée + 1 h par groupe = 2 h vues par l'élève, 1 h en entier.
+    const out = splitAssignment({
+      ...base,
+      fixedSlots: [
+        { day: 'MON', slotId: 'sl1', groupId: null },
+        { day: 'TUE', slotId: 'sl1', groupId: 'g1' },
+        { day: 'TUE', slotId: 'sl2', groupId: 'g2' },
+      ],
+    });
+    expect(out.find((o) => !o.group_id)!.weekly_hours).toBe(1);
+    expect(out.filter((o) => o.parallel_key)).toHaveLength(2);
+    expect(out.filter((o) => o.group_id && !o.parallel_key)).toHaveLength(2);
+  });
+
+  it('ignore une séance rattachée à un groupe disparu', () => {
+    const out = splitAssignment({
+      ...base,
+      fixedSlots: [{ day: 'MON', slotId: 'sl1', groupId: 'groupe-supprimé' }],
+    });
+    // Rien en groupes : tout le volume reste en classe entière.
+    expect(out).toHaveLength(1);
+    expect(out[0]!.weekly_hours).toBe(3);
+  });
+
+  it('tolère un déséquilibre entre groupes', () => {
+    // G1 a deux séances, G2 une seule : l'élève le plus servi en voit deux,
+    // c'est ce maximum qu'on retranche au volume de classe entière.
+    const out = splitAssignment({
+      ...base,
+      fixedSlots: [
+        { day: 'MON', slotId: 'sl1', groupId: 'g1' },
+        { day: 'TUE', slotId: 'sl1', groupId: 'g1' },
+        { day: 'MON', slotId: 'sl2', groupId: 'g2' },
+      ],
+    });
+    expect(out.find((o) => !o.group_id)!.weekly_hours).toBe(1);
+    expect(out.find((o) => o.group_id === 'g1')!.weekly_hours).toBe(2);
+    expect(out.find((o) => o.group_id === 'g2')!.weekly_hours).toBe(1);
+  });
+});
+
+describe('parseSplitId', () => {
+  it('retrouve le groupe malgré le suffixe des séances successives', () => {
+    expect(parseSplitId('a1::g1::seq')).toEqual({ assignmentId: 'a1', groupId: 'g1' });
+  });
+
+  it('lit une ligne simultanée', () => {
+    expect(parseSplitId('a1::g1')).toEqual({ assignmentId: 'a1', groupId: 'g1' });
+  });
+
+  it('lit une ligne de classe entière', () => {
+    expect(parseSplitId('a1')).toEqual({ assignmentId: 'a1', groupId: null });
   });
 });

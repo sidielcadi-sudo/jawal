@@ -1,6 +1,7 @@
 import 'server-only';
 import type { Prisma } from '@/lib/db';
 import type { BilingualNameFields } from '@/lib/localized-name';
+import { activeYearStart } from '@/lib/active-year';
 
 type Tx = Prisma.TransactionClient;
 
@@ -169,10 +170,12 @@ export async function getParentAnnouncements(
 ) {
   const classIds = children.map((c) => c.classId).filter((v): v is string => v !== null);
   const levelIds = children.map((c) => c.levelId).filter((v): v is string => v !== null);
+  // Annonces de l'année active seulement.
+  const since = await activeYearStart(tx);
 
   return tx.announcement.findMany({
     where: {
-      publishedAt: { not: null, lte: new Date() },
+      publishedAt: { not: null, lte: new Date(), ...(since ? { gte: since } : {}) },
       OR: [
         { audience: 'ALL' },
         { audience: 'PARENTS' },

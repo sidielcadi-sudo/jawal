@@ -82,8 +82,13 @@ def compute_analysis(
             util = 0
             status = "UNDERLOADED"
         else:
-            ratio = (placed_h / max(1, expected)) * 100
-            util = int(round(ratio))
+            # Taux d'OCCUPATION, pas taux de placement : la colonne voisine
+            # s'appelle « Capacité », et un professeur dont les 5 h ont toutes
+            # été placées n'est pas « saturé » s'il lui reste 31 créneaux
+            # libres. Rapporter le placement à lui-même donnait 100 % à tout le
+            # monde, et un bilan qui désignait vingt-trois professeurs saturés
+            # là où aucun ne l'était.
+            util = int(round((expected / compat) * 100)) if compat else 100
             if compat < expected:
                 status = "DEFICIT"
             elif util >= 90:

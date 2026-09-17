@@ -181,12 +181,12 @@ export async function generateTimetableAction(
       // de 10 h à 12 h » le dit, et l'appel comme les notes s'y rattachent.
       const splitSlotRows = await tx.classGroupSlot.findMany({
         where: { classId },
-        select: { subjectId: true, dayOfWeek: true, slotId: true },
+        select: { subjectId: true, dayOfWeek: true, slotId: true, groupId: true },
       });
-      const splitSlotsBySubject = new Map<string, Array<{ day: string; slotId: string }>>();
+      const splitSlotsBySubject = new Map<string, Array<{ day: string; slotId: string; groupId: string | null }>>();
       for (const r of splitSlotRows) {
         const arr = splitSlotsBySubject.get(r.subjectId) ?? [];
-        arr.push({ day: r.dayOfWeek, slotId: r.slotId });
+        arr.push({ day: r.dayOfWeek, slotId: r.slotId, groupId: r.groupId });
         splitSlotsBySubject.set(r.subjectId, arr);
       }
 

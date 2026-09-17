@@ -1,4 +1,5 @@
 import 'server-only';
+import { floorDate } from '@/lib/year-bounds';
 import type { Prisma } from '@/lib/db';
 import type { KpiStatus } from '@/lib/kpi-pilotage';
 import { findAtRiskStudents } from '@/lib/bi';
@@ -85,6 +86,13 @@ export async function computeVieScolaire(
   const dayKey = DAY_OF_WEEK[now.getUTCDay()]!;
   const since7 = new Date(today.end.getTime() - 7 * 86_400_000);
   const since30 = new Date(today.end.getTime() - 30 * 86_400_000);
+  // Les fenêtres glissantes (30 jours, 6 semaines) ne remontent pas avant la
+  // rentrée : en septembre, elles compteraient les absences de l'an passé.
+  const rentree = await tx.academicYear.findFirst({
+    where: { active: true },
+    select: { startDate: true },
+  });
+  const floor = (d: Date) => floorDate(d, rentree?.startDate);
 
   // ── Bloc 1 — Présence & assiduité ──────────────────────────────────────
   const todayRecords = await tx.attendanceRecord.findMany({
@@ -127,7 +135,7 @@ export async function computeVieScolaire(
   const absHistory = await tx.attendanceRecord.findMany({
     where: {
       status: 'ABSENT',
-      session: { finalizedAt: { not: null }, date: { gte: since30, lt: today.end } },
+      session: { finalizedAt: { not: null }, date: { gte: floor(since30), lt: today.end } },
     },
     select: { session: { select: { date: true } } },
   });
@@ -140,7 +148,7 @@ export async function computeVieScolaire(
       status: 'LATE',
       session: {
         finalizedAt: { not: null },
-        date: { gte: new Date(today.end.getTime() - 42 * 86_400_000), lt: today.end },
+        date: { gte: floor(new Date(today.end.getTime() - 42 * 86_400_000)), lt: today.end },
       },
     },
     select: { session: { select: { date: true } } },

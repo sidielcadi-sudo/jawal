@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { getTeacherPersonId } from '@/lib/teacher';
 import { SaisieGrid } from './saisie-grid';
+import { ServiceSelect } from './service-select';
 import { pickPeriodId } from '@/lib/periods';
 import { localizedLabel } from '@/lib/localized-name';
 import { PeriodPicker } from '@/components/period-picker';
@@ -33,7 +34,7 @@ export default async function NotesSaisiePage({
       classId: true,
       subjectId: true,
       subject: { select: { label: true, labelAr: true } },
-      class: { select: { name: true, nameAr: true } },
+      class: { select: { name: true, nameAr: true, levelId: true } },
     } as const;
     const [assignments, entries] = await Promise.all([
       tx.teacherAssignment.findMany({ where: { teacherId, academicYearId: year.id }, select }),
@@ -41,7 +42,7 @@ export default async function NotesSaisiePage({
     ]);
     const services = new Map<
       string,
-      { classId: string; className: string; subjectId: string; subjectLabel: string }
+      { classId: string; className: string; levelId: string; subjectId: string; subjectLabel: string }
     >();
     for (const a of [...assignments, ...entries]) {
       if (!a.subjectId) continue;
@@ -50,30 +51,44 @@ export default async function NotesSaisiePage({
         services.set(key, {
           classId: a.classId,
           className: localizedLabel(locale, a.class.name, a.class.nameAr),
+          levelId: a.class.levelId,
           subjectId: a.subjectId,
           subjectLabel: a.subject?.label ?? '—',
         });
     }
-    const svc = [...services.values()].sort(
+    const allSvc = [...services.values()].sort(
       (a, b) => a.className.localeCompare(b.className) || a.subjectLabel.localeCompare(b.subjectLabel),
     );
 
-    // Classes distinctes.
-    const classes = [...new Map(svc.map((s) => [s.classId, s.className])).entries()].map(
-      ([id, name]) => ({ id, name }),
-    );
+    const periodId = pickPeriodId(year.periods, sp.period);
 
-    // Sélection courante.
+    // Une période rattachée à une session d'examen (« Évaluation diagnostique
+    // 2AC ») ne concerne que les niveaux et les matières de cette session :
+    // proposer toutes les classes du professeur menait à des carnets vides.
+    const sessions = periodId
+      ? await tx.examSession.findMany({
+          where: { academicYearId: year.id, periodId },
+          select: { label: true, levelId: true, papers: { select: { subjectId: true } } },
+        })
+      : [];
+    const levelIds = new Set(sessions.map((s) => s.levelId));
+    const subjectIds = new Set(sessions.flatMap((s) => s.papers.map((p) => p.subjectId)));
+    const svc =
+      sessions.length > 0
+        ? allSvc.filter((s) => levelIds.has(s.levelId) && (subjectIds.size === 0 || subjectIds.has(s.subjectId)))
+        : allSvc;
+
+    // Sélection courante, dans le périmètre de la période.
     const classId = svc.find((s) => s.classId === sp.class)?.classId ?? svc[0]?.classId ?? null;
     const subjectsForClass = svc.filter((s) => s.classId === classId);
     const subjectId =
       subjectsForClass.find((s) => s.subjectId === sp.subject)?.subjectId ??
       subjectsForClass[0]?.subjectId ??
       null;
-    const periodId = pickPeriodId(year.periods, sp.period);
+    const scope = sessions.length > 0 ? sessions.map((s) => s.label).join(', ') : null;
 
     if (!classId || !subjectId || !periodId) {
-      return { svc, classes, subjectsForClass, periods: year.periods, classId, subjectId, periodId, grid: null };
+      return { svc, periods: year.periods, classId, subjectId, periodId, scope, grid: null };
     }
 
     const students = await tx.studentClass.findMany({
@@ -89,12 +104,11 @@ export default async function NotesSaisiePage({
 
     return {
       svc,
-      classes,
-      subjectsForClass,
       periods: year.periods,
       classId,
       subjectId,
       periodId,
+      scope,
       grid: {
         students: students.map((s) => ({
           id: s.student.id,
@@ -123,7 +137,7 @@ export default async function NotesSaisiePage({
     return <p className="text-sm text-slate-500">{t('noService')}</p>;
   }
 
-  const { classes, subjectsForClass, periods, classId, subjectId, periodId, grid } = data;
+  const { svc, periods, classId, subjectId, periodId, scope, grid } = data;
 
   return (
     <div>
@@ -131,37 +145,21 @@ export default async function NotesSaisiePage({
       <div className="mb-3">
         <PeriodPicker periods={periods} selectedId={periodId} locale={locale} />
       </div>
-      <form method="get" className="mb-4 flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium text-slate-700">{t('saisieTitle')}</span>
-        <select
-          name="class"
-          defaultValue={classId ?? ''}
-          className="rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm"
-        >
-          {classes.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.name}
-            </option>
-          ))}
-        </select>
-        <select
-          name="subject"
-          defaultValue={subjectId ?? ''}
-          className="min-w-[16rem] flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm shadow-sm"
-        >
-          {subjectsForClass.map((s) => (
-            <option key={s.subjectId} value={s.subjectId}>
-              {s.subjectLabel} — {s.className}
-            </option>
-          ))}
-        </select>
-        <button
-          type="submit"
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
-        >
-          {t('apply')}
-        </button>
-      </form>
+      {scope && (
+        <p className="mb-3 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+          {t('sessionScope', { session: scope })}
+        </p>
+      )}
+      {/* La clé remonte le composant quand la période change : ses menus
+          repartent de la sélection calculée pour la nouvelle période. */}
+      <ServiceSelect
+        key={`${periodId}|${classId}|${subjectId}`}
+        services={svc.map(({ levelId: _l, ...s }) => s)}
+        classId={classId}
+        subjectId={subjectId}
+        title={t('saisieTitle')}
+        applyLabel={t('apply')}
+      />
 
       {grid && classId && subjectId && periodId ? (
         <SaisieGrid
@@ -173,7 +171,7 @@ export default async function NotesSaisiePage({
           devoirs={grid.devoirs}
         />
       ) : (
-        <p className="text-sm text-slate-500">{t('noService')}</p>
+        <p className="text-sm text-slate-500">{scope ? t('sessionNoService') : t('noService')}</p>
       )}
     </div>
   );

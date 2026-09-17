@@ -6,6 +6,7 @@ import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
+import { cycleViolations } from '@/lib/teacher-allocation';
 
 type Result = { ok: true } | { ok: false; error: string };
 
@@ -46,6 +47,13 @@ export async function createAssignmentAction(
       const teacher = await tx.person.findUnique({ where: { id: teacherId } });
       if (!teacher || teacher.type !== 'TEACHER') {
         throw new Error("Affectations réservées aux enseignants.");
+      }
+      // Un professeur ne va que dans les cycles de sa fiche (« Niveaux enseignés »).
+      const bad = await cycleViolations(tx, [{ teacherId, classId: parsed.data.classId }]);
+      if (bad.length > 0) {
+        throw new Error(
+          `${bad[0]} : la classe ne relève d'aucun cycle déclaré dans la fiche de l'enseignant (Niveaux enseignés).`,
+        );
       }
       const a = await tx.teacherAssignment.create({
         data: { tenantId, teacherId, ...parsed.data },

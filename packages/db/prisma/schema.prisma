@@ -1162,6 +1162,7 @@ model ClassGroup {
   members            ClassGroupMember[]
   entries            TimetableEntry[]
   attendanceSessions AttendanceSession[]
+  declaredSlots      ClassGroupSlot[]
 
   @@unique([classId, subjectId, name])
   @@index([tenantId, classId])
@@ -1188,14 +1189,30 @@ model ClassGroupSlot {
   /// placée doivent se comparer sans conversion.
   dayOfWeek DayOfWeek @map("day_of_week")
   slotId    String   @map("slot_id") @db.Uuid
+  /// Groupe concerné par cette séance.
+  ///
+  /// Deux façons de faire cours en groupes, et il faut les distinguer :
+  ///
+  ///  - **null — simultané** : tous les groupes se tiennent sur ce créneau, en
+  ///    parallèle. Il faut alors un professeur par groupe, personne n'étant à
+  ///    deux endroits à la fois.
+  ///  - **renseigné — successif** : ce créneau est celui de CE groupe seul.
+  ///    L'autre moitié passe sur un autre créneau, et le MÊME professeur peut
+  ///    assurer les deux — c'est le fonctionnement courant des travaux
+  ///    pratiques, où l'on prend une moitié de classe puis l'autre.
+  groupId   String?   @map("group_id") @db.Uuid
   createdAt DateTime @default(now()) @map("created_at")
 
   tenant  Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   class   Class         @relation(fields: [classId], references: [id], onDelete: Cascade)
   subject Subject       @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   slot    TimetableSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  group   ClassGroup?   @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
-  @@unique([classId, subjectId, dayOfWeek, slotId])
+  // Unicité par DEUX index partiels (cf. prisma/rls.sql) : en SQL, NULL ne
+  // s'oppose pas à NULL, et une contrainte unique incluant `group_id`
+  // laisserait passer deux déclarations « simultané » identiques.
+  @@index([classId, subjectId, dayOfWeek, slotId])
   @@index([tenantId, classId])
   @@map("class_group_slots")
 }
@@ -1602,6 +1619,9 @@ model Evaluation {
   /// BONUS : les points au-dessus de 10/20 s'ajoutent à la moyenne.
   /// NOTE  : la note n'est comptée que si elle améliore la moyenne.
   optionalMode EvaluationOptionalMode @default(BONUS) @map("optional_mode")
+  /// Épreuve de session d'examen dont ce devoir est issu (génération à la
+  /// publication). Null = devoir créé par l'enseignant.
+  examPaperId  String?                @map("exam_paper_id") @db.Uuid
   createdAt    DateTime               @default(now()) @map("created_at")
   updatedAt    DateTime               @updatedAt @map("updated_at")
 
@@ -1609,9 +1629,11 @@ model Evaluation {
   class   Class   @relation(fields: [classId], references: [id], onDelete: Cascade)
   subject Subject @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   period  Period  @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  examPaper ExamPaper? @relation(fields: [examPaperId], references: [id], onDelete: SetNull)
   grades  Grade[]
 
   @@index([tenantId, classId, periodId, subjectId])
+  @@index([examPaperId])
   @@map("evaluations")
 }
 
@@ -2499,6 +2521,10 @@ model Installment {
   /// et doit rester idempotent s'il est relancé.
   reminder3dSentAt  DateTime?         @map("reminder_3d_sent_at")
   reminder1dSentAt  DateTime?         @map("reminder_1d_sent_at")
+  /// Créance passée en contentieux (mise en demeure, avocat, huissier) : elle
+  /// quitte la relance ordinaire. Null = recouvrement amiable.
+  contentiousAt     DateTime?         @map("contentious_at")
+  contentiousNote   String?           @map("contentious_note")
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
 
@@ -3006,6 +3032,15 @@ model LeaveType {
 }
 
 /// Demande de congé/absence d'un employé (workflow demande → validation).
+/// Portée d'une absence dans la journée : entière, matinée, après-midi, ou
+/// un nombre de séances (un prof peut ne manquer que deux heures).
+enum LeaveDayPart {
+  FULL
+  AM
+  PM
+  SESSIONS
+}
+
 model LeaveRequest {
   id                  String             @id @default(uuid()) @db.Uuid
   tenantId            String             @map("tenant_id") @db.Uuid
@@ -3015,6 +3050,9 @@ model LeaveRequest {
   endDate             DateTime           @map("end_date") @db.Date
   /// Nombre de jours décomptés (ouvrés).
   days                Float
+  dayPart             LeaveDayPart       @default(FULL) @map("day_part")
+  /// Nombre de séances concernées quand dayPart = SESSIONS.
+  sessionCount        Int?               @map("session_count")
   reason              String?
   justificationFileId String?            @map("justification_file_id") @db.Uuid
   status              LeaveRequestStatus @default(PENDING)
@@ -3062,6 +3100,14 @@ model OvertimeEntry {
   hours             Float
   source            OvertimeSource
   note              String?
+  /// Motif détaillé (cf. lib/overtime-hse) ; null pour les heures générées
+  /// avant les motifs, qui ne portent que leur source.
+  reason            String?
+  /// Déclaration : classe concernée, horaire et professeur remplacé.
+  classId           String?        @map("class_id") @db.Uuid
+  startTime         String?        @map("start_time")
+  endTime           String?        @map("end_time")
+  replacedPersonId  String?        @map("replaced_person_id") @db.Uuid
   /// Réf. de l'origine (ex. id du TimetableOverride) — déduplication des générations auto.
   sourceRef         String?        @map("source_ref")
   status            OvertimeStatus @default(DECLARED)
@@ -3863,11 +3909,21 @@ model SupportSessionSkill {
 // et qui détermine les épreuves applicables à un élève.
 
 /// Nature d'une épreuve dans le calcul de la moyenne.
+/// Type d'épreuve, en quatre familles :
+///  - Contrôles : CONTROLE_CONTINU
+///  - Devoirs : DEVOIR_SURVEILLE, DEVOIR_MAISON
+///  - Examens internes : BLANC, COMPOSITION (SEMESTRIEL = ancien libellé, conservé
+///    pour les sessions déjà créées)
+///  - Examens officiels : REGIONAL (1BAC), NATIONAL (2BAC)
 enum ExamKind {
-  SEMESTRIEL // examen semestriel local
+  SEMESTRIEL // examen semestriel local (historique — remplacé par COMPOSITION)
   REGIONAL // examen régional (1ère année Bac)
   NATIONAL // examen national (2ème année Bac)
   BLANC // examen blanc (entraînement, pondération à part)
+  CONTROLE_CONTINU // contrôle continu (CC)
+  DEVOIR_SURVEILLE // devoir surveillé (DS)
+  DEVOIR_MAISON // devoir maison (DM)
+  COMPOSITION // composition interne
 }
 
 enum ExamSessionStatus {
@@ -4039,6 +4095,7 @@ model ExamPaper {
   graders     ExamGrader[]
   tracks      ExamPaperTrack[]
   marks       ExamMark[]
+  evaluations Evaluation[]
 
   @@unique([sessionId, subjectId, date, startTime])
   @@index([tenantId, sessionId])

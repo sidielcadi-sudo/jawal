@@ -16,8 +16,22 @@ import {
   type Counts,
   type TrendDay,
 } from '@/lib/attendance-dashboard';
+import {
+  BOARD_COLS,
+  loadDailyBoard,
+  loadMissingAppels,
+  loadSlotDetail,
+  type BoardCol,
+} from '@/lib/vie-scolaire-board';
+import { clampDay } from '@/lib/year-bounds';
 import { AttendanceFilters } from './filters';
 import { NotifyButton } from './notify-button';
+import { SlotGrid } from './slot-board';
+import {
+  MissingAppelPanel,
+  SlotDetailPanel,
+  slotLabel,
+} from '../vie-scolaire/journee/board-parts';
 
 /** Fenêtre d'historique alimentant la courbe et les alertes. */
 const WINDOW_DAYS = 30;
@@ -30,6 +44,8 @@ type ClassRow = {
   enrolled: number;
   sessionId: string | null;
   finalized: boolean;
+  punished: number;
+  excluded: number;
 } & Counts;
 
 type IncidentRow = {
@@ -50,17 +66,32 @@ const TONE_BAR: Record<string, string> = {
   weak: 'bg-red-500',
 };
 
+/**
+ * Absences et Justif — deux lectures d'une même journée.
+ *
+ * - **Par classe** : vue d'ensemble, détail des absences et retards, tendances.
+ * - **Par créneau** : le tableau de bord journalier de la vie scolaire, les
+ *   créneaux en colonnes et les types d'absence en lignes.
+ *
+ * Tout est borné à l'année scolaire active : une date hors de l'année est
+ * ramenée à sa borne, et les fenêtres glissantes ne remontent pas avant la
+ * rentrée.
+ */
 export default async function AdminAttendancePage({
   params,
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
   searchParams: Promise<{
+    view?: string;
     date?: string;
+    cycle?: string;
     class?: string;
     q?: string;
     page?: string;
     size?: string;
+    slot?: string;
+    col?: string;
   }>;
 }) {
   const { locale } = await params;
@@ -69,32 +100,257 @@ export default async function AdminAttendancePage({
   await requireRoleCode(['tenant_admin', 'direction', 'scolarite', 'cpe']);
 
   const session = (await auth())!;
+  const tenantId = session.user.tenantId;
   const t = await getTranslations('admin.attendanceIndex');
   const tStatus = await getTranslations('admin.attendance.status');
+  const view: 'class' | 'slot' = sp.view === 'slot' ? 'slot' : 'class';
+
+  /* ── Cadre commun : année active, cycles, classes, créneaux ─────────── */
+  const frame = await withTenant(tenantId, async (tx) => {
+    const year = await tx.academicYear.findFirst({
+      where: { active: true },
+      select: { id: true, label: true, startDate: true, endDate: true },
+    });
+    if (!year) return null;
+    const [classes, slots, cycleRows] = await Promise.all([
+      tx.class.findMany({
+        where: { academicYearId: year.id, deletedAt: null },
+        select: {
+          id: true,
+          name: true,
+          nameAr: true,
+          level: {
+            select: {
+              order: true,
+              label: true,
+              labelAr: true,
+              cycleId: true,
+              cycle: { select: { id: true, label: true, labelAr: true, order: true } },
+            },
+          },
+        },
+        orderBy: [{ level: { order: 'asc' } }, { name: 'asc' }],
+      }),
+      tx.timetableSlot.findMany({
+        where: { isBreak: false },
+        select: { startTime: true, endTime: true, label: true },
+      }),
+      // Tous les cycles de l'établissement, comme les boutons de la page Élèves.
+      tx.cycle.findMany({
+        orderBy: { order: 'asc' },
+        select: { id: true, label: true, labelAr: true, order: true },
+      }),
+    ]);
+    return { year, classes, slots, cycles: cycleRows };
+  });
+
+  if (!frame) {
+    return (
+      <div className="px-3 py-3">
+        <p className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
+          {t('noYear')}
+        </p>
+      </div>
+    );
+  }
 
   const today = isoDay(new Date());
-  const dateStr = /^\d{4}-\d{2}-\d{2}$/.test(sp.date ?? '') ? sp.date! : today;
+  const yearStart = isoDay(frame.year.startDate);
+  const yearEnd = isoDay(frame.year.endDate);
+  const requestedDate = /^\d{4}-\d{2}-\d{2}$/.test(sp.date ?? '') ? sp.date! : today;
+  const dateStr = clampDay(requestedDate, yearStart, yearEnd);
   const date = new Date(`${dateStr}T00:00:00.000Z`);
-  const windowStart = new Date(date);
-  windowStart.setUTCDate(windowStart.getUTCDate() - WINDOW_DAYS);
 
-  const data = await withTenant(session.user.tenantId, async (tx) => {
-    // L'année suit la date consultée, pas le drapeau « active » : un appel du
-    // 15 juillet appartient à l'exercice qui se terminait alors. Charger les
-    // classes de l'année active afficherait « appel non fait » sur toute la
-    // page, alors que la feuille existe — sur d'autres classes.
-    const years = await tx.academicYear.findMany({
-      select: { id: true, label: true, active: true, startDate: true, endDate: true },
-      orderBy: { startDate: 'desc' },
+  const cycles = frame.cycles;
+  const cycleFilter = cycles.find((c) => c.id === sp.cycle)?.id ?? null;
+  const cycleClasses = cycleFilter
+    ? frame.classes.filter((c) => c.level.cycleId === cycleFilter)
+    : frame.classes;
+  const classFilter =
+    sp.class && sp.class !== 'all' && cycleClasses.some((c) => c.id === sp.class) ? sp.class : null;
+  const scopedIds = classFilter ? [classFilter] : cycleClasses.map((c) => c.id);
+
+  /* ── Liens ─────────────────────────────────────────────────────────── */
+  const base = `/${locale}/admin/attendance`;
+  const link = (patch: Record<string, string | undefined>) => {
+    const merged: Record<string, string | undefined> = {
+      view: view === 'slot' ? 'slot' : undefined,
+      date: dateStr,
+      cycle: cycleFilter ?? undefined,
+      class: classFilter ?? undefined,
+      ...patch,
+    };
+    const qs = new URLSearchParams();
+    for (const [k, v] of Object.entries(merged)) if (v) qs.set(k, v);
+    return `${base}?${qs.toString()}`;
+  };
+  const exportHref = `/api/admin/exports/attendance.csv?date=${dateStr}${
+    classFilter ? `&class=${classFilter}` : ''
+  }`;
+
+  /** Créneau horaire lisible d'une séance : « 08h00 - 09h00 · M1 ». */
+  const slotName = new Map(frame.slots.map((s) => [`${s.startTime}-${s.endTime}`, s.label]));
+  const slotText = (periodLabel: string | null) => {
+    if (!periodLabel) return null;
+    if (!/^\d{2}:\d{2}-\d{2}:\d{2}$/.test(periodLabel)) return periodLabel;
+    const name = slotName.get(periodLabel);
+    return name ? `${slotLabel(periodLabel)} · ${name}` : slotLabel(periodLabel);
+  };
+
+  /* ── En-tête, onglets, cycles, filtres : communs aux deux vues ─────── */
+  const chrome = (
+    <>
+      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
+        <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/${locale}/admin/attendance/management`}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            {t('justification')}
+          </Link>
+          <a
+            href={exportHref}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            <span aria-hidden>⭳</span> {t('export')}
+          </a>
+        </div>
+      </header>
+
+      <nav className="folder-tabs mb-4">
+        <Link
+          href={link({ view: undefined, slot: undefined, col: undefined })}
+          className={`folder-tab ${view === 'class' ? 'is-active' : ''}`}
+        >
+          {t('tabs.byClass')}
+        </Link>
+        <Link href={link({ view: 'slot' })} className={`folder-tab ${view === 'slot' ? 'is-active' : ''}`}>
+          {t('tabs.bySlot')}
+        </Link>
+      </nav>
+
+      {/* Tous · Primaire · Collège · Lycée — comme la page Élèves. */}
+      {cycles.length > 0 && (
+        <nav className="mb-3 flex flex-wrap items-center gap-2">
+          <CycleTab
+            href={link({ cycle: undefined, class: undefined, slot: undefined, col: undefined })}
+            label={t('cycleAll')}
+            active={!cycleFilter}
+          />
+          {cycles.map((c) => (
+            <CycleTab
+              key={c.id}
+              href={link({ cycle: c.id, class: undefined, slot: undefined, col: undefined })}
+              label={localizedLabel(locale, c.label, c.labelAr)}
+              active={cycleFilter === c.id}
+            />
+          ))}
+        </nav>
+      )}
+
+      <AttendanceFilters
+        base={base}
+        date={dateStr}
+        today={today}
+        minDate={yearStart}
+        maxDate={yearEnd}
+        classId={classFilter ?? 'all'}
+        classes={cycleClasses.map((c) => ({
+          id: c.id,
+          label: localizedLabel(locale, c.name, c.nameAr),
+        }))}
+        allLabel={t('allClasses')}
+        todayLabel={t('todayIs')}
+        keep={{ view: view === 'slot' ? 'slot' : undefined, cycle: cycleFilter ?? undefined }}
+      />
+
+      {requestedDate !== dateStr && (
+        <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
+          {t('outOfYear', { date: dateStr })}
+        </p>
+      )}
+    </>
+  );
+
+  /* ════ Onglet « Par créneau » ═════════════════════════════════════════ */
+  if (view === 'slot') {
+    const tb = await getTranslations('admin.vieScolaire.board');
+    const col = sp.col && (BOARD_COLS as string[]).includes(sp.col) ? (sp.col as BoardCol) : null;
+    // Tous les cycles, toutes les classes : pas de restriction, l'emploi du
+    // temps de l'année active délimite déjà le périmètre.
+    const scope = cycleFilter || classFilter ? scopedIds : null;
+
+    const slotData = await withTenant(tenantId, async (tx) => {
+      const board = await loadDailyBoard(tx, { date: dateStr, classIds: scope });
+      const missing =
+        sp.slot && col === 'appelsNonFaits'
+          ? {
+              rows: await loadMissingAppels(tx, { date: dateStr, classIds: scope, periodLabel: sp.slot }),
+              periodLabel: sp.slot,
+            }
+          : null;
+      const detail =
+        sp.slot && col && col !== 'appelsNonFaits'
+          ? {
+              rows: await loadSlotDetail(tx, { date: dateStr, classIds: scope, periodLabel: sp.slot, col }),
+              periodLabel: sp.slot,
+              col,
+            }
+          : null;
+      const reasons = (
+        await tx.attendanceReason.findMany({
+          where: { active: true },
+          orderBy: [{ order: 'asc' }, { label: 'asc' }],
+          select: { id: true, label: true, color: true },
+        })
+      ).map((r) => ({ id: r.id, label: r.label, color: r.color }));
+      return { board, missing, detail, reasons };
     });
-    const year =
-      years.find((y) => isoDay(y.startDate) <= dateStr && dateStr <= isoDay(y.endDate)) ??
-      years.find((y) => y.active) ??
-      years[0];
-    if (!year) return null;
 
+    return (
+      <div className="px-3 py-3">
+        {chrome}
+        <SlotGrid
+          board={slotData.board}
+          hrefFor={(slot, c) => link({ slot, col: c })}
+          rowLabel={(key) => t(`slot.rows.${key}` as never)}
+          headerLabel={t('slot.typeHeader')}
+          totalLabel={t('slot.total')}
+          emptyLabel={t('slot.empty')}
+          activeSlot={sp.slot}
+          activeCol={sp.col}
+        />
+        {slotData.missing && (
+          <MissingAppelPanel
+            missing={slotData.missing}
+            date={dateStr}
+            t={tb as never}
+            slotFmtLabel={slotLabel(slotData.missing.periodLabel)}
+          />
+        )}
+        {slotData.detail && (
+          <SlotDetailPanel
+            detail={slotData.detail}
+            reasons={slotData.reasons}
+            locale={locale}
+            t={tb as never}
+            slotFmtLabel={slotLabel(slotData.detail.periodLabel)}
+          />
+        )}
+      </div>
+    );
+  }
+
+  /* ════ Onglet « Par classe » ══════════════════════════════════════════ */
+  const windowStartRaw = new Date(date);
+  windowStartRaw.setUTCDate(windowStartRaw.getUTCDate() - WINDOW_DAYS);
+  // La fenêtre ne remonte pas avant la rentrée.
+  const windowStart = windowStartRaw < frame.year.startDate ? frame.year.startDate : windowStartRaw;
+
+  const data = await withTenant(tenantId, async (tx) => {
     const classes = await tx.class.findMany({
-      where: { academicYearId: year.id, deletedAt: null },
+      where: { id: { in: scopedIds } },
       select: {
         id: true,
         name: true,
@@ -119,6 +375,8 @@ export default async function AdminAttendancePage({
                 id: true,
                 status: true,
                 note: true,
+                punishment: true,
+                exclusion: true,
                 studentId: true,
                 lateReason: { select: { label: true } },
                 justification: { select: { reason: true } },
@@ -163,15 +421,16 @@ export default async function AdminAttendancePage({
       },
     });
 
-    // Fenêtre glissante : comptages par jour pour la courbe…
+    // Fenêtre glissante, sur le périmètre choisi : comptages par jour pour la
+    // courbe…
     const windowSessions = await tx.attendanceSession.findMany({
-      where: { date: { gte: windowStart, lte: date } },
+      where: { date: { gte: windowStart, lte: date }, classId: { in: scopedIds } },
       select: { date: true, classId: true, records: { select: { status: true } } },
     });
 
     // …et détail des incidents pour les alertes.
     const windowIncidents = await tx.attendanceSession.findMany({
-      where: { date: { gte: windowStart, lte: date } },
+      where: { date: { gte: windowStart, lte: date }, classId: { in: scopedIds } },
       select: {
         date: true,
         classId: true,
@@ -195,20 +454,32 @@ export default async function AdminAttendancePage({
       },
     });
 
+    // Justificatifs en attente de l'année active.
     const pendingJustifications = await tx.absenceJustification.count({
-      where: { status: 'PENDING' },
+      where: {
+        status: 'PENDING',
+        attendanceRecord: { session: { class: { academicYearId: frame.year.id } } },
+      },
     });
 
-    // Dernier jour réellement pointé : sert à l'invite quand la date demandée
-    // est vide (un dimanche, une veille de rentrée…).
+    // Dernier jour réellement pointé dans l'année active, sur le périmètre :
+    // sert à l'invite quand la date demandée est vide.
     const lastSession = await tx.attendanceSession.findFirst({
+      where: { classId: { in: scopedIds }, date: { lte: frame.year.endDate } },
       orderBy: { date: 'desc' },
       select: { date: true },
     });
 
+    // Exclusions du jour : signalées dans le carnet de correspondance.
+    const exclusions = await tx.carnetEntry.groupBy({
+      by: ['classId'],
+      where: { type: 'EXCLUSION', occurredAt: { gte: dayStart, lte: dayEnd }, classId: { in: scopedIds } },
+      _count: { _all: true },
+    });
+
     return {
-      year,
       classes,
+      exclusions,
       notices,
       noticesSent,
       windowSessions,
@@ -218,16 +489,6 @@ export default async function AdminAttendancePage({
     };
   });
 
-  if (!data) {
-    return (
-      <div className="px-3 py-3">
-        <p className="rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">
-          {t('noYear')}
-        </p>
-      </div>
-    );
-  }
-
   /* ── Mise en forme ────────────────────────────────────────────────────── */
 
   const noticeByRecord = new Map<string, 'SENT' | 'FAILED' | 'SKIPPED'>();
@@ -235,10 +496,7 @@ export default async function AdminAttendancePage({
     if (n.relatedId) noticeByRecord.set(n.relatedId, n.status as 'SENT' | 'FAILED' | 'SKIPPED');
   }
 
-  const classFilter = sp.class && sp.class !== 'all' ? sp.class : null;
-  const scoped = classFilter ? data.classes.filter((c) => c.id === classFilter) : data.classes;
-
-  const rows: ClassRow[] = scoped.map((cls) => {
+  const rows: ClassRow[] = data.classes.map((cls) => {
     const records = cls.attendanceSessions.flatMap((s) => s.records);
     return {
       classId: cls.id,
@@ -252,6 +510,9 @@ export default async function AdminAttendancePage({
       absent: records.filter((r) => r.status === 'ABSENT').length,
       late: records.filter((r) => r.status === 'LATE').length,
       excused: records.filter((r) => r.status === 'EXCUSED').length,
+      // Marqueurs cumulables avec la présence : un élève présent peut être puni.
+      punished: records.filter((r) => r.punishment).length,
+      excluded: data.exclusions.find((x) => x.classId === cls.id)?._count._all ?? 0,
     };
   });
 
@@ -265,7 +526,7 @@ export default async function AdminAttendancePage({
   const pct = (n: number) => (donutTotal > 0 ? Math.round((n / donutTotal) * 1000) / 10 : 0);
 
   /* Détail du jour : absences et retards, filtrés puis paginés. */
-  const allIncidents: IncidentRow[] = scoped.flatMap((cls) =>
+  const allIncidents: IncidentRow[] = data.classes.flatMap((cls) =>
     cls.attendanceSessions.flatMap((s) =>
       s.records
         .filter((r) => r.status !== 'PRESENT')
@@ -275,13 +536,9 @@ export default async function AdminAttendancePage({
           studentName: personDisplayName(locale, r.student),
           className: localizedLabel(locale, cls.name, cls.nameAr),
           classId: cls.id,
-          time: s.periodLabel,
+          time: slotText(s.periodLabel),
           status: r.status as IncidentRow['status'],
-          reason:
-            r.lateReason?.label ??
-            r.justification?.reason ??
-            r.note ??
-            null,
+          reason: r.lateReason?.label ?? r.justification?.reason ?? r.note ?? null,
           notified: noticeByRecord.get(r.id) ?? null,
         })),
     ),
@@ -349,62 +606,18 @@ export default async function AdminAttendancePage({
     limit: 4,
   });
 
-  /* ── Liens ────────────────────────────────────────────────────────────── */
-
-  const base = `/${locale}/admin/attendance`;
-  const href = (patch: Record<string, string | undefined>) => {
-    const qs = new URLSearchParams({ date: dateStr });
-    if (classFilter) qs.set('class', classFilter);
-    if (sp.q) qs.set('q', sp.q);
-    if (size !== 5) qs.set('size', String(size));
-    if (page !== 1) qs.set('page', String(page));
-    for (const [k, v] of Object.entries(patch)) {
-      if (v === undefined || v === '') qs.delete(k);
-      else qs.set(k, v);
-    }
-    return `${base}?${qs.toString()}`;
-  };
-  const exportHref = `/api/admin/exports/attendance.csv?date=${dateStr}${
-    classFilter ? `&class=${classFilter}` : ''
-  }`;
-
-  const dayLabel = new Date(`${dateStr}T12:00:00`).toLocaleDateString(locale, {
-    weekday: 'long',
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  });
+  const href = (patch: Record<string, string | undefined>) =>
+    link({
+      q: sp.q || undefined,
+      size: size !== 5 ? String(size) : undefined,
+      page: page !== 1 ? String(page) : undefined,
+      ...patch,
+    });
   const anyCall = rows.some((r) => r.sessionId);
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
-        <div>
-          <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
-          <p className="mt-0.5 text-sm text-slate-600 first-letter:uppercase">
-            {t('subtitle')} · {dayLabel}
-          </p>
-        </div>
-        <a
-          href={exportHref}
-          className="inline-flex items-center gap-2 rounded-lg bg-brand-600 px-4 py-2 text-sm font-medium text-white hover:bg-brand-700"
-        >
-          <span aria-hidden>⭳</span> {t('export')}
-        </a>
-      </header>
-
-      <AttendanceFilters
-        base={base}
-        date={dateStr}
-        today={today}
-        classId={classFilter ?? 'all'}
-        classes={data.classes.map((c) => ({
-          id: c.id,
-          label: localizedLabel(locale, c.name, c.nameAr),
-        }))}
-        allLabel={t('allClasses')}
-        todayLabel={t('todayIs')}
-      />
+      {chrome}
 
       {!anyCall && data.lastDay && data.lastDay !== dateStr && (
         <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
@@ -462,9 +675,12 @@ export default async function AdminAttendancePage({
                 <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
                   <tr>
                     <th className="px-4 py-3 text-start">{t('byClass.class')}</th>
-                    <th className="px-4 py-3 text-end">{t('byClass.present')}</th>
-                    <th className="px-4 py-3 text-end">{t('byClass.absent')}</th>
-                    <th className="px-4 py-3 text-end">{t('byClass.late')}</th>
+                    <th className="px-3 py-3 text-end">{t('byClass.present')}</th>
+                    <th className="px-3 py-3 text-end">{t('byClass.absent')}</th>
+                    <th className="px-3 py-3 text-end">{t('byClass.late')}</th>
+                    <th className="px-3 py-3 text-end">{t('byClass.punished')}</th>
+                    <th className="px-3 py-3 text-end">{t('byClass.excluded')}</th>
+                    <th className="px-3 py-3 text-end">{t('byClass.exempt')}</th>
                     <th className="px-4 py-3 text-start">{t('byClass.rate')}</th>
                   </tr>
                 </thead>
@@ -485,19 +701,14 @@ export default async function AdminAttendancePage({
                           </Link>
                           <div className="text-[11px] text-slate-400">{r.cycleLabel}</div>
                         </td>
-                        <td className="px-4 py-2.5 text-end tabular-nums text-slate-700">
+                        <td className="px-3 py-2.5 text-end tabular-nums text-slate-700">
                           {r.sessionId ? r.present : '—'}
                         </td>
-                        <td className="px-4 py-2.5 text-end tabular-nums">
-                          <span className={r.absent > 0 ? 'text-red-700' : 'text-slate-400'}>
-                            {r.sessionId ? r.absent : '—'}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-end tabular-nums">
-                          <span className={r.late > 0 ? 'text-amber-700' : 'text-slate-400'}>
-                            {r.sessionId ? r.late : '—'}
-                          </span>
-                        </td>
+                        <CountCell value={r.absent} taken={Boolean(r.sessionId)} tone="text-red-700" />
+                        <CountCell value={r.late} taken={Boolean(r.sessionId)} tone="text-amber-700" />
+                        <CountCell value={r.punished} taken={Boolean(r.sessionId)} tone="text-purple-700" />
+                        <CountCell value={r.excluded} taken={Boolean(r.sessionId)} tone="text-orange-700" />
+                        <CountCell value={r.excused} taken={Boolean(r.sessionId)} tone="text-sky-700" />
                         <td className="px-4 py-2.5">
                           {rate === null ? (
                             <span className="text-xs text-slate-400">{t('status.notTaken')}</span>
@@ -520,7 +731,7 @@ export default async function AdminAttendancePage({
                   })}
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={5} className="px-4 py-10 text-center text-sm text-slate-400">
+                      <td colSpan={8} className="px-4 py-10 text-center text-sm text-slate-400">
                         {t('byClass.empty')}
                       </td>
                     </tr>
@@ -541,6 +752,7 @@ export default async function AdminAttendancePage({
               <h2 className="text-sm font-semibold text-slate-800">{t('detail.title')}</h2>
               <form method="get" className="flex items-center gap-2">
                 <input type="hidden" name="date" value={dateStr} />
+                {cycleFilter && <input type="hidden" name="cycle" value={cycleFilter} />}
                 {classFilter && <input type="hidden" name="class" value={classFilter} />}
                 {size !== 5 && <input type="hidden" name="size" value={String(size)} />}
                 <input
@@ -577,7 +789,7 @@ export default async function AdminAttendancePage({
                         </div>
                       </td>
                       <td className="px-4 py-2.5 text-xs text-slate-600">{i.className}</td>
-                      <td className="px-4 py-2.5 text-xs tabular-nums text-slate-600">
+                      <td className="whitespace-nowrap px-4 py-2.5 text-xs tabular-nums text-slate-600">
                         {i.time ?? '—'}
                       </td>
                       <td className="px-4 py-2.5">
@@ -728,6 +940,30 @@ export default async function AdminAttendancePage({
 }
 
 /* ── Composants de présentation ───────────────────────────────────────────── */
+
+function CycleTab({ href, label, active }: { href: string; label: string; active: boolean }) {
+  return (
+    <Link
+      href={href}
+      aria-current={active ? 'page' : undefined}
+      className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+        active
+          ? 'bg-brand-600 text-white'
+          : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+      }`}
+    >
+      {label}
+    </Link>
+  );
+}
+
+function CountCell({ value, taken, tone }: { value: number; taken: boolean; tone: string }) {
+  return (
+    <td className="px-3 py-2.5 text-end tabular-nums">
+      <span className={value > 0 ? tone : 'text-slate-400'}>{taken ? value : '—'}</span>
+    </td>
+  );
+}
 
 function Kpi({
   icon,

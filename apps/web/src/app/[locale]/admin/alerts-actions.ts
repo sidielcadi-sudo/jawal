@@ -3,6 +3,7 @@
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { countUnreadConversations } from '@/lib/messaging';
+import { activeYearStart } from '@/lib/active-year';
 
 export type StaffAlertDTO = {
   id: string;
@@ -19,13 +20,16 @@ export async function listMyAlertsAction(): Promise<{ alerts: StaffAlertDTO[]; u
   const session = await auth();
   if (!session?.user) return { alerts: [], unread: 0 };
   return withTenant(session.user.tenantId, async (tx) => {
+    // Alertes de l'année active : celles d'un exercice clos ne sont plus à traiter.
+    const since = await activeYearStart(tx);
+    const inYear = since ? { createdAt: { gte: since } } : {};
     const [rows, unread] = await Promise.all([
       tx.staffAlert.findMany({
-        where: { userId: session.user.id },
+        where: { userId: session.user.id, ...inYear },
         orderBy: { createdAt: 'desc' },
         take: 15,
       }),
-      tx.staffAlert.count({ where: { userId: session.user.id, readAt: null } }),
+      tx.staffAlert.count({ where: { userId: session.user.id, readAt: null, ...inYear } }),
     ]);
     return {
       unread,

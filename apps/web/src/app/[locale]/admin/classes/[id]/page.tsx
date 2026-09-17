@@ -22,7 +22,7 @@ export default async function ClassDetailPage({
   const t = await getTranslations('admin.classes');
   const tDetail = await getTranslations('admin.classes.detail');
 
-  const { cls, lastSession, curriculum, assignments, programSource, kpiData } = await withTenant(tenantId, async (tx) => {
+  const { cls, lastSession, curriculum, assignments, groupTeachers, programSource, kpiData } = await withTenant(tenantId, async (tx) => {
     const cls = await tx.class.findUnique({
       where: { id },
       include: {
@@ -42,6 +42,7 @@ export default async function ClassDetailPage({
         lastSession: null,
         curriculum: [],
         assignments: [],
+        groupTeachers: [],
         programSource: 'level' as const,
         kpiData: null,
       };
@@ -68,6 +69,13 @@ export default async function ClassDetailPage({
         include: { subject: true, teacher: true },
       }),
     ]);
+    // Enseignants désignés sur les groupes : ils font cours à la classe sans
+    // affectation à la matière, et restaient donc invisibles ici.
+    const groupTeachers = await tx.classGroup.findMany({
+      where: { classId: id, teacherId: { not: null } },
+      orderBy: [{ order: 'asc' }, { name: 'asc' }],
+      select: { name: true, subjectId: true, teacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } } },
+    });
 
     type ProgramRow = {
       id: string;
@@ -208,7 +216,7 @@ export default async function ClassDetailPage({
       include: { records: { select: { status: true } } },
     });
 
-    return { cls, lastSession, curriculum, assignments, programSource, kpiData };
+    return { cls, lastSession, curriculum, assignments, groupTeachers, programSource, kpiData };
   });
 
   if (!cls) notFound();
@@ -413,6 +421,13 @@ export default async function ClassDetailPage({
                         : subjectAssignments
                             .map((a) => personDisplayName(locale, a.teacher))
                             .join(', ')}
+                      {groupTeachers
+                        .filter((g) => g.subjectId === c.subjectId && g.teacher)
+                        .map((g) => (
+                          <div key={g.name} className="mt-0.5 text-[11px] text-sky-700">
+                            👥 {g.name} : {personDisplayName(locale, g.teacher!)}
+                          </div>
+                        ))}
                     </td>
                   </tr>
                 );

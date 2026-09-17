@@ -10,7 +10,7 @@ import {
   refuseSubstitutionAction,
 } from './substitution-actions';
 
-type Candidate = { id: string; name: string; qualified: boolean };
+type Candidate = { id: string; name: string; qualified: boolean; cycles?: string };
 type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REFUSED';
 
 export function SubstituteSelect({
@@ -55,7 +55,9 @@ export function SubstituteSelect({
       <option value="CANCELLED">{t('cancelled')}</option>
       {sorted.map((c) => (
         <option key={c.id} value={c.id}>
-          {c.qualified ? '★ ' : ''}{c.name}
+          {c.qualified ? '★ ' : ''}
+          {c.name}
+          {c.cycles ? ` — ${c.cycles}` : ''}
         </option>
       ))}
     </select>

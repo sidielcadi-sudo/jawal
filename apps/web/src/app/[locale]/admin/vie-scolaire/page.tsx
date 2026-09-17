@@ -6,7 +6,7 @@ import { isVieScolaireOnly } from '@/lib/auth/rbac';
 import { withTenant } from '@/lib/db';
 import { computeVieScolaire } from '@/lib/kpi-vie-scolaire';
 import type { KpiStatus } from '@/lib/kpi-pilotage';
-import { pickPeriodId } from '@/lib/periods';
+import { pickPeriodId, schoolPeriods } from '@/lib/periods';
 import { DashboardTabs } from '../dashboard-tabs';
 import { personDisplayName } from '@/lib/localized-name';
 import { PeriodButtons } from '@/components/period-buttons';
@@ -45,7 +45,8 @@ export default async function VieScolairePage({
       where: { active: true },
       include: { periods: { orderBy: { startDate: 'asc' } } },
     });
-    const periods = activeYear?.periods ?? [];
+    // Pilotage : trimestres seulement, pas les sessions d'examen.
+    const periods = schoolPeriods(activeYear?.periods ?? []);
     const selectedPeriodId = pickPeriodId(periods, sp.period);
     const vs = await computeVieScolaire(tx, selectedPeriodId, session.user.id);
     return {

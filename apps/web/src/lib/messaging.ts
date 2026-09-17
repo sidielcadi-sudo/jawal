@@ -1,5 +1,6 @@
 import 'server-only';
 import type { Prisma } from '@/lib/db';
+import { activeYearStart } from '@/lib/active-year';
 
 type Tx = Prisma.TransactionClient;
 
@@ -53,9 +54,11 @@ export async function listConversationsForParticipant(
     select: { conversationId: true, lastReadAt: true },
   });
   if (parts.length === 0) return [];
+  // Conversations actives pendant l'année scolaire en cours.
+  const since = await activeYearStart(tx);
   const lastReadById = new Map(parts.map((p) => [p.conversationId, p.lastReadAt]));
   const convs = await tx.conversation.findMany({
-    where: { id: { in: parts.map((p) => p.conversationId) } },
+    where: { id: { in: parts.map((p) => p.conversationId) }, ...(since ? { updatedAt: { gte: since } } : {}) },
     orderBy: { updatedAt: 'desc' },
     select: {
       id: true,
@@ -79,9 +82,10 @@ export async function countUnreadConversations(tx: Tx, userId: string): Promise<
     select: { conversationId: true, lastReadAt: true },
   });
   if (parts.length === 0) return 0;
+  const since = await activeYearStart(tx);
   const lastReadById = new Map(parts.map((p) => [p.conversationId, p.lastReadAt]));
   const convs = await tx.conversation.findMany({
-    where: { id: { in: parts.map((p) => p.conversationId) } },
+    where: { id: { in: parts.map((p) => p.conversationId) }, ...(since ? { updatedAt: { gte: since } } : {}) },
     select: {
       id: true,
       messages: { orderBy: { sentAt: 'desc' }, take: 1, select: { sentAt: true, senderUserId: true } },

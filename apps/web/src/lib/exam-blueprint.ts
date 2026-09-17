@@ -1,5 +1,6 @@
 import 'server-only';
 import type { Prisma } from '@/lib/db';
+import { certifyingFallback } from '@/lib/exam-certifying-fallback';
 
 /**
  * Regroupement des épreuves par sujet identique.
@@ -44,8 +45,10 @@ export type ProposalSummary = {
   proposals: PaperProposal[];
   /** Nombre d'épreuves si l'on ne mutualisait rien (une par filière). */
   ungroupedCount: number;
-  /** Filières de la session sans aucune maquette d'épreuve. */
+  /** Filières de la session sans maquette ni matière certificative. */
   tracksWithoutBlueprint: string[];
+  /** Filières sans maquette, dont les épreuves sont déduites des matières certificatives. */
+  derivedTracks: string[];
 };
 
 /**
@@ -98,7 +101,7 @@ export async function buildPaperProposals(
       },
     },
   });
-  if (!session) return { proposals: [], ungroupedCount: 0, tracksWithoutBlueprint: [] };
+  if (!session) return { proposals: [], ungroupedCount: 0, tracksWithoutBlueprint: [], derivedTracks: [] };
 
   // Convention de la session : aucune filière cochée = toutes celles du niveau.
   const levelTracks = await tx.track.findMany({
@@ -112,7 +115,7 @@ export async function buildPaperProposals(
 
   const selected = session.tracks.map((t) => t.trackId);
   const trackIds = selected.length > 0 ? selected : levelTracks.map((t) => t.id);
-  if (trackIds.length === 0) return { proposals: [], ungroupedCount: 0, tracksWithoutBlueprint: [] };
+  if (trackIds.length === 0) return { proposals: [], ungroupedCount: 0, tracksWithoutBlueprint: [], derivedTracks: [] };
 
   const blueprints = await tx.examBlueprint.findMany({
     where: { trackId: { in: trackIds } },
@@ -126,16 +129,30 @@ export async function buildPaperProposals(
     },
   });
 
-  // Coefficients de filière, pour proposer le bon coefficient d'épreuve.
+  // Coefficients de filière : le bon coefficient d'épreuve, et les matières
+  // certificatives quand la filière n'a pas de maquette.
   const coefRows = await tx.trackSubjectCoefficient.findMany({
     where: { trackId: { in: trackIds } },
-    select: { trackId: true, subjectId: true, coefficient: true },
+    select: {
+      trackId: true,
+      subjectId: true,
+      coefficient: true,
+      certifying: true,
+      subject: { select: { label: true, labelAr: true, order: true } },
+    },
   });
+
+  // Sans maquette, une filière ne proposait rien — c'était le cas de toutes
+  // les filières de 1BAC, et une session régionale restait vide. On déduit
+  // alors ses épreuves de ses matières certificatives.
+  const withBlueprint = new Set(blueprints.map((b) => b.trackId));
+  const derived = certifyingFallback(coefRows, withBlueprint);
+  const candidates = [...blueprints, ...derived];
   const coefOf = new Map(coefRows.map((c) => [`${c.trackId}|${c.subjectId}`, c.coefficient]));
 
 
   const grouped = new Map<string, PaperProposal>();
-  for (const b of blueprints) {
+  for (const b of candidates) {
     const key = paperMergeKey(b);
     const existing = grouped.get(key);
     const coef = coefOf.get(`${b.trackId}|${b.subjectId}`) ?? 1;
@@ -192,12 +209,13 @@ export async function buildPaperProposals(
       a.subjectLabel.localeCompare(b.subjectLabel),
   );
 
-  const withBlueprint = new Set(blueprints.map((b) => b.trackId));
+  const derivedIds = new Set(derived.map((d) => d.trackId));
   return {
     proposals,
-    ungroupedCount: blueprints.length,
+    ungroupedCount: candidates.length,
     tracksWithoutBlueprint: trackIds
-      .filter((id) => !withBlueprint.has(id))
+      .filter((id) => !withBlueprint.has(id) && !derivedIds.has(id))
       .map((id) => trackLabel.get(id) ?? '—'),
+    derivedTracks: [...derivedIds].map((id) => trackLabel.get(id) ?? '—'),
   };
 }

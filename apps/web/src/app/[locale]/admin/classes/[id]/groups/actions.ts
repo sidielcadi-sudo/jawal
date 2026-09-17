@@ -6,6 +6,8 @@ import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
 import { findGroupOverlaps, splitIntoGroups, type GroupShape } from '@/lib/class-groups';
+import { cycleViolations } from '@/lib/teacher-allocation';
+import { classClosedCells, cellKey } from '@/lib/class-closed-cells';
 
 type Result<T = void> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -384,11 +386,35 @@ export async function setGroupTeacherAction(
           select: { id: true },
         });
         if (!t) throw new Error('Enseignant introuvable.');
+        // Un groupe relève de sa classe : son professeur doit enseigner dans ce
+        // cycle, exactement comme pour une affectation. Sinon un professeur de
+        // collège se retrouve au lycée sans que rien ne le signale.
+        const current = await tx.classGroup.findUnique({ where: { id: groupId }, select: { classId: true } });
+        if (current) {
+          const bad = await cycleViolations(tx, [{ teacherId, classId: current.classId }]);
+          if (bad.length > 0) {
+            throw new Error(
+              `${bad[0]} : la classe ne relève d'aucun cycle déclaré dans la fiche de l'enseignant (Niveaux enseignés).`,
+            );
+          }
+        }
       }
+      const before = await tx.classGroup.findUnique({ where: { id: groupId }, select: { teacherId: true } });
       const g = await tx.classGroup.update({
         where: { id: groupId },
         data: { teacherId },
         select: { classId: true },
+      });
+      // Tracé : le professeur d'un groupe décide de qui fait cours, et une
+      // désignation oubliée se retrouve sinon sans explication dans l'EDT.
+      await logAudit(tx, {
+        tenantId: session.user.tenantId,
+        userId: session.user.id,
+        action: "update",
+        entityType: "ClassGroup",
+        entityId: groupId,
+        before: { teacherId: before?.teacherId ?? null },
+        after: { teacherId },
       });
       return g.classId;
     });
@@ -423,7 +449,11 @@ type DayKey = (typeof DAYS)[number];
 export async function setSplitSlotsAction(input: {
   classId: string;
   subjectId: string;
-  slots: Array<{ day: string; slotId: string }>;
+  /**
+   * Séances déclarées. `groupId` null = simultané (tous les groupes sur ce
+   * créneau) ; renseigné = successif (ce créneau est à ce groupe seul).
+   */
+  slots: Array<{ day: string; slotId: string; groupId?: string | null }>;
 }): Promise<Result<{ slots: number; groups: number }>> {
   const session = await guard();
   if (!session) return { ok: false, error: 'Non autorisé' };
@@ -438,7 +468,7 @@ export async function setSplitSlotsAction(input: {
   // n'oblige un appelant à être propre.
   const seen = new Set<string>();
   const slots = input.slots.filter((sl) => {
-    const k = `${sl.day}|${sl.slotId}`;
+    const k = `${sl.day}|${sl.slotId}|${sl.groupId ?? ''}`;
     if (seen.has(k)) return false;
     seen.add(k);
     return true;
@@ -448,7 +478,11 @@ export async function setSplitSlotsAction(input: {
     const data = await withTenant(session.user.tenantId, async (tx) => {
       const cls = await tx.class.findUnique({
         where: { id: input.classId },
-        select: { id: true },
+        select: {
+          id: true,
+          metadata: true,
+          level: { select: { cycle: { select: { settings: true } } } },
+        },
       });
       if (!cls) throw new Error('Classe introuvable');
 
@@ -462,29 +496,93 @@ export async function setSplitSlotsAction(input: {
         const ok = new Set(known.map((k) => k.id));
         const bad = slots.find((sl) => !ok.has(sl.slotId));
         if (bad) throw new Error('Créneau inconnu ou non enseignable');
+
+        // Une case fermée pour la classe — mercredi après-midi, jour OFF — ne
+        // peut pas porter de séance : le générateur y verrouillerait une
+        // activité, et FET rejette alors le fichier ENTIER (« Cannot precompute
+        // - data is wrong »), privant tout l'établissement d'emploi du temps.
+        // La grille grise déjà ces cases ; ce contrôle protège des appels qui
+        // ne passent pas par elle, ou d'un écran ouvert avant un changement de
+        // paramétrage.
+        const [allSlots, tenant] = await Promise.all([
+          tx.timetableSlot.findMany({
+            where: { isBreak: false },
+            select: { id: true, startTime: true, endTime: true },
+          }),
+          tx.tenant.findUnique({
+            where: { id: session.user.tenantId },
+            select: { settings: true },
+          }),
+        ]);
+        const closed = classClosedCells({
+          cycleSettings: cls.level?.cycle?.settings ?? null,
+          tenantSettings: tenant?.settings ?? null,
+          classMetadata: cls.metadata,
+          slots: allSlots,
+          days: DAYS,
+        });
+        // Seules les NOUVELLES déclarations sont refusées. Une case a pu se
+        // fermer après coup — le mercredi passe en demi-journée — et interdire
+        // alors tout enregistrement enfermerait l'utilisateur : il ne pourrait
+        // plus retirer la déclaration devenue illégale, qui est précisément ce
+        // qu'on lui demande de faire.
+        const existing = await tx.classGroupSlot.findMany({
+          where: { classId: input.classId, subjectId: input.subjectId },
+          select: { dayOfWeek: true, slotId: true, groupId: true },
+        });
+        const alreadyThere = new Set(
+          existing.map((e) => `${cellKey(e.dayOfWeek, e.slotId)}|${e.groupId ?? ''}`),
+        );
+        const shut = slots.find(
+          (sl) =>
+            closed.has(cellKey(sl.day, sl.slotId)) &&
+            !alreadyThere.has(`${cellKey(sl.day, sl.slotId)}|${sl.groupId ?? ''}`),
+        );
+        if (shut) {
+          throw new Error(
+            'Cette classe n’a pas cours sur ce créneau : la séance ne peut pas y être déclarée.',
+          );
+        }
       }
 
       await tx.classGroupSlot.deleteMany({
         where: { classId: input.classId, subjectId: input.subjectId },
       });
       if (slots.length > 0) {
+        // Un créneau ne peut pas être à la fois « simultané » et réservé à un
+        // groupe : la déclaration sans groupe l'emporte, elle occupe déjà la
+        // classe entière.
+        const parallelKeys = new Set(
+          slots.filter((sl) => !sl.groupId).map((sl) => `${sl.day}|${sl.slotId}`),
+        );
+        const clean = slots.filter(
+          (sl) => !sl.groupId || !parallelKeys.has(`${sl.day}|${sl.slotId}`),
+        );
         await tx.classGroupSlot.createMany({
-          data: slots.map((sl) => ({
+          data: clean.map((sl) => ({
             tenantId: session.user.tenantId,
             classId: input.classId,
             subjectId: input.subjectId,
             dayOfWeek: sl.day as DayKey,
             slotId: sl.slotId,
+            groupId: sl.groupId ?? null,
           })),
         });
       }
 
-      // Le volume dédoublé se déduit des séances déclarées. Null quand aucune
-      // n'est cochée : on retombe sur « tout le volume est dédoublé », le
-      // comportement d'avant la déclaration par séance.
+      // Volume vu par UN élève : les séances simultanées, plus celles de son
+      // propre groupe. Sommer tous les groupes compterait deux fois la même
+      // heure d'enseignement du point de vue de l'élève.
+      const parallelCount = slots.filter((sl) => !sl.groupId).length;
+      const perGroup = new Map<string, number>();
+      for (const sl of slots) {
+        if (!sl.groupId) continue;
+        perGroup.set(sl.groupId, (perGroup.get(sl.groupId) ?? 0) + 1);
+      }
+      const studentHours = parallelCount + Math.max(0, ...[...perGroup.values(), 0]);
       const r = await tx.classGroup.updateMany({
         where: { classId: input.classId, subjectId: input.subjectId },
-        data: { splitHours: slots.length > 0 ? slots.length : null },
+        data: { splitHours: studentHours > 0 ? studentHours : null },
       });
 
       await logAudit(tx, {

@@ -215,3 +215,143 @@ describe('messages', () => {
     expect(warningMessage(issues)).toContain('À surveiller');
   });
 });
+
+describe('séance déclarée sur une case fermée', () => {
+  // Le cas réel : « mercredi 14 h » déclaré dans une classe qui ne travaille
+  // pas l'après-midi. FET rejetait TOUT le fichier sans nommer la cause.
+  const declared = (o: Record<string, unknown> = {}) =>
+    assign({
+      id: 'a::g1',
+      group_id: 'g1',
+      weekly_hours: 1,
+      fixed_slots: [{ day: 'MON', slot_id: 's4' }],
+      ...o,
+    });
+
+  it('bloque et nomme la classe, la matière et la case', () => {
+    const issues = runPreflight(
+      base({
+        assignments: [declared()],
+        forbiddenClassSlots: [{ class_id: 'c1', day: 'MON', slot_id: 's4' }],
+      }),
+    );
+    const i = issues.find((x) => x.kind === 'DECLARED_SLOT_CLOSED')!;
+    expect(i.blocking).toBe(true);
+    expect(i.className).toBe('TCS-A');
+    expect(i.subjectLabel).toBe('Français');
+    expect(i.cellLabel).toBe('lundi 11:00-12:00');
+    expect(describeIssue(i)).toContain('Groupes');
+  });
+
+  it('ne dit rien quand la case est ouverte', () => {
+    const issues = runPreflight(base({ assignments: [declared()] }));
+    expect(issues.some((x) => x.kind === 'DECLARED_SLOT_CLOSED')).toBe(false);
+  });
+
+  it('ne confond pas les classes', () => {
+    // La case est fermée pour une AUTRE classe : rien à signaler ici.
+    const issues = runPreflight(
+      base({
+        assignments: [declared()],
+        forbiddenClassSlots: [{ class_id: 'autre', day: 'MON', slot_id: 's4' }],
+      }),
+    );
+    expect(issues.some((x) => x.kind === 'DECLARED_SLOT_CLOSED')).toBe(false);
+  });
+
+  it('signale une séance déclarée sur une pause', () => {
+    const issues = runPreflight(
+      base({ assignments: [declared({ fixed_slots: [{ day: 'MON', slot_id: 's3' }] })] }),
+    );
+    expect(issues.some((x) => x.kind === 'DECLARED_SLOT_CLOSED')).toBe(true);
+  });
+
+  it('ne répète pas la même case pour les deux moitiés', () => {
+    const issues = runPreflight(
+      base({
+        assignments: [
+          declared(),
+          declared({ id: 'a::g2', group_id: 'g2' }),
+        ],
+        forbiddenClassSlots: [{ class_id: 'c1', day: 'MON', slot_id: 's4' }],
+      }),
+    );
+    expect(issues.filter((x) => x.kind === 'DECLARED_SLOT_CLOSED')).toHaveLength(1);
+  });
+});
+
+describe('génération partielle : créneaux déjà pris', () => {
+  // « Je régénère le collège » : les professeurs restent engagés au lycée.
+  it('déduit les cases occupées de la capacité du professeur', () => {
+    const busy = new Set(['MON|s1', 'MON|s2']);
+    const t = teacher('t1', 'Prof 1');
+    const all = teacherOpenCells(t, slots, days);
+    expect(teacherOpenCells(t, slots, days, busy)).toBe(all - 2);
+  });
+
+  it('signale la surcharge que l’existant provoque', () => {
+    const issues = runPreflight(
+      base({
+        teachers: [teacher('t1', 'Prof 1')],
+        assignments: [assign({ weekly_hours: 5 })],
+        busyTeacherSlots: [
+          { teacher_id: 't1', day: 'MON', slot_id: 's1' },
+          { teacher_id: 't1', day: 'MON', slot_id: 's2' },
+          { teacher_id: 't1', day: 'TUE', slot_id: 's1' },
+        ],
+      }),
+    );
+    const i = issues.find((x) => x.kind === 'TEACHER_OVERLOADED')!;
+    expect(i.blocking).toBe(true);
+    expect(i.have).toBe(3); // 6 cases enseignables − 3 déjà prises
+  });
+
+  it('ne change rien quand rien n’est occupé ailleurs', () => {
+    const issues = runPreflight(
+      base({ teachers: [teacher('t1', 'Prof 1')], assignments: [assign({ weekly_hours: 5 })] }),
+    );
+    expect(issues.some((x) => x.kind === 'TEACHER_OVERLOADED')).toBe(false);
+  });
+});
+
+describe('séance déclarée sur une heure où le professeur est pris', () => {
+  // Le cas réel : le collège est généré, puis le lycée ; une séance de groupe
+  // du lycée était verrouillée sur une heure où l'enseignante a cours au collège.
+  const declared = assign({
+    id: 'a::g2',
+    group_id: 'g2',
+    weekly_hours: 1,
+    fixed_slots: [{ day: 'MON', slot_id: 's2' }],
+  });
+
+  it('bloque quand le professeur est déjà en cours dans une classe non régénérée', () => {
+    const issues = runPreflight(
+      base({
+        assignments: [declared],
+        busyTeacherSlots: [{ teacher_id: 't1', day: 'MON', slot_id: 's2' }],
+      }),
+    );
+    const i = issues.find((x) => x.kind === 'DECLARED_SLOT_TEACHER_BUSY')!;
+    expect(i.blocking).toBe(true);
+    expect(i.teacherName).toBe('Prof 1');
+    expect(i.busyElsewhere).toBe(true);
+    expect(i.cellLabel).toBe('lundi 09:00-10:00');
+    expect(describeIssue(i)).toContain('Prof 1');
+  });
+
+  it('bloque aussi hors des disponibilités du professeur', () => {
+    const issues = runPreflight(
+      base({
+        teachers: [teacher('t1', 'Prof 1', { TUE: [allDay] })],
+        assignments: [declared],
+      }),
+    );
+    const i = issues.find((x) => x.kind === 'DECLARED_SLOT_TEACHER_BUSY')!;
+    expect(i.busyElsewhere).toBe(false);
+  });
+
+  it('ne dit rien quand le professeur est libre', () => {
+    const issues = runPreflight(base({ assignments: [declared] }));
+    expect(issues.some((x) => x.kind === 'DECLARED_SLOT_TEACHER_BUSY')).toBe(false);
+  });
+});

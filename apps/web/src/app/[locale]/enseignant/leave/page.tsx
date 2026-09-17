@@ -37,9 +37,17 @@ export default async function TeacherLeavePage({
       orderBy: { order: 'asc' },
       select: { id: true, labelFr: true, labelAr: true },
     });
+    // Année active seulement, comme côté administration.
+    const year = await tx.academicYear.findFirst({
+      where: { active: true },
+      select: { startDate: true, endDate: true },
+    });
     const requests = personId
       ? await tx.leaveRequest.findMany({
-          where: { personId },
+          where: {
+            personId,
+            ...(year ? { startDate: { gte: year.startDate, lte: year.endDate } } : {}),
+          },
           orderBy: { createdAt: 'desc' },
           include: { leaveType: { select: { labelFr: true, labelAr: true } } },
         })

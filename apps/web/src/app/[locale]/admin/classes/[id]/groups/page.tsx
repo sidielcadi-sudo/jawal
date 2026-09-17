@@ -14,6 +14,8 @@ import {
 import { findUncoveredStudents } from '@/lib/class-groups';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
 import { ClassHeader, CLASS_PAGE_SHELL } from '../class-header';
+import { classClosedCells } from '@/lib/class-closed-cells';
+import { teacherCoversCycle } from '@/lib/teacher-cycle-rule';
 
 /**
  * Groupes d'une classe — le dédoublement.
@@ -50,7 +52,18 @@ export default async function ClassGroupsPage({
         levelId: true,
         trackId: true,
         deletedAt: true,
-        level: { select: { label: true, labelAr: true } },
+        // Jours fermés : ceux du cycle (mercredi après-midi au collège) et ceux
+        // que la classe ajoute. Une séance dédoublée déclarée sur une de ces
+        // cases fait échouer la génération de TOUT l'établissement.
+        metadata: true,
+        level: {
+          select: {
+            label: true,
+            labelAr: true,
+            cycleId: true,
+            cycle: { select: { label: true, labelAr: true, settings: true } },
+          },
+        },
         academicYear: { select: { label: true } },
         students: {
           where: { unenrolledAt: null },
@@ -115,7 +128,7 @@ export default async function ClassGroupsPage({
       }),
       tx.classGroupSlot.findMany({
         where: { classId: id },
-        select: { subjectId: true, dayOfWeek: true, slotId: true },
+        select: { subjectId: true, dayOfWeek: true, slotId: true, groupId: true },
       }),
     ]);
 
@@ -123,15 +136,27 @@ export default async function ClassGroupsPage({
     // professeur, qui n'est pas forcément déjà affecté à la classe.
     const teachers = await tx.person.findMany({
       where: { type: 'TEACHER', deletedAt: null },
-      select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        firstNameAr: true,
+        lastNameAr: true,
+        teacherCycles: { select: { cycleId: true } },
+      },
       orderBy: [{ lastName: 'asc' }, { firstName: 'asc' }],
     });
 
-    return { cls, curriculum, groups, teachers, timeSlots, splitSlots };
+    const tenant = await tx.tenant.findUnique({
+      where: { id: session.user.tenantId },
+      select: { settings: true },
+    });
+
+    return { cls, curriculum, groups, teachers, timeSlots, splitSlots, tenant };
   });
 
   if (!data?.cls) notFound();
-  const { cls, curriculum, groups, teachers, timeSlots, splitSlots } = data;
+  const { cls, curriculum, groups, teachers, timeSlots, splitSlots, tenant } = data;
 
   const slotRows: SlotRow[] = timeSlots.map((sl) => ({
     id: sl.id,
@@ -140,9 +165,24 @@ export default async function ClassGroupsPage({
   // Jours ouvrés : du lundi au samedi. Le dimanche n'accueille aucun cours et
   // une colonne vide n'aiderait personne.
   const workingDays = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+  // Cases où cette classe n'a pas cours : la grille de déclaration doit les
+  // refuser. Déclarer une séance dédoublée le mercredi à 14 h dans une classe
+  // qui s'arrête à midi verrouille une activité sur une case fermée, et FET
+  // rejette alors le fichier entier — « Cannot precompute - data is wrong » —
+  // pour tout l'établissement.
+  const closedCells = [
+    ...classClosedCells({
+      cycleSettings: cls.level.cycle?.settings ?? null,
+      tenantSettings: tenant?.settings ?? null,
+      classMetadata: cls.metadata,
+      slots: timeSlots,
+      days: workingDays,
+    }),
+  ];
+
   const subjectSplitSlots: SplitSlot[] = splitSlots
     .filter((x) => x.subjectId === selectedSubject)
-    .map((x) => ({ day: x.dayOfWeek, slotId: x.slotId }));
+    .map((x) => ({ day: x.dayOfWeek, slotId: x.slotId, groupId: x.groupId }));
 
   const students: StudentRow[] = cls.students.map((sc) => ({
     id: sc.student.id,
@@ -219,13 +259,26 @@ export default async function ClassGroupsPage({
         slots={slotRows}
         days={workingDays}
         splitSlots={subjectSplitSlots}
+        closedCells={closedCells}
         subjectLabel={
           selectedSubject ? (subjects.find((s) => s.id === selectedSubject)?.label ?? '') : t('allSubjects')
         }
         students={students}
         groups={rows}
         uncoveredIds={uncovered}
-        teachers={teachers.map((t) => ({ id: t.id, label: personDisplayName(locale, t) }))}
+        // Professeurs du cycle de la classe. Un professeur hors cycle déjà désigné
+        // reste listé — sinon le menu afficherait un autre nom que le vrai — mais
+        // signalé, pour qu’on le remplace.
+        teachers={teachers
+          .map((te) => ({
+            te,
+            covers: teacherCoversCycle(te.teacherCycles.map((c) => c.cycleId), cls.level.cycleId),
+          }))
+          .filter(({ te, covers }) => covers || groups.some((g) => g.teacherId === te.id))
+          .map(({ te, covers }) => ({
+            id: te.id,
+            label: covers ? personDisplayName(locale, te) : `${personDisplayName(locale, te)} — ⚠ ${t('outOfCycle')}`,
+          }))}
       />
     </div>
   );

@@ -1,3 +1,4 @@
+import { coveringCellsForTeacher } from '@/lib/timetable-overrides';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
@@ -66,11 +67,34 @@ export default async function TeacherTimetablePage({
         })
       : [];
 
-    return { teacher, years, yearId, slots, entries, assignments };
+    // Groupes dont il est l'enseignant désigné : ses cours de groupe viennent
+    // de là, et non d'une affectation à la matière.
+    const groupRows = yearId
+      ? await tx.classGroup.findMany({
+          where: { teacherId: id, class: { academicYearId: yearId } },
+          select: { name: true, classId: true, subjectId: true },
+        })
+      : [];
+
+    // Remplacements approuvés qu’il assure : absents de la semaine type,
+    // puisqu’ils ne valent que pour une date.
+    const covering = await coveringCellsForTeacher(tx, id);
+
+    return { teacher, years, yearId, slots, entries, assignments, groupRows, covering };
   });
 
   if (!data) notFound();
-  const { teacher, years, yearId, slots, entries, assignments } = data;
+  const { teacher, years, yearId, slots, entries, assignments, groupRows, covering } = data;
+  const coveringByKey = new Map<string, (typeof covering)[number][]>();
+  for (const c of covering) {
+    const k = `${c.dayOfWeek}|${c.slotId}`;
+    coveringByKey.set(k, [...(coveringByKey.get(k) ?? []), c]);
+  }
+  const groupsByKey = new Map<string, string[]>();
+  for (const g of groupRows) {
+    const k = `${g.subjectId}|${g.classId}`;
+    groupsByKey.set(k, [...(groupsByKey.get(k) ?? []), g.name]);
+  }
 
   // Calcul des deltas volume horaire (programmé vs hoursPerWeek)
   const deltas = computeAssignmentDeltas(
@@ -186,7 +210,13 @@ export default async function TeacherTimetablePage({
                       </td>
                       <td className="px-2 py-2 text-end tabular-nums">{d.scheduledHours}h</td>
                       <td className="px-2 py-2 text-end tabular-nums">
-                        {isExtra ? (
+                        {isExtra && groupsByKey.has(`${d.subjectId}|${d.classId}`) ? (
+                          // Cours de groupe : enseignant désigné sur le groupe, pas
+                          // d'affectation à la matière — ce n'est pas une anomalie.
+                          <span className="text-sky-700">
+                            👥 {t('volume.groupTeacher', { groups: groupsByKey.get(`${d.subjectId}|${d.classId}`)!.join(', ') })}
+                          </span>
+                        ) : isExtra ? (
                           <span className="text-amber-700">
                             ⚠ {t('volume.extra')}
                           </span>
@@ -260,6 +290,7 @@ export default async function TeacherTimetablePage({
                       );
                     }
                     const e = byKey.get(`${d}|${s.id}`);
+                    const covers = coveringByKey.get(`${d}|${s.id}`) ?? [];
                     return (
                       <td key={d} className="px-2 py-2 align-top">
                         {e ? (
@@ -277,11 +308,24 @@ export default async function TeacherTimetablePage({
                               <div className="text-slate-500">📍 {localizedLabel(locale, e.room.label, e.room.labelAr)}</div>
                             )}
                           </div>
-                        ) : (
+                        ) : covers.length === 0 ? (
                           <div className="rounded-lg border border-dashed border-slate-100 p-2 text-center text-[10px] text-slate-300">
                             —
                           </div>
-                        )}
+                        ) : null}
+                        {covers.map((c) => (
+                          <div
+                            key={c.id}
+                            className={`rounded-lg border border-amber-300 bg-amber-50 p-2 text-[11px] leading-tight ${e ? 'mt-1' : ''}`}
+                          >
+                            <div className="text-[10px] font-semibold uppercase text-amber-700">{t('covering')}</div>
+                            <div className="font-semibold text-amber-900">{c.subjectName}</div>
+                            <div className="text-slate-600">
+                              {c.className} · {new Date(`${c.date}T00:00:00Z`).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', timeZone: 'UTC' })}
+                            </div>
+                            {c.roomLabel && <div className="text-slate-500">📍 {c.roomLabel}</div>}
+                          </div>
+                        ))}
                       </td>
                     );
                   })}

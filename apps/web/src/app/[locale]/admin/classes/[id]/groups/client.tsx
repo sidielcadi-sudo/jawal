@@ -16,8 +16,14 @@ import {
 export type StudentRow = { id: string; name: string };
 /** Un créneau de la grille horaire (les pauses sont écartées en amont). */
 export type SlotRow = { id: string; label: string };
-/** Séance déclarée en groupes, pour la matière affichée. */
-export type SplitSlot = { day: string; slotId: string };
+/**
+ * Séance déclarée en groupes, pour la matière affichée.
+ *
+ * `groupId` null = **simultané** (tous les groupes sur ce créneau, il faut
+ * autant de professeurs) ; renseigné = **successif** (ce créneau n'est qu'à ce
+ * groupe, et le même professeur peut enchaîner les deux moitiés).
+ */
+export type SplitSlot = { day: string; slotId: string; groupId: string | null };
 export type SubjectRow = { id: string; label: string; weeklyHours: number };
 export type GroupRow = {
   id: string;
@@ -52,6 +58,7 @@ export function GroupsClient({
   slots,
   days,
   splitSlots,
+  closedCells,
   teachers,
 }: {
   classId: string;
@@ -68,6 +75,8 @@ export function GroupsClient({
   days: string[];
   /** Séances déjà déclarées en groupes pour la matière affichée. */
   splitSlots: SplitSlot[];
+  /** Cases `jour|créneau` où la classe n'a pas cours. */
+  closedCells: string[];
   teachers: TeacherRow[];
 }) {
   const t = useTranslations('admin.classes.groups');
@@ -93,8 +102,18 @@ export function GroupsClient({
   // alors le fichier ENTIER (« Cannot precompute - data is wrong ») sans nommer
   // le coupable, et l'établissement complet devient ingénérable. Le dire ici,
   // là où on peut corriger, vaut mieux que de le découvrir à la génération.
+  // ...mais seulement s'il y a vraiment simultanéité. Dès que chaque séance
+  // déclarée est réservée à un groupe, les moitiés s'enchaînent et le même
+  // professeur les assure toutes les deux — c'est le fonctionnement attendu des
+  // travaux pratiques. Sans déclaration, on retombe sur « tout en parallèle »,
+  // et l'avertissement reste justifié.
+  const needsParallel = useMemo(
+    () => splitSlots.length === 0 || splitSlots.some((sl) => sl.groupId === null),
+    [splitSlots],
+  );
+
   const teacherClash = useMemo(() => {
-    if (groups.length < 2) return false;
+    if (groups.length < 2 || !needsParallel) return false;
     const seen = new Set<string>();
     for (const g of groups) {
       const key = g.teacherId ?? '__enseignant-de-la-matiere__';
@@ -102,7 +121,7 @@ export function GroupsClient({
       seen.add(key);
     }
     return false;
-  }, [groups]);
+  }, [groups, needsParallel]);
 
   /** Groupe (autre que celui ouvert) qui contient déjà cet élève. */
   const takenBy = useMemo(() => {
@@ -253,7 +272,8 @@ export function GroupsClient({
               slots={slots}
               days={days}
               current={splitSlots}
-              groupCount={groups.length}
+              closedCells={closedCells}
+              groups={groups.map((g) => ({ id: g.id, name: g.name }))}
               subjectLabel={subjectLabel}
             />
           )}
@@ -386,6 +406,7 @@ export function GroupsClient({
           parallèle. Le solveur les écarterait sans rien produire ; on le dit
           ici, au moment de la saisie. */}
       {groups.length > 1 &&
+        needsParallel &&
         (() => {
           const seen = new Map<string, string[]>();
           for (const g of groups) {
@@ -458,6 +479,22 @@ export function GroupsClient({
  * valider — un bouton « Enregistrer » de plus laisserait la moitié des
  * déclarations en attente sans que rien ne le signale.
  */
+/**
+ * Déclaration des séances en groupes : une grille jour × créneau à cocher.
+ *
+ * Deux façons de faire cours en groupes, et l'écran doit les distinguer, parce
+ * que le générateur ne les traite pas pareil :
+ *
+ *  - **Simultané** — les deux moitiés travaillent à la même heure. Il faut
+ *    alors deux professeurs : personne n'est à deux endroits à la fois.
+ *  - **Successif** — chaque groupe a son propre créneau, l'un après l'autre.
+ *    C'est le cas des travaux pratiques, et **un seul professeur suffit**.
+ *
+ * D'où la barre de cibles au-dessus de la grille : on choisit à qui appartient
+ * la case avant de cliquer. Un simple « coché / décoché » ne pourrait pas
+ * exprimer la différence, et le générateur choisirait à la place de
+ * l'établissement.
+ */
 function SplitSlots({
   classId,
   subjectId,
@@ -465,7 +502,8 @@ function SplitSlots({
   slots,
   days,
   current,
-  groupCount,
+  closedCells,
+  groups,
   subjectLabel,
 }: {
   classId: string;
@@ -474,7 +512,8 @@ function SplitSlots({
   slots: SlotRow[];
   days: string[];
   current: SplitSlot[];
-  groupCount: number;
+  closedCells: string[];
+  groups: Array<{ id: string; name: string }>;
   subjectLabel: string;
 }) {
   const t = useTranslations('admin.classes.groups');
@@ -483,20 +522,39 @@ function SplitSlots({
   const [pending, start] = useTransition();
   const [error, setError] = useState('');
   const [picked, setPicked] = useState<SplitSlot[]>(current);
+  /** Cible du prochain clic : null = simultané, sinon l'identifiant du groupe. */
+  const [target, setTarget] = useState<string | null>(null);
 
-  const key = (day: string, slotId: string) => `${day}|${slotId}`;
-  const chosen = useMemo(() => new Set(picked.map((p) => key(p.day, p.slotId))), [picked]);
+  const cellKey = (day: string, slotId: string) => `${day}|${slotId}`;
+  // Une case fermée ne se déclare pas : le générateur y verrouillerait une
+  // séance à une heure où la classe n'a pas cours, et FET rejette alors le
+  // fichier ENTIER — plus aucun emploi du temps de l'établissement ne sort.
+  const closed = useMemo(() => new Set(closedCells), [closedCells]);
+  const byCell = useMemo(() => {
+    const m = new Map<string, SplitSlot[]>();
+    for (const p of picked) {
+      const k = cellKey(p.day, p.slotId);
+      m.set(k, [...(m.get(k) ?? []), p]);
+    }
+    return m;
+  }, [picked]);
 
-  // Charge réelle : les heures non dédoublées, plus les dédoublées comptées
-  // une fois par groupe. C'est ce que le solveur devra placer.
-  const split = picked.length;
-  const load = Math.max(0, programHours - split) + split * Math.max(1, groupCount);
+  const nameOf = (id: string | null) =>
+    id === null ? t('splitSlots.allGroups') : (groups.find((g) => g.id === id)?.name ?? '?');
 
-  function toggle(day: string, slotId: string) {
-    const k = key(day, slotId);
-    const next = chosen.has(k)
-      ? picked.filter((p) => key(p.day, p.slotId) !== k)
-      : [...picked, { day, slotId }];
+  // Volume vu par UN élève : les séances simultanées, plus celles de son
+  // groupe. Sommer tous les groupes compterait deux fois la même heure.
+  const parallelCount = picked.filter((p) => p.groupId === null).length;
+  const perGroup = groups.map((g) => picked.filter((p) => p.groupId === g.id).length);
+  const studentHours = parallelCount + Math.max(0, ...perGroup, 0);
+  // Charge à placer : ce que le générateur doit caser, séances de groupe
+  // comprises — c'est plus que ce que voit l'élève.
+  const load =
+    Math.max(0, programHours - studentHours) +
+    parallelCount * Math.max(1, groups.length) +
+    perGroup.reduce((a, b) => a + b, 0);
+
+  function save(next: SplitSlot[]) {
     setPicked(next);
     setError('');
     start(async () => {
@@ -510,6 +568,29 @@ function SplitSlots({
     });
   }
 
+  function toggle(day: string, slotId: string) {
+    const k = cellKey(day, slotId);
+    const here = byCell.get(k) ?? [];
+    if (closed.has(k)) {
+      // On n'y déclare plus rien, mais il faut pouvoir retirer ce qui s'y
+      // trouve déjà : une déclaration devenue illégale — le mercredi est passé
+      // en demi-journée depuis — bloque toute la génération, et c'est ici qu'on
+      // la supprime.
+      if (here.length > 0) save(picked.filter((x) => cellKey(x.day, x.slotId) !== k));
+      return;
+    }
+    const already = here.some((x) => x.groupId === target);
+    if (already) {
+      save(picked.filter((p) => !(cellKey(p.day, p.slotId) === k && p.groupId === target)));
+      return;
+    }
+    // « Tous les groupes » occupe la classe entière : il chasse les
+    // déclarations par groupe sur la même case, qui n'auraient plus de place.
+    const cleaned =
+      target === null ? picked.filter((p) => cellKey(p.day, p.slotId) !== k) : picked;
+    save([...cleaned, { day, slotId, groupId: target }]);
+  }
+
   if (slots.length === 0) {
     return (
       <section className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">
@@ -518,6 +599,13 @@ function SplitSlots({
     );
   }
 
+  const chipCls = (active: boolean) =>
+    `rounded-lg px-2.5 py-1 text-xs font-medium transition-colors ${
+      active
+        ? 'bg-brand-600 text-white shadow'
+        : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+    }`;
+
   return (
     <section className="rounded-2xl border border-brand-200 bg-white px-4 py-3">
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
@@ -525,9 +613,27 @@ function SplitSlots({
           {t('splitSlots.title', { subject: subjectLabel })}
         </h3>
         <span className="text-[11px] text-slate-500">
-          {t('splitSlots.count', { count: split, total: programHours })}
-          {groupCount > 1 && ` · ${t('split.load', { load, groups: groupCount })}`}
+          {t('splitSlots.count', { count: studentHours, total: programHours })}
+          {groups.length > 1 && ` · ${t('split.load', { load, groups: groups.length })}`}
         </span>
+      </div>
+
+      {/* À qui appartient la prochaine case cochée. */}
+      <div className="mb-2 flex flex-wrap items-center gap-1.5">
+        <span className="text-[11px] font-medium text-slate-500">{t('splitSlots.target')}</span>
+        <button type="button" onClick={() => setTarget(null)} className={chipCls(target === null)}>
+          {t('splitSlots.allGroups')}
+        </button>
+        {groups.map((g) => (
+          <button
+            key={g.id}
+            type="button"
+            onClick={() => setTarget(g.id)}
+            className={chipCls(target === g.id)}
+          >
+            {g.name}
+          </button>
+        ))}
       </div>
 
       <div className="overflow-x-auto">
@@ -547,22 +653,48 @@ function SplitSlots({
               <tr key={d}>
                 <td className="px-2 py-1 font-medium text-slate-600">{tDay(d as never)}</td>
                 {slots.map((sl) => {
-                  const on = chosen.has(key(d, sl.id));
+                  const shut = closed.has(cellKey(d, sl.id));
+                  const here = byCell.get(cellKey(d, sl.id)) ?? [];
+                  const parallel = here.some((x) => x.groupId === null);
+                  const owners = here.filter((x) => x.groupId !== null);
+                  const on = here.length > 0;
+                  const stale = shut && here.length > 0;
+                  const label = shut && here.length === 0
+                    ? '×'
+                    : parallel
+                      ? t('splitSlots.on')
+                      : owners.length > 0
+                        ? owners.map((o) => nameOf(o.groupId)).join(' / ')
+                        : '·';
                   return (
                     <td key={sl.id} className="px-1 py-1">
                       <button
                         type="button"
-                        disabled={pending}
+                        disabled={pending || (shut && here.length === 0)}
                         onClick={() => toggle(d, sl.id)}
                         aria-pressed={on}
-                        title={`${tDay(d as never)} ${sl.label}`}
-                        className={`h-7 w-full min-w-[52px] rounded-md border text-[11px] font-medium transition-colors disabled:opacity-50 ${
-                          on
-                            ? 'border-brand-600 bg-brand-600 text-white'
-                            : 'border-slate-200 bg-white text-slate-400 hover:bg-slate-50'
+                        title={`${tDay(d as never)} ${sl.label} — ${
+                          stale
+                            ? t('splitSlots.closedDeclared')
+                            : shut
+                              ? t('splitSlots.closed')
+                              : on
+                                ? label
+                                : t('splitSlots.assignTo', { target: nameOf(target) })
+                        }`}
+                        className={`h-7 w-full min-w-[62px] truncate rounded-md border px-1 text-[11px] font-medium transition-colors disabled:opacity-50 ${
+                          stale
+                            ? 'border-red-400 bg-red-100 text-red-800'
+                            : shut
+                              ? 'cursor-not-allowed border-slate-200 bg-slate-100 text-slate-300'
+                              : parallel
+                                ? 'border-brand-600 bg-brand-600 text-white'
+                                : owners.length > 0
+                                  ? 'border-violet-400 bg-violet-100 text-violet-800'
+                                  : 'border-slate-200 bg-white text-slate-400 hover:bg-slate-50'
                         }`}
                       >
-                        {on ? t('splitSlots.on') : '·'}
+                        {label}
                       </button>
                     </td>
                   );
@@ -574,9 +706,18 @@ function SplitSlots({
       </div>
 
       <p className="mt-2 text-[11px] text-slate-500">{t('splitSlots.hint')}</p>
-      {split > programHours && programHours > 0 && (
+      <p className="mt-0.5 text-[11px] text-slate-500">{t('splitSlots.modesHint')}</p>
+      {closed.size > 0 && (
+        <p className="mt-0.5 text-[11px] text-slate-500">{t('splitSlots.closedHint')}</p>
+      )}
+      {picked.some((x) => closed.has(cellKey(x.day, x.slotId))) && (
+        <p className="mt-1 rounded-lg bg-red-50 px-2 py-1 text-[11px] font-medium text-red-800">
+          {t('splitSlots.closedDeclaredWarn')}
+        </p>
+      )}
+      {studentHours > programHours && programHours > 0 && (
         <p className="mt-1 text-[11px] font-medium text-amber-700">
-          {t('splitSlots.overflow', { count: split, total: programHours })}
+          {t('splitSlots.overflow', { count: studentHours, total: programHours })}
         </p>
       )}
       {error && <p className="mt-1 text-xs text-red-700">{error}</p>}

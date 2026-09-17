@@ -4,6 +4,8 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { Pagination } from '@/components/pagination';
 import { personDisplayName, localizedLabel } from '@/lib/localized-name';
+import { loadStudentDetail } from '@/lib/student-detail';
+import { StudentDetailPanel, StudentDetailEmpty } from '../persons/student-detail';
 
 const PAGE_SIZE = 20;
 
@@ -47,7 +49,7 @@ export default async function EnrollmentsListPage({
   searchParams,
 }: {
   params: Promise<{ locale: string }>;
-  searchParams: Promise<{ status?: string; year?: string; page?: string }>;
+  searchParams: Promise<{ status?: string; year?: string; page?: string; cycle?: string; selected?: string }>;
 }) {
   const { locale } = await params;
   const sp = await searchParams;
@@ -55,26 +57,36 @@ export default async function EnrollmentsListPage({
 
   const session = (await auth())!;
   const t = await getTranslations('admin.enrollments');
+  const tp = await getTranslations('admin.persons');
 
   const filterStatus = ENROLLMENT_STATUSES.includes(sp.status as EnrollmentStatusKey)
     ? (sp.status as EnrollmentStatusKey)
     : 'ALL';
   const page = Math.max(1, parseInt(sp.page ?? '1', 10) || 1);
 
-  const { years, currentYearId, items, counts } = await withTenant(
+  const { years, currentYearId, items, counts, cycles, cycleId, detail } = await withTenant(
     session.user.tenantId,
     async (tx) => {
       const years = await tx.academicYear.findMany({
         orderBy: { startDate: 'desc' },
-        select: { id: true, label: true, active: true },
+        select: { id: true, label: true, active: true, startDate: true, endDate: true },
       });
       const activeYear = years.find((y) => y.active);
       const currentYearId = sp.year ?? activeYear?.id ?? years[0]?.id ?? null;
+      // Tous · Primaire · Collège · Lycée, comme la page Élèves : le dossier
+      // porte le niveau demandé, donc son cycle.
+      const cycles = await tx.cycle.findMany({
+        orderBy: { order: 'asc' },
+        select: { id: true, label: true, labelAr: true },
+      });
+      const cycleId = cycles.find((c) => c.id === sp.cycle)?.id ?? null;
+      const cycleWhere = cycleId ? { level: { cycleId } } : {};
 
       const items = currentYearId
         ? await tx.enrollment.findMany({
             where: {
               academicYearId: currentYearId,
+              ...cycleWhere,
               ...(filterStatus !== 'ALL' ? { status: filterStatus } : {}),
             },
             include: {
@@ -106,7 +118,7 @@ export default async function EnrollmentsListPage({
       const grouped = currentYearId
         ? await tx.enrollment.groupBy({
             by: ['status'],
-            where: { academicYearId: currentYearId },
+            where: { academicYearId: currentYearId, ...cycleWhere },
             _count: { _all: true },
           })
         : [];
@@ -114,7 +126,11 @@ export default async function EnrollmentsListPage({
       for (const st of ENROLLMENT_STATUSES) if (st !== 'ALL') counts[st] = 0;
       for (const g of grouped) counts[g.status] = g._count._all;
 
-      return { years, currentYearId, items, counts };
+      // Fiche de l'élève ouvert dans le panneau latéral, comme dans Élèves.
+      const year = years.find((y) => y.id === currentYearId) ?? null;
+      const detail = sp.selected ? await loadStudentDetail(tx, sp.selected, locale, year) : null;
+
+      return { years, currentYearId, items, counts, cycles, cycleId, detail };
     },
   );
 
@@ -123,10 +139,23 @@ export default async function EnrollmentsListPage({
       ? Object.values(counts).reduce((n, v) => n + v, 0)
       : (counts[filterStatus] ?? 0);
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
-  const statusHref = (st: EnrollmentStatusKey) =>
-    `/${locale}/admin/enrollments?year=${currentYearId ?? ''}&status=${st}`;
-  const pageHref = (p: number) =>
-    `/${locale}/admin/enrollments?year=${currentYearId ?? ''}&status=${filterStatus}&page=${p}`;
+  /** Lien de la liste : conserve année, statut, cycle, page et fiche ouverte. */
+  const qs = (over: Record<string, string | undefined>) => {
+    const p = new URLSearchParams();
+    if (currentYearId) p.set('year', currentYearId);
+    p.set('status', filterStatus);
+    if (cycleId) p.set('cycle', cycleId);
+    if (sp.page) p.set('page', sp.page);
+    if (sp.selected) p.set('selected', sp.selected);
+    for (const [k, v] of Object.entries(over)) {
+      if (v) p.set(k, v);
+      else p.delete(k);
+    }
+    return `/${locale}/admin/enrollments?${p.toString()}`;
+  };
+  const statusHref = (st: EnrollmentStatusKey) => qs({ status: st, page: undefined });
+  const pageHref = (p: number) => qs({ page: String(p) });
+  const cycleHref = (id: string | null) => qs({ cycle: id ?? undefined, page: undefined });
 
   return (
     <div className="px-3 py-3">
@@ -151,6 +180,7 @@ export default async function EnrollmentsListPage({
               ))}
             </select>
             <input type="hidden" name="status" value={filterStatus} />
+            {cycleId && <input type="hidden" name="cycle" value={cycleId} />}
             <button
               type="submit"
               className="rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs hover:bg-slate-50"
@@ -191,6 +221,25 @@ export default async function EnrollmentsListPage({
         </div>
       </header>
 
+      {cycles.length > 0 && (
+        <nav className="mb-3 flex flex-wrap items-center gap-2">
+          {[{ id: null as string | null, label: tp('tabs.all') }, ...cycles.map((c) => ({ id: c.id as string | null, label: localizedLabel(locale, c.label, c.labelAr) }))].map((c) => (
+            <Link
+              key={c.id ?? 'all'}
+              href={cycleHref(c.id)}
+              aria-current={cycleId === c.id ? 'page' : undefined}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                cycleId === c.id
+                  ? 'bg-brand-600 text-white'
+                  : 'border border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+              }`}
+            >
+              {c.label}
+            </Link>
+          ))}
+        </nav>
+      )}
+
       {/* Filtres par statut — tous les statuts du dossier, pas une sélection.
           Sans « Affecté », impossible d'isoler les élèves qui ont une classe
           mais ne sont pas encore actifs, ce qui est précisément la population
@@ -214,6 +263,8 @@ export default async function EnrollmentsListPage({
         ))}
       </div>
 
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-start">
+        <div className="min-w-0 flex-1">
       {items.length === 0 ? (
         <div className="rounded-2xl border border-slate-200 bg-white px-6 py-16 text-center text-sm text-slate-500">
           {t('empty')}
@@ -227,9 +278,7 @@ export default async function EnrollmentsListPage({
                 <th className="px-4 py-3 text-start">{t('table.level')}</th>
                 <th className="px-4 py-3 text-start">{t('table.class')}</th>
                 <th className="px-4 py-3 text-start">{t('table.status')}</th>
-                <th className="px-4 py-3 text-end">{t('table.rank')}</th>
                 <th className="px-4 py-3 text-end">{t('table.discount')}</th>
-                <th className="px-4 py-3 text-end">{t('table.enrolledAt')}</th>
                 <th className="px-4 py-3 text-end"></th>
               </tr>
             </thead>
@@ -237,9 +286,11 @@ export default async function EnrollmentsListPage({
               {items.map((e) => (
                 <tr key={e.id}>
                   <td className="px-4 py-3">
+                    {/* Le nom ouvre la fiche latérale : on consulte sans quitter
+                        la liste ni perdre ses filtres. */}
                     <Link
-                      href={`/${locale}/admin/persons/${e.student.id}`}
-                      className="font-medium text-slate-900 hover:text-brand-700"
+                      href={qs({ selected: e.student.id })}
+                      className="font-medium text-slate-900 hover:text-brand-700 hover:underline"
                     >
                       {personDisplayName(locale, e.student)}
                     </Link>
@@ -263,20 +314,14 @@ export default async function EnrollmentsListPage({
                     <StatusBadge status={e.status} t={t} />
                   </td>
                   <td className="px-4 py-3 text-end text-xs tabular-nums">
-                    {e.siblingRank ? `#${e.siblingRank}` : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-end text-xs tabular-nums">
                     {e.discountPct !== null ? `−${Number(e.discountPct)}%` : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-end text-xs text-slate-500">
-                    {new Date(e.enrolledAt).toLocaleDateString(locale)}
                   </td>
                   <td className="px-4 py-3 text-end">
                     <Link
                       href={`/${locale}/admin/enrollments/${e.id}`}
-                      className="text-xs font-medium text-brand-700 hover:underline"
+                      className="inline-flex whitespace-nowrap rounded-lg border border-brand-300 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100"
                     >
-                      {t('table.open')} →
+                      {tp('actions.view')}
                     </Link>
                   </td>
                 </tr>
@@ -287,6 +332,14 @@ export default async function EnrollmentsListPage({
       )}
 
       <Pagination page={page} totalPages={totalPages} hrefFor={pageHref} />
+        </div>
+
+        {detail ? (
+          <StudentDetailPanel detail={detail} locale={locale} baseHref={`/${locale}/admin/persons`} />
+        ) : (
+          <StudentDetailEmpty />
+        )}
+      </div>
     </div>
   );
 }

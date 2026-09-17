@@ -16,7 +16,14 @@ import { PersonActions } from './person-actions';
 export const PERSON_PAGE_SHELL = 'px-3 py-3';
 
 /** Onglet actif de la fiche — pilote la mise en évidence du bouton. */
-export type PersonTab = 'fiche' | 'dashboard' | 'timetable' | 'edit' | 'finance';
+export type PersonTab =
+  | 'fiche'
+  | 'absences'
+  | 'notes'
+  | 'dashboard'
+  | 'timetable'
+  | 'edit'
+  | 'finance';
 
 const BADGE: Record<string, string> = {
   ACTIVE: 'bg-emerald-100 text-emerald-800',
@@ -181,9 +188,19 @@ export async function PersonHeader({
             {tDetail('tabs.fiche')}
           </Link>
           {person.type === 'STUDENT' && (
-            <Link href={`${base}/finance`} className={tabCls(active === 'finance')}>
-              {tDetail('finance')}
-            </Link>
+            <>
+              {/* Assiduité et notes : les deux écrans qu'on ouvre le plus
+                  souvent depuis un dossier élève, juste après la fiche. */}
+              <Link href={`${base}/absences`} className={tabCls(active === 'absences')}>
+                {tDetail('tabs.absences')}
+              </Link>
+              <Link href={`${base}/notes`} className={tabCls(active === 'notes')}>
+                {tDetail('tabs.notes')}
+              </Link>
+              <Link href={`${base}/finance`} className={tabCls(active === 'finance')}>
+                {tDetail('finance')}
+              </Link>
+            </>
           )}
           {person.type === 'TEACHER' && (
             <>

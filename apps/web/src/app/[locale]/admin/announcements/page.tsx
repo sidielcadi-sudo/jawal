@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { AnnouncementCreateForm, AnnouncementRowActions } from './client';
 import { localizedLabel } from '@/lib/localized-name';
+import { activeYearStart } from '@/lib/active-year';
 
 export default async function AnnouncementsPage({
   params,
@@ -16,8 +17,11 @@ export default async function AnnouncementsPage({
 
   const session = (await auth())!;
   const { announcements, classes, levels } = await withTenant(session.user.tenantId, async (tx) => {
+    // Annonces de l'année active (créées ou publiées depuis la rentrée).
+    const since = await activeYearStart(tx);
     const [announcements, classes, levels] = await Promise.all([
       tx.announcement.findMany({
+        where: since ? { OR: [{ createdAt: { gte: since } }, { publishedAt: { gte: since } }] } : {},
         orderBy: [{ publishedAt: 'desc' }, { createdAt: 'desc' }],
         take: 50,
       }),

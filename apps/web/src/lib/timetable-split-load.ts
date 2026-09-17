@@ -2,16 +2,35 @@
  * Éclatement d'une affectation en séances pour le solveur, dédoublements
  * compris.
  *
- * Une matière dédoublée ne se décrit pas par une seule ligne. « 3 h de
- * français dont 1 h en deux groupes » donne au solveur :
+ * Une matière faite en groupes ne se décrit pas par une seule ligne, et il y a
+ * **deux manières** de la faire — que le solveur doit traiter différemment :
+ *
+ * **Simultané.** « 3 h de français dont 1 h en deux groupes, en même temps » :
  *
  *   - Français, classe entière, 2 h
- *   - Français, Groupe 1, 1 h  ┐ même `parallel_key` : le solveur les place
- *   - Français, Groupe 2, 1 h  ┘ sur exactement les mêmes créneaux
+ *   - Français, Groupe 1, 1 h  ┐ même `parallel_key` : placés sur exactement
+ *   - Français, Groupe 2, 1 h  ┘ le même créneau
  *
- * Sans ce découpage, le solveur produisait trois séances de classe entière et
- * le dédoublement n'existait que dans les indicateurs.
+ *   Les deux moitiés travaillent à la même heure : il faut donc **deux
+ *   professeurs**.
+ *
+ * **Successif.** « 3 h de physique dont 1 h par groupe, l'une après l'autre » :
+ *
+ *   - Physique, classe entière, 2 h
+ *   - Physique, Groupe 1, 1 h — créneau propre, pas de `parallel_key`
+ *   - Physique, Groupe 2, 1 h — autre créneau
+ *
+ *   C'est le fonctionnement des travaux pratiques : le professeur prend une
+ *   moitié, puis l'autre. **Un seul professeur suffit**, et l'imposer en
+ *   parallèle rendrait l'emploi du temps ingénérable.
+ *
+ * Le mode se déduit des séances déclarées : une séance sans groupe vaut pour
+ * tous (simultané), une séance rattachée à un groupe n'est qu'à lui (successif).
+ * Les deux peuvent coexister sur la même matière.
  */
+
+/** Séance déclarée en groupes. `groupId` null = tous les groupes, en parallèle. */
+export type DeclaredSlot = { day: string; slotId: string; groupId: string | null };
 
 /** Ce qu'on sait d'une affectation avant éclatement. */
 export type SplitInput = {
@@ -28,14 +47,14 @@ export type SplitInput = {
   /** Heures réellement dédoublées. Null = tout le volume. */
   splitHours: number | null;
   /**
-   * Séances déclarées en groupes — « le lundi de 10 h à 12 h est dédoublé ».
+   * Séances déclarées — « le lundi de 10 h à 12 h se fait en groupes ».
    *
-   * Quand elles sont renseignées, elles décident : le volume dédoublé vaut
-   * leur nombre et le solveur doit poser les groupes exactement là. Un simple
-   * compte d'heures le laissait choisir la case, et l'appel comme les notes se
+   * Quand elles sont renseignées, elles décident : elles fixent le volume en
+   * groupes, le mode (simultané ou successif) et la case exacte. Un simple
+   * compte d'heures laissait le solveur choisir, et l'appel comme les notes se
    * rattachaient ensuite à une séance que personne n'avait décidée.
    */
-  fixedSlots?: Array<{ day: string; slotId: string }>;
+  fixedSlots?: DeclaredSlot[];
   requiredRoomType?: string | null;
 };
 
@@ -60,6 +79,8 @@ export type SplitOutput = {
  * L'identifiant d'une ligne de groupe dérive de l'affectation d'origine
  * (`<assignmentId>::<groupId>`) : le retour du solveur doit pouvoir remonter
  * à la matière et au professeur, et un identifiant inventé casserait ce lien.
+ * Les lignes successives portent en plus le suffixe `::seq`, pour ne pas
+ * entrer en collision avec la ligne simultanée du même groupe.
  */
 export function splitAssignment(input: SplitInput): SplitOutput[] {
   const base = {
@@ -77,33 +98,54 @@ export function splitAssignment(input: SplitInput): SplitOutput[] {
     return [{ ...base, id: input.assignmentId, weekly_hours: hours }];
   }
 
-  // Séances déclarées : elles fixent le volume dédoublé. Elles restent
-  // bornées au volume de la matière — déclarer quatre séances sur 3 h de
-  // programme est une erreur de saisie, pas une raison de déborder.
-  const declared = (input.fixedSlots ?? []).slice(0, hours);
-  const fixed = declared.map((f) => ({ day: f.day, slot_id: f.slotId }));
+  const declared = input.fixedSlots ?? [];
+  const groupIds = new Set(input.groups.map((g) => g.id));
+  const parallel = declared.filter((d) => d.groupId === null);
+  const perGroup = new Map<string, DeclaredSlot[]>();
+  for (const d of declared) {
+    // Une séance rattachée à un groupe qui n'existe plus est ignorée plutôt
+    // que propagée : elle produirait une ligne sans cohorte.
+    if (d.groupId === null || !groupIds.has(d.groupId)) continue;
+    const arr = perGroup.get(d.groupId) ?? [];
+    arr.push(d);
+    perGroup.set(d.groupId, arr);
+  }
 
-  // Part dédoublée, bornée au volume : une saisie aberrante est plafonnée
-  // plutôt que propagée jusqu'au solveur.
+  // Les séances déclarées restent bornées au volume de la matière : trois
+  // séances sur 2 h de programme est une erreur de saisie, pas une raison
+  // d'épingler une case de plus que le solveur ne peut placer.
+  const parallelUsed = parallel.slice(0, hours);
+  const remaining = Math.max(0, hours - parallelUsed.length);
+  for (const [gid, own] of perGroup) perGroup.set(gid, own.slice(0, remaining));
+
+  // Heures en groupes vues par UN élève : les séances simultanées, plus celles
+  // de son propre groupe. C'est ce qu'il faut retrancher au volume de classe
+  // entière — pas la somme de tous les groupes, qui compterait deux fois.
+  const perGroupMax = Math.max(0, ...[...perGroup.values()].map((v) => v.length));
+
   const split =
-    fixed.length > 0
-      ? fixed.length
+    declared.length > 0
+      ? parallelUsed.length
       : Math.min(hours, Math.max(0, input.splitHours ?? hours));
-  const whole = hours - split;
+  const whole =
+    declared.length > 0 ? Math.max(0, hours - parallelUsed.length - perGroupMax) : hours - split;
 
   const out: SplitOutput[] = [];
   if (whole > 0) {
     out.push({ ...base, id: input.assignmentId, weekly_hours: whole, group_id: null });
   }
+
+  // ── Séances simultanées ────────────────────────────────────────────────
   if (split > 0) {
     const key = `split:${input.assignmentId}`;
+    const fixed = parallelUsed.map((d) => ({ day: d.day, slot_id: d.slotId }));
     for (const g of input.groups) {
       out.push({
         ...base,
         id: `${input.assignmentId}::${g.id}`,
         // Un groupe peut avoir son propre enseignant ; à défaut, celui de
-        // l'affectation assure les deux — le solveur refusera alors de les
-        // mettre en parallèle, et le signalera comme non plaçable.
+        // l'affectation assure les deux — impossible en simultané, et le
+        // pré-diagnostic le signale avant de lancer la génération.
         teacher_id: g.teacherId ?? input.teacherId,
         weekly_hours: split,
         group_id: g.id,
@@ -112,13 +154,35 @@ export function splitAssignment(input: SplitInput): SplitOutput[] {
       });
     }
   }
+
+  // ── Séances successives ────────────────────────────────────────────────
+  //
+  // Pas de `parallel_key` : c'est précisément ce qui autorise le même
+  // professeur sur les deux moitiés, à deux heures différentes.
+  for (const g of input.groups) {
+    const own = perGroup.get(g.id) ?? [];
+    if (own.length === 0) continue;
+    out.push({
+      ...base,
+      id: `${input.assignmentId}::${g.id}::seq`,
+      teacher_id: g.teacherId ?? input.teacherId,
+      weekly_hours: own.length,
+      group_id: g.id,
+      fixed_slots: own.map((d) => ({ day: d.day, slot_id: d.slotId })),
+    });
+  }
+
   return out;
 }
 
-/** Retrouve l'affectation et le groupe d'une ligne rendue par le solveur. */
+/**
+ * Retrouve l'affectation et le groupe d'une ligne rendue par le solveur.
+ *
+ * Le suffixe `::seq` des séances successives n'est pas un identifiant : il ne
+ * doit pas se retrouver collé au groupe.
+ */
 export function parseSplitId(id: string): { assignmentId: string; groupId: string | null } {
-  const i = id.indexOf('::');
-  return i < 0
-    ? { assignmentId: id, groupId: null }
-    : { assignmentId: id.slice(0, i), groupId: id.slice(i + 2) };
+  const parts = id.split('::');
+  if (parts.length < 2) return { assignmentId: id, groupId: null };
+  return { assignmentId: parts[0]!, groupId: parts[1]! };
 }

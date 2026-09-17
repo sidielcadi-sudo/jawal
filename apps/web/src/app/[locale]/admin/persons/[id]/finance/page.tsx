@@ -2,6 +2,7 @@ import { Fragment } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
+import { KpiCard } from '@/components/kpi-card';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { computeStudentFinance } from '@/lib/finance';
@@ -171,23 +172,28 @@ export default async function StudentFinancePage({
 
       <h2 className="mb-4 text-base font-semibold text-slate-900">{t('title')}</h2>
 
-      <div className="grid grid-cols-3 gap-3">
-        <Kpi
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <KpiCard
+          icon="🧾"
+          tone="sky"
           label={t('kpi.totalDue')}
           value={`${yearTotals.due.toFixed(2)} ${currency}`}
-          color="slate"
           hint={activeYearLabel ?? undefined}
         />
-        <Kpi
+        <KpiCard
+          icon="✔"
+          tone="emerald"
           label={t('kpi.totalPaid')}
           value={`${yearTotals.paid.toFixed(2)} ${currency}`}
-          color="emerald"
+          valueTone="text-emerald-700"
           hint={activeYearLabel ?? undefined}
         />
-        <Kpi
+        <KpiCard
+          icon="⏳"
+          tone={yearTotals.remaining > 0 ? 'red' : 'emerald'}
+          alert={yearTotals.remaining > 0}
           label={t('kpi.totalRemaining')}
           value={`${yearTotals.remaining.toFixed(2)} ${currency}`}
-          color={yearTotals.remaining > 0 ? 'red' : 'emerald'}
           hint={
             yearTotals.overdue > 0
               ? t('kpi.overdueHint', { amount: `${yearTotals.overdue.toFixed(2)} ${currency}` })
@@ -342,30 +348,6 @@ export default async function StudentFinancePage({
   );
 }
 
-function Kpi({
-  label,
-  value,
-  color,
-  hint,
-}: {
-  label: string;
-  value: string;
-  color: 'slate' | 'emerald' | 'red';
-  hint?: string;
-}) {
-  const colors: Record<string, string> = {
-    slate: 'text-slate-900',
-    emerald: 'text-emerald-700',
-    red: 'text-red-700',
-  };
-  return (
-    <div className="rounded-2xl border border-brand-200 bg-white p-5">
-      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
-      <div className={`mt-2 text-2xl font-semibold tabular-nums ${colors[color]}`}>{value}</div>
-      {hint && <div className="mt-1 text-xs font-medium text-amber-700">{hint}</div>}
-    </div>
-  );
-}
 
 function StatusBadge({ status, label }: { status: string; label: string }) {
   const styles: Record<string, string> = {

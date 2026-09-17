@@ -1,5 +1,6 @@
 import 'server-only';
 import type { Prisma } from '@/lib/db';
+import { activeYearStart } from '@/lib/active-year';
 
 type Tx = Prisma.TransactionClient;
 
@@ -20,6 +21,10 @@ export async function getTeacherAnnouncements(
   opts: { limit?: number; since?: Date } = {},
 ) {
   const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
+  // Annonces de l'année active : la borne demandée, sans remonter avant la rentrée.
+  const yearStart = await activeYearStart(tx);
+  const since =
+    opts.since && yearStart ? (opts.since > yearStart ? opts.since : yearStart) : (opts.since ?? yearStart);
 
   // Classes du prof : affectations + cases d'EDT de l'année active.
   const [assignments, entries] = year
@@ -44,7 +49,7 @@ export async function getTeacherAnnouncements(
       publishedAt: {
         not: null,
         lte: new Date(),
-        ...(opts.since ? { gte: opts.since } : {}),
+        ...(since ? { gte: since } : {}),
       },
       OR: [
         { audience: 'ALL' as const },

@@ -218,6 +218,19 @@ CREATE UNIQUE INDEX timetable_entries_group_uniq
 -- Unicité d'une feuille d'appel, avec dédoublement en groupes.
 -- Même construction que pour timetable_entries, et pour la même raison : en SQL
 -- NULL n'entre pas en conflit avec NULL.
+-- Séances déclarées en groupes : même piège du NULL que ci-dessus.
+-- Une déclaration « simultané » (group_id NULL) est unique par créneau ; une
+-- déclaration « successif » l'est par créneau ET par groupe.
+DROP INDEX IF EXISTS class_group_slots_parallel_uniq;
+CREATE UNIQUE INDEX class_group_slots_parallel_uniq
+  ON class_group_slots (class_id, subject_id, day_of_week, slot_id)
+  WHERE group_id IS NULL;
+
+DROP INDEX IF EXISTS class_group_slots_group_uniq;
+CREATE UNIQUE INDEX class_group_slots_group_uniq
+  ON class_group_slots (class_id, subject_id, day_of_week, slot_id, group_id)
+  WHERE group_id IS NOT NULL;
+
 DROP INDEX IF EXISTS attendance_sessions_whole_class_uniq;
 CREATE UNIQUE INDEX attendance_sessions_whole_class_uniq
   ON attendance_sessions (class_id, date, period_label)

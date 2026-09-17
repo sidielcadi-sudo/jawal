@@ -80,13 +80,36 @@ def _is_teacher_available_on(teacher, day: str, slot) -> bool:
 # ─── Construction du XML FET ────────────────────────────────────────
 
 
+def base_max_gaps(no_gaps_weight: int | None) -> int | None:
+    """Traduit le poids « anti-trous » de Jawal en nombre de trous tolérés.
+
+    FET n'accepte `ConstraintStudentsSetMaxGapsPerDay` qu'avec un poids de
+    100 % : toute autre valeur lui fait rejeter le fichier ENTIER (« Cannot
+    precompute - data is wrong »). La force de l'exigence ne se règle donc pas
+    par le poids, mais par le NOMBRE de trous autorisés — c'est la façon FET de
+    dire « modéré ».
+    """
+    if not no_gaps_weight:
+        return None
+    if no_gaps_weight >= 67:
+        return 0
+    if no_gaps_weight >= 34:
+        return 1
+    return 2
+
+
 def build_fet_xml(
     req: MultiGenerateRequest,
+    max_gaps: int | None = -1,
 ) -> Tuple[str, Dict[int, str], List[str], List[str]]:
     """Construit un document FET 7.x à partir de la requête.
 
     Retourne (xml_string, activity_id_to_assignment_id, day_order,
     dédoublements écartés faute d'un second enseignant).
+
+    `max_gaps` : trous tolérés par jour et par classe. -1 = celui que dicte le
+    paramétrage ; None = aucune exigence. Le pipeline s'en sert pour réessayer
+    en desserrant, plutôt que de rendre un emploi du temps à moitié vide.
 
     Format attendu par FET 7.x : balise racine `<fet>` (minuscule), ordre
     des éléments Activity strict (Teacher, Subject, Activity_Tag, Students,
@@ -212,7 +235,8 @@ def build_fet_xml(
     # La n-ième séance d'une affectation va sur la n-ième case déclarée ; les
     # deux moitiés d'un dédoublement portant la même liste, elles tombent
     # d'elles-mêmes au même moment.
-    locked_acts: list[tuple[int, str, str, str]] = []
+    # (activité, jour, heure, clé de dédoublement, classe, libellé lisible)
+    locked_acts: list[tuple[int, str, str, str, str, str, str, str, str]] = []
     # Prof de chaque affectation, et libellé lisible de chaque dédoublement :
     # servent au contrôle « deux groupes, deux professeurs » plus bas.
     teacher_by_assignment: Dict[str, str] = {a.id: a.teacher_id for a in req.assignments}
@@ -243,7 +267,17 @@ def build_fet_xml(
                 hour_name = hour_name_by_slot.get(f.slot_id)
                 if hour_name:
                     locked_acts.append(
-                        (next_id, DAY_KEY_TO_FET[f.day], hour_name, a.parallel_key or "")
+                        (
+                            next_id,
+                            DAY_KEY_TO_FET[f.day],
+                            hour_name,
+                            a.parallel_key or "",
+                            a.class_id,
+                            f"{a.class_name} / {a.subject_label} ({f.day} {hour_name})",
+                            a.teacher_id,
+                            f.day,
+                            f.slot_id,
+                        )
                     )
             if a.parallel_key:
                 slots_for_key = acts_by_parallel.setdefault(a.parallel_key, [])
@@ -340,14 +374,16 @@ def build_fet_xml(
     cons_params = req.constraints
 
     # NO_GAPS → ConstraintStudentsSetMaxGapsPerDay pour chaque classe
-    # FET excelle ici : weight_percentage = 100 force 0 gaps quasi systématiquement.
-    if cons_params.no_gaps_weight is not None and cons_params.no_gaps_weight > 0:
-        # Conversion poids Jawal (1..100) → FET (50..100) pour rester réaliste
-        fet_weight = max(50, min(100, 80 + cons_params.no_gaps_weight))
+    #
+    # Le poids reste à 100 : FET n'en accepte pas d'autre pour cette contrainte,
+    # et un 85 % lui faisait rejeter tout le fichier. C'est le nombre de trous
+    # tolérés qui exprime la force de l'exigence.
+    effective_gaps = base_max_gaps(cons_params.no_gaps_weight) if max_gaps == -1 else max_gaps
+    if effective_gaps is not None:
         for cid in req.class_ids:
             cons = ET.SubElement(time_constraints, "ConstraintStudentsSetMaxGapsPerDay")
-            ET.SubElement(cons, "Weight_Percentage").text = str(fet_weight)
-            ET.SubElement(cons, "Max_Gaps").text = "0"
+            ET.SubElement(cons, "Weight_Percentage").text = "100"
+            ET.SubElement(cons, "Max_Gaps").text = str(effective_gaps)
             ET.SubElement(cons, "Students").text = class_slugs[cid]
             ET.SubElement(cons, "Active").text = "true"
             ET.SubElement(cons, "Comments").text = ""
@@ -415,7 +451,36 @@ def build_fet_xml(
     # `Permanently_Locked` fige l'activité : FET ne la déplacera pas, même si
     # cela lui coûte des séances ailleurs. C'est voulu — une séance dédoublée
     # est une décision de l'établissement, pas une variable d'ajustement.
-    for act_id, day_name, hour_name, split_key in locked_acts:
+    # Cases fermées pour la classe, sous la forme où les verrous les nomment.
+    closed_cells: Dict[str, set[tuple[str, str]]] = {
+        cid: set(cells) for cid, cells in forbidden_per_class.items()
+    }
+    closed_declared: List[str] = []
+    busy_declared: List[str] = []
+    lock_teacher_by_id = {t.id: t for t in req.teachers}
+    lock_slot_by_id = {s.id: s for s in req.slots}
+    for act_id, day_name, hour_name, split_key, class_id, label, teacher_id, day_key, slot_id in locked_acts:
+        # Une séance déclarée sur une case où la classe n'a pas cours est une
+        # donnée contradictoire : FET n'en refuse pas le verrou, il refuse le
+        # FICHIER — « Cannot precompute - data is wrong » — et l'établissement
+        # entier se retrouve sans emploi du temps. On écarte le verrou, on place
+        # le reste, et on dit laquelle il faut corriger.
+        if (day_name, hour_name) in closed_cells.get(class_id, set()):
+            closed_declared.append(label)
+            continue
+        # Le professeur de la séance n'est pas disponible à cette heure : déjà en
+        # cours dans une classe non régénérée (créneaux « déjà pris »), ou hors
+        # de ses plages. Même conséquence pour FET : on écarte le verrou et on
+        # le signale.
+        lock_teacher = lock_teacher_by_id.get(teacher_id)
+        lock_slot = lock_slot_by_id.get(slot_id)
+        if (
+            lock_teacher is not None
+            and lock_slot is not None
+            and not _is_teacher_available_on(lock_teacher, day_key, lock_slot)
+        ):
+            busy_declared.append(label)
+            continue
         # Un dédoublement qu'on vient d'écarter ne peut pas non plus honorer sa
         # séance déclarée : verrouiller les deux moitiés sur la même case avec
         # le même professeur est impossible, et FET renonce alors à presque
@@ -533,6 +598,8 @@ def build_fet_xml(
         act_to_assignment,
         [DAY_KEY_TO_FET[d] for d in days],
         shared_teacher_splits,
+        closed_declared,
+        busy_declared,
     )
 
 
@@ -613,34 +680,27 @@ def parse_fet_activities(
 # ─── Pipeline principal ────────────────────────────────────────────
 
 
-def solve_with_fet(request: MultiGenerateRequest) -> MultiGenerateResponse:
-    """Lance FET en subprocess et retourne le résultat normalisé."""
-    started = time.time()
+# Une passe qui échoue ne clôt pas la partie : le pipeline réessaie en
+# desserrant l'exigence anti-trous. Vingt secondes suffisent pour trancher —
+# une instance réalisable se résout en moins d'une seconde, et s'acharner sur
+# un palier trop serré coûte le temps du palier suivant.
+PROBE_SECONDS = 20
 
-    if not shutil.which("fet-cl"):
-        return MultiGenerateResponse(
-            status="ERROR",
-            solver_time_ms=0,
-            placed=[],
-            unplaced=[],
-            message="Binaire fet-cl introuvable dans le PATH du container.",
-        )
 
-    # Préparation des index
-    placeable = [s for s in request.slots if not s.is_break]
-    placeable_sorted = sorted(placeable, key=lambda s: s.start_time)
-    placeable_by_start: Dict[str, str] = {s.start_time: s.id for s in placeable_sorted}
-
-    xml_str, act_to_assignment, _days_order, shared_teacher_splits = build_fet_xml(request)
-
+def _run_fet_once(
+    xml_str: str,
+    request: MultiGenerateRequest,
+    act_to_assignment: Dict[int, str],
+    placeable_by_start: Dict[str, str],
+    time_limit: int,
+) -> Tuple[List[MultiPlacedEntry], str]:
+    """Lance fet-cl une fois. Retourne (placements, diagnostic d'échec)."""
     with tempfile.TemporaryDirectory(prefix="jawal_fet_") as tmpdir_str:
         tmpdir = Path(tmpdir_str)
         input_file = tmpdir / "jawal.fet"
         output_dir = tmpdir / "results"
         output_dir.mkdir()
         input_file.write_text(xml_str, encoding="utf-8")
-
-        time_limit = max(10, min(int(request.max_solve_seconds), 600))
 
         try:
             proc = subprocess.run(
@@ -656,15 +716,7 @@ def solve_with_fet(request: MultiGenerateRequest) -> MultiGenerateResponse:
                 timeout=time_limit + 30,
             )
         except subprocess.TimeoutExpired:
-            return MultiGenerateResponse(
-                status="ERROR",
-                solver_time_ms=int((time.time() - started) * 1000),
-                placed=[],
-                unplaced=[],
-                message=f"FET timeout après {time_limit + 30}s.",
-            )
-
-        solver_time_ms = int((time.time() - started) * 1000)
+            return [], f"FET timeout après {time_limit + 30}s."
 
         if proc.returncode != 0:
             # fet-cl écrit ses diagnostics sur STDOUT, pas sur stderr : le
@@ -689,20 +741,96 @@ def solve_with_fet(request: MultiGenerateRequest) -> MultiGenerateResponse:
                         fh.write(xml_str)
                 except Exception:  # noqa: BLE001
                     pass
-            return MultiGenerateResponse(
-                status="INFEASIBLE",
-                solver_time_ms=solver_time_ms,
-                placed=[],
-                unplaced=[],
-                message=f"FET n'a pas trouvé de solution : {detail[:400]}",
-            )
+            return [], f"FET n'a pas trouvé de solution : {detail[:400]}"
 
-        placed = parse_fet_activities(
-            output_dir,
+        return (
+            parse_fet_activities(
+                output_dir,
+                act_to_assignment,
+                placeable_by_start,
+                FET_TO_DAY_KEY,
+                request,
+            ),
+            "",
+        )
+
+
+def solve_with_fet(request: MultiGenerateRequest) -> MultiGenerateResponse:
+    """Lance FET en subprocess et retourne le résultat normalisé."""
+    started = time.time()
+
+    if not shutil.which("fet-cl"):
+        return MultiGenerateResponse(
+            status="ERROR",
+            solver_time_ms=0,
+            placed=[],
+            unplaced=[],
+            message="Binaire fet-cl introuvable dans le PATH du container.",
+        )
+
+    # Préparation des index
+    placeable = [s for s in request.slots if not s.is_break]
+    placeable_sorted = sorted(placeable, key=lambda s: s.start_time)
+    placeable_by_start: Dict[str, str] = {s.start_time: s.id for s in placeable_sorted}
+
+    budget = max(10, min(int(request.max_solve_seconds), 600))
+    total_req = sum(a.weekly_hours for a in request.assignments)
+
+    # ─ Repli progressif sur l'exigence « aucun trou » ─
+    #
+    # Zéro trou pour toutes les classes est vite hors d'atteinte. FET ne le dit
+    # pas : il s'acharne jusqu'à la limite de temps et rend un emploi du temps à
+    # moitié vide — mesuré, 176 h sur 280 après 180 s, alors que la même donnée
+    # se résout en 0,3 s dès qu'un trou par jour est toléré. Une grille complète
+    # avec quelques trous vaut mieux qu'une grille inutilisable sans trou, et
+    # l'établissement doit savoir ce qu'on a dû céder.
+    configured = base_max_gaps(request.constraints.no_gaps_weight)
+    ladder: List[int | None] = (
+        [None] if configured is None else [configured, configured + 1, None]
+    )
+
+    placed: List[MultiPlacedEntry] = []
+    retained = configured
+    shared_teacher_splits: List[str] = []
+    closed_declared: List[str] = []
+    busy_declared: List[str] = []
+    last_error = ""
+
+    for index, gaps in enumerate(ladder):
+        remaining = int(budget - (time.time() - started))
+        if remaining < 5 and placed:
+            break
+        is_last = index == len(ladder) - 1
+        limit = max(5, remaining if is_last else min(PROBE_SECONDS, remaining))
+
+        (
+            xml_str,
             act_to_assignment,
-            placeable_by_start,
-            FET_TO_DAY_KEY,
-            request,
+            _days_order,
+            shared_teacher_splits,
+            closed_declared,
+            busy_declared,
+        ) = build_fet_xml(request, max_gaps=gaps)
+        attempt, err = _run_fet_once(
+            xml_str, request, act_to_assignment, placeable_by_start, limit
+        )
+        if err:
+            last_error = err
+            continue
+        if len(attempt) > len(placed):
+            placed, retained = attempt, gaps
+        if len(placed) >= total_req:
+            break
+
+    solver_time_ms = int((time.time() - started) * 1000)
+
+    if not placed and last_error:
+        return MultiGenerateResponse(
+            status="INFEASIBLE",
+            solver_time_ms=solver_time_ms,
+            placed=[],
+            unplaced=[],
+            message=last_error,
         )
 
     # Calcule unplaced
@@ -734,6 +862,16 @@ def solve_with_fet(request: MultiGenerateRequest) -> MultiGenerateResponse:
         status = "PARTIAL"
         msg = f"FET : {total_placed}/{total_req} heures placées."
 
+    if retained != configured:
+        # L'exigence a dû être desserrée pour placer les heures : le dire, sans
+        # quoi l'établissement croit son paramétrage respecté.
+        cede = (
+            "aucune exigence anti-trous"
+            if retained is None
+            else f"jusqu'à {retained} trou(s) par jour et par classe"
+        )
+        msg += f" Objectif « aucun trou » assoupli ({cede}) : sans cela, FET ne plaçait pas toutes les heures."
+
     if shared_teacher_splits:
         # Sans second enseignant, les deux moitiés ne peuvent pas se tenir en
         # même temps : l'une se retrouve sans cours pendant que l'autre
@@ -741,6 +879,23 @@ def solve_with_fet(request: MultiGenerateRequest) -> MultiGenerateResponse:
         msg += (
             " Dédoublement non simultané, faute d'un second enseignant : "
             + ", ".join(sorted(set(shared_teacher_splits)))
+            + "."
+        )
+
+    if busy_declared:
+        msg += (
+            " Séance(s) en groupes déclarée(s) sur une heure où l'enseignant n'est"
+            " pas disponible (déjà en cours dans une classe non régénérée, ou hors de"
+            " ses plages), ignorée(s) : "
+            + ", ".join(sorted(set(busy_declared)))
+            + "."
+        )
+
+    if closed_declared:
+        msg += (
+            " Séance(s) en groupes déclarée(s) sur un créneau où la classe n'a"
+            " pas cours, ignorée(s) : "
+            + ", ".join(sorted(set(closed_declared)))
             + "."
         )
 

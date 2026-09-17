@@ -1,5 +1,6 @@
 import { withTenant } from '@/lib/db';
 import { verifyMobileUser } from '@/lib/mobile-auth';
+import { activeYearStart } from '@/lib/active-year';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -15,13 +16,15 @@ export async function GET(req: Request) {
   if (!principal) return Response.json({ error: 'Non authentifié.' }, { status: 401 });
 
   const data = await withTenant(principal.tenantId, async (tx) => {
+    const since = await activeYearStart(tx);
+    const inYear = since ? { createdAt: { gte: since } } : {};
     const [rows, unread] = await Promise.all([
       tx.staffAlert.findMany({
-        where: { userId: principal.userId },
+        where: { userId: principal.userId, ...inYear },
         orderBy: { createdAt: 'desc' },
         take: 30,
       }),
-      tx.staffAlert.count({ where: { userId: principal.userId, readAt: null } }),
+      tx.staffAlert.count({ where: { userId: principal.userId, readAt: null, ...inYear } }),
     ]);
     return {
       unread,

@@ -62,6 +62,105 @@ export const VISIBLE_OVERRIDE: Prisma.TimetableOverrideWhereInput = {
   approvalStatus: 'APPROVED',
 };
 
+/**
+ * Le professeur assure-t-il CETTE séance à CETTE date en remplacement ?
+ *
+ * Sert de droit d'accès : le remplaçant fait l'appel, le cahier de textes et
+ * le carnet de la séance qu’il prend en charge, exactement comme le
+ * titulaire, mais pour ce jour-là seulement.
+ */
+export async function isCoveringEntry(
+  tx: Tx,
+  teacherId: string,
+  entryId: string,
+  date: Date,
+): Promise<boolean> {
+  const n = await tx.timetableOverride.count({
+    where: {
+      entryId,
+      date,
+      kind: 'SUBSTITUTION',
+      substituteTeacherId: teacherId,
+      ...VISIBLE_OVERRIDE,
+    },
+  });
+  return n > 0;
+}
+
+/** Séances (entryId × date) assurées en remplacement sur une liste de jours. */
+export async function coveredEntriesOn(
+  tx: Tx,
+  teacherId: string,
+  dates: Date[],
+): Promise<Array<{ entryId: string; date: Date }>> {
+  if (dates.length === 0) return [];
+  const rows = await tx.timetableOverride.findMany({
+    where: {
+      date: { in: dates },
+      kind: 'SUBSTITUTION',
+      substituteTeacherId: teacherId,
+      ...VISIBLE_OVERRIDE,
+    },
+    select: { entryId: true, date: true },
+  });
+  return rows;
+}
+
+/** Séance couverte par un remplaçant, placée dans SA semaine type. */
+export type CoveringCell = {
+  id: string;
+  /** AAAA-MM-JJ de la séance remplacée. */
+  date: string;
+  dayOfWeek: string;
+  slotId: string;
+  className: string;
+  subjectName: string;
+  roomLabel: string | null;
+};
+
+/**
+ * Remplacements approuvés à venir qu'un enseignant assure, rendus par case
+ * (jour × créneau) : sa semaine type ne les connaît pas, puisqu'ils
+ * n'existent que pour une date donnée.
+ */
+export async function coveringCellsForTeacher(
+  tx: Tx,
+  teacherId: string,
+  days = 14,
+): Promise<CoveringCell[]> {
+  const rows = await tx.timetableOverride.findMany({
+    where: {
+      date: window(days),
+      kind: 'SUBSTITUTION',
+      substituteTeacherId: teacherId,
+      ...VISIBLE_OVERRIDE,
+    },
+    select: {
+      id: true,
+      date: true,
+      entry: {
+        select: {
+          dayOfWeek: true,
+          slotId: true,
+          class: { select: { name: true } },
+          subject: { select: { label: true } },
+          room: { select: { code: true, label: true } },
+        },
+      },
+    },
+    orderBy: { date: 'asc' },
+  });
+  return rows.map((o) => ({
+    id: o.id,
+    date: o.date.toISOString().slice(0, 10),
+    dayOfWeek: o.entry.dayOfWeek,
+    slotId: o.entry.slotId,
+    className: o.entry.class.name,
+    subjectName: o.entry.subject?.label ?? '—',
+    roomLabel: o.entry.room?.label ?? o.entry.room?.code ?? null,
+  }));
+}
+
 export async function upcomingOverridesForClass(
   tx: Tx,
   classId: string,

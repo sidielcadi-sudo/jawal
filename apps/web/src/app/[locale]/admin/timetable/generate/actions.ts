@@ -84,6 +84,7 @@ export async function generateMultiTimetableAction(
   let classNameById: Map<string, string>;
   let classRoomInfo: Record<string, { roomMode: string; homeRoomId: string | null }> = {};
   let teacherHomeRoom: Record<string, string | null> = {};
+  let busyRooms: Array<{ roomId: string; day: string; slotId: string }> = [];
 
   try {
     const collected = await withTenant(tenantId, async (tx) => {
@@ -177,13 +178,13 @@ export async function generateMultiTimetableAction(
       // à une séance que personne n'avait décidée.
       const splitSlotRows = await tx.classGroupSlot.findMany({
         where: { classId: { in: classIds } },
-        select: { classId: true, subjectId: true, dayOfWeek: true, slotId: true },
+        select: { classId: true, subjectId: true, dayOfWeek: true, slotId: true, groupId: true },
       });
-      const splitSlotsByKey = new Map<string, Array<{ day: string; slotId: string }>>();
+      const splitSlotsByKey = new Map<string, Array<{ day: string; slotId: string; groupId: string | null }>>();
       for (const r of splitSlotRows) {
         const k = `${r.classId}|${r.subjectId}`;
         const arr = splitSlotsByKey.get(k) ?? [];
-        arr.push({ day: r.dayOfWeek, slotId: r.slotId });
+        arr.push({ day: r.dayOfWeek, slotId: r.slotId, groupId: r.groupId });
         splitSlotsByKey.set(k, arr);
       }
 
@@ -376,6 +377,30 @@ export async function generateMultiTimetableAction(
         teacherHomeRoom[a.teacherId] = md?.homeRoomId ?? null;
       }
 
+      // Emploi du temps des classes qu'on NE régénère PAS : leurs professeurs
+      // et leurs salles restent occupés. Sans cette lecture, générer « le
+      // collège » replaçait un professeur déjà en cours au lycée, et écrivait
+      // deux classes dans la même salle — ce que la base refuse (index unique
+      // salle × créneau), d'où un échec de persistance après plusieurs minutes
+      // de calcul.
+      const otherEntries = await tx.timetableEntry.findMany({
+        where: { academicYearId, classId: { notIn: classIds } },
+        select: { teacherId: true, roomId: true, dayOfWeek: true, slotId: true },
+      });
+      const busyTeacherSlots = [
+        ...new Map(
+          otherEntries
+            .filter((e) => e.teacherId)
+            .map((e) => [
+              `${e.teacherId}|${e.dayOfWeek}|${e.slotId}`,
+              { teacher_id: e.teacherId!, day: e.dayOfWeek as DayKey, slot_id: e.slotId },
+            ]),
+        ).values(),
+      ];
+      const busyRooms = otherEntries
+        .filter((e) => e.roomId)
+        .map((e) => ({ roomId: e.roomId!, day: e.dayOfWeek as string, slotId: e.slotId }));
+
       return {
         payload: {
           class_ids: classIds,
@@ -392,10 +417,12 @@ export async function generateMultiTimetableAction(
           engine,
           forbidden_class_slots: forbidden,
           class_constraints: classConstraints,
+          busy_teacher_slots: busyTeacherSlots,
         } as SolverMultiRequest,
         classNames: new Map(classes.map((c) => [c.id, c.name])),
         classRoomInfo,
         teacherHomeRoom,
+        busyRooms,
       };
     });
 
@@ -403,6 +430,7 @@ export async function generateMultiTimetableAction(
     classNameById = collected.classNames;
     classRoomInfo = collected.classRoomInfo;
     teacherHomeRoom = collected.teacherHomeRoom;
+    busyRooms = collected.busyRooms;
   } catch (e: unknown) {
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur préparation' };
   }
@@ -421,6 +449,7 @@ export async function generateMultiTimetableAction(
     teachers: payload.teachers,
     assignments: payload.assignments,
     forbiddenClassSlots: payload.forbidden_class_slots ?? [],
+    busyTeacherSlots: payload.busy_teacher_slots ?? [],
     maxSameSubjectPerDay: payload.constraints?.max_same_subject_per_day ?? null,
   });
   const blocked = blockingMessage(preflight);
@@ -492,7 +521,16 @@ export async function generateMultiTimetableAction(
           explicit ?? (stdRooms.length ? (stdRooms[i % stdRooms.length] ?? null) : null),
         );
       });
+    // Les salles occupées par les classes non régénérées sont déjà prises :
+    // l'allocation part de cet état, sinon elle réattribue une salle occupée et
+    // la base rejette l'écriture.
     const usedByCell = new Map<string, Set<string>>();
+    for (const b of busyRooms) {
+      const key = `${b.day}|${b.slotId}`;
+      const set = usedByCell.get(key) ?? new Set<string>();
+      set.add(b.roomId);
+      usedByCell.set(key, set);
+    }
     const allocRoom = (
       data: { classId: string; teacherId: string; requiredRoomType: string | null },
       day: string,

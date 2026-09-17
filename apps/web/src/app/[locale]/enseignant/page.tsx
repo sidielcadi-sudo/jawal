@@ -5,7 +5,7 @@ import { withTenant } from '@/lib/db';
 import { getTeacherPersonId } from '@/lib/teacher';
 import { computeTeacherDashboard, computeClassProgression } from '@/lib/kpi-teacher';
 import { TeacherDashboardView } from '@/components/teacher-dashboard-view';
-import { pickPeriodId } from '@/lib/periods';
+import { pickPeriodId, schoolPeriods } from '@/lib/periods';
 import { ProgressionClassSelect } from './progression-class-select';
 import { localizedLabel } from '@/lib/localized-name';
 import { PeriodPicker } from '@/components/period-picker';
@@ -38,7 +38,8 @@ export default async function TeacherHomePage({
       where: { active: true },
       include: { periods: { orderBy: { startDate: 'asc' } } },
     });
-    const periods = activeYear?.periods ?? [];
+    // Progression : trimestres seulement, pas les sessions d'examen.
+    const periods = schoolPeriods(activeYear?.periods ?? []);
     const selectedPeriodId = pickPeriodId(periods, sp.period);
     const dash = teacherId
       ? await computeTeacherDashboard(tx, { teacherId, periodId: selectedPeriodId, tz: tenantTz })

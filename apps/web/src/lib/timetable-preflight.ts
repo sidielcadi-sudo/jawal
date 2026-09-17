@@ -32,6 +32,8 @@ export type AssignmentLike = {
   weekly_hours: number;
   group_id?: string | null;
   parallel_key?: string | null;
+  /** Créneaux imposés par une séance dédoublée déclarée. */
+  fixed_slots?: Array<{ day: DayKey; slot_id: string }>;
 };
 
 export type PreflightInput = {
@@ -39,7 +41,19 @@ export type PreflightInput = {
   days: DayKey[];
   teachers: TeacherLike[];
   assignments: AssignmentLike[];
-  forbiddenClassSlots?: Array<{ day: DayKey; slot_id: string }>;
+  /**
+   * Cases fermées. `class_id` renseigné = fermée pour cette classe seulement ;
+   * absent = fermée pour tout le monde.
+   */
+  forbiddenClassSlots?: Array<{ day: DayKey; slot_id: string; class_id?: string }>;
+  /**
+   * Créneaux déjà pris par les classes qu'on ne régénère pas.
+   *
+   * Sur une génération partielle — « le collège seulement » — les professeurs
+   * restent engagés au lycée. Les ignorer ferait conclure au diagnostic que
+   * tout tient, alors que la moitié des heures ne peut pas être placée.
+   */
+  busyTeacherSlots?: Array<{ teacher_id: string; day: DayKey; slot_id: string }>;
   maxSameSubjectPerDay?: number | null;
 };
 
@@ -49,6 +63,8 @@ export type IssueKind =
   | 'TEACHER_OVERLOADED'
   | 'CLASS_OVERLOADED'
   | 'SUBJECT_TOO_FREQUENT'
+  | 'DECLARED_SLOT_CLOSED'
+  | 'DECLARED_SLOT_TEACHER_BUSY'
   | 'NOTHING_TO_PLACE';
 
 export type PreflightIssue = {
@@ -62,6 +78,20 @@ export type PreflightIssue = {
   need?: number;
   /** Capacité disponible. */
   have?: number;
+  /** Case en cause, lisible : « mercredi 14:00-15:00 ». */
+  cellLabel?: string;
+  /** Professeur déjà en cours ailleurs (vrai) ou hors de ses disponibilités (faux). */
+  busyElsewhere?: boolean;
+};
+
+const DAY_LABELS: Record<string, string> = {
+  MON: 'lundi',
+  TUE: 'mardi',
+  WED: 'mercredi',
+  THU: 'jeudi',
+  FRI: 'vendredi',
+  SAT: 'samedi',
+  SUN: 'dimanche',
 };
 
 /** Nombre de cases réellement ouvertes (jours × créneaux, moins les interdits). */
@@ -88,12 +118,15 @@ export function teacherOpenCells(
   teacher: TeacherLike,
   slots: Array<{ id: string; start_time: string; end_time: string; is_break?: boolean }>,
   days: DayKey[],
+  /** Cases `jour|créneau` déjà occupées par ce professeur ailleurs. */
+  busy?: Set<string>,
 ): number {
   let n = 0;
   for (const d of days) {
     for (const w of teacher.availability?.[d] ?? []) {
       for (const s of slots) {
         if (s.is_break) continue;
+        if (busy?.has(`${d}|${s.id}`)) continue;
         if (toMinutes(s.start_time) >= toMinutes(w.from) && toMinutes(s.end_time) <= toMinutes(w.to)) {
           n++;
         }
@@ -117,6 +150,13 @@ export function runPreflight(
   const placeable = input.slots.filter((s) => !s.is_break);
   const cells = usableCells(input);
   const teacherById = new Map(input.teachers.map((t) => [t.id, t]));
+
+  const busyByTeacher = new Map<string, Set<string>>();
+  for (const b of input.busyTeacherSlots ?? []) {
+    const set = busyByTeacher.get(b.teacher_id) ?? new Set<string>();
+    set.add(`${b.day}|${b.slot_id}`);
+    busyByTeacher.set(b.teacher_id, set);
+  }
 
   const withHours = input.assignments.filter((a) => a.weekly_hours > 0);
   if (withHours.length === 0) {
@@ -165,6 +205,7 @@ export function runPreflight(
       t,
       placeable as Array<{ id: string; start_time: string; end_time: string }>,
       input.days,
+      busyByTeacher.get(id),
     );
     if (open === 0) {
       issues.push({ kind: 'TEACHER_NO_AVAILABILITY', blocking: true, teacherName: t.name, need });
@@ -227,6 +268,88 @@ export function runPreflight(
     }
   }
 
+  /* ── Séances déclarées sur une case fermée ────────────────────────────── */
+  //
+  // Une séance dédoublée déclarée est VERROUILLÉE sur sa case. Si cette case
+  // est fermée pour la classe — mercredi après-midi, jour OFF — la donnée se
+  // contredit, et FET refuse alors le fichier ENTIER : « Cannot precompute -
+  // data is wrong », sans nommer la classe ni la case. Une seule déclaration
+  // de trop, et plus rien ne se génère dans tout l'établissement : c'est
+  // bloquant, et il faut dire exactement quelle case retirer.
+  const closedByClass = new Map<string, Set<string>>();
+  const closedForAll = new Set<string>();
+  for (const f of input.forbiddenClassSlots ?? []) {
+    const k = `${f.day}|${f.slot_id}`;
+    if (!f.class_id) {
+      closedForAll.add(k);
+      continue;
+    }
+    const set = closedByClass.get(f.class_id) ?? new Set<string>();
+    set.add(k);
+    closedByClass.set(f.class_id, set);
+  }
+  const slotById = new Map(
+    (input.slots as Array<SlotLike & { start_time: string; end_time: string }>).map((s) => [
+      s.id,
+      s,
+    ]),
+  );
+  const placeableIds = new Set(placeable.map((s) => s.id));
+  const seenCells = new Set<string>();
+  for (const a of withHours) {
+    for (const f of a.fixed_slots ?? []) {
+      const k = `${f.day}|${f.slot_id}`;
+      const sl = slotById.get(f.slot_id);
+      const closed =
+        closedForAll.has(k) ||
+        (closedByClass.get(a.class_id)?.has(k) ?? false) ||
+        !placeableIds.has(f.slot_id);
+      if (!closed) {
+        // Case ouverte pour la classe, mais le professeur de la séance n'y est
+        // pas disponible : déjà en cours dans une classe qu'on ne régénère pas
+        // (le collège quand on génère le lycée), ou hors de ses plages. FET
+        // rejette alors le fichier entier, comme pour une case fermée.
+        const teacher = teacherById.get(a.teacher_id);
+        const busy = busyByTeacher.get(a.teacher_id)?.has(k) ?? false;
+        const ranges = teacher?.availability?.[f.day];
+        const outside =
+          !!teacher?.availability &&
+          !!sl &&
+          !(ranges ?? []).some(
+            (w) => toMinutes(sl.start_time) >= toMinutes(w.from) && toMinutes(sl.end_time) <= toMinutes(w.to),
+          );
+        const dedupT = `${a.id}|${k}`;
+        if ((busy || outside) && !seenCells.has(dedupT)) {
+          seenCells.add(dedupT);
+          issues.push({
+            kind: 'DECLARED_SLOT_TEACHER_BUSY',
+            blocking: true,
+            className: a.class_name,
+            subjectLabel: a.subject_label,
+            teacherName: teacher?.name,
+            busyElsewhere: busy,
+            cellLabel: `${DAY_LABELS[f.day] ?? f.day}${sl ? ` ${sl.start_time}-${sl.end_time}` : ''}`,
+          });
+        }
+        continue;
+      }
+      // Les deux moitiés d'un dédoublement pointent souvent la même case : on
+      // ne la signale qu'une fois, sans quoi le message se répète.
+      const dedup = `${a.class_id}|${a.subject_label}|${k}`;
+      if (seenCells.has(dedup)) continue;
+      seenCells.add(dedup);
+      issues.push({
+        kind: 'DECLARED_SLOT_CLOSED',
+        blocking: true,
+        className: a.class_name,
+        subjectLabel: a.subject_label,
+        cellLabel: `${DAY_LABELS[f.day] ?? f.day}${
+          sl ? ` ${sl.start_time}-${sl.end_time}` : ''
+        }`,
+      });
+    }
+  }
+
   return issues.sort((a, b) => Number(b.blocking) - Number(a.blocking));
 }
 
@@ -246,6 +369,14 @@ export function describeIssue(i: PreflightIssue): string {
       return `${i.className} : ${i.need} h de cours pour ${i.have} cases dans la grille horaire. Ajoutez des créneaux ou réduisez le programme.`;
     case 'SUBJECT_TOO_FREQUENT':
       return `${where} : ${i.need} séances sur ${i.have} jours ouvrés — la règle « une séance par jour » ne peut pas être tenue, la matière reviendra deux fois certains jours.`;
+    case 'DECLARED_SLOT_TEACHER_BUSY':
+      return `${where} : la séance en groupes déclarée ${i.cellLabel} tombe ${
+        i.busyElsewhere
+          ? `sur un cours que ${i.teacherName ?? "l'enseignant"} donne déjà dans une classe dont l'emploi du temps n'est pas régénéré (un autre cycle, par exemple)`
+          : `hors des disponibilités de ${i.teacherName ?? "l'enseignant"}`
+      }. Déplacez cette séance dans Classes → Groupes, ou générez les classes concernées ensemble.`;
+    case 'DECLARED_SLOT_CLOSED':
+      return `${where} : une séance en groupes est déclarée ${i.cellLabel}, où la classe n'a pas cours. Le générateur ne peut ni la placer là ni la déplacer — décochez cette case dans Classes → Groupes, ou ouvrez ce créneau dans les contraintes de la classe.`;
     case 'NOTHING_TO_PLACE':
       return `Aucune affectation à placer : vérifiez que les enseignants sont affectés aux classes et que les volumes horaires sont renseignés.`;
   }

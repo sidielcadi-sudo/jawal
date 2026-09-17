@@ -25,6 +25,18 @@ export function pickPeriod<T extends PeriodLike>(
   return started[started.length - 1] ?? periods[0] ?? null;
 }
 
+/**
+ * Périodes de scolarité : trimestres et semestres, sans les sessions d'examen
+ * (évaluation diagnostique…).
+ *
+ * Ces sessions sont des fenêtres de quelques jours, créées pour rattacher les
+ * épreuves d'une session : les mêler aux trimestres dans un sélecteur de
+ * pilotage ou de suivi des absences fausse la lecture.
+ */
+export function schoolPeriods<T extends { kind?: string }>(periods: T[]): T[] {
+  return periods.filter((p) => p.kind !== 'SESSION');
+}
+
 /** Raccourci : id de la période par défaut (ou null). */
 export function pickPeriodId(
   periods: PeriodLike[],

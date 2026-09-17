@@ -256,6 +256,11 @@ class MultiGenerateRequest(BaseModel):
     forbidden_class_slots: list["ForbiddenClassSlot"] = Field(default_factory=list)
     # Phase E2 : contraintes par classe (max/min h/jour)
     class_constraints: list["ClassConstraintInput"] = Field(default_factory=list)
+    # Créneaux déjà occupés par les classes qu'on NE régénère PAS : une
+    # génération partielle (« le collège seulement ») doit respecter
+    # l'emploi du temps qui reste en place, professeurs et salles étant
+    # partagés avec le reste de l'établissement.
+    busy_teacher_slots: list["BusyTeacherSlot"] = Field(default_factory=list)
 
 
 class ForbiddenClassSlot(BaseModel):

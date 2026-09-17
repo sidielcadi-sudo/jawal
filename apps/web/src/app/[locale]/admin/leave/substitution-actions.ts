@@ -32,6 +32,11 @@ async function upsertAutoOvertime(
     hours: number;
     note: string;
     createdByUserId: string;
+    /** Créneau, classe et prof remplacé : le tableau des heures sup les affiche. */
+    startTime: string;
+    endTime: string;
+    classId: string;
+    replacedPersonId: string | null;
   },
 ): Promise<void> {
   if (args.hours <= 0) return;
@@ -43,7 +48,16 @@ async function upsertAutoOvertime(
     if (existing.status !== 'DECLARED') return; // déjà validée/traitée : on n'y touche pas
     await tx.overtimeEntry.update({
       where: { id: existing.id },
-      data: { personId: args.personId, date: args.date, hours: args.hours, note: args.note },
+      data: {
+        personId: args.personId,
+        date: args.date,
+        hours: args.hours,
+        note: args.note,
+        startTime: args.startTime,
+        endTime: args.endTime,
+        classId: args.classId,
+        replacedPersonId: args.replacedPersonId,
+      },
     });
     return;
   }
@@ -56,6 +70,10 @@ async function upsertAutoOvertime(
       source: 'SUBSTITUTION',
       sourceRef: args.overrideId,
       note: args.note,
+      startTime: args.startTime,
+      endTime: args.endTime,
+      classId: args.classId,
+      replacedPersonId: args.replacedPersonId,
       status: 'DECLARED',
       createdByUserId: args.createdByUserId,
     },
@@ -107,6 +125,7 @@ export async function assignSubstituteAction(
         select: {
           id: true,
           subjectId: true,
+          teacherId: true,
           slot: { select: { startTime: true, endTime: true } },
           subject: { select: { label: true, labelAr: true } },
           room: { select: { code: true } },
@@ -167,6 +186,10 @@ export async function assignSubstituteAction(
             hours: slotHours(entry.slot.startTime, entry.slot.endTime),
             note: `Remplacement · ${entry.class.name} · ${entry.subject?.label ?? '—'}`,
             createdByUserId: session.user.id,
+            startTime: entry.slot.startTime,
+            endTime: entry.slot.endTime,
+            classId: entry.class.id,
+            replacedPersonId: entry.teacherId,
           });
         }
         // Les messages (remplaçant + parents) ne partent PAS ici : ils sont
@@ -233,11 +256,25 @@ async function notifySubstitution(
         body: subBody,
       });
     }
+    const subData = { date: dateLabel, slot: slotLabel, subject: subjectName, class: className, room: args.roomCode ?? '' };
+    // Courriel ET SMS : le remplaçant doit garder une trace écrite de la
+      // séance qu'il prend en charge.
+    const subUserEmail = subUser?.userId
+      ? (await tx.user.findUnique({ where: { id: subUser.userId }, select: { email: true } }))?.email ?? null
+      : null;
+    items.push({
+      channel: 'EMAIL',
+      recipient: emailRecipient(subPerson?.contacts, subUserEmail),
+      template: 'substitution.assigned',
+      data: subData,
+      relatedType: 'TimetableOverride',
+      relatedId: overrideId,
+    });
     items.push({
       channel: 'SMS',
       recipient: parentRecipient(subPerson?.contacts),
       template: 'substitution.assigned',
-      data: { date: dateLabel, slot: slotLabel, subject: subjectName, class: className, room: args.roomCode ?? '' },
+      data: subData,
       relatedType: 'TimetableOverride',
       relatedId: overrideId,
     });

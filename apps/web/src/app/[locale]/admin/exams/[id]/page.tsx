@@ -10,6 +10,7 @@ import { minutesOfTime, timeOfMinutes } from '@/lib/exam-schedule';
 import { buildPaperProposals } from '@/lib/exam-blueprint';
 import { ExamPlanner } from './planner';
 import { NewPaperForm, PaperRowActions, type PaperRow, type SubjectOpt } from './client';
+import { isOfficialKind } from '@/lib/exam-kinds';
 
 const isoDate = (d: Date) => d.toISOString().slice(0, 10);
 
@@ -52,9 +53,15 @@ export default async function ExamSessionPage({
     // Matières applicables : union des coefficients des filières de la session.
     // Sans filière cochée, on prend le niveau seul (convention « toutes »).
     const trackIds = exam.tracks.map((x) => x.trackId);
-    const coefMaps = await Promise.all(
+    // Sans filière cochée : toutes les filières du niveau s'il en a, sinon le
+    // programme du niveau seul.
+    const scopeTrackIds =
       trackIds.length > 0
-        ? trackIds.map((trackId) => resolveCoefficients(tx, { levelId: exam.levelId, trackId }))
+        ? trackIds
+        : (await tx.track.findMany({ where: { levelId: exam.levelId, active: true }, select: { id: true } })).map((x) => x.id);
+    const coefMaps = await Promise.all(
+      scopeTrackIds.length > 0
+        ? scopeTrackIds.map((trackId) => resolveCoefficients(tx, { levelId: exam.levelId, trackId }))
         : [resolveCoefficients(tx, { levelId: exam.levelId, trackId: null })],
     );
 
@@ -72,7 +79,10 @@ export default async function ExamSessionPage({
       let certifying = false;
       for (const m of coefMaps) {
         const r = m.get(s.id);
-        if (!r) continue;
+        // Une matière n'est proposée que si le programme du niveau ou la filière
+        // la porte : le coefficient « par défaut » d'une matière ramenait toutes
+        // celles de l'établissement, avec des coefficients d'autres examens.
+        if (!r || r.source === 'SUBJECT') continue;
         if (r.coefficient > best) best = r.coefficient;
         if (r.certifying) certifying = true;
       }
@@ -87,7 +97,11 @@ export default async function ExamSessionPage({
     }
 
     // Épreuves à planifier d'après la maquette, après mutualisation.
-    const blueprint = await buildPaperProposals(tx, exam.id, locale);
+    // La maquette ne concerne que les examens officiels ; un examen interne
+    // se compose à la main.
+    const blueprint = isOfficialKind(exam.kind)
+      ? await buildPaperProposals(tx, exam.id, locale)
+      : { proposals: [], ungroupedCount: 0, tracksWithoutBlueprint: [] as string[], derivedTracks: [] as string[] };
 
     return {
       exam,
@@ -129,6 +143,10 @@ export default async function ExamSessionPage({
   return (
     <div className="px-3 py-3">
       <nav className="mb-3 text-xs text-slate-500">
+        <Link href={`/${locale}/admin/grades`} className="hover:text-brand-700">
+          {t('breadcrumb')}
+        </Link>
+        <span className="mx-1.5">›</span>
         <Link href={`/${locale}/admin/exams`} className="hover:text-brand-700">
           {t('title')}
         </Link>
@@ -161,10 +179,29 @@ export default async function ExamSessionPage({
             proposals={blueprint.proposals}
             ungroupedCount={blueprint.ungroupedCount}
             tracksWithoutBlueprint={blueprint.tracksWithoutBlueprint}
+            derivedTracks={blueprint.derivedTracks}
             minDate={isoDate(exam.startDate)}
             maxDate={isoDate(exam.endDate)}
             disabled={closed}
           />
+        </div>
+      )}
+
+      {/* Rien à proposer : le dire, plutôt qu'un écran silencieux. */}
+      {!isOfficialKind(exam.kind) && (
+        <div className="mb-4 max-w-4xl rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          {tp('manualHint')}
+        </div>
+      )}
+      {blueprint.proposals.length === 0 && isOfficialKind(exam.kind) && (
+        <div className="mb-4 max-w-4xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <strong>⚠ {tp('noProposals.title')}</strong> {tp('noProposals.hint')}{' '}
+          <Link
+            href={`/${locale}/admin/settings/tracks`}
+            className="font-medium text-amber-800 underline"
+          >
+            {tp('noSubjects.action')} →
+          </Link>
         </div>
       )}
 

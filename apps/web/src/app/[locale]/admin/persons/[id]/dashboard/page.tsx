@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
-import { pickPeriodId } from '@/lib/periods';
+import { pickPeriodId, schoolPeriods } from '@/lib/periods';
 import { computeTeacherDashboard } from '@/lib/kpi-teacher';
 import { TeacherDashboardView } from '@/components/teacher-dashboard-view';
 import { PersonHeader, PERSON_PAGE_SHELL } from '../person-header';
@@ -31,7 +31,7 @@ export default async function TeacherDashboardPage({
       where: { active: true },
       include: { periods: { orderBy: { startDate: 'asc' } } },
     });
-    const periods = activeYear?.periods ?? [];
+    const periods = schoolPeriods(activeYear?.periods ?? []);
     const selectedPeriodId = pickPeriodId(periods, sp.period);
     const dash = await computeTeacherDashboard(tx, { teacherId: id, periodId: selectedPeriodId });
     return {

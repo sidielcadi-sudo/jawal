@@ -9,6 +9,7 @@ import time
 
 from fastapi import FastAPI
 
+from .busy import restrict_availability
 from .schemas import (
     GenerateRequest,
     GenerateResponse,
@@ -62,6 +63,10 @@ def solve_multi_endpoint(req: MultiGenerateRequest) -> MultiGenerateResponse:
                 fh.write(req.model_dump_json())
         except Exception:  # noqa: BLE001 — un diagnostic ne doit rien casser
             pass
+
+    # L'existant d'abord : une génération partielle ne doit pas replacer un
+    # professeur déjà en cours ailleurs dans l'année.
+    restrict_availability(req)
 
     if req.engine == "fet":
         return solve_with_fet(req)

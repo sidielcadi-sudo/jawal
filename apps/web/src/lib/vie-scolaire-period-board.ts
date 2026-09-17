@@ -65,12 +65,22 @@ export async function loadPeriodBoard(
     scopeClassIds = [classId];
   }
 
+  // Bornes de l'année active : la vue « année » est une année civile, qui
+  // chevauche deux exercices ; seuls les pointages de l'année active comptent.
+  const activeYear = await tx.academicYear.findFirst({
+    where: { active: true },
+    select: { startDate: true, endDate: true },
+  });
+  const yearEndExcl = activeYear ? new Date(activeYear.endDate.getTime() + 86_400_000) : null;
+  const gte = activeYear && from < activeYear.startDate ? activeYear.startDate : from;
+  const lt = yearEndExcl && to > yearEndExcl ? yearEndExcl : to;
+
   const records = await tx.attendanceRecord.findMany({
     where: {
       ...(studentId ? { studentId } : {}),
       session: {
         finalizedAt: { not: null },
-        date: { gte: from, lt: to },
+        date: { gte, lt },
         ...(scopeClassIds ? { classId: { in: scopeClassIds } } : {}),
       },
     },
@@ -133,7 +143,6 @@ export async function loadPeriodBoard(
     const hits: BoardCol[] = [];
     if (cat === 'ABSENT') hits.push(justified ? 'absRA' : 'absNonRA');
     else if (cat === 'LATE') hits.push('retards');
-    else if (cat === 'EXCLUSION') hits.push('exclCours');
     else if (cat === 'INFIRMARY') hits.push('infirmerie');
     else if (cat === 'PUNISHMENT') hits.push('incidents');
     if (cat !== 'ABSENT' && cat !== 'EXCLUSION') hits.push('presents');
@@ -142,6 +151,24 @@ export async function loadPeriodBoard(
       row.counts[col] += 1;
       totals[col] += 1;
     }
+  }
+
+  // Exclusions : comptées depuis le carnet de correspondance.
+  const exclusions = await tx.carnetEntry.findMany({
+    where: {
+      type: 'EXCLUSION',
+      occurredAt: { gte, lt },
+      ...(studentId ? { studentId } : {}),
+      ...(scopeClassIds ? { classId: { in: scopeClassIds } } : {}),
+    },
+    select: { occurredAt: true },
+  });
+  for (const ex of exclusions) {
+    const iso = ex.occurredAt.toISOString();
+    const row = index.get(mode === 'month' ? iso.slice(0, 10) : iso.slice(0, 7));
+    if (!row) continue;
+    row.counts.exclCours += 1;
+    totals.exclCours += 1;
   }
 
   void BOARD_COLS;

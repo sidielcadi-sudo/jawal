@@ -1,3 +1,4 @@
+import { coveredEntriesOn, isCoveringEntry } from '@/lib/timetable-overrides';
 import 'server-only';
 import type { Prisma } from '@/lib/db';
 import type { AttendanceStatusInput } from '@jawal/shared';
@@ -18,6 +19,8 @@ export type AppelWeekSession = {
   periodLabel: string;
   /** Appel validé (session finalisée) pour (classId, date, periodLabel). */
   done: boolean;
+  /** Séance assurée en remplacement (elle n'est pas dans sa semaine type). */
+  substitute?: boolean;
 };
 
 const periodLabelOf = (start: string, end: string) => `${start}-${end}`;
@@ -128,11 +131,32 @@ export async function getTeacherWeekAppel(
   });
 
   const dateObjs = days.map((d) => parseDateUTC(d.date));
+
+  // Séances assurées en remplacement cette semaine : elles n'appartiennent
+  // pas à sa semaine type, mais c’est lui qui fait l’appel ce jour-là.
+  const covered = await coveredEntriesOn(tx, teacherId, dateObjs);
+  const coveredEntries = covered.length
+    ? await tx.timetableEntry.findMany({
+        where: { id: { in: [...new Set(covered.map((c) => c.entryId))] } },
+        include: {
+          slot: { select: { startTime: true, endTime: true } },
+          subject: { select: { label: true, labelAr: true } },
+          class: { select: { id: true, name: true, nameAr: true } },
+          room: { select: { code: true } },
+        },
+      })
+    : [];
+  const coveredByDate = new Map<string, string[]>();
+  for (const c of covered) {
+    const k = toDateStr(c.date);
+    coveredByDate.set(k, [...(coveredByDate.get(k) ?? []), c.entryId]);
+  }
+
   const finalized =
     entries.length > 0
       ? await tx.attendanceSession.findMany({
           where: {
-            classId: { in: [...new Set(entries.map((e) => e.classId))] },
+            classId: { in: [...new Set([...entries, ...coveredEntries].map((e) => e.classId))] },
             date: { in: dateObjs },
             finalizedAt: { not: null },
           },
@@ -145,6 +169,24 @@ export async function getTeacherWeekAppel(
 
   const sessions: AppelWeekSession[] = [];
   for (const day of days) {
+    for (const e of coveredEntries) {
+      if (!(coveredByDate.get(day.date) ?? []).includes(e.id)) continue;
+      const periodLabel = periodLabelOf(e.slot.startTime, e.slot.endTime);
+      sessions.push({
+        entryId: e.id,
+        date: day.date,
+        dow: day.dow,
+        classId: e.classId,
+        className: e.class.name,
+        subject: e.subject?.label ?? null,
+        room: e.room?.code ?? null,
+        slotStart: e.slot.startTime,
+        slotEnd: e.slot.endTime,
+        periodLabel,
+        done: doneSet.has(`${e.classId}|${day.date}|${periodLabel}`),
+        substitute: true,
+      });
+    }
     for (const e of entries) {
       if (e.dayOfWeek !== day.dow) continue;
       const periodLabel = periodLabelOf(e.slot.startTime, e.slot.endTime);
@@ -397,10 +439,14 @@ export async function loadTeacherAppel(
       group: { select: { id: true, name: true } },
     },
   });
-  if (!entry || entry.teacherId !== teacherId) return null;
+  if (!entry) return null;
   if (dowOf(dateStr) !== entry.dayOfWeek) return null;
-
   const dateOnly = parseDateUTC(dateStr);
+  // Le titulaire, ou le remplaçant approuvé de cette date.
+  if (entry.teacherId !== teacherId && !(await isCoveringEntry(tx, teacherId, entryId, dateOnly))) {
+    return null;
+  }
+
   const periodLabel = periodLabelOf(entry.slot.startTime, entry.slot.endTime);
 
   // Session existante (si l'appel a déjà été saisi) — lecture seule.
@@ -440,10 +486,13 @@ export async function getOrCreateAppelSession(
     where: { id: entryId },
     include: { slot: { select: { startTime: true, endTime: true } } },
   });
-  if (!entry || entry.teacherId !== teacherId) return null;
+  if (!entry) return null;
   if (dowOf(dateStr) !== entry.dayOfWeek) return null;
-
   const dateOnly = parseDateUTC(dateStr);
+  if (entry.teacherId !== teacherId && !(await isCoveringEntry(tx, teacherId, entryId, dateOnly))) {
+    return null;
+  }
+
   const periodLabel = periodLabelOf(entry.slot.startTime, entry.slot.endTime);
   let sess = await tx.attendanceSession.findFirst({
     where: { classId: entry.classId, date: dateOnly, periodLabel, groupId: entry.groupId },

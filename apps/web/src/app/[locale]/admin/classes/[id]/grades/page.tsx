@@ -35,9 +35,43 @@ export default async function ClassGradesPage({
     });
     if (!cls) return { cls: null, subjects: [], periods: [], evaluations: [] };
 
+    // Matières de CETTE classe : programme de son niveau, affectations et
+    // emploi du temps. La liste complète de l'établissement proposait des
+    // matières que la classe n'a pas.
+    const [curriculum, assigned, scheduled] = await Promise.all([
+      tx.curriculumSubject.findMany({ where: { levelId: cls.levelId }, select: { subjectId: true } }),
+      tx.teacherAssignment.findMany({ where: { classId: id }, select: { subjectId: true } }),
+      tx.timetableEntry.findMany({ where: { classId: id }, select: { subjectId: true } }),
+    ]);
+    const subjectIds = [
+      ...new Set(
+        [...curriculum, ...assigned, ...scheduled]
+          .map((x) => x.subjectId)
+          .filter((x): x is string => Boolean(x)),
+      ),
+    ];
     const subjects = await tx.subject.findMany({
+      where: { id: { in: subjectIds } },
       orderBy: [{ order: 'asc' }, { label: 'asc' }],
     });
+
+    // Sessions d'examen de l'année : une période de session ne concerne que
+    // le niveau de sa session (pas de « Évaluation diagnostique 2AC » sur une
+    // classe de 1AC).
+    const sessions = await tx.examSession.findMany({
+      where: { academicYearId: cls.academicYearId },
+      select: { periodId: true, levelId: true },
+    });
+    const sessionLevels = new Map<string, Set<string>>();
+    for (const s of sessions) {
+      if (!s.periodId) continue;
+      const set = sessionLevels.get(s.periodId) ?? new Set<string>();
+      set.add(s.levelId);
+      sessionLevels.set(s.periodId, set);
+    }
+    const periods = cls.academicYear.periods.filter(
+      (p) => p.kind !== 'SESSION' || sessionLevels.get(p.id)?.has(cls.levelId),
+    );
 
     const evaluations = await tx.evaluation.findMany({
       where: {
@@ -53,12 +87,15 @@ export default async function ClassGradesPage({
       },
     });
 
-    return { cls, subjects, periods: cls.academicYear.periods, evaluations };
+    return { cls, subjects, periods, evaluations };
   });
 
   if (!cls) notFound();
 
   const baseHref = `/${locale}/admin/classes/${id}/grades`;
+  // Période d'une session d'examen (évaluation diagnostique…) : ses devoirs
+  // sont générés à la publication de la session, pas créés à la main.
+  const sessionPeriod = periods.find((p) => p.id === sp.period && p.kind === 'SESSION') ?? null;
 
   return (
     <div className={CLASS_PAGE_SHELL}>
@@ -173,16 +210,26 @@ export default async function ClassGradesPage({
           <aside>
             <div className="rounded-2xl border border-slate-200 bg-white p-5">
               <h2 className="text-base font-semibold text-slate-900">{t('create')}</h2>
-              <p className="mt-1 text-xs text-slate-500">{t('createHint')}</p>
-              <div className="mt-4">
-                <EvaluationCreateForm
-                  classId={id}
-                  subjects={subjects.map((s) => ({ id: s.id, label: s.label, scale: s.scale }))}
-                  periods={periods.map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr }))}
-                  defaultSubjectId={sp.subject}
-                  defaultPeriodId={sp.period}
-                />
-              </div>
+              {sessionPeriod ? (
+                <p className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                  {t('sessionLocked', { period: localizedLabel(locale, sessionPeriod.label, sessionPeriod.labelAr) })}
+                </p>
+              ) : (
+                <>
+                  <p className="mt-1 text-xs text-slate-500">{t('createHint')}</p>
+                  <div className="mt-4">
+                    <EvaluationCreateForm
+                      classId={id}
+                      subjects={subjects.map((s) => ({ id: s.id, label: s.label, scale: s.scale }))}
+                      periods={periods
+                        .filter((p) => p.kind !== 'SESSION')
+                        .map((p) => ({ id: p.id, label: p.label, labelAr: p.labelAr }))}
+                      defaultSubjectId={sp.subject}
+                      defaultPeriodId={sp.period}
+                    />
+                  </div>
+                </>
+              )}
             </div>
           </aside>
         </div>

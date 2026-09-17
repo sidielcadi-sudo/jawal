@@ -3,6 +3,7 @@ import type { Prisma } from '@/lib/db';
 import { categoryOf, tallyAttendance, type AttendanceCategory } from '@/lib/attendance-category';
 import { computeAverage20, type AverageItem } from '@/lib/grade-average';
 import { loadStudentCarnet } from '@/lib/carnet';
+import { activeYearStart } from '@/lib/active-year';
 
 type Tx = Prisma.TransactionClient;
 
@@ -36,9 +37,11 @@ export async function getStudentAnnouncements(
   levelId: string | null,
   limit = 100,
 ) {
+  // Annonces de l'année active seulement.
+  const since = await activeYearStart(tx);
   return tx.announcement.findMany({
     where: {
-      publishedAt: { not: null, lte: new Date() },
+      publishedAt: { not: null, lte: new Date(), ...(since ? { gte: since } : {}) },
       OR: [
         { audience: 'ALL' as const },
         ...(classId ? [{ audience: 'CLASS' as const, classId }] : []),

@@ -47,6 +47,17 @@ export async function createEvaluationAction(
 
   const tenantId = session.user.tenantId;
 
+  // Période d'une session d'examen : les devoirs viennent de la session.
+  const period = await withTenant(tenantId, (tx) =>
+    tx.period.findUnique({ where: { id: parsed.data.periodId }, select: { kind: true } }),
+  );
+  if (period?.kind === 'SESSION') {
+    return {
+      ok: false,
+      error: "Période de session d'examen : les évaluations sont générées par la session, elles ne se créent pas ici.",
+    };
+  }
+
   const ev = await withTenant(tenantId, async (tx) => {
     const cls = await tx.class.findUnique({
       where: { id: parsed.data.classId },

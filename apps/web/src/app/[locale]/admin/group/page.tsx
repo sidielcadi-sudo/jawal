@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
@@ -6,7 +7,9 @@ import { computeHeadcount, computeAcademicOverview, computeAttendanceRate } from
 import { pickPeriodId } from '@/lib/periods';
 import { yearInstallmentEnd } from '@/lib/school-year';
 import { tenantDisplayName } from '@/lib/tenant-name';
-import { BarChart, GroupedBarChart, siteColors, type Series } from './charts';
+import { siteColors } from './charts';
+import { loadGroupFinance } from './finance-data';
+import { GroupFinance } from './finance-client';
 import { AttendanceTabs, type SiteAttendance, type TopRow } from './attendance-tabs';
 import { EncaissementTabs, type RecoverySite } from './encaissement-tabs';
 import { monthlyAttendance, topStudents } from '@/lib/attendance-stats';
@@ -87,6 +90,8 @@ type Row = {
   };
   /** Incidents disciplinaires et retards, mois par mois. */
   climate: { incidents: number[]; lates: number[] };
+  /** Élèves par code de cycle (primaire, college, lycee). */
+  cycleCodes: Record<string, number>;
 };
 
 /** Mois de l'année scolaire (10 mois à partir du mois de démarrage). */
@@ -129,8 +134,10 @@ function MiniStat({
 
 export default async function GroupDashboard({
   params,
+  searchParams,
 }: {
   params: Promise<{ locale: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -138,6 +145,36 @@ export default async function GroupDashboard({
   // Réservé aux comptes multi-établissements.
   if (session.user.sites.length <= 1) redirect(`/${locale}/admin`);
   const t = await getTranslations('admin.group');
+  const tab = (await searchParams).tab === 'finance' ? 'finance' : 'general';
+
+  // Deux onglets : Général (la vue consolidée historique) et Finance.
+  const nav = (
+    <nav className="folder-tabs mb-4">
+      <Link href={`/${locale}/admin/group`} className={`folder-tab ${tab === 'general' ? 'is-active' : ''}`}>
+        {t('tabs.general')}
+      </Link>
+      <Link
+        href={`/${locale}/admin/group?tab=finance`}
+        className={`folder-tab ${tab === 'finance' ? 'is-active' : ''}`}
+      >
+        {t('tabs.finance')}
+      </Link>
+    </nav>
+  );
+
+  if (tab === 'finance') {
+    const finance = await loadGroupFinance(session.user.sites, session.user.tenantId, locale);
+    return (
+      <div className="px-3 py-3">
+        <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
+          <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
+          <p className="mt-0.5 text-sm text-slate-600">{t('subtitle', { count: session.user.sites.length })}</p>
+        </header>
+        {nav}
+        <GroupFinance data={finance} locale={locale} target={COLLECTION_TARGET} />
+      </div>
+    );
+  }
 
   const rows: Row[] = await Promise.all(
     session.user.sites.map((site) =>
@@ -228,7 +265,7 @@ export default async function GroupDashboard({
               where: { academicYearId: year.id, deletedAt: null },
               select: {
                 capacity: true,
-                level: { select: { cycle: { select: { label: true, labelAr: true, order: true } } } },
+                level: { select: { cycle: { select: { code: true, label: true, labelAr: true, order: true } } } },
                 _count: { select: { students: { where: { unenrolledAt: null } } } },
               },
             })
@@ -239,6 +276,10 @@ export default async function GroupDashboard({
           const cur = cycleMap.get(key) ?? { students: 0, order: c.level.cycle.order };
           cur.students += c._count.students;
           cycleMap.set(key, cur);
+        }
+        const cycleCodes: Record<string, number> = {};
+        for (const c of classRows) {
+          cycleCodes[c.level.cycle.code] = (cycleCodes[c.level.cycle.code] ?? 0) + c._count.students;
         }
         const fill = classFillCounts(
           classRows.map((c) => ({ capacity: c.capacity, enrolled: c._count.students })),
@@ -437,6 +478,7 @@ export default async function GroupDashboard({
             ratedStudents: academic?.studentsRated ?? 0,
           },
           infra: { rooms: infraRooms, transport, canteenStudents },
+          cycleCodes,
           climate: {
             incidents,
             lates: attendanceStats.lateJustified.map(
@@ -461,7 +503,6 @@ export default async function GroupDashboard({
   );
   const currency = rows[0]?.currency ?? 'MAD';
   const fmt = (n: number) => n.toLocaleString(locale, { maximumFractionDigits: 0 });
-  const totalCollection = totals.due > 0 ? (totals.paid / totals.due) * 100 : null;
 
   // ── Préparation des graphiques ────────────────────────────────────────────
   // Une couleur par établissement, réutilisée dans tous les graphiques : elle
@@ -475,13 +516,6 @@ export default async function GroupDashboard({
     return d.toLocaleDateString(locale, { month: 'short', timeZone: 'UTC' });
   });
 
-  const dueLabel = t('charts.due');
-  const paidLabel = t('charts.collected');
-  const amountSeries: Series[] = [
-    { name: dueLabel, values: rows.map((r) => r.due) },
-    { name: paidLabel, values: rows.map((r) => r.paid) },
-  ];
-  const amountColors = { [dueLabel]: '#3b82f6', [paidLabel]: '#9ca3af' };
 
   const attendanceSites: SiteAttendance[] = rows.map((r) => ({
     name: r.name,
@@ -540,9 +574,6 @@ export default async function GroupDashboard({
     return c + r > 0 ? (c / (c + r)) * 100 : null;
   });
 
-  /** Montants en milliers : un axe à 6 chiffres est illisible. */
-  const fmtK = (n: number) =>
-    n >= 1000 ? `${(n / 1000).toLocaleString(locale, { maximumFractionDigits: 0 })}k` : String(Math.round(n));
 
   /* ── Bandeau consolidé ────────────────────────────────────────────────── */
   const g = consolidate(rows.map((r) => r.kpi));
@@ -603,6 +634,7 @@ export default async function GroupDashboard({
           {yearLabel && ` · ${yearLabel}`}
         </p>
       </header>
+      {nav}
 
       {/* ── Bloc 1 : indicateurs de groupe ─────────────────────────────── */}
       <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -706,25 +738,55 @@ export default async function GroupDashboard({
             }))}
           />
         </Card>
-        <Card title={t('blocks.collectionTarget', { target: COLLECTION_TARGET })} icon="🎯">
-          <BarList
-            max={100}
-            marker={COLLECTION_TARGET}
-            markerLabel={t('blocks.targetLine', { target: COLLECTION_TARGET })}
-            rows={rows.map((r) => ({
-              label: r.name,
-              value: r.collectionPct,
-              display: show(r.collectionPct === null ? null : Math.round(r.collectionPct * 10) / 10),
-              color:
-                r.collectionPct === null
-                  ? '#cbd5e1'
-                  : r.collectionPct >= COLLECTION_TARGET
-                    ? '#10b981'
-                    : r.collectionPct >= 85
-                      ? '#f59e0b'
-                      : '#ef4444',
-            }))}
-          />
+        <Card title={t('blocks.siteStructure')} icon="🏫">
+          <table className="w-full table-fixed text-[11px]">
+              <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
+                <tr>
+                  <th className="px-1.5 py-1.5 text-start">{t('site')}</th>
+                  <th className="px-1.5 py-1.5 text-end">{t('classes')}</th>
+                  <th className="px-1.5 py-1.5 text-end">{t('teachers')}</th>
+                  <th className="px-1.5 py-1.5 text-end">{t('students')}</th>
+                  <th className="px-1.5 py-1.5 text-end">{t('blocks.cycles.primaire')}</th>
+                  <th className="px-1.5 py-1.5 text-end">{t('blocks.cycles.college')}</th>
+                  <th className="px-1.5 py-1.5 text-end">{t('blocks.cycles.lycee')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {rows.map((r) => (
+                  <tr key={r.name}>
+                    <td className="truncate px-1.5 py-1.5 font-medium text-slate-900">
+                      <span className="inline-flex items-center gap-2">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: colors[r.name] }} />
+                        {r.name}
+                      </span>
+                    </td>
+                    <td className="px-1.5 py-1.5 text-end tabular-nums">{fmt(r.classes)}</td>
+                    <td className="px-1.5 py-1.5 text-end tabular-nums">{fmt(r.teachers)}</td>
+                    <td className="px-1.5 py-1.5 text-end font-semibold tabular-nums">{fmt(r.students)}</td>
+                    {(['primaire', 'college', 'lycee'] as const).map((code) => (
+                      <td key={code} className="px-1.5 py-1.5 text-end tabular-nums text-slate-600">
+                        {r.cycleCodes[code] ? fmt(r.cycleCodes[code]!) : '—'}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+              {rows.length > 1 && (
+                <tfoot className="border-t-2 border-slate-200 bg-slate-50 font-semibold text-slate-900">
+                  <tr>
+                    <td className="px-1.5 py-1.5">{t('total')}</td>
+                    <td className="px-1.5 py-1.5 text-end tabular-nums">{fmt(totals.classes)}</td>
+                    <td className="px-1.5 py-1.5 text-end tabular-nums">{fmt(totals.teachers)}</td>
+                    <td className="px-1.5 py-1.5 text-end tabular-nums">{fmt(totals.students)}</td>
+                    {(['primaire', 'college', 'lycee'] as const).map((code) => (
+                      <td key={code} className="px-1.5 py-1.5 text-end tabular-nums">
+                        {fmt(rows.reduce((n, r) => n + (r.cycleCodes[code] ?? 0), 0))}
+                      </td>
+                    ))}
+                  </tr>
+                </tfoot>
+              )}
+          </table>
         </Card>
       </div>
 
@@ -835,96 +897,6 @@ export default async function GroupDashboard({
         <p className="mt-2 text-[11px] text-slate-400">{t('infra.note')}</p>
       </Card>
 
-      <h2 className="mb-3 mt-6 text-sm font-bold uppercase tracking-wide text-slate-500">
-        {t('blocks.details')}
-      </h2>
-
-      {/* Comparaison entre sites — deux échelles distinctes, donc deux
-          graphiques : mélanger un taux et des montants sur un axe commun
-          rendrait la lecture fausse. */}
-      <div className="mb-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <BarChart
-          title={t('charts.collectionByCite')}
-          rows={rows.map((r) => ({ name: r.name, value: r.collectionPct }))}
-          colors={colors}
-          format={(n) => `${n.toFixed(1)}%`}
-          max={100}
-          emptyLabel={t('charts.empty')}
-        />
-        <GroupedBarChart
-          title={t('charts.dueAndPaidBySite', { currency })}
-          labels={rows.map((r) => r.name)}
-          series={amountSeries}
-          colors={amountColors}
-          format={fmtK}
-          emptyLabel={t('charts.empty')}
-        />
-      </div>
-
-      {/* Tableau consolidé — placé entre les comparaisons et les évolutions :
-          il donne les chiffres exacts que les graphiques ne font que situer. */}
-      <div className="mb-4 overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <table className="w-full text-sm">
-          <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
-            <tr>
-              <th className="px-4 py-3 text-start">{t('site')}</th>
-              <th className="px-4 py-3 text-end">{t('students')}</th>
-              <th className="px-4 py-3 text-end">{t('teachers')}</th>
-              <th className="px-4 py-3 text-end">{t('classes')}</th>
-              <th className="px-4 py-3 text-end">{t('average')}</th>
-              <th className="px-4 py-3 text-end">{t('successRate')}</th>
-              <th className="px-4 py-3 text-end">{t('attendance')}</th>
-              <th className="px-4 py-3 text-end">{t('collection')}</th>
-              <th className="px-4 py-3 text-end">{t('remaining')}</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-100">
-            {rows.map((r) => (
-              <tr key={r.name}>
-                <td className="px-4 py-3 font-medium text-slate-900">{r.name}</td>
-                <td className="px-4 py-3 text-end tabular-nums">{r.students}</td>
-                <td className="px-4 py-3 text-end tabular-nums">{r.teachers}</td>
-                <td className="px-4 py-3 text-end tabular-nums">{r.classes}</td>
-                <td className="px-4 py-3 text-end tabular-nums">{r.avg !== null ? r.avg.toFixed(2) : '—'}</td>
-                <td className="px-4 py-3 text-end tabular-nums">
-                  {r.successRate !== null ? `${r.successRate.toFixed(1)}%` : '—'}
-                </td>
-                <td className="px-4 py-3 text-end tabular-nums">
-                  {r.attendance !== null ? `${r.attendance.toFixed(1)}%` : '—'}
-                </td>
-                <td className="px-4 py-3 text-end tabular-nums">
-                  {r.collectionPct !== null ? `${r.collectionPct.toFixed(1)}%` : '—'}
-                </td>
-                <td className="px-4 py-3 text-end tabular-nums text-amber-700">
-                  {fmt(r.remaining)} {r.currency}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-          <tfoot className="border-t-2 border-slate-200 bg-slate-50 font-semibold text-slate-900">
-            <tr>
-              <td className="px-4 py-3">{t('total')}</td>
-              <td className="px-4 py-3 text-end tabular-nums">{totals.students}</td>
-              <td className="px-4 py-3 text-end tabular-nums">{totals.teachers}</td>
-              <td className="px-4 py-3 text-end tabular-nums">{totals.classes}</td>
-              {/* Moyenne, réussite et présence ne s'additionnent pas entre
-                  sites : on laisse la colonne vide plutôt que d'afficher un
-                  total qui n'aurait pas de sens (cf. note sous le tableau). */}
-              <td className="px-4 py-3 text-end text-slate-400">—</td>
-              <td className="px-4 py-3 text-end text-slate-400">—</td>
-              <td className="px-4 py-3 text-end text-slate-400">—</td>
-              <td className="px-4 py-3 text-end tabular-nums">
-                {totalCollection !== null ? `${totalCollection.toFixed(1)}%` : '—'}
-              </td>
-              <td className="px-4 py-3 text-end tabular-nums text-amber-700">
-                {fmt(totals.remaining)} {currency}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-      <p className="mb-4 text-xs text-slate-400">{t('note')}</p>
 
       {/* Évolutions mensuelles */}
       <div className="grid grid-cols-1 gap-4">

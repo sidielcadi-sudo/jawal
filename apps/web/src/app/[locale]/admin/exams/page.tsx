@@ -1,21 +1,26 @@
 import Link from 'next/link';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
-import { requirePermission } from '@/lib/auth/rbac';
+import { currentUserRoleCodes, requirePermission } from '@/lib/auth/rbac';
 import { withTenant } from '@/lib/db';
 import { localizedLabel } from '@/lib/localized-name';
+import { sessionEditLock, todayIso } from '@/lib/exam-kinds';
 import {
   NewSessionForm,
+  SessionManageButtons,
   SessionStatusButtons,
   type LevelOpt,
   type PeriodOpt,
   type TrackOpt,
 } from './client';
 
+const isoDate = (d: Date) => d.toISOString().slice(0, 10);
+
 /**
- * Sessions d'examen : semestriel local, Régional (1BAC), National (2BAC).
- * Le contrôle continu reste géré par les évaluations de classe — cet écran ne
- * traite que la couche certificative.
+ * Sessions d'examen : contrôles, devoirs, examens internes et officiels.
+ *
+ * On y arrive depuis Notes (« Programmer un Examen ») : la page n'a plus
+ * d'entrée propre dans le menu, et le fil d'Ariane y ramène.
  */
 export default async function ExamsPage({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
@@ -23,6 +28,8 @@ export default async function ExamsPage({ params }: { params: Promise<{ locale: 
   await requirePermission('tenants.manage');
   const t = await getTranslations('admin.exams');
   const session = (await auth())!;
+  const canDelete = (await currentUserRoleCodes()).includes('tenant_admin');
+  const today = todayIso();
 
   const { sessions, levels, tracks, periods, yearLabel } = await withTenant(
     session.user.tenantId,
@@ -35,20 +42,24 @@ export default async function ExamsPage({ params }: { params: Promise<{ locale: 
         return { sessions: [], levels: [], tracks: [], periods: [], yearLabel: null };
       }
 
-      const [sessionRows, trackRows, periodRows] = await Promise.all([
+      const [sessionRows, levelRows, trackRows, periodRows] = await Promise.all([
         tx.examSession.findMany({
           where: { academicYearId: year.id },
           include: {
             level: { select: { label: true, labelAr: true } },
             period: { select: { label: true, labelAr: true } },
             tracks: { include: { track: { select: { label: true, labelAr: true } } } },
-            _count: { select: { papers: true } },
+            papers: { select: { _count: { select: { marks: true } } } },
           },
           orderBy: [{ startDate: 'desc' }],
         }),
+        tx.level.findMany({
+          select: { id: true, label: true, labelAr: true },
+          orderBy: { order: 'asc' },
+        }),
         tx.track.findMany({
           where: { active: true },
-          include: { level: { select: { id: true, label: true, labelAr: true, order: true } } },
+          select: { id: true, label: true, labelAr: true, levelId: true },
           orderBy: [{ order: 'asc' }],
         }),
         tx.period.findMany({
@@ -58,33 +69,41 @@ export default async function ExamsPage({ params }: { params: Promise<{ locale: 
         }),
       ]);
 
-      // Seuls les niveaux porteurs de filières ouvrent une session d'examen
-      // certificatif — c'est la filière qui détermine les épreuves.
-      const levelMap = new Map<string, LevelOpt>();
-      for (const tr of trackRows) {
-        if (!levelMap.has(tr.level.id)) {
-          levelMap.set(tr.level.id, {
-            id: tr.level.id,
-            label: localizedLabel(locale, tr.level.label, tr.level.labelAr),
-          });
-        }
-      }
+      // Tous les niveaux : un contrôle ou un devoir se programme aussi au
+      // collège. Seuls les examens officiels exigent un niveau à filières —
+      // le formulaire filtre selon le type.
+      const levelsWithTracks = new Set(trackRows.map((tr) => tr.levelId));
 
       return {
-        sessions: sessionRows.map((s) => ({
-          id: s.id,
-          label: s.label,
-          kind: s.kind,
-          status: s.status as 'DRAFT' | 'PUBLISHED' | 'CLOSED',
-          levelLabel: localizedLabel(locale, s.level.label, s.level.labelAr),
-          periodLabel: s.period ? localizedLabel(locale, s.period.label, s.period.labelAr) : null,
-          startDate: s.startDate,
-          endDate: s.endDate,
-          paperCount: s._count.papers,
-          anonymized: s.anonymized,
-          trackLabels: s.tracks.map((x) => localizedLabel(locale, x.track.label, x.track.labelAr)),
-        })),
-        levels: [...levelMap.values()],
+        sessions: sessionRows.map((s) => {
+          const markCount = s.papers.reduce((n, p) => n + p._count.marks, 0);
+          return {
+            id: s.id,
+            label: s.label,
+            kind: s.kind,
+            status: s.status as 'DRAFT' | 'PUBLISHED' | 'CLOSED',
+            levelId: s.levelId,
+            periodId: s.periodId,
+            levelLabel: localizedLabel(locale, s.level.label, s.level.labelAr),
+            periodLabel: s.period ? localizedLabel(locale, s.period.label, s.period.labelAr) : null,
+            startDate: s.startDate,
+            endDate: s.endDate,
+            paperCount: s.papers.length,
+            markCount,
+            lock: sessionEditLock({ status: s.status, markCount, endDate: s.endDate }, today),
+            mixClasses: s.mixClasses,
+            anonymized: s.anonymized,
+            trackIds: s.tracks.map((x) => x.trackId),
+            trackLabels: s.tracks.map((x) => localizedLabel(locale, x.track.label, x.track.labelAr)),
+          };
+        }),
+        levels: levelRows.map(
+          (l): LevelOpt => ({
+            id: l.id,
+            label: localizedLabel(locale, l.label, l.labelAr),
+            hasTracks: levelsWithTracks.has(l.id),
+          }),
+        ),
         tracks: trackRows.map(
           (tr): TrackOpt => ({
             id: tr.id,
@@ -108,6 +127,14 @@ export default async function ExamsPage({ params }: { params: Promise<{ locale: 
 
   return (
     <div className="px-3 py-3">
+      <nav className="mb-2 text-xs text-slate-500">
+        <Link href={`/${locale}/admin/grades`} className="hover:text-brand-700">
+          {t('breadcrumb')}
+        </Link>
+        <span className="mx-1.5">›</span>
+        <span>{t('title')}</span>
+      </nav>
+
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
@@ -122,18 +149,7 @@ export default async function ExamsPage({ params }: { params: Promise<{ locale: 
         </Link>
       </header>
 
-      {levels.length === 0 ? (
-        <div className="max-w-3xl rounded-2xl border border-amber-200 bg-amber-50 px-6 py-8 text-sm text-amber-900">
-          <strong>⚠ {t('noTracks.title')}</strong>
-          <p className="mt-1">{t('noTracks.hint')}</p>
-          <Link
-            href={`/${locale}/admin/settings/tracks`}
-            className="mt-2 inline-block font-medium text-amber-800 underline"
-          >
-            {t('noTracks.action')} →
-          </Link>
-        </div>
-      ) : (
+      {yearLabel && (
         <div className="max-w-3xl">
           <NewSessionForm levels={levels} tracks={tracks} periods={periods} />
         </div>
@@ -194,6 +210,26 @@ export default async function ExamsPage({ params }: { params: Promise<{ locale: 
                 </td>
                 <td className="px-4 py-3 text-end">
                   <SessionStatusButtons sessionId={s.id} status={s.status} />
+                  <SessionManageButtons
+                    session={{
+                      id: s.id,
+                      label: s.label,
+                      kind: s.kind,
+                      levelId: s.levelId,
+                      periodId: s.periodId,
+                      startDate: isoDate(s.startDate),
+                      endDate: isoDate(s.endDate),
+                      trackIds: s.trackIds,
+                      mixClasses: s.mixClasses,
+                      anonymized: s.anonymized,
+                    }}
+                    lock={s.lock}
+                    markCount={s.markCount}
+                    canDelete={canDelete}
+                    levels={levels}
+                    tracks={tracks}
+                    periods={periods}
+                  />
                 </td>
               </tr>
             ))}

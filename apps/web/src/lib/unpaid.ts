@@ -1,5 +1,6 @@
 import 'server-only';
 import type { Prisma } from '@/lib/db';
+import type { LedgerRow } from '@/lib/unpaid-filters';
 
 export type UnpaidStudentRow = {
   studentId: string;
@@ -520,4 +521,88 @@ async function parentsOf(tx: Prisma.TransactionClient, studentIds: string[]) {
     }
   }
   return parentOf;
+}
+
+/**
+ * Grand livre des échéances pour la gestion des impayés : toutes les échéances
+ * non annulées (payées comprises, pour les indicateurs), avec leur année,
+ * la classe et le cycle de l'élève cette année-là, et ses responsables.
+ */
+export async function loadUnpaidLedger(tx: Prisma.TransactionClient): Promise<{
+  rows: LedgerRow[];
+  years: Array<{ id: string; label: string; active: boolean }>;
+  activeYearId: string | null;
+}> {
+  const years = await tx.academicYear.findMany({
+    select: { id: true, label: true, startDate: true, endDate: true, active: true },
+    orderBy: { startDate: 'asc' },
+  });
+  const activeYear = years.find((y) => y.active) ?? null;
+  const yearOf = (d: Date) => years.find((y) => d >= y.startDate && d <= y.endDate) ?? null;
+
+  const installments = await tx.installment.findMany({
+    where: { status: { not: 'CANCELLED' } },
+    select: {
+      id: true,
+      studentId: true,
+      amount: true,
+      dueDate: true,
+      label: true,
+      contentiousAt: true,
+      payments: { select: { amount: true, paidAt: true } },
+      student: { select: { firstName: true, lastName: true } },
+      exceptionalFeeAssignment: { select: { exceptionalFee: { select: { academicYearId: true } } } },
+    },
+    orderBy: { dueDate: 'asc' },
+  });
+  const studentIds = [...new Set(installments.map((i) => i.studentId))];
+  if (studentIds.length === 0) return { rows: [], years: years.map(({ id, label, active }) => ({ id, label, active })), activeYearId: activeYear?.id ?? null };
+
+  const [relations, enrolments] = await Promise.all([
+    tx.personRelation.findMany({
+      where: { childId: { in: studentIds } },
+      select: { childId: true, parentId: true, parent: { select: { firstName: true, lastName: true } } },
+      orderBy: { createdAt: 'asc' },
+    }),
+    tx.studentClass.findMany({
+      where: { studentId: { in: studentIds } },
+      select: { studentId: true, class: { select: { id: true, academicYearId: true, level: { select: { cycleId: true } } } } },
+    }),
+  ]);
+  const guardians = new Map<string, Array<{ id: string; name: string }>>();
+  for (const r of relations) {
+    guardians.set(r.childId, [...(guardians.get(r.childId) ?? []), { id: r.parentId, name: `${r.parent.lastName} ${r.parent.firstName}` }]);
+  }
+  const classOf = new Map<string, { id: string; cycleId: string | null }>();
+  for (const e of enrolments) {
+    classOf.set(`${e.studentId}|${e.class.academicYearId}`, { id: e.class.id, cycleId: e.class.level.cycleId ?? null });
+  }
+
+  const rows: LedgerRow[] = installments.map((i) => {
+    const y = yearOfInstallment(i, years, yearOf);
+    const g = guardians.get(i.studentId) ?? [];
+    const cls = y ? classOf.get(`${i.studentId}|${y.id}`) : undefined;
+    const studentName = `${i.student.lastName} ${i.student.firstName}`;
+    const payments = i.payments.map((p) => ({ amount: Number(p.amount), paidAt: p.paidAt }));
+    return {
+      id: i.id,
+      studentId: i.studentId,
+      studentName,
+      familyId: g[0]?.id ?? i.studentId,
+      familyName: g[0]?.name ?? studentName,
+      guardians: g.map((x) => x.name),
+      yearId: y?.id ?? null,
+      yearLabel: y?.label ?? '—',
+      previous: Boolean(activeYear && (!y || y.startDate.getTime() < activeYear.startDate.getTime())),
+      cycleId: cls?.cycleId ?? null,
+      classId: cls?.id ?? null,
+      label: i.label,
+      dueDate: i.dueDate,
+      amount: Number(i.amount),
+      paid: payments.reduce((s, p) => s + p.amount, 0),
+      payments,
+      contentious: i.contentiousAt !== null,
+    };
+  });
+  return { rows, years: years.map(({ id, label, active }) => ({ id, label, active })), activeYearId: activeYear?.id ?? null };
 }

@@ -107,12 +107,6 @@ function buildItems(locale: string, roleCodes: string[]): NavItem[] {
       match: (p, _s) => p.startsWith(`${prefix}/classes`),
     },
     {
-      href: `${prefix}/exams`,
-      labelKey: 'exams',
-      match: (p, _s) => p.startsWith(`${prefix}/exams`),
-      roles: ['tenant_admin', 'direction', 'scolarite'],
-    },
-    {
       href: `${prefix}/finance`,
       labelKey: 'finance',
       match: (p, _s) => p === `${prefix}/finance` || p.startsWith(`${prefix}/finance/`),
@@ -130,22 +124,18 @@ function buildItems(locale: string, roleCodes: string[]): NavItem[] {
     {
       href: `${prefix}/attendance`,
       labelKey: 'attendance',
-      match: (p, _s) =>
-        p === `${prefix}/attendance` || p.startsWith(`${prefix}/attendance?`),
+      // Justifications s'ouvre depuis cette page : l'entrée reste allumée.
+      match: (p, _s) => p.startsWith(`${prefix}/attendance`),
       roles: ['cpe', 'tenant_admin', 'direction', 'scolarite'],
     },
     // « Justifications » = ancienne « Gestion des absences » (attendance/management),
     // renommée. Placée juste après le carnet de correspondance.
     {
-      href: `${prefix}/attendance/management`,
-      labelKey: 'justifications',
-      match: (p, _s) => p.startsWith(`${prefix}/attendance/management`),
-      roles: ['cpe', 'tenant_admin', 'direction'],
-    },
-    {
       href: `${prefix}/grades`,
       labelKey: 'grades',
-      match: (p, _s) => p.startsWith(`${prefix}/grades`),
+      // Les sessions d'examen s'ouvrent depuis Notes (« Programmer un Examen ») :
+      // elles n'ont plus d'entrée propre, et l'entrée Notes reste allumée.
+      match: (p, _s) => p.startsWith(`${prefix}/grades`) || p.startsWith(`${prefix}/exams`),
       roles: ['tenant_admin', 'direction', 'scolarite'],
     },
     {
@@ -237,10 +227,12 @@ const EMOJI: Record<string, string> = {
   parents: '👪',
   classes: '🏫',
   exams: '📄',
+  grades: '📑',
   finance: '💰',
   soutien: '📚',
   competences: '🎯',
   carnet: '📒',
+  attendance: '🚸',
   justifications: '✅',
   transport: '🚍',
   staffAttendance: '🕒',

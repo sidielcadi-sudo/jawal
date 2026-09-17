@@ -46,12 +46,14 @@ function categoryOf(r: AppelStudentRow): Category {
   return 'PRESENT';
 }
 
-/** Colonnes de la feuille, dans l'ordre du portail (Infirmerie masquée). */
+/**
+ * Colonnes de la feuille, dans l'ordre du portail. Infirmerie, Punition et
+ * Exclusion masquées : ce ne sont pas des absences (les exclusions passent par
+ * le carnet de correspondance).
+ */
 const COLS: { cat: Exclude<Category, 'PRESENT'>; label: string; color: string }[] = [
   { cat: 'ABSENT', label: 'Absence', color: '#DC2626' },
   { cat: 'LATE', label: 'Retard', color: '#D97706' },
-  { cat: 'PUNISHMENT', label: 'Punition', color: '#7C3AED' },
-  { cat: 'EXCLUSION', label: 'Exclusion', color: '#E11D48' },
   { cat: 'EXCUSED', label: 'Dispense', color: '#16A34A' },
 ];
 
@@ -237,7 +239,6 @@ export default function AppelScreen({ entryId, date }: { entryId: string; date: 
               <Count label="Absents" value={summary.absent} color="#DC2626" />
               <Count label="Retards just." value={summary.lateJust} color="#D97706" />
               <Count label="Retards non just." value={summary.lateUnjust} color="#EA580C" />
-              <Count label="Exclus" value={summary.excluded} color="#E11D48" />
             </View>
 
             <Text style={styles.studentsCount}>{rows.length} élèves</Text>

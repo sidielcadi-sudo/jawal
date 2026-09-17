@@ -11,6 +11,7 @@ import {
   minutesOfTime,
   type ScheduleConflict,
 } from '@/lib/exam-schedule';
+import { syncExamEvaluations } from '@/lib/exam-evaluations';
 
 type Result<T = void> = { ok: true; data?: T } | { ok: false; error: string };
 
@@ -95,6 +96,8 @@ export async function createExamPaperAction(
           maxValue: input.maxValue,
         },
       });
+      // Session publiée : l'épreuve devient aussitôt un devoir pour les enseignants.
+      if (exam.status === 'PUBLISHED') await syncExamEvaluations(tx, tenantId, sessionId);
       await logAudit(tx, {
         tenantId,
         userId: session.user.id,
@@ -180,6 +183,7 @@ export async function updateExamPaperAction(
           maxValue: input.maxValue,
         },
       });
+      if (paper.session.status === 'PUBLISHED') await syncExamEvaluations(tx, tenantId, paper.sessionId);
       await logAudit(tx, {
         tenantId,
         userId: session.user.id,
@@ -226,6 +230,16 @@ export async function deleteExamPaperAction(paperId: string): Promise<Result> {
           `Impossible de supprimer : ${paper._count.marks} note(s) déjà saisie(s) sur cette épreuve.`,
         );
       }
+      // Devoirs générés pour les enseignants : supprimés avec l'épreuve tant
+      // qu'aucune note n'y est saisie ; sinon la suppression est refusée.
+      const linked = await tx.evaluation.findMany({
+        where: { examPaperId: paperId },
+        select: { id: true, grades: { where: { value: { not: null } }, select: { id: true }, take: 1 } },
+      });
+      if (linked.some((e) => e.grades.length > 0)) {
+        throw new Error('Impossible de supprimer : des enseignants ont déjà saisi des notes sur les devoirs issus de cette épreuve.');
+      }
+      if (linked.length > 0) await tx.evaluation.deleteMany({ where: { id: { in: linked.map((e) => e.id) } } });
       await tx.examPaper.delete({ where: { id: paperId } });
       await logAudit(tx, {
         tenantId,
@@ -348,6 +362,7 @@ export async function savePlanningAction(
         }
       }
 
+      if (exam.status === 'PUBLISHED') await syncExamEvaluations(tx, tenantId, sessionId);
       await logAudit(tx, {
         tenantId,
         userId: session.user.id,

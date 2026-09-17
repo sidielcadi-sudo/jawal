@@ -74,7 +74,21 @@ export default async function RemplacementsPage({
 
     // Profs + qualification (TeacherAssignment) + congés approuvés (exclusion).
     const [teachers, assignments, approvedLeaves, existingOverrides] = await Promise.all([
-      tx.person.findMany({ where: { type: 'TEACHER', deletedAt: null }, select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } }),
+      // Cycles du prof : un remplaçant de collège ne se propose pas de la
+      // même façon pour une classe de lycée — on le dit dans le menu.
+      tx.person.findMany({
+        where: { type: 'TEACHER', deletedAt: null },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          firstNameAr: true,
+          lastNameAr: true,
+          teacherCycles: {
+            select: { cycle: { select: { label: true, labelAr: true, order: true } } },
+          },
+        },
+      }),
       tx.teacherAssignment.findMany({ where: { academicYearId: year.id }, select: { teacherId: true, subjectId: true } }),
       tx.leaveRequest.findMany({ where: { status: 'APPROVED', startDate: { lte: leave.endDate }, endDate: { gte: leave.startDate } }, select: { personId: true, startDate: true, endDate: true } }),
       tx.timetableOverride.findMany({ where: { entryId: { in: teacherEntries.map((e) => e.id) }, date: { gte: leave.startDate, lte: leave.endDate } }, select: { entryId: true, date: true, kind: true, substituteTeacherId: true, validatedAt: true, approvalStatus: true, approvalComment: true } }),
@@ -120,7 +134,7 @@ export default async function RemplacementsPage({
           .filter((l) => l.startDate.toISOString().slice(0, 10) <= dateStr && l.endDate.toISOString().slice(0, 10) >= dateStr)
           .map((l) => l.personId),
       );
-    const candidatesByKey = new Map<string, { id: string; name: string; qualified: boolean }[]>();
+    const candidatesByKey = new Map<string, { id: string; name: string; qualified: boolean; cycles: string }[]>();
     for (const s of sessions) {
       const code = DOW_CODES[new Date(`${s.dateStr}T00:00:00.000Z`).getUTCDay()];
       const entry = teacherEntries.find((e) => e.id === s.entryId)!;
@@ -129,7 +143,15 @@ export default async function RemplacementsPage({
       const qSet = s.subjectId ? qualifiedBySubject.get(s.subjectId) ?? new Set<string>() : new Set<string>();
       const cands = teachers
         .filter((te) => te.id !== leave.personId && !busySet.has(te.id) && !leaveSet.has(te.id))
-        .map((te) => ({ id: te.id, name: personDisplayName(locale, te), qualified: qSet.has(te.id) }));
+        .map((te) => ({
+          id: te.id,
+          name: personDisplayName(locale, te),
+          qualified: qSet.has(te.id),
+          cycles: [...te.teacherCycles]
+            .sort((x, y) => x.cycle.order - y.cycle.order)
+            .map((c) => localizedLabel(locale, c.cycle.label, c.cycle.labelAr))
+            .join(' / '),
+        }));
       candidatesByKey.set(`${s.entryId}|${s.dateStr}`, cands);
     }
 

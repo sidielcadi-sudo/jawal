@@ -19,6 +19,8 @@ export default async function GenerateGlobalPage({
 
   const session = (await auth())!;
   const t = await getTranslations('admin.timetable.generateMulti');
+  const tNav = await getTranslations('admin.nav');
+  const tDash = await getTranslations('admin.timetableDashboard');
 
   const { activeYear, currentYearId, classes } = await withTenant(
     session.user.tenantId,
@@ -52,8 +54,13 @@ export default async function GenerateGlobalPage({
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
       <nav className="mb-3 text-xs text-slate-500">
-        <Link href={`/${locale}/admin`} className="hover:text-brand-700">
-          {t('breadcrumbAdmin')}
+        {/* La génération s'ouvre depuis Inscriptions, pas depuis le tableau de bord. */}
+        <Link href={`/${locale}/admin/enrollments`} className="hover:text-brand-700">
+          {tNav('enrollments')}
+        </Link>
+        <span className="mx-1.5">›</span>
+        <Link href={`/${locale}/admin/timetable`} className="hover:text-brand-700">
+          {tDash('title')}
         </Link>
         <span className="mx-1.5">›</span>
         <span>{t('title')}</span>

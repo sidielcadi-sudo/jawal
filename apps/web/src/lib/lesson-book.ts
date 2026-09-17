@@ -1,3 +1,4 @@
+import { coveredEntriesOn, isCoveringEntry } from '@/lib/timetable-overrides';
 import 'server-only';
 import type { Prisma } from '@/lib/db';
 import type { LessonEntryUpsert } from '@jawal/shared';
@@ -68,6 +69,8 @@ export type TeacherSession = {
   className: string;
   room: string | null;
   filled: boolean;
+  /** Séance assurée en remplacement. */
+  substitute?: boolean;
 };
 
 /**
@@ -100,10 +103,31 @@ export async function getTeacherWeekSessions(
   });
 
   const dateObjs = days.map((d) => parseDateUTC(d.date));
+
+  // Séances assurées en remplacement : le cahier de textes est de la
+  // responsabilité de qui fait cours, pas du titulaire absent.
+  const covered = await coveredEntriesOn(tx, teacherId, dateObjs);
+  const coveredEntries = covered.length
+    ? await tx.timetableEntry.findMany({
+        where: { id: { in: [...new Set(covered.map((c) => c.entryId))] } },
+        include: {
+          slot: { select: { startTime: true, endTime: true, order: true } },
+          subject: { select: { label: true, labelAr: true } },
+          class: { select: { name: true, nameAr: true } },
+          room: { select: { code: true } },
+        },
+      })
+    : [];
+  const coveredByDate = new Map<string, string[]>();
+  for (const c of covered) {
+    const k = toDateStr(c.date);
+    coveredByDate.set(k, [...(coveredByDate.get(k) ?? []), c.entryId]);
+  }
+
   const lessons =
     entries.length > 0
       ? await tx.lessonEntry.findMany({
-          where: { entryId: { in: entries.map((e) => e.id) }, date: { in: dateObjs } },
+          where: { entryId: { in: [...entries, ...coveredEntries].map((e) => e.id) }, date: { in: dateObjs } },
           select: { entryId: true, date: true },
         })
       : [];
@@ -151,11 +175,16 @@ export async function getSessionForTeacher(
       teacher: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
     },
   });
-  if (!entry || entry.teacherId !== teacherId) return null;
+  if (!entry) return null;
   if (dowOf(dateStr) !== entry.dayOfWeek) return null;
+  const dateObj = parseDateUTC(dateStr);
+  // Le titulaire, ou le remplaçant approuvé de cette date.
+  if (entry.teacherId !== teacherId && !(await isCoveringEntry(tx, teacherId, entryId, dateObj))) {
+    return null;
+  }
 
   const lesson = await tx.lessonEntry.findUnique({
-    where: { entryId_date: { entryId, date: parseDateUTC(dateStr) } },
+    where: { entryId_date: { entryId, date: dateObj } },
     include: {
       homeworks: { orderBy: { order: 'asc' } },
       resources: { orderBy: { order: 'asc' } },
@@ -183,10 +212,14 @@ export async function upsertLesson(
     where: { id: input.entryId },
     select: { id: true, teacherId: true, classId: true, dayOfWeek: true },
   });
-  if (!entry || entry.teacherId !== teacherId) return { ok: false, error: 'NOT_OWNER' };
+  if (!entry) return { ok: false, error: 'NOT_OWNER' };
   if (dowOf(input.date) !== entry.dayOfWeek) return { ok: false, error: 'DATE_MISMATCH' };
 
   const dateObj = parseDateUTC(input.date);
+  // Le titulaire, ou le remplaçant approuvé de cette date.
+  if (entry.teacherId !== teacherId && !(await isCoveringEntry(tx, teacherId, entry.id, dateObj))) {
+    return { ok: false, error: 'NOT_OWNER' };
+  }
   const content = {
     title: input.title,
     summary: input.summary ?? null,
@@ -385,9 +418,12 @@ export async function teacherOwnsLesson(
 ): Promise<boolean> {
   const lesson = await tx.lessonEntry.findUnique({
     where: { id: lessonEntryId },
-    select: { entry: { select: { teacherId: true } } },
+    select: { entryId: true, date: true, entry: { select: { teacherId: true } } },
   });
-  return lesson?.entry.teacherId === teacherId;
+  if (!lesson) return false;
+  if (lesson.entry.teacherId === teacherId) return true;
+  // Le remplaçant garde la main sur le cahier de la séance qu’il a assurée.
+  return isCoveringEntry(tx, teacherId, lesson.entryId, lesson.date);
 }
 
 /**

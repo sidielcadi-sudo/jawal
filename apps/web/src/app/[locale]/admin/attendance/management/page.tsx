@@ -19,6 +19,7 @@ export default async function AbsenceManagementPage({
   const sp = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations('admin.absenceMgmt');
+  const tNav = await getTranslations('admin.nav');
   const session = (await auth())!;
   await requirePermission('attendance.write');
 
@@ -34,7 +35,14 @@ export default async function AbsenceManagementPage({
         })
       : [];
     const events = await tx.attendanceEvent.findMany({
-      where: { status: status as never, ...(sp.class ? { classId: sp.class } : {}) },
+      // Événements de l'année active : ses classes seulement.
+      where: {
+        status: status as never,
+        classId:
+          sp.class && classes.some((c) => c.id === sp.class)
+            ? sp.class
+            : { in: classes.map((c) => c.id) },
+      },
       orderBy: [{ date: 'desc' }, { createdAt: 'desc' }],
       include: {
         student: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true } },
@@ -127,7 +135,15 @@ export default async function AbsenceManagementPage({
       classes,
       counts: Object.fromEntries(
         await Promise.all(
-          STATUSES.map(async (s) => [s, await tx.attendanceEvent.count({ where: { status: s } })] as const),
+          STATUSES.map(
+            async (s) =>
+              [
+                s,
+                await tx.attendanceEvent.count({
+                  where: { status: s, classId: { in: classes.map((c) => c.id) } },
+                }),
+              ] as const,
+          ),
         ),
       ) as Record<string, number>,
       events: events.map((e) => {
@@ -174,6 +190,15 @@ export default async function AbsenceManagementPage({
 
   return (
     <div className="px-3 py-3">
+      {/* On y arrive depuis Absences et Justif (bouton « Justification ») : le
+          lien n'est plus dans le menu, le fil d'Ariane y ramène. */}
+      <nav className="mb-2 text-xs text-slate-500">
+        <a href={`/${locale}/admin/attendance`} className="hover:text-brand-700">
+          {tNav('attendance')}
+        </a>
+        <span className="mx-1.5">›</span>
+        <span>{t('title')}</span>
+      </nav>
       <header className="mb-4 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>
         <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>

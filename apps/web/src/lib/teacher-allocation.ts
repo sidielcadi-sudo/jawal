@@ -1,5 +1,6 @@
 import 'server-only';
 import type { Prisma } from '@/lib/db';
+import { teacherCoversCycle } from '@/lib/teacher-cycle-rule';
 
 type Tx = Prisma.TransactionClient;
 
@@ -60,7 +61,7 @@ export async function proposeAllocation(
 
   const classes = await tx.class.findMany({
     where: { id: { in: classIds }, academicYearId, deletedAt: null },
-    select: { id: true, name: true, nameAr: true, levelId: true, trackId: true },
+    select: { id: true, name: true, nameAr: true, levelId: true, trackId: true, level: { select: { cycleId: true } } },
   });
   const levelIds = [...new Set(classes.map((c) => c.levelId))];
   const trackIds = [...new Set(classes.map((c) => c.trackId).filter((x): x is string => !!x))];
@@ -125,6 +126,7 @@ export async function proposeAllocation(
       contractualHoursPerWeek: true,
       teacherSpecialties: { select: { subjectId: true } },
       teacherPriorityClasses: { select: { classId: true } },
+      teacherCycles: { select: { cycleId: true } },
     },
   });
 
@@ -159,6 +161,8 @@ export async function proposeAllocation(
     remaining: number;
     specialties: Set<string>;
     priority: Set<string>;
+    /** Cycles de la fiche (« Niveaux enseignés »). */
+    cycles: Set<string>;
   };
   const state = new Map<string, T>();
   for (const t of teachers) {
@@ -171,6 +175,7 @@ export async function proposeAllocation(
       remaining: capacity - (loadByTeacher.get(t.id) ?? 0),
       specialties: new Set(t.teacherSpecialties.map((s) => s.subjectId)),
       priority: new Set(t.teacherPriorityClasses.map((p) => p.classId)),
+      cycles: new Set(t.teacherCycles.map((c) => c.cycleId)),
     });
   }
 
@@ -213,6 +218,7 @@ export async function proposeAllocation(
     subjectId: string;
     subjectLabel: string;
     hours: number;
+    cycleId: string | null;
   };
   const needs: Need[] = [];
   for (const cls of classes) {
@@ -224,18 +230,21 @@ export async function proposeAllocation(
         subjectId: n.subjectId,
         subjectLabel: n.subject.label,
         hours: n.weeklyHours,
+        cycleId: cls.level.cycleId ?? null,
       });
     }
   }
 
-  const candidatesFor = (subjectId: string) =>
-    [...state.values()].filter((t) => t.specialties.has(subjectId));
+  // Spécialité ET cycle : un professeur de collège n'est pas proposé au lycée,
+  // sauf si sa fiche lui ouvre les deux cycles.
+  const candidatesFor = (subjectId: string, cycleId: string | null) =>
+    [...state.values()].filter((t) => t.specialties.has(subjectId) && teacherCoversCycle(t.cycles, cycleId));
   // Au sein de chaque passe, traiter d'abord les matières rares (moins de spécialistes).
-  needs.sort((a, b) => candidatesFor(a.subjectId).length - candidatesFor(b.subjectId).length);
+  needs.sort((a, b) => candidatesFor(a.subjectId, a.cycleId).length - candidatesFor(b.subjectId, b.cycleId).length);
 
   // Candidats par besoin (pour le menu déroulant de l'aperçu).
   for (const need of needs) {
-    candidatesByKey[keyOf(need.classId, need.subjectId)] = candidatesFor(need.subjectId).map(
+    candidatesByKey[keyOf(need.classId, need.subjectId)] = candidatesFor(need.subjectId, need.cycleId).map(
       (c) => ({ id: c.id, name: c.name }),
     );
   }
@@ -258,7 +267,7 @@ export async function proposeAllocation(
   //    prioritaires (sinon l'équilibrage peut épuiser un prof prioritaire avant
   //    d'atteindre ses propres classes).
   for (const need of needs) {
-    const priorityWithCap = candidatesFor(need.subjectId).filter(
+    const priorityWithCap = candidatesFor(need.subjectId, need.cycleId).filter(
       (c) => c.priority.has(need.classId) && c.remaining >= need.hours,
     );
     if (priorityWithCap.length > 0) {
@@ -270,7 +279,7 @@ export async function proposeAllocation(
   // ── Passe 2 : besoins restants (équilibrage de charge / surcharge / sans spécialiste).
   for (const need of needs) {
     if (resolved.has(keyOf(need.classId, need.subjectId))) continue;
-    const cands = candidatesFor(need.subjectId);
+    const cands = candidatesFor(need.subjectId, need.cycleId);
     if (cands.length === 0) {
       assign(need, null, 'NO_SPECIALIST');
       continue;
@@ -328,6 +337,12 @@ export async function applyAllocation(
   decisions: AllocationDecision[],
 ): Promise<number> {
   if (decisions.length === 0) return 0;
+  const invalid = await cycleViolations(tx, decisions);
+  if (invalid.length > 0) {
+    throw new Error(
+      `${invalid.length} affectation(s) hors des cycles déclarés dans la fiche de l'enseignant : ${invalid.slice(0, 3).join(' ; ')}${invalid.length > 3 ? '…' : ''}.`,
+    );
+  }
   const res = await tx.teacherAssignment.createMany({
     data: decisions.map((d) => ({
       tenantId,
@@ -340,4 +355,36 @@ export async function applyAllocation(
     skipDuplicates: true,
   });
   return res.count;
+}
+
+/**
+ * Affectations proposées qui sortent des cycles de la fiche de l'enseignant.
+ * Renvoie un libellé lisible par infraction : « Nom Prénom → Classe (Cycle) ».
+ */
+export async function cycleViolations(
+  tx: Tx,
+  pairs: ReadonlyArray<{ teacherId: string; classId: string }>,
+): Promise<string[]> {
+  if (pairs.length === 0) return [];
+  const [teachers, classes] = await Promise.all([
+    tx.person.findMany({
+      where: { id: { in: [...new Set(pairs.map((p) => p.teacherId))] } },
+      select: { id: true, firstName: true, lastName: true, teacherCycles: { select: { cycleId: true } } },
+    }),
+    tx.class.findMany({
+      where: { id: { in: [...new Set(pairs.map((p) => p.classId))] } },
+      select: { id: true, name: true, level: { select: { cycleId: true, cycle: { select: { label: true } } } } },
+    }),
+  ]);
+  const teacherById = new Map(teachers.map((t) => [t.id, t]));
+  const classById = new Map(classes.map((c) => [c.id, c]));
+  const out: string[] = [];
+  for (const p of pairs) {
+    const t = teacherById.get(p.teacherId);
+    const c = classById.get(p.classId);
+    if (!t || !c) continue;
+    if (teacherCoversCycle(t.teacherCycles.map((x) => x.cycleId), c.level.cycleId)) continue;
+    out.push(`${t.lastName} ${t.firstName} → ${c.name} (${c.level.cycle.label})`);
+  }
+  return out;
 }

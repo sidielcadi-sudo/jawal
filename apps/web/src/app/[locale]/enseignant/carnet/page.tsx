@@ -27,12 +27,23 @@ export default async function TeacherCarnetPage({
     if (!teacherId || !year) return null;
 
     const select = { classId: true, class: { select: { name: true, nameAr: true } } } as const;
+    // Classes assurées en remplacement : le remplaçant renseigne aussi le
+    // carnet de la séance qu’il a prise en charge.
+    const covering = await tx.timetableOverride.findMany({
+      where: { kind: 'SUBSTITUTION', substituteTeacherId: teacherId, approvalStatus: 'APPROVED' },
+      select: { entry: { select: { classId: true, class: { select: { name: true, nameAr: true } } } } },
+    });
     const [a, e] = await Promise.all([
       tx.teacherAssignment.findMany({ where: { teacherId, academicYearId: year.id }, select }),
       tx.timetableEntry.findMany({ where: { teacherId, academicYearId: year.id }, select }),
     ]);
     const classes = [
-      ...new Map([...a, ...e].map((x) => [x.classId, localizedLabel(locale, x.class.name, x.class.nameAr)])).entries(),
+      ...new Map(
+        [...a, ...e, ...covering.map((c) => c.entry)].map((x) => [
+          x.classId,
+          localizedLabel(locale, x.class.name, x.class.nameAr),
+        ]),
+      ).entries(),
     ].map(([id, name]) => ({ id, name }));
     classes.sort((x, y) => x.name.localeCompare(y.name));
 
@@ -94,7 +105,17 @@ export default async function TeacherCarnetPage({
               className: e.className,
               subjectLabel: e.subjectLabel,
             }))}
-            allowedTypes={['OBSERVATION', 'ENCOURAGEMENT', 'DEFAUT_CARNET']}
+            // Le professeur signale aussi la discipline : remarque,
+            // avertissement et exclusion (c'est le carnet qui porte les
+            // exclusions, et les indicateurs les comptent de là).
+            allowedTypes={[
+              'OBSERVATION',
+              'ENCOURAGEMENT',
+              'DEFAUT_CARNET',
+              'REMARQUE_DISCIPLINAIRE',
+              'AVERTISSEMENT',
+              'EXCLUSION',
+            ]}
             canDelete={false}
             locale={locale}
           />

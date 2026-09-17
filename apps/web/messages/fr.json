@@ -212,7 +212,7 @@
       "classes": "Classes",
       "enrollments": "Inscriptions",
       "timetable": "Emploi du temps",
-      "attendance": "Absences",
+      "attendance": "Absences et Justif",
       "justifications": "Justifications",
       "staffAttendance": "Pointage personnel",
       "announcements": "Annonces",
@@ -223,7 +223,7 @@
       "settings": "Paramétrage",
       "group": "Vue groupe",
       "transport": "Transport",
-      "leave": "Congés & absences",
+      "leave": "Congés & remplacements",
       "overtime": "Heures supplémentaires",
       "payroll": "Paie",
       "bourse": "Bourse aux livres",
@@ -231,7 +231,7 @@
       "soutien": "Soutien scolaire",
       "competences": "Compétences et aptitudes",
       "exams": "Examens",
-      "grades": "Notes & Évaluations"
+      "grades": "Notes et Évaluations"
     },
     "surveys": {
       "title": "Enquêtes de satisfaction",
@@ -600,7 +600,7 @@
       }
     },
     "attendanceIndex": {
-      "title": "Absences et présences",
+      "title": "Absences et Justif",
       "subtitle": "Suivi des présences des élèves",
       "export": "Exporter le rapport",
       "allClasses": "Toutes les classes",
@@ -622,7 +622,10 @@
         "absent": "Absents",
         "late": "Retards",
         "rate": "Taux de présence",
-        "empty": "Aucune classe pour cette année."
+        "empty": "Aucune classe pour cette année.",
+        "punished": "Puni",
+        "excluded": "Exclu",
+        "exempt": "Dispense"
       },
       "legend": {
         "good": "Bon (≥ 90 %)",
@@ -639,7 +642,7 @@
         "search": "Rechercher un élève…",
         "student": "Nom de l'élève",
         "class": "Classe",
-        "time": "Heure",
+        "time": "Créneau horaire",
         "status": "Statut",
         "reason": "Motif",
         "notified": "Parent informé",
@@ -683,6 +686,31 @@
           "UNJUSTIFIED": "Non justifiée",
           "FREQUENT_LATE": "{count} retards cette semaine",
           "MISSING_DOC": "Pièce jointe non fournie"
+        }
+      },
+      "justification": "Justification",
+      "cycleAll": "Tous",
+      "outOfYear": "La date demandée est hors de l’année scolaire active : affichage du {date}.",
+      "tabs": {
+        "byClass": "Par classe",
+        "bySlot": "Par créneau"
+      },
+      "slot": {
+        "typeHeader": "Type / Créneau",
+        "total": "Total",
+        "empty": "Aucun créneau horaire défini.",
+        "rows": {
+          "absRA": "Absences régularisées (AR)",
+          "absNonRA": "Absences non régularisées",
+          "retards": "Retards",
+          "exclCours": "Exclusions de cours",
+          "incidents": "Punitions / sanctions",
+          "punitionsProg": "Punitions programmées",
+          "convocations": "Convocations",
+          "exclEtab": "Exclusions de l’établissement",
+          "presents": "Élèves présents",
+          "elevesSansCours": "Élèves sans cours",
+          "appelsNonFaits": "Appels non faits"
         }
       }
     },
@@ -925,7 +953,7 @@
         "rank": "Rang",
         "discount": "Réduction",
         "enrolledAt": "Date",
-        "open": "Ouvrir"
+        "open": "Voir"
       },
       "new": {
         "title": "Nouvelle inscription",
@@ -1233,7 +1261,7 @@
           "paidOn": "Remboursement payé"
         }
       },
-      "timetableButton": "EDT"
+      "timetableButton": "Emploi du temps"
     },
     "staffAttendance": {
       "title": "Pointage personnel",
@@ -1642,7 +1670,8 @@
         "scheduled": "Programmé",
         "delta": "Écart",
         "match": "OK",
-        "extra": "Sans affectation"
+        "extra": "Sans affectation",
+        "groupTeacher": "Enseignant de groupe ({groups})"
       },
       "editTitle": "{day} · {slot}",
       "subject": "Matière",
@@ -1668,7 +1697,8 @@
       "overrideCancelledTag": "Annulé",
       "group": "Groupe",
       "wholeClass": "Classe entière",
-      "addGroup": "un groupe"
+      "addGroup": "un groupe",
+      "covering": "Remplacement"
     },
     "classConstraints": {
       "title": "Contraintes EDT",
@@ -1781,7 +1811,7 @@
         "NO_GAPS": {
           "title": "Éviter les heures creuses",
           "description": "Pénalise les patterns « cours · créneau vide · cours » dans la grille élève. Plus le poids est élevé, plus le solveur évitera les trous.",
-          "hint": "Recommandé : 5 (modéré). 100 = anti-trous strict mais risque de ne pas trouver de solution."
+          "hint": "Moteur FET : au-delà de 67, aucun trou toléré ; de 34 à 66, un trou par jour ; en dessous, deux. Si l’exigence empêche de tout placer, elle est assouplie d’un cran et le compte rendu le signale."
         },
         "REQUIRES_CONSECUTIVE_SUBJECTS": {
           "title": "Blocs 2h consécutifs obligatoires",
@@ -1995,7 +2025,11 @@
         "amount": "Montant effacé",
         "reason": "Motif",
         "by": "Décidé par",
-        "empty": "Aucune créance annulée."
+        "empty": "Aucune créance annulée.",
+        "summary": "{students} élève(s) · {count} créance(s) · {amount}",
+        "type": "Type de frais",
+        "allTypes": "Tous les types",
+        "dueDate": "Échéance du {date}"
       },
       "year": "Année",
       "apply": "Appliquer",
@@ -2160,6 +2194,47 @@
           "saving": "Encaissement…",
           "confirm": "Encaisser {amount}",
           "partial": "{done} échéance(s) déjà encaissée(s), puis interruption : {error}. Rouvrez la fenêtre, les lignes réglées ont disparu."
+        },
+        "kpi": {
+          "billed": "Total facturé (année)",
+          "billedSub": "Budget annuel attendu · {year}",
+          "collected": "Déjà encaissé",
+          "collectedSub": "{pct} % recouvré",
+          "overdue": "Impayés échus (en retard)",
+          "overdueSub": "{count} famille(s) concernée(s)",
+          "upcoming": "Non échu (termes à venir)",
+          "upcomingSub": "Échéances {months}",
+          "upcomingNone": "Aucune échéance à venir",
+          "recovery": "Taux de recouvrement",
+          "recoveryDelta": "{delta} pt par rapport à l’année précédente",
+          "recoveryNoPrev": "Pas de comparaison avec l’année précédente"
+        },
+        "filters": {
+          "year": "Année scolaire",
+          "allYears": "Toutes les années",
+          "status": "Statut",
+          "statusAll": "Tous les impayés",
+          "cycle": "Cycle",
+          "allCycles": "Tous les cycles",
+          "class": "Classe",
+          "allClasses": "Toutes les classes",
+          "month": "Mois d’échéance",
+          "search": "Élève / tuteur",
+          "searchPlaceholder": "Nom de l’élève ou du tuteur…",
+          "apply": "Filtrer",
+          "reset": "Réinitialiser"
+        },
+        "status": {
+          "ECHU": "Échu",
+          "NON_ECHU": "Non échu",
+          "CONTENTIEUX": "En contentieux"
+        },
+        "contentious": {
+          "on": "Contentieux",
+          "off": "Retirer du contentieux",
+          "onHint": "Passer les échéances échues de cet élève en contentieux",
+          "offHint": "Revenir au recouvrement amiable",
+          "badge": "contentieux"
         }
       },
       "topUnpaid": "Élèves avec impayés",
@@ -2667,7 +2742,9 @@
         "view": "Consulter",
         "arabicData": "Données en arabe",
         "tabs": {
-          "fiche": "Fiche"
+          "fiche": "Fiche",
+          "absences": "Absences",
+          "notes": "Notes"
         },
         "attendanceScope": {
           "year": "année",
@@ -3046,7 +3123,7 @@
         "alertsHint": "Dossier ouvert sans classe affectée",
         "staffTotal": "Effectif personnel",
         "staffPresent": "Présents aujourd’hui",
-        "staffPresentHint": "{pct} % de l’effectif",
+        "staffPresentHint": "{pct} % de présents pointés",
         "staffContracts": "Contrats à échéance",
         "staffContractsHint": "Dans les 30 jours ou expirés",
         "staffFiles": "Dossiers RH incomplets",
@@ -3058,7 +3135,9 @@
         "settlement": "Règlement frais scolaires",
         "settlementHint": "{count} familles en retard",
         "delegates": "Parents délégués",
-        "delegatesHint": "Aucun registre des représentants au conseil de classe"
+        "delegatesHint": "Aucun registre des représentants au conseil de classe",
+        "teacherTotal": "Effectif enseignants",
+        "staffPresence": "Présents/Absents aujourd’hui"
       },
       "detailPanel": {
         "empty": "Sélectionnez un élève pour afficher sa fiche.",
@@ -3260,7 +3339,7 @@
         "takeAttendance": "Faire l'appel",
         "lastAttendance": "Dernier appel",
         "manageGrades": "Notes",
-        "gradeBook": "Carnet",
+        "gradeBook": "Carnet de notes",
         "timetable": "EDT/Remplacement",
         "timetableConstraints": "Contraintes EDT",
         "programme": "Programme & affectations",
@@ -3279,7 +3358,8 @@
         "groups": "Groupes",
         "programmeFromTrack": "Programme de la filière",
         "programmeFromLevel": "Programme du niveau",
-        "view": "Voir"
+        "view": "Voir",
+        "carnet": "Carnet de corresp"
       },
       "duplicate": {
         "button": "Dupliquer classes",
@@ -3333,12 +3413,21 @@
         "teacherClashHint": "Deux groupes se tiennent au même moment : ils ont besoin d'enseignants différents. Sans quoi le solveur ne placera ni l'un ni l'autre — un professeur ne peut pas être à deux endroits à la fois.",
         "splitSlots": {
           "title": "Séances dédoublées — {subject}",
-          "count": "{count} séance(s) déclarée(s) sur {total} h de programme",
+          "count": "{count} h en groupes par élève sur {total} h de programme",
           "on": "Gr.",
-          "hint": "Cochez les créneaux qui se tiennent en groupes. Le solveur y placera les deux groupes en parallèle, et l’appel comme les notes suivront cette séance précise.",
-          "overflow": "{count} séances déclarées pour {total} h de programme : il y a plus de séances dédoublées que d’heures au programme.",
-          "noSlots": "Aucun créneau horaire n’est défini. Renseignez la grille horaire dans Paramétrage avant de déclarer des séances dédoublées."
-        }
+          "hint": "Choisissez d’abord le destinataire, puis cochez les créneaux qui se tiennent en groupes. L’appel comme les notes suivront la séance ainsi déclarée.",
+          "overflow": "{count} h en groupes pour {total} h de programme : un élève ne peut pas avoir plus d’heures dédoublées que le programme n’en prévoit.",
+          "noSlots": "Aucun créneau horaire n’est défini. Renseignez la grille horaire dans Paramétrage avant de déclarer des séances dédoublées.",
+          "target": "Attribuer à :",
+          "allGroups": "Tous (simultané)",
+          "assignTo": "Cliquer pour attribuer à : {target}",
+          "closed": "La classe n’a pas cours sur ce créneau",
+          "closedDeclared": "Créneau fermé pour la classe : cette séance empêche la génération de l’emploi du temps. Cliquez pour la retirer.",
+          "closedDeclaredWarn": "Une séance est déclarée sur un créneau fermé (case rouge). Tant qu’elle y reste, l’emploi du temps ne peut pas être généré — cliquez dessus pour la retirer.",
+          "closedHint": "Les cases grisées sont fermées pour cette classe (journée du cycle, jour OFF, plage interdite). Y déclarer une séance empêcherait la génération de l’emploi du temps.",
+          "modesHint": "« Tous (simultané) » place les groupes à la même heure et demande un professeur par groupe. Choisir un groupe lui réserve le créneau : les groupes s’enchaînent et le même professeur peut assurer les deux."
+        },
+        "outOfCycle": "hors des cycles de sa fiche"
       },
       "overview": {
         "fill": "Remplissage global",
@@ -3589,7 +3678,8 @@
         "back": "Retour",
         "save": "Enregistrer",
         "saving": "Enregistrement…"
-      }
+      },
+      "sessionLocked": "« {period} » est une période de session d’examen : ses évaluations sont générées par la session. La création manuelle est désactivée."
     },
     "attendance": {
       "title": "Appel",
@@ -3743,7 +3833,14 @@
         "addTitle": "Ajouter un motif",
         "add": "Ajouter",
         "save": "Enregistrer",
-        "cancel": "Annuler"
+        "cancel": "Annuler",
+        "appelPresence": {
+          "title": "Pointage des enseignants par l’appel",
+          "hint": "Les enseignants font l’appel dès leur arrivée en classe. Activé, le premier appel enregistré dans la journée vaut pointage de présence, avec l’heure d’arrivée. Un pointage déjà saisi (absence, congé) n’est jamais remplacé.",
+          "yes": "Oui, l’appel vaut pointage de présence",
+          "no": "Non",
+          "saved": "Réglage enregistré."
+        }
       },
       "admissions": {
         "docs": {
@@ -4477,7 +4574,13 @@
         "points": "pts",
         "averageHint": "Contrôle continu",
         "infrastructure": "Infrastructures, salles & services",
-        "details": "Détail par établissement"
+        "details": "Détail par établissement",
+        "siteStructure": "Structure par établissement",
+        "cycles": {
+          "primaire": "Primaire",
+          "college": "Collège",
+          "lycee": "Lycée"
+        }
       },
       "infra": {
         "classrooms": "Occupation salles",
@@ -4487,6 +4590,93 @@
         "transport": "Ponctualité transport",
         "canteen": "Souscription cantine",
         "note": "Occupation = créneaux occupés à l’emploi du temps rapportés au potentiel (salles × créneaux × 6 jours). La cantine mesure la souscription, faute d’un pointage des passages."
+      },
+      "tabs": {
+        "general": "Général",
+        "finance": "Finance"
+      },
+      "finance": {
+        "title": "Tableau de bord financier consolidé",
+        "subtitle": "Facturation, encaissements et reste à recouvrer — exercice {year}.",
+        "year": "Année :",
+        "periodAll": "Période : année complète",
+        "print": "Imprimer le rapport",
+        "billed": "Facturé",
+        "collected": "Encaissé",
+        "overdue": "Créances échues",
+        "kpi": {
+          "billed": "Total facturé",
+          "noPrev": "Pas de comparaison N-1",
+          "vsPrev": "vs N-1 ({amount})",
+          "collected": "Total encaissé",
+          "collectedSub": "Part du facturé déjà encaissée",
+          "remaining": "Reste à recouvrer",
+          "ofBilled": "{pct} du facturé",
+          "upcoming": "Non échu :",
+          "overdue": "Échu :",
+          "recovery": "Taux de recouvrement groupe",
+          "target": "Cible : {target} %",
+          "onTarget": "Objectif atteint",
+          "gap": "Écart : {gap} pt"
+        },
+        "table": {
+          "title": "Performance financière par établissement",
+          "subtitle": "Facturation, encaissement et créances échues par établissement.",
+          "search": "Rechercher un établissement…",
+          "allHealth": "Tous les statuts",
+          "site": "Établissement",
+          "students": "Effectif",
+          "studentsCount": "{count} élèves",
+          "rate": "Taux enc.",
+          "health": "Santé financière",
+          "actions": "Actions",
+          "details": "Détails",
+          "empty": "Aucun établissement ne correspond."
+        },
+        "health": {
+          "good": "Performant",
+          "watch": "Sous vigilance",
+          "risk": "Risque élevé",
+          "none": "—"
+        },
+        "charts": {
+          "compare": "Facturé, encaissé et échu par établissement",
+          "compareHint": "Montants en {currency} — cliquez une légende pour masquer la série.",
+          "categories": "Répartition des encaissements par type de frais",
+          "categoriesHint": "Encaissé par prestation — cliquez une légende pour la barrer.",
+          "empty": "Aucune donnée financière sur cette période."
+        },
+        "cats": {
+          "TUITION": "Scolarité",
+          "INSCRIPTION": "Inscriptions",
+          "CANTEEN": "Cantine",
+          "TRANSPORT": "Transport",
+          "DAYCARE": "Garderie",
+          "SUPPORT": "Soutien scolaire",
+          "EXCEPTIONAL": "Frais exceptionnels",
+          "OTHER": "Autres"
+        },
+        "alerts": {
+          "title": "Alertes & risques de recouvrement",
+          "urgent": "Urgent",
+          "hint": "Établissements ayant les créances échues les plus élevées.",
+          "overdue": "{amount} de créances échues",
+          "detail": "Dont {over60} à plus de 60 jours · {families} famille(s) concernée(s).",
+          "remind": "Relancer",
+          "none": "Aucune créance échue sur la période."
+        },
+        "forecast": {
+          "title": "Prévisionnel de trésorerie groupe (3 prochains mois)",
+          "hint": "Reste à encaisser selon les échéanciers de l’année active.",
+          "total": "+{amount} projetés",
+          "month": "Mois +{n} ({month})"
+        },
+        "modal": {
+          "breakdown": "Répartition des créances échues",
+          "families": "{count} famille(s)",
+          "noUnpaid": "Aucune créance échue.",
+          "close": "Fermer"
+        }
       }
     },
     "transport": {
@@ -4634,7 +4824,7 @@
       }
     },
     "leave": {
-      "title": "Congés & absences",
+      "title": "Congés & remplacements",
       "subtitle": "Demandes, validation et soldes du personnel.",
       "noTypes": "Aucun type de congé configuré.",
       "seedTypes": "Créer les types par défaut",
@@ -4722,19 +4912,29 @@
       "choose": "Choisir",
       "absencesTitle": "Absences",
       "absencesTotal": "{days} j au total",
-      "absencesHint": "Journées pointées « absent » sur l’année scolaire. Les congés approuvés et les absences excusées ne sont pas comptés.",
+      "absencesHint": "Jours pointés absent ou en retard, et congés approuvés, sur l’année active.",
       "absencesEmpty": "Aucun pointage sur l’année.",
       "lateCount": "{count} retard(s)",
       "justification": "Justificatif",
       "justificationAdd": "Joindre",
       "justificationReplace": "Remplacer",
-      "justificationView": "Voir le justificatif"
+      "justificationView": "Voir le justificatif",
+      "newRequestButton": "Nouvelle demande",
+      "duration": "Durée",
+      "sessionCount": "Nombre de séances",
+      "sessionsShort": "{count} séance(s)",
+      "dayParts": {
+        "FULL": "Journée entière",
+        "AM": "Matin",
+        "PM": "Après-midi",
+        "SESSIONS": "Séances"
+      }
     },
     "overtime": {
-      "title": "Heures supplémentaires",
-      "subtitle": "Déclaration, validation RH→Direction→Compta, export paie.",
+      "title": "Gestion & Validation des Heures Supplémentaires (HSE)",
+      "subtitle": "Déclaration manuelle, approbation administrative et suivi de la paie",
       "manual": "Saisie manuelle",
-      "generate": "Générer depuis les remplacements",
+      "generate": "Importer les remplacements",
       "generated": "{n} déclaration(s) d’heures sup générée(s)",
       "employee": "Employé",
       "sourceLabel": "Source",
@@ -4762,12 +4962,80 @@
         "SPECIAL_EVENT": "Événement spécial"
       },
       "statusLabel": {
-        "DECLARED": "Déclarée",
+        "DECLARED": "En attente",
         "RH_VALIDATED": "Validée RH",
         "DIRECTION_APPROVED": "Approuvée Direction",
         "PROCESSED": "Traitée",
         "REJECTED": "Rejetée"
-      }
+      },
+      "exportPayroll": "Exporter pour Paie",
+      "exportEmpty": "Aucune heure validée à exporter.",
+      "newDeclaration": "Nouvelle Déclaration",
+      "formTitle": "Saisie Manuelle d’Heures Supplémentaires",
+      "formHint": "Saisie rapide pour le compte d’un enseignant",
+      "form": {
+        "teacher": "Enseignant concerné",
+        "teachersGroup": "Enseignants",
+        "staffGroup": "Personnel",
+        "select": "— Sélectionner —",
+        "date": "Date",
+        "slot": "Créneau / Durée",
+        "customSlot": "Autre horaire…",
+        "start": "Début",
+        "end": "Fin",
+        "reason": "Motif du remplacement / HSE",
+        "reasonPlaceholder": "— Sélectionner le motif —",
+        "class": "Classe rattachée",
+        "replaced": "Prof. remplacé (si applicable)",
+        "cancel": "Annuler",
+        "submit": "Enregistrer & Soumettre",
+        "saving": "Enregistrement…",
+        "update": "Enregistrer les modifications"
+      },
+      "reasonGroups": {
+        "REPLACEMENTS": "Remplacements internes",
+        "PEDAGOGY": "Activités pédagogiques"
+      },
+      "reasons": {
+        "REPLACE_SICK": "Remplacement pour congé maladie",
+        "REPLACE_TRAINING": "Remplacement pour départ en formation",
+        "REPLACE_AUTHORIZED": "Remplacement pour absence autorisée",
+        "SUPPORT": "Soutien / remédiation pédagogique",
+        "EXAM_SUPERVISION": "Surveillance d’examen / devoir surveillé",
+        "EXAM_CORRECTION": "Correction d’examen blanc",
+        "CLUB": "Animation de club / atelier périscolaire"
+      },
+      "kpi": {
+        "pending": "À valider (en attente)",
+        "pendingSub": "{count} déclaration(s) en attente",
+        "validated": "Validées ce mois",
+        "validatedSub": "Transmises à la comptabilité",
+        "cost": "Coût estimé mensuel",
+        "costSub": "Taux horaire du salaire brut + majoration 25 %",
+        "costMissing": "{count} déclaration(s) sans salaire renseigné, non chiffrée(s)",
+        "coverage": "Taux de couverture",
+        "coverageSub": "Absences profs remplacées ce mois"
+      },
+      "hoursValue": "{value} h",
+      "table": {
+        "title": "Historique et déclarations à traiter"
+      },
+      "col": {
+        "teacher": "Enseignant",
+        "when": "Date & horaire",
+        "schedule": "Horaire",
+        "duration": "Durée",
+        "reason": "Motif",
+        "class": "Classe",
+        "replaced": "Prof. remplacé",
+        "status": "Statut",
+        "actions": "Actions",
+        "cost": "Coût estimé (MAD)"
+      },
+      "done": "Approuvé",
+      "delete": "Supprimer",
+      "edit": "Modifier",
+      "editTitle": "Modifier la déclaration"
     },
     "payroll": {
       "title": "Paie",
@@ -5379,7 +5647,7 @@
     },
     "exams": {
       "title": "Sessions d’examen",
-      "subtitle": "Examens semestriels, Régional (1BAC) et National (2BAC).",
+      "subtitle": "Contrôles, devoirs, examens internes et examens officiels (régional, national).",
       "year": "Année scolaire active : {year}",
       "settingsLink": "Filières & barèmes",
       "newSession": "Nouvelle session",
@@ -5390,10 +5658,14 @@
       "saving": "Création…",
       "nextPhase": "Prochaine étape : les épreuves (matière, date, durée, coefficient) avec contrôle d’incompatibilité horaire, puis les salles, les surveillants et l’anonymat.",
       "kinds": {
-        "SEMESTRIEL": "Semestriel",
+        "SEMESTRIEL": "Semestriel (ancien)",
         "REGIONAL": "Régional",
         "NATIONAL": "National",
-        "BLANC": "Blanc"
+        "BLANC": "Examen blanc",
+        "CONTROLE_CONTINU": "Contrôle continu (CC)",
+        "DEVOIR_SURVEILLE": "Devoir surveillé (DS)",
+        "DEVOIR_MAISON": "Devoir maison (DM)",
+        "COMPOSITION": "Composition"
       },
       "status": {
         "DRAFT": "Brouillon",
@@ -5413,7 +5685,14 @@
         "publish": "Publier",
         "unpublish": "Repasser en brouillon",
         "close": "Clôturer",
-        "closeConfirm": "La clôture verrouille la saisie des notes du niveau."
+        "closeConfirm": "La clôture verrouille la saisie des notes du niveau.",
+        "edit": "Modifier",
+        "delete": "Supprimer",
+        "deleteConfirm": "Supprimer définitivement cette session et ses épreuves ?",
+        "deleteConfirmMarks": "Des notes sont saisies : elles seront supprimées avec la session.",
+        "confirm": "Confirmer",
+        "lockedMarks": "Non modifiable : des notes sont saisies",
+        "lockedPast": "Non modifiable : la date de l’examen est échue"
       },
       "form": {
         "label": "Intitulé",
@@ -5427,7 +5706,8 @@
         "tracksHint": "Aucune filière cochée = toutes les filières du niveau.",
         "noTracks": "Aucune filière déclarée pour ce niveau.",
         "mixClasses": "Mélanger les classes en salle (anti-fraude)",
-        "anonymized": "Anonymer les copies"
+        "anonymized": "Anonymer les copies",
+        "officialNeedsTracks": "Un examen officiel se programme sur un niveau à filières (1BAC, 2BAC)."
       },
       "noTracks": {
         "title": "Aucune filière déclarée.",
@@ -5468,7 +5748,12 @@
           "hint": "Un élève ne peut pas composer à deux endroits en même temps. Décalez l’épreuve, ou forcez si vous savez que les publics ne se recoupent pas réellement.",
           "change": "Changer le créneau",
           "force": "Programmer quand même"
-        }
+        },
+        "noProposals": {
+          "title": "Aucune épreuve à proposer.",
+          "hint": "Les filières de cette session n’ont ni maquette d’épreuve ni matière marquée « certificative ». Renseignez-les dans le paramétrage des filières, ou ajoutez les épreuves une à une ci-dessous."
+        },
+        "manualHint": "Examen interne : ajoutez les épreuves une à une (matière, date, durée, coefficient). Seules les matières du programme du niveau sont proposées. À la publication, chaque épreuve devient un devoir dans le carnet des enseignants des classes concernées, avec son coefficient, et le calendrier est envoyé aux parents et aux élèves."
       },
       "generate": {
         "title": "Génération depuis la maquette",
@@ -5485,7 +5770,8 @@
           "SPECIALITY": "Spécialité",
           "SECONDARY": "Secondaire",
           "LITERARY": "Littéraire"
-        }
+        },
+        "fromCertifying": "Pas de maquette d’épreuve pour : {tracks}. Les épreuves proposées sont déduites des matières certificatives de ces filières (durée par défaut : 2 h). Renseignez la maquette pour préciser durées et sujets communs."
       },
       "planner": {
         "poolTitle": "Épreuves à poser",
@@ -5498,7 +5784,16 @@
         "saved": "déjà enregistrée",
         "common": "Commune",
         "slotCount": "{count} épreuve(s)"
-      }
+      },
+      "breadcrumb": "Notes",
+      "categories": {
+        "CONTROLES": "Contrôles",
+        "DEVOIRS": "Devoirs",
+        "INTERNES": "Examens internes",
+        "OFFICIELS": "Examens officiels"
+      },
+      "editSession": "Modifier la session",
+      "update": "Enregistrer"
     },
     "gradesOverview": {
       "year": "Année scolaire",
@@ -5514,13 +5809,13 @@
       "noSubject": "— Aucune matière au programme —",
       "book": "Carnet de notes",
       "evalCount": "{count, plural, =0 {aucun devoir} one {# devoir} other {# devoirs}}",
-      "noEval": "Aucun devoir saisi pour cette matière sur la période.",
+      "noEval": "Aucun devoir saisi sur la période.",
       "student": "Élève",
       "average": "Moyenne /20",
       "mention": "Appréciation",
       "classAverage": "Moyenne de la classe",
       "generalAverage": "Moyenne générale",
-      "generalAverageHint": "Moyenne de la classe sur la matière affichée",
+      "generalAverageHint": "Moyenne générale de la classe sur la période",
       "successRate": "Taux de réussite",
       "successHint": "{passed} élèves sur {total} ont la moyenne",
       "weakSubjects": "Matières en difficulté",
@@ -5547,7 +5842,121 @@
         "50": "10 – 13,9",
         "70": "14 – 17,9",
         "90": "18 – 20"
-      }
+      },
+      "headerTitle": "Suivi des Notes, Évaluations & Examens {year}",
+      "exportNotes": "Export Notes",
+      "scheduleExam": "Programmer un Examen",
+      "printReport": "Imprimer bulletin",
+      "exportEmpty": "Aucune note à exporter pour cette sélection.",
+      "tracking": {
+        "kpi": {
+          "average": "Moyenne Générale",
+          "vsPrevious": "vs période précédente",
+          "noPrevious": "Pas de période précédente comparable",
+          "scheduled": "Épreuves Programmées",
+          "scheduledValue": "{count} Devoirs",
+          "controls": "Contrôles : {count}",
+          "exams": "Examens : {count}",
+          "completion": "Complétion Saisies",
+          "late": "{count} retard(s) de saisie",
+          "noLate": "Aucun retard de saisie",
+          "success": "Taux de Réussite (≥ 10)",
+          "validated": "Contrôles validés · {passed} / {count} copies"
+        },
+        "search": "Rechercher un devoir, enseignant, matière…",
+        "allClasses": "Toutes les classes",
+        "allKinds": "Type d’épreuve",
+        "col": {
+          "label": "Intitulé & Type",
+          "class": "Classe & Matière",
+          "teacher": "Enseignant",
+          "date": "Date",
+          "coefficient": "Coeff.",
+          "entry": "Saisie Copies",
+          "average": "Moyenne",
+          "actions": "Actions"
+        },
+        "coef": "Coeff. {value}",
+        "status": {
+          "UPCOMING": "À venir",
+          "IN_PROGRESS": "En cours",
+          "LATE": "En retard",
+          "DONE": "Terminé"
+        },
+        "action": {
+          "view": "Consulter",
+          "enter": "Saisir",
+          "remind": "Relancer"
+        },
+        "reminded": "Relance envoyée ({count} destinataire(s))",
+        "empty": "Aucune épreuve sur cette période.",
+        "noMatch": "Aucune épreuve ne correspond à ces filtres.",
+        "filiere": "{count} filière(s)"
+      },
+      "blocksFor": "Détail de la classe {class}",
+      "blocksHint": "Choisissez une classe dans les filtres pour changer le détail."
+    },
+    "studentNotes": {
+      "noClass": "Cet élève n’est rattaché à aucune classe sur l’année active : aucune note à afficher.",
+      "noPeriod": "Aucun trimestre n’est défini sur l’année scolaire active.",
+      "noTeacher": "Aucun enseignant affecté",
+      "empty": "Aucune note saisie sur cette période.",
+      "tableTitle": "Bulletin de notes — {class} · {period}",
+      "kpi": {
+        "average": "Moyenne générale ({period})",
+        "classAverage": "Moyenne de la classe",
+        "rank": "Rang de l’élève",
+        "gradeCount": "Évaluations saisies",
+        "grades": "{count} notes"
+      },
+      "table": {
+        "subject": "Matière & enseignant",
+        "coefficient": "Coeff.",
+        "grades": "Dernières notes obtenues",
+        "studentAverage": "Moy. élève",
+        "classAverage": "Moy. classe",
+        "appreciation": "Appréciation / remarque"
+      },
+      "fallbackYear": "Année affichée : {year}. L’année active n’a pas encore de trimestre défini."
+    },
+    "studentAbsences": {
+      "noPeriodFallback": "Aucun trimestre défini : les chiffres portent sur toute l’année scolaire active.",
+      "tableTitle": "Historique des saisies (vie scolaire)",
+      "empty": "Aucune absence ni retard sur cette période.",
+      "oneSession": "1 séance",
+      "noReason": "Non renseigné",
+      "handledByNote": "« Traité par » désigne l’agent de vie scolaire ayant instruit le dossier. La feuille d’appel ne conserve pas qui l’a saisie.",
+      "kpi": {
+        "totalHours": "Total heures d’absence",
+        "totalSessions": "Total séances d’absence",
+        "unjustified": "Non justifiées",
+        "lates": "Total retards",
+        "lateCount": "{count} retards",
+        "lateWithMinutes": "{count} retards ({minutes})",
+        "attendance": "Taux d’assiduité"
+      },
+      "table": {
+        "date": "Date & horaires",
+        "type": "Type",
+        "duration": "Durée",
+        "reason": "Motif déclaré",
+        "justification": "Statut justificatif",
+        "handledBy": "Traité par"
+      },
+      "type": {
+        "ABSENT": "Absence",
+        "LATE": "Retard",
+        "EXCUSED": "Excusé"
+      },
+      "justif": {
+        "approved": "Justifié",
+        "approvedWithDoc": "Justifié (pièce jointe)",
+        "pending": "Déposé, à traiter",
+        "pendingNoDoc": "Déposé sans pièce",
+        "rejected": "Refusé",
+        "none": "Non justifié"
+      },
+      "fallbackYear": "Année affichée : {year}. L’année active n’a pas encore de trimestre défini."
     }
   },
   "superAdmin": {
@@ -6000,6 +6409,13 @@
           "PENDING": "À payer",
           "PARTIAL": "Partiel",
           "PAID": "Payé"
+        },
+        "tabPrevious": "Créances antérieures",
+        "emptyPrevious": "Aucune créance des années antérieures.",
+        "legend": {
+          "paid": "Payée",
+          "overdue": "Échue non payée",
+          "soon": "À échoir sous {days} jours"
         }
       },
       "bourse": {
@@ -6146,7 +6562,9 @@
         "asNote": "Comme une note",
         "optionalHint": "Bonus : les points au-dessus de 10 s'ajoutent à la moyenne. Note : comptée seulement si elle améliore la moyenne. Jamais de pénalité.",
         "normalHint": "Devoir normal : compté dans la moyenne pondérée."
-      }
+      },
+      "sessionScope": "Période de la session « {session} » : seules vos classes et matières concernées par cette session sont proposées.",
+      "sessionNoService": "Vous n’avez aucune classe ni matière concernée par cette session."
     },
     "home": {
       "title": "Tableau de bord",

@@ -37,6 +37,7 @@ export function ExamPlanner({
   proposals,
   ungroupedCount,
   tracksWithoutBlueprint,
+  derivedTracks,
   minDate,
   maxDate,
   disabled,
@@ -46,6 +47,8 @@ export function ExamPlanner({
   /** Nombre d'épreuves sans mutualisation — sert à chiffrer le gain. */
   ungroupedCount: number;
   tracksWithoutBlueprint: string[];
+  /** Filières sans maquette, dont les épreuves sont déduites des matières certificatives. */
+  derivedTracks: string[];
   minDate: string;
   maxDate: string;
   disabled: boolean;
@@ -220,6 +223,11 @@ export function ExamPlanner({
         {tracksWithoutBlueprint.length > 0 && (
           <p className="mt-1.5 rounded-lg border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] text-amber-900">
             {tg('noBlueprint', { tracks: tracksWithoutBlueprint.join(', ') })}
+          </p>
+        )}
+        {derivedTracks.length > 0 && (
+          <p className="mt-1.5 rounded-lg border border-sky-200 bg-sky-50 px-2 py-1 text-[11px] text-sky-900">
+            {tg('fromCertifying', { tracks: derivedTracks.join(', ') })}
           </p>
         )}
         <div className="mt-2 flex min-h-[120px] flex-col gap-1.5">

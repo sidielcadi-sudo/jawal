@@ -28,7 +28,7 @@ export function ClassNav({
     { segment: '', label: t('viewStudents') },
     { segment: '/attendance', label: t('takeAttendance') },
     { segment: '/grades', label: t('manageGrades') },
-    { segment: '/grade-book', label: t('gradeBook') },
+    { segment: '/carnet', label: t('carnet') },
     { segment: '/groups', label: t('groups') },
     { segment: '/timetable', label: t('timetable') },
     { segment: '/constraints', label: t('timetableConstraints') },

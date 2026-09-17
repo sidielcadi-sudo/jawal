@@ -28,6 +28,8 @@ import {
   StudentDetailEmpty,
   type StudentDetail,
 } from './student-detail';
+import { loadStudentDetail } from '@/lib/student-detail';
+import { KpiCard } from '@/components/kpi-card';
 
 const PAGE_SIZE = 20;
 const VALID_TYPES = ['STUDENT', 'TEACHER', 'STAFF', 'PARENT'] as const;
@@ -41,75 +43,6 @@ const EMPLOYMENT_BADGE: Record<string, string> = {
   RESIGNED: 'bg-slate-200 text-slate-700',
   CONTRACT_END: 'bg-red-100 text-red-800',
 };
-
-/** Fond de la carte — une teinte par indicateur, pour les distinguer. */
-const KPI_CARD: Record<string, string> = {
-  sky: 'border-sky-200 bg-sky-50',
-  emerald: 'border-emerald-200 bg-emerald-50',
-  violet: 'border-violet-200 bg-violet-50',
-  red: 'border-rose-200 bg-rose-50',
-  slate: 'border-slate-200 bg-slate-50',
-};
-
-const KPI_TONE: Record<string, string> = {
-  sky: 'bg-sky-50 text-sky-700',
-  emerald: 'bg-emerald-50 text-emerald-700',
-  violet: 'bg-violet-50 text-violet-700',
-  red: 'bg-red-50 text-red-700',
-  slate: 'bg-slate-100 text-slate-600',
-};
-
-/**
- * Carte d'indicateur en tête de la liste Élèves.
- *
- * Disposition horizontale et fond teinté : les quatre cartes tenaient sur
- * quatre hauteurs de texte empilées et poussaient le tableau sous la ligne de
- * flottaison. La teinte ne porte aucune information — elle sert seulement à
- * distinguer les cartes les unes des autres ; l'alerte reste signalée par la
- * couleur de sa valeur.
- */
-function Kpi({
-  icon,
-  tone,
-  label,
-  value,
-  suffix,
-  hint,
-  alert = false,
-}: {
-  icon: string;
-  tone: keyof typeof KPI_TONE | string;
-  label: string;
-  /** `null` quand la mesure n'a pas de source : on affiche « — », pas 0. */
-  value: number | null;
-  suffix?: string;
-  hint?: string;
-  alert?: boolean;
-}) {
-  return (
-    <div className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${KPI_CARD[tone] ?? KPI_CARD.slate}`}>
-      <span
-        className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white/70 text-base ${
-          KPI_TONE[tone] ?? KPI_TONE.slate
-        }`}
-      >
-        {icon}
-      </span>
-      <div className="min-w-0">
-        <p className="truncate text-[11px] font-medium text-slate-600">{label}</p>
-        <p
-          className={`text-xl font-bold leading-tight tabular-nums ${
-            alert ? 'text-red-700' : 'text-slate-900'
-          }`}
-        >
-          {value === null ? '—' : value.toLocaleString('fr-FR')}
-          {value !== null && suffix && <span className="ms-0.5 text-sm font-normal">{suffix}</span>}
-        </p>
-        {hint && <p className="truncate text-[11px] text-slate-500">{hint}</p>}
-      </div>
-    </div>
-  );
-}
 
 /**
  * Statut du jour d'un agent.
@@ -162,164 +95,6 @@ type PersonTypeLiteral = (typeof VALID_TYPES)[number];
 
 function isPersonType(value: string | undefined): value is PersonTypeLiteral {
   return !!value && (VALID_TYPES as readonly string[]).includes(value);
-}
-
-/**
- * Fiche de l'élève ouvert dans le panneau latéral.
- *
- * Requête séparée et volontairement large : elle ne concerne qu'UN élève, on
- * peut donc se permettre d'aller chercher les parents, la situation financière
- * et les derniers appels sans peser sur la liste.
- */
-async function loadStudentDetail(
-  tx: Prisma.TransactionClient,
-  id: string,
-  locale: string,
-  activeYear: { id: string; label: string; startDate: Date; endDate: Date } | null,
-): Promise<StudentDetail | null> {
-  const person = await tx.person.findFirst({
-    where: { id, type: 'STUDENT' },
-    select: {
-      id: true,
-      firstName: true,
-      lastName: true,
-      firstNameAr: true,
-      lastNameAr: true,
-      massarId: true,
-      birthDate: true,
-      birthPlace: true,
-      gender: true,
-      address: true,
-      photoFileId: true,
-      relationsAsChild: {
-        select: {
-          type: true,
-          parent: {
-            select: {
-              firstName: true,
-              lastName: true,
-              firstNameAr: true,
-              lastNameAr: true,
-              contacts: true,
-            },
-          },
-        },
-      },
-    },
-  });
-  if (!person) return null;
-
-  const [sc, enrollment, installments, attendance, tenant] = await Promise.all([
-    activeYear
-      ? tx.studentClass.findFirst({
-          where: { studentId: id, unenrolledAt: null, class: { academicYearId: activeYear.id } },
-          select: {
-            class: {
-              select: {
-                name: true,
-                nameAr: true,
-                level: {
-                  select: {
-                    label: true,
-                    labelAr: true,
-                    cycle: { select: { label: true, labelAr: true } },
-                  },
-                },
-              },
-            },
-          },
-        })
-      : Promise.resolve(null),
-    activeYear
-      ? tx.enrollment.findFirst({
-          where: { studentId: id, academicYearId: activeYear.id },
-          select: { status: true },
-        })
-      : Promise.resolve(null),
-    // Situation financière de l'ANNÉE ACTIVE seulement. Cumuler les exercices
-    // faisait apparaître en « reste dû » des créances d'années closes, qui se
-    // traitent dans Finances → Gestion des impayés et n'ont rien à faire dans
-    // une fiche censée dire où en est l'élève cette année.
-    tx.installment.findMany({
-      where: {
-        studentId: id,
-        status: { not: 'CANCELLED' },
-        ...(activeYear
-          ? { dueDate: { gte: activeYear.startDate, lt: yearInstallmentEnd(activeYear) } }
-          : {}),
-      },
-      select: { amount: true, dueDate: true, payments: { select: { amount: true, paidAt: true } } },
-      orderBy: { dueDate: 'asc' },
-    }),
-    // Même borne pour l'assiduité : les quatre derniers appels de l'an dernier
-    // ne disent rien de l'élève d'aujourd'hui.
-    tx.attendanceRecord.findMany({
-      where: {
-        studentId: id,
-        ...(activeYear
-          ? { session: { class: { academicYearId: activeYear.id } } }
-          : {}),
-      },
-      orderBy: { session: { date: 'desc' } },
-      take: 4,
-      select: { status: true, session: { select: { date: true } } },
-    }),
-    tx.tenant.findFirst({ select: { currency: true } }),
-  ]);
-
-  let remaining = 0;
-  let lastPaymentAt: Date | null = null;
-  let nextDueDate: Date | null = null;
-  let nextDueAmount = 0;
-  const today = new Date();
-  for (const i of installments) {
-    const paid = i.payments.reduce((acc, x) => acc + Number(x.amount), 0);
-    remaining += Math.max(0, Number(i.amount) - paid);
-    for (const x of i.payments) {
-      if (!lastPaymentAt || x.paidAt > lastPaymentAt) lastPaymentAt = x.paidAt;
-    }
-    if (!nextDueDate && i.dueDate >= today && Number(i.amount) - paid > 0.01) {
-      nextDueDate = i.dueDate;
-      nextDueAmount = Number(i.amount) - paid;
-    }
-  }
-
-  const addr = (person.address ?? {}) as { street?: string; city?: string };
-
-  return {
-    id: person.id,
-    name: personDisplayName(locale, person),
-    massarId: person.massarId,
-    birthDate: person.birthDate,
-    birthPlace: person.birthPlace,
-    gender: person.gender,
-    address: [addr.street, addr.city].filter(Boolean).join(', ') || null,
-    photo: Boolean(person.photoFileId),
-    className: sc ? localizedLabel(locale, sc.class.name, sc.class.nameAr) : null,
-    levelLabel: sc ? localizedLabel(locale, sc.class.level.label, sc.class.level.labelAr) : null,
-    cycleLabel: sc
-      ? localizedLabel(locale, sc.class.level.cycle.label, sc.class.level.cycle.labelAr)
-      : null,
-    yearLabel: activeYear?.label ?? null,
-    status: enrollment?.status ?? null,
-    parents: person.relationsAsChild.map((r) => {
-      const c = (r.parent.contacts ?? {}) as { phone?: string; email?: string };
-      return {
-        role: r.type,
-        name: personDisplayName(locale, r.parent),
-        phone: c.phone ?? null,
-        email: c.email ?? null,
-      };
-    }),
-    finance: {
-      remaining: Math.round(remaining * 100) / 100,
-      lastPaymentAt,
-      nextDueDate,
-      nextDueAmount: Math.round(nextDueAmount * 100) / 100,
-      currency: tenant?.currency ?? 'MAD',
-    },
-    attendance: attendance.map((a) => ({ date: a.session.date, status: a.status })),
-  };
 }
 
 /**
@@ -498,7 +273,7 @@ export default async function PersonsListPage({
   const levelFilter = isStudentView ? asList(sp.level) : [];
   const classFilter = isStudentView ? asList(sp.classId) : [];
   // Statut : dossier d'inscription côté élève, statut d'emploi côté personnel.
-  const statusFilter = asList(sp.status);
+  const statusFilter = isStudentView ? [] : asList(sp.status);
   const isStaffView = isTeacherView || typeFilter === 'STAFF';
   /** Vue « Personnel » seule : colonnes RH et fiche latérale propres. */
   const isStaffOnly = typeFilter === 'STAFF';
@@ -832,6 +607,7 @@ export default async function PersonsListPage({
       let staffKpis: {
         total: number;
         presentToday: number;
+        absentToday: number;
         contractsEnding: number;
         incompleteFiles: number;
       } | null = null;
@@ -844,7 +620,9 @@ export default async function PersonsListPage({
         }
       >();
 
-      if (isStaffOnly) {
+      // Mêmes indicateurs RH pour le personnel et pour les enseignants.
+      if (isStaffOnly || isTeacherView) {
+        const hrType = isStaffOnly ? ('STAFF' as const) : ('TEACHER' as const);
         const ids = persons.map((x) => x.id);
         const today = new Date();
         const dayStart = new Date(
@@ -881,7 +659,7 @@ export default async function PersonsListPage({
         // ni sur les filtres — un total qui bouge quand on filtre ne mesure
         // plus rien.
         const allStaff = await tx.person.findMany({
-          where: { type: 'STAFF', deletedAt: null },
+          where: { type: hrType, deletedAt: null },
           select: {
             id: true,
             cin: true,
@@ -892,16 +670,18 @@ export default async function PersonsListPage({
             bankName: true,
           },
         });
-        const presentToday = await tx.staffAttendance.count({
-          where: {
-            date: dayStart,
-            status: 'PRESENT',
-            person: { type: 'STAFF', deletedAt: null },
-          },
-        });
+        const [presentToday, absentToday] = await Promise.all([
+          tx.staffAttendance.count({
+            where: { date: dayStart, status: 'PRESENT', person: { type: hrType, deletedAt: null } },
+          }),
+          tx.staffAttendance.count({
+            where: { date: dayStart, status: 'ABSENT', person: { type: hrType, deletedAt: null } },
+          }),
+        ]);
         staffKpis = {
           total: allStaff.length,
           presentToday,
+          absentToday,
           // Échéances à surveiller : un contrat qui se termine dans le mois,
           // ou déjà expiré sans que personne ne l'ait vu.
           contractsEnding: allStaff.filter((x) => {
@@ -911,7 +691,7 @@ export default async function PersonsListPage({
           incompleteFiles: allStaff.filter((x) => !hrFileStatus(x).complete).length,
         };
 
-        if (sp.selected) {
+        if (isStaffOnly && sp.selected) {
           const person = await tx.person.findFirst({
             where: { id: sp.selected, type: 'STAFF' },
             select: {
@@ -1328,8 +1108,9 @@ export default async function PersonsListPage({
   // Options de statut : dossier d'inscription côté élève, statut d'emploi
   // côté personnel — deux référentiels distincts sous un même libellé.
   const tStaff = await getTranslations('admin.persons.staffPanel.day');
+  // Vue Élèves : pas de filtre Statut (la liste ne montre que les inscrits).
   const statusOptions = isStudentView
-    ? STUDENT_STATUSES.map((st) => ({ id: st, label: t(`studentStatus.${st}` as never) }))
+    ? []
     : isStaffView
       ? EMPLOYMENT_STATUSES.map((st) => ({
           id: st,
@@ -1369,21 +1150,21 @@ export default async function PersonsListPage({
           un total qui bouge quand on filtre ne mesure plus rien. */}
       {kpis && (
         <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <Kpi
+          <KpiCard
             icon="👥"
             tone="sky"
             label={t('kpi.total')}
             value={kpis.total}
             hint={t('kpi.totalHint')}
           />
-          <Kpi
+          <KpiCard
             icon="🆕"
             tone="emerald"
             label={t('kpi.new')}
             value={kpis.newThisYear}
             hint={t('kpi.newHint')}
           />
-          <Kpi
+          <KpiCard
             icon="✅"
             tone="violet"
             label={t('kpi.active')}
@@ -1394,7 +1175,7 @@ export default async function PersonsListPage({
                 : undefined
             }
           />
-          <Kpi
+          <KpiCard
             icon="⚠"
             tone={kpis.alerts > 0 ? 'red' : 'slate'}
             alert={kpis.alerts > 0}
@@ -1410,7 +1191,7 @@ export default async function PersonsListPage({
           trois taux se comparent entre eux. */}
       {parentKpiData && (
         <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
-          <Kpi
+          <KpiCard
             icon="💻"
             tone="emerald"
             label={t('kpi.portal')}
@@ -1421,7 +1202,7 @@ export default async function PersonsListPage({
               total: parentKpiData.families,
             })}
           />
-          <Kpi
+          <KpiCard
             icon="📞"
             tone="sky"
             label={t('kpi.emergency')}
@@ -1429,7 +1210,7 @@ export default async function PersonsListPage({
             suffix="%"
             hint={t('kpi.emergencyHint', { count: parentKpiData.toComplete })}
           />
-          <Kpi
+          <KpiCard
             icon="💳"
             tone={parentKpiData.lateFamilies > 0 ? 'red' : 'emerald'}
             label={t('kpi.settlement')}
@@ -1439,7 +1220,7 @@ export default async function PersonsListPage({
           />
           {/* Aucun registre des parents délégués n'existe en base : on le dit
               plutôt que d'afficher un zéro qui passerait pour une mesure. */}
-          <Kpi
+          <KpiCard
             icon="🏛"
             tone="slate"
             label={t('kpi.delegates')}
@@ -1455,12 +1236,19 @@ export default async function PersonsListPage({
           quels dossiers ne tiendront pas la paie. */}
       {staffKpis && (
         <div className="mb-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
-          <Kpi icon="🧑‍💼" tone="sky" label={t('kpi.staffTotal')} value={staffKpis.total} />
-          <Kpi
+          <KpiCard
+            icon={isTeacherView ? '🧑‍🏫' : '🧑‍💼'}
+            tone="sky"
+            label={isTeacherView ? t('kpi.teacherTotal') : t('kpi.staffTotal')}
+            value={staffKpis.total}
+          />
+          {/* Présents et absents pointés du jour : le second chiffre dit
+              ce que le premier tait quand l'effectif n'est pas complet. */}
+          <KpiCard
             icon="✅"
             tone="emerald"
-            label={t('kpi.staffPresent')}
-            value={staffKpis.presentToday}
+            label={t('kpi.staffPresence')}
+            value={`${staffKpis.presentToday} / ${staffKpis.absentToday}`}
             hint={
               staffKpis.total > 0
                 ? t('kpi.staffPresentHint', {
@@ -1469,7 +1257,7 @@ export default async function PersonsListPage({
                 : undefined
             }
           />
-          <Kpi
+          <KpiCard
             icon="📄"
             tone={staffKpis.contractsEnding > 0 ? 'red' : 'slate'}
             alert={staffKpis.contractsEnding > 0}
@@ -1477,7 +1265,7 @@ export default async function PersonsListPage({
             value={staffKpis.contractsEnding}
             hint={t('kpi.staffContractsHint')}
           />
-          <Kpi
+          <KpiCard
             icon="⚠"
             tone={staffKpis.incompleteFiles > 0 ? 'red' : 'slate'}
             alert={staffKpis.incompleteFiles > 0}
@@ -1598,6 +1386,9 @@ export default async function PersonsListPage({
         }
       >
       <div className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-brand-200 bg-white">
+        {/* Défilement horizontal : à côté de la fiche latérale, la dernière
+            colonne (Action) était rognée. */}
+        <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="border-b border-slate-200 table-head text-xs uppercase tracking-wide text-slate-700">
             <tr>
@@ -1628,11 +1419,11 @@ export default async function PersonsListPage({
                 </>
               ) : isStaffOnly ? (
                 <>
-                  <th className="px-4 py-3 text-start">{t('table.type')}</th>
-                  <th className="px-4 py-3 text-start">{t('table.contact')}</th>
-                  <th className="px-4 py-3 text-start">{t('table.dayStatus')}</th>
-                  <th className="px-4 py-3 text-start">{t('table.contract')}</th>
-                  <th className="px-4 py-3 text-start">{t('table.hrFile')}</th>
+                  <th className="px-2 py-3 text-start">{t('table.type')}</th>
+                  <th className="px-2 py-3 text-start">{t('table.contact')}</th>
+                  <th className="px-2 py-3 text-start">{t('table.dayStatus')}</th>
+                  <th className="px-2 py-3 text-start">{t('table.contract')}</th>
+                  <th className="px-2 py-3 text-start">{t('table.hrFile')}</th>
                 </>
               ) : (
                 <>
@@ -1811,26 +1602,27 @@ export default async function PersonsListPage({
                       const x = staffExtras.get(p.id);
                       return (
                         <>
-                          <td className="px-4 py-3">
-                            <TypeBadge type={p.type} />
-                            {p.serviceRef && (
-                              <span className="ms-1.5 rounded bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700">
-                                {locale === 'ar' ? p.serviceRef.labelAr : p.serviceRef.labelFr}
-                              </span>
-                            )}
+                          {/* Le type « STAFF » n'apprend rien ici : seul le service
+                              distingue un agent d'un autre. */}
+                          <td className="px-2 py-3 text-xs font-medium text-amber-700">
+                            {p.serviceRef
+                              ? locale === 'ar'
+                                ? p.serviceRef.labelAr
+                                : p.serviceRef.labelFr
+                              : '—'}
                           </td>
-                          <td className="px-4 py-3 text-xs text-slate-600">
+                          <td className="max-w-[12rem] truncate px-2 py-3 text-xs text-slate-600">
                             {contacts.email ?? contacts.phone ?? '—'}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-2 py-3">
                             <DayBadge status={x?.day ?? 'NOT_RECORDED'} t={tStaff} />
                           </td>
-                          <td className="px-4 py-3 text-xs">
+                          <td className="px-2 py-3 text-xs">
                             <span className={x?.contract.urgent ? 'font-medium text-red-700' : 'text-slate-600'}>
                               {x?.contract.label ?? '—'}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-xs">
+                          <td className="px-2 py-3 text-xs">
                             {x ? (
                               <span
                                 className={`rounded px-1.5 py-0.5 font-medium ${
@@ -1869,7 +1661,7 @@ export default async function PersonsListPage({
                   <td className="px-4 py-3 text-end">
                     <Link
                       href={`${baseHref}/${p.id}`}
-                      className="hover:text-brand-700 text-xs text-slate-500"
+                      className="inline-flex whitespace-nowrap rounded-lg border border-brand-300 bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand-700 hover:bg-brand-100"
                     >
                       {t('actions.view')}
                     </Link>
@@ -1886,6 +1678,7 @@ export default async function PersonsListPage({
             )}
           </tbody>
         </table>
+        </div>
         <Pagination page={page} totalPages={totalPages} hrefFor={(p) => qs({ page: String(p) })} />
       </div>
 

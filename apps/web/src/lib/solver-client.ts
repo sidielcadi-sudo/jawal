@@ -132,6 +132,13 @@ export type ClassConstraint = {
   min_hours_per_day?: number | null;
 };
 
+/** Un (prof × jour × créneau) déjà occupé par une classe qu'on ne régénère pas. */
+export type BusyTeacherSlot = {
+  teacher_id: string;
+  day: DayKey;
+  slot_id: string;
+};
+
 export type SolverMultiRequest = {
   class_ids: string[];
   slots: SolverSlot[];
@@ -145,6 +152,7 @@ export type SolverMultiRequest = {
   engine?: SolverEngine;
   forbidden_class_slots?: ForbiddenClassSlot[];
   class_constraints?: ClassConstraint[];
+  busy_teacher_slots?: BusyTeacherSlot[];
 };
 
 export type SolverMultiPlaced = SolverPlacedEntry & {

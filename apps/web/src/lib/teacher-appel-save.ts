@@ -8,6 +8,7 @@ import { getOrCreateAppelSession, teacherOwnsEntry } from '@/lib/teacher-attenda
 import { notifyAbsentees } from '@/lib/attendance-notify';
 import { notifyCarnetEntries } from '@/lib/carnet-notify';
 import { categoryOf } from '@/lib/attendance-category';
+import { recordPresenceFromAppel } from '@/lib/staff-presence-from-appel';
 
 type Tx = Prisma.TransactionClient;
 
@@ -231,6 +232,9 @@ export async function saveTeacherAppel(
         payload.date,
       );
       if (!sess) throw new Error('Séance non autorisée.');
+      // Paramétrage : l'appel fait dès l'arrivée en classe vaut pointage de
+      // présence. Sans effet si le réglage est désactivé.
+      await recordPresenceFromAppel(tx, { tenantId, personId: teacherId, date: payload.date, userId });
       const teacher = await tx.person.findUnique({
         where: { id: teacherId },
         select: { firstName: true, lastName: true },

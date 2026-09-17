@@ -76,7 +76,8 @@ function matchesCol(r: RecordLike, col: BoardCol): boolean {
     case 'retards':
       return r.status === 'LATE';
     case 'exclCours':
-      return r.exclusion;
+      // Compté depuis le carnet de correspondance (cf. loadDailyBoard).
+      return false;
     case 'incidents':
       return r.punishment;
     case 'infirmerie':
@@ -97,7 +98,18 @@ function matchesCol(r: RecordLike, col: BoardCol): boolean {
  */
 export async function loadDailyBoard(
   tx: Tx,
-  { date, classId, studentId }: { date: string; classId?: string | null; studentId?: string | null },
+  {
+    date,
+    classId,
+    studentId,
+    classIds,
+  }: {
+    date: string;
+    classId?: string | null;
+    studentId?: string | null;
+    /** Périmètre d'un cycle : ses classes. Ignoré si une classe ou un élève est choisi. */
+    classIds?: string[] | null;
+  },
 ): Promise<DailyBoard> {
   const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
 
@@ -121,6 +133,8 @@ export async function loadDailyBoard(
     scopeClassIds = scs.map((s) => s.classId);
   } else if (classId) {
     scopeClassIds = [classId];
+  } else if (classIds) {
+    scopeClassIds = classIds;
   }
   const classWhere = scopeClassIds ? { classId: { in: scopeClassIds } } : {};
 
@@ -162,6 +176,7 @@ export async function loadDailyBoard(
     tx.attendanceSession.findMany({
       where: { date: dateObj, ...classWhere },
       select: {
+        id: true,
         classId: true,
         periodLabel: true,
         finalizedAt: true,
@@ -233,6 +248,30 @@ export async function loadDailyBoard(
     return { ...rk, counts };
   });
 
+  // Exclusions : signalées dans le carnet de correspondance, plus à l'appel.
+  // Rattachées au créneau de la séance d'origine, sinon à celui de l'heure
+  // de saisie ; à défaut, elles ne comptent qu'au total du jour.
+  const exclusions = await tx.carnetEntry.findMany({
+    where: {
+      type: 'EXCLUSION',
+      occurredAt: { gte: dateObj, lt: nextDay },
+      ...(studentId ? { studentId } : {}),
+      ...(scopeClassIds ? { classId: { in: scopeClassIds } } : {}),
+    },
+    select: { occurredAt: true, attendanceSessionId: true },
+  });
+  const periodBySession = new Map(sessions.map((s) => [s.id, s.periodLabel ?? '']));
+  for (const ex of exclusions) {
+    const hhmm = ex.occurredAt.toISOString().slice(11, 16);
+    const label =
+      (ex.attendanceSessionId ? periodBySession.get(ex.attendanceSessionId) : '') ||
+      rows.find((r) => r.startTime <= hhmm && hhmm < r.endTime)?.periodLabel ||
+      '';
+    const row = rows.find((r) => r.periodLabel === label);
+    if (row) row.counts.exclCours += 1;
+    totals.exclCours += 1;
+  }
+
   return { rows, totals, convocations };
 }
 
@@ -262,12 +301,14 @@ export async function loadSlotDetail(
     date,
     classId,
     studentId,
+    classIds,
     periodLabel,
     col,
   }: {
     date: string;
     classId?: string | null;
     studentId?: string | null;
+    classIds?: string[] | null;
     periodLabel: string;
     col: BoardCol;
   },
@@ -278,7 +319,11 @@ export async function loadSlotDetail(
   const dow = dowOf(date);
 
   const sessions = await tx.attendanceSession.findMany({
-    where: { date: dateObj, periodLabel, ...(classId ? { classId } : {}) },
+    where: {
+      date: dateObj,
+      periodLabel,
+      ...(classId ? { classId } : classIds ? { classId: { in: classIds } } : {}),
+    },
     select: {
       classId: true,
       class: { select: { name: true, nameAr: true } },
@@ -374,8 +419,15 @@ export async function loadMissingAppels(
     date,
     classId,
     studentId,
+    classIds,
     periodLabel,
-  }: { date: string; classId?: string | null; studentId?: string | null; periodLabel: string },
+  }: {
+    date: string;
+    classId?: string | null;
+    studentId?: string | null;
+    classIds?: string[] | null;
+    periodLabel: string;
+  },
 ): Promise<MissingAppelRow[]> {
   const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
   if (!year) return [];
@@ -392,6 +444,8 @@ export async function loadMissingAppels(
     scopeClassIds = scs.map((s) => s.classId);
   } else if (classId) {
     scopeClassIds = [classId];
+  } else if (classIds) {
+    scopeClassIds = classIds;
   }
 
   const entries = await tx.timetableEntry.findMany({
@@ -454,8 +508,11 @@ export async function loadMissingAppels(
  */
 export async function latestAppelDate(tx: Tx): Promise<string | null> {
   const today = parseDateUTC(new Date().toISOString().slice(0, 10));
+  // Dans l'année active seulement : ouvrir le tableau sur un appel de
+  // l'exercice précédent afficherait des chiffres d'une autre année.
+  const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
   const last = await tx.attendanceSession.findFirst({
-    where: { date: { lte: today } },
+    where: { date: { lte: today }, ...(year ? { class: { academicYearId: year.id } } : {}) },
     orderBy: { date: 'desc' },
     select: { date: true },
   });

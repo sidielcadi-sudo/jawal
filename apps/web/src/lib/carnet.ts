@@ -50,8 +50,14 @@ export async function loadStudentCarnet(
   });
 
   const [entriesRaw, recordsRaw] = await Promise.all([
+    // Année active seulement, comme les événements dérivés des appels : un
+      // carnet qui remonte aux exercices clos noie l'année en cours.
     tx.carnetEntry.findMany({
-      where: { studentId, ...(opts?.forParents ? { visibleToParents: true } : {}) },
+      where: {
+        studentId,
+        ...(opts?.forParents ? { visibleToParents: true } : {}),
+        ...(year ? { occurredAt: { gte: year.startDate, lte: year.endDate } } : {}),
+      },
       orderBy: { occurredAt: 'desc' },
     }),
     year

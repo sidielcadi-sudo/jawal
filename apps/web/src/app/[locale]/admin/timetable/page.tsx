@@ -32,6 +32,7 @@ export default async function TimetableDashboardPage({
 
   const session = (await auth())!;
   const t = await getTranslations('admin.timetableDashboard');
+  const tNav = await getTranslations('admin.nav');
 
   const { years, year, isArchive, kpis, subjectCoverage, cycles, cycle } = await withTenant(
     session.user.tenantId,
@@ -75,6 +76,15 @@ export default async function TimetableDashboardPage({
 
   return (
     <div className="px-3 py-3">
+      {/* L'emploi du temps s'ouvre depuis la page Inscriptions : le fil
+          d'Ariane y ramène. */}
+      <nav className="mb-2 text-xs text-slate-500">
+        <Link href={`/${locale}/admin/enrollments`} className="hover:text-brand-700">
+          {tNav('enrollments')}
+        </Link>
+        <span className="mx-1.5">›</span>
+        <span>{t('title')}</span>
+      </nav>
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
         <div>
           <h1 className="text-base font-bold text-slate-900">{t('title')}</h1>

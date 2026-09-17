@@ -22,8 +22,11 @@ export default async function JustificationsQueuePage({
   const filterStatus = (sp.status ?? 'PENDING') as 'PENDING' | 'APPROVED' | 'REJECTED' | 'ALL';
 
   const items = await withTenant(session.user.tenantId, async (tx) => {
+    // Justificatifs de l'année active : ceux d'un exercice clos ne sont plus à traiter.
+    const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
+    const inYear = { attendanceRecord: { session: { class: { academicYearId: year?.id ?? '' } } } };
     const rows = await tx.absenceJustification.findMany({
-      where: filterStatus === 'ALL' ? {} : { status: filterStatus },
+      where: { ...(filterStatus === 'ALL' ? {} : { status: filterStatus }), ...inYear },
       include: {
         attendanceRecord: {
           include: {
@@ -44,11 +47,15 @@ export default async function JustificationsQueuePage({
     return rows;
   });
 
-  const counts = await withTenant(session.user.tenantId, async (tx) => ({
-    pending: await tx.absenceJustification.count({ where: { status: 'PENDING' } }),
-    approved: await tx.absenceJustification.count({ where: { status: 'APPROVED' } }),
-    rejected: await tx.absenceJustification.count({ where: { status: 'REJECTED' } }),
-  }));
+  const counts = await withTenant(session.user.tenantId, async (tx) => {
+    const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
+    const inYear = { attendanceRecord: { session: { class: { academicYearId: year?.id ?? '' } } } };
+    return {
+      pending: await tx.absenceJustification.count({ where: { status: 'PENDING', ...inYear } }),
+      approved: await tx.absenceJustification.count({ where: { status: 'APPROVED', ...inYear } }),
+      rejected: await tx.absenceJustification.count({ where: { status: 'REJECTED', ...inYear } }),
+    };
+  });
 
   return (
     <div className="px-3 py-3">

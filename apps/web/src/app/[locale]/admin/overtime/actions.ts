@@ -5,11 +5,14 @@ import { auth } from '@/lib/auth';
 import { requirePermission } from '@/lib/auth/rbac';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
+import {
+  hoursBetween,
+  isOvertimeReason,
+  isReplacementReason,
+  sourceOfReason,
+} from '@/lib/overtime-hse';
 
 type Result = { ok: true } | { ok: false; error: string } | { ok: true; created: number };
-
-const SOURCES = ['TEACHING_OVER_QUOTA', 'SUBSTITUTION', 'PARASCOLAIRE', 'AFTER_HOURS', 'EXAM_SUPERVISION', 'SPECIAL_EVENT'] as const;
-type Source = (typeof SOURCES)[number];
 
 const str = (fd: FormData, k: string) => {
   const v = fd.get(k);
@@ -27,31 +30,109 @@ async function guard() {
   return session;
 }
 
+/** Lecture et contrôle d'une déclaration, communs à la création et à la modification. */
+function readDeclaration(fd: FormData) {
+  const personId = str(fd, 'personId');
+  const date = str(fd, 'date');
+  const startTime = str(fd, 'startTime');
+  const endTime = str(fd, 'endTime');
+  const reason = str(fd, 'reason');
+  const classId = str(fd, 'classId') ?? null;
+  const replacedPersonId = str(fd, 'replacedPersonId') ?? null;
+
+  if (!personId || !date || !startTime || !endTime || !reason) {
+    return { ok: false as const, error: 'Champs requis manquants.' };
+  }
+  if (!isOvertimeReason(reason)) return { ok: false as const, error: 'Motif inconnu.' };
+  const hours = hoursBetween(startTime, endTime);
+  if (hours === null) return { ok: false as const, error: 'Horaire incohérent : la fin doit suivre le début.' };
+  if (replacedPersonId && replacedPersonId === personId) {
+    return { ok: false as const, error: 'Un enseignant ne peut pas se remplacer lui-même.' };
+  }
+  return {
+    ok: true as const,
+    data: {
+      personId,
+      date: new Date(`${date}T00:00:00.000Z`),
+      hours,
+      source: sourceOfReason(reason),
+      reason,
+      classId,
+      startTime,
+      endTime,
+      // Le professeur remplacé n'a de sens que pour un remplacement.
+      replacedPersonId: isReplacementReason(reason) ? replacedPersonId : null,
+    },
+  };
+}
+
+/**
+ * Déclaration manuelle d'heures supplémentaires.
+ *
+ * La durée se déduit de l'horaire (créneau de l'emploi du temps ou horaire
+ * libre) plutôt que d'une saisie à part : les deux ne peuvent pas diverger. La
+ * source comptable se déduit du motif.
+ */
 export async function createOvertimeAction(fd: FormData): Promise<Result> {
   const s = await guard();
   if (!s) return { ok: false, error: 'Non autorisé' };
-  const personId = str(fd, 'personId');
-  const date = str(fd, 'date');
-  const hours = Number(str(fd, 'hours'));
-  const source = str(fd, 'source') as Source | undefined;
-  if (!personId || !date || !hours || hours <= 0 || !source || !SOURCES.includes(source))
-    return { ok: false, error: 'Champs requis manquants.' };
-  await withTenant(s.user.tenantId, (tx) =>
-    tx.overtimeEntry.create({
-      data: {
-        tenantId: s.user.tenantId,
-        personId,
-        date: new Date(`${date}T00:00:00.000Z`),
-        hours,
-        source,
-        note: str(fd, 'note') ?? null,
-        status: 'DECLARED',
-        createdByUserId: s.user.id,
-      },
-    }),
-  );
+  const parsed = readDeclaration(fd);
+  if (!parsed.ok) return parsed;
+
+  await withTenant(s.user.tenantId, async (tx) => {
+    const created = await tx.overtimeEntry.create({
+      data: { tenantId: s.user.tenantId, ...parsed.data, status: 'DECLARED', createdByUserId: s.user.id },
+    });
+    await logAudit(tx, {
+      tenantId: s.user.tenantId,
+      userId: s.user.id,
+      action: 'create',
+      entityType: 'OvertimeEntry',
+      entityId: created.id,
+      after: { personId: parsed.data.personId, hours: parsed.data.hours, reason: parsed.data.reason },
+    });
+  });
   revalidatePath('/admin/overtime');
   return { ok: true };
+}
+
+/**
+ * Modifie une déclaration soumise, tant qu'elle n'est pas encore validée par
+ * les RH. Au-delà, elle est engagée dans le circuit : on la rejette et on en
+ * déclare une nouvelle.
+ */
+export async function updateOvertimeAction(id: string, fd: FormData): Promise<Result> {
+  const s = await guard();
+  if (!s) return { ok: false, error: 'Non autorisé' };
+  const parsed = readDeclaration(fd);
+  if (!parsed.ok) return parsed;
+  const tenantId = s.user.tenantId;
+  try {
+    await withTenant(tenantId, async (tx) => {
+      const current = await tx.overtimeEntry.findUnique({
+        where: { id },
+        select: { status: true, personId: true, hours: true, reason: true, date: true },
+      });
+      if (!current) throw new Error('Déclaration introuvable.');
+      if (current.status !== 'DECLARED') {
+        throw new Error('Déclaration déjà validée : elle ne peut plus être modifiée.');
+      }
+      await tx.overtimeEntry.update({ where: { id }, data: parsed.data });
+      await logAudit(tx, {
+        tenantId,
+        userId: s.user.id,
+        action: 'update',
+        entityType: 'OvertimeEntry',
+        entityId: id,
+        before: { personId: current.personId, hours: current.hours, reason: current.reason },
+        after: { personId: parsed.data.personId, hours: parsed.data.hours, reason: parsed.data.reason },
+      });
+    });
+    revalidatePath('/admin/overtime');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
+  }
 }
 
 /** Génère les heures sup des remplacements (overrides SUBSTITUTION non encore enregistrés). */
@@ -81,6 +162,12 @@ export async function generateFromSubstitutionsAction(): Promise<Result> {
           source: 'SUBSTITUTION',
           sourceRef: o.id,
           note: 'Remplacement',
+          // L'horaire, la classe et le remplacé sont connus : on les garde,
+          // l'historique se lit alors comme une déclaration manuelle.
+          startTime: o.entry.slot.startTime,
+          endTime: o.entry.slot.endTime,
+          classId: o.entry.classId,
+          replacedPersonId: o.entry.teacherId,
           status: 'DECLARED',
           createdByUserId: s.user.id,
         },

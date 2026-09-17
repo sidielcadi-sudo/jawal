@@ -1,5 +1,6 @@
 'use server';
 
+import { leaveDays, slotInPart, type DayPart } from '@/lib/leave-duration';
 import { revalidatePath } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { requirePermission, requireRoleCode } from '@/lib/auth/rbac';
@@ -83,7 +84,16 @@ export async function createLeaveRequestAction(fd: FormData): Promise<Result> {
   const startDate = new Date(`${start}T00:00:00.000Z`);
   const endDate = new Date(`${end}T00:00:00.000Z`);
   if (endDate < startDate) return { ok: false, error: 'La date de fin précède la date de début.' };
-  const days = workingDaysBetween(startDate, endDate);
+  // Portée dans la journée : entière, matin, après-midi ou n séances.
+  const rawPart = str(fd, 'dayPart');
+  const dayPart: DayPart = ['FULL', 'AM', 'PM', 'SESSIONS'].includes(rawPart ?? '')
+    ? (rawPart as DayPart)
+    : 'FULL';
+  const sessionCount = dayPart === 'SESSIONS' ? Number(str(fd, 'sessionCount') ?? 0) || 0 : null;
+  if (dayPart === 'SESSIONS' && (sessionCount ?? 0) <= 0) {
+    return { ok: false, error: 'Indiquez le nombre de séances.' };
+  }
+  const days = leaveDays(workingDaysBetween(startDate, endDate), dayPart, sessionCount);
 
   try {
     const created = await withTenant(tenantId, async (tx) => {
@@ -105,6 +115,8 @@ export async function createLeaveRequestAction(fd: FormData): Promise<Result> {
           startDate,
           endDate,
           days,
+          dayPart,
+          sessionCount,
           reason: str(fd, 'reason') ?? null,
           status: 'PENDING',
         },
@@ -161,6 +173,15 @@ export async function reviewLeaveRequestAction(
           code: req.leaveType.code,
           typeLabel: req.leaveType.labelFr,
         });
+        // …et marque les séances concernées comme à pourvoir dans l'EDT.
+        await markAbsentSessions(tx, tenantId, s.user.id, {
+          personId: req.personId,
+          startDate: req.startDate,
+          endDate: req.endDate,
+          dayPart: req.dayPart as DayPart,
+          sessionCount: req.sessionCount,
+          typeLabel: req.leaveType.labelFr,
+        });
       }
       // Notifie l'employé de la décision.
       const tenant = await tx.tenant.findFirst({ select: { localeDefault: true } });
@@ -181,6 +202,76 @@ export async function reviewLeaveRequestAction(
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
+  }
+}
+
+/** Jour de la semaine d'une date UTC, au format de TimetableEntry. */
+const DOW = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
+
+/**
+ * Marque les séances du professeur pendant son absence approuvée : un
+ * TimetableOverride sans remplaçant, en attente de décision, que l’écran des
+ * remplacements présente comme « à pourvoir ». Une séance déjà décidée
+ * (remplaçant affecté, cours annulé) n'est jamais écrasée, et rien n'est
+ * visible des familles tant que la direction n’a pas approuvé.
+ */
+async function markAbsentSessions(
+  tx: Prisma.TransactionClient,
+  tenantId: string,
+  userId: string,
+  leave: {
+    personId: string;
+    startDate: Date;
+    endDate: Date;
+    dayPart: DayPart;
+    sessionCount: number | null;
+    typeLabel: string;
+  },
+): Promise<void> {
+  const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
+  if (!year) return;
+  const entries = await tx.timetableEntry.findMany({
+    where: { teacherId: leave.personId, academicYearId: year.id },
+    select: { id: true, dayOfWeek: true, slot: { select: { startTime: true, order: true } } },
+  });
+  if (entries.length === 0) return;
+
+  let remaining = leave.dayPart === 'SESSIONS' ? Math.max(0, leave.sessionCount ?? 0) : Number.POSITIVE_INFINITY;
+  const d = new Date(
+    Date.UTC(leave.startDate.getUTCFullYear(), leave.startDate.getUTCMonth(), leave.startDate.getUTCDate()),
+  );
+  const last = new Date(
+    Date.UTC(leave.endDate.getUTCFullYear(), leave.endDate.getUTCMonth(), leave.endDate.getUTCDate()),
+  );
+  while (d <= last && remaining > 0) {
+    const code = DOW[d.getUTCDay()];
+    const daySessions = entries
+      .filter((e) => e.dayOfWeek === code && slotInPart(e.slot.startTime, leave.dayPart))
+      .sort((a, b) => a.slot.order - b.slot.order);
+    for (const e of daySessions) {
+      if (remaining <= 0) break;
+      const date = new Date(d);
+      const existing = await tx.timetableOverride.findUnique({
+        where: { entryId_date: { entryId: e.id, date } },
+        select: { id: true },
+      });
+      if (!existing) {
+        await tx.timetableOverride.create({
+          data: {
+            tenantId,
+            entryId: e.id,
+            date,
+            kind: 'SUBSTITUTION',
+            substituteTeacherId: null,
+            reason: `Absence : ${leave.typeLabel}`,
+            approvalStatus: 'PENDING',
+            createdByUserId: userId,
+          },
+        });
+      }
+      remaining -= 1;
+    }
+    d.setUTCDate(d.getUTCDate() + 1);
   }
 }
 

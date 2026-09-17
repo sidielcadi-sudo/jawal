@@ -3,7 +3,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { can } from '@/lib/auth/rbac';
-import { SeedTypesButton, CreateRequestForm, RequestRowActions } from './leave-client';
+import { SeedTypesButton, LeaveHeader, RequestRowActions } from './leave-client';
 import { personDisplayName } from '@/lib/localized-name';
 import { JustificationUpload } from '@/components/leave/justification-upload';
 
@@ -29,6 +29,10 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
   };
 
   const data = await withTenant(session.user.tenantId, async (tx) => {
+    const activeYear = await tx.academicYear.findFirst({
+      where: { active: true },
+      select: { startDate: true, endDate: true },
+    });
     const [types, staff, requests] = await Promise.all([
       tx.leaveType.findMany({ where: { active: true }, orderBy: { order: 'asc' } }),
       tx.person.findMany({
@@ -37,6 +41,9 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
         select: { id: true, firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, hireDate: true },
       }),
       tx.leaveRequest.findMany({
+        // Année active seulement : les congés des exercices clos encombrent
+        // la liste et faussent les compteurs.
+        where: activeYear ? { startDate: { gte: activeYear.startDate, lte: activeYear.endDate } } : {},
         orderBy: { createdAt: 'desc' },
         take: 100,
         include: { person: { select: { firstName: true, lastName: true, firstNameAr: true, lastNameAr: true, type: true } }, leaveType: { select: { labelFr: true, labelAr: true } } },
@@ -47,14 +54,13 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
     // Absences du personnel sur l'année scolaire en cours : on compte les
     // journées pointées ABSENT. EXCUSED et LEAVE sont exclus — un congé
     // approuvé n'est pas une absence, il est déjà suivi plus haut.
-    const year = await tx.academicYear.findFirst({
-      where: { active: true },
-      select: { startDate: true, endDate: true },
-    });
+    const year = activeYear;
     const absenceByPerson = await tx.staffAttendance.groupBy({
       by: ['personId', 'status'],
       where: {
-        status: { in: ['ABSENT', 'LATE'] },
+        // Les congés approuvés comptent aussi : ils viennent des demandes de
+        // cette page, et les voir absents d'ici n'avait pas de sens.
+        status: { in: ['ABSENT', 'LATE', 'LEAVE'] },
         ...(year ? { date: { gte: year.startDate, lte: year.endDate } } : {}),
       },
       _count: { _all: true },
@@ -86,18 +92,15 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
 
   return (
     <div className="px-3 py-3">
-      <header className="mb-4 flex flex-wrap items-center justify-between gap-3 overflow-hidden -mx-3 rounded-2xl border border-brand-200 title-band shadow-sm px-4 py-2.5">
-        <div>
-          <h1 className="text-base font-bold text-slate-900">🏖️ {t('title')}</h1>
-          <p className="mt-0.5 text-sm text-slate-600">{t('subtitle')}</p>
-        </div>
-        <Link
-          href={`/${locale}/admin/leave/rapport`}
-          className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
-        >
-          📊 {t('report.title')}
-        </Link>
-      </header>
+      <LeaveHeader
+        title={t('title')}
+        subtitle={t('subtitle')}
+        reportHref={`/${locale}/admin/leave/rapport`}
+        reportLabel={t('report.title')}
+        staff={staff.map((s) => ({ id: s.id, label: personDisplayName(locale, s) }))}
+        types={types.map((x) => ({ id: x.id, label: typeLabel(x.labelFr, x.labelAr) }))}
+        canCreate={canManage}
+      />
 
       {types.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-300 p-8 text-center">
@@ -106,15 +109,6 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
         </div>
       ) : (
         <>
-          {/* Demande */}
-          <section className="mb-4 rounded-2xl border border-slate-200 bg-white p-4">
-            <h2 className="mb-2 text-sm font-semibold text-slate-900">{t('newRequest')}</h2>
-            <CreateRequestForm
-              staff={staff.map((s) => ({ id: s.id, label: personDisplayName(locale, s) }))}
-              types={types.map((t) => ({ id: t.id, label: typeLabel(t.labelFr, t.labelAr) }))}
-            />
-          </section>
-
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             {/* Demandes */}
             <section className="lg:col-span-2">
@@ -140,7 +134,16 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
                         <td className="px-3 py-2.5 text-xs text-slate-500">
                           {new Date(r.startDate).toLocaleDateString(locale)} → {new Date(r.endDate).toLocaleDateString(locale)}
                         </td>
-                        <td className="px-3 py-2.5 text-end tabular-nums text-slate-600">{r.days}</td>
+                        <td className="px-3 py-2.5 text-end tabular-nums text-slate-600">
+                          {r.days}
+                          {r.dayPart !== 'FULL' && (
+                            <span className="ms-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">
+                              {r.dayPart === 'SESSIONS'
+                                ? t('sessionsShort', { count: r.sessionCount ?? 0 })
+                                : t(`dayParts.${r.dayPart}`)}
+                            </span>
+                          )}
+                        </td>
                         <td className="px-3 py-2.5 text-center">
                           <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${STATUS_BADGE[r.status]}`}>{t(`statusLabel.${r.status}`)}</span>
                         </td>
