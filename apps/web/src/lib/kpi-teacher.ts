@@ -185,8 +185,10 @@ export async function computeClassProgression(
   const year = await tx.academicYear.findFirst({ where: { active: true }, select: { id: true } });
   if (!year) return { periods: [], rows: [] };
 
+  // Trimestres seulement : une session d'examen (évaluation diagnostique)
+  // n'est pas une étape de progression.
   const periods = await tx.period.findMany({
-    where: { academicYearId: year.id },
+    where: { academicYearId: year.id, kind: { not: 'SESSION' } },
     orderBy: { startDate: 'asc' },
     select: { id: true, label: true, labelAr: true },
   });

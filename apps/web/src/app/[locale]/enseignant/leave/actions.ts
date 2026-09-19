@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { logAudit } from '@/lib/audit';
 import { withTenant } from '@/lib/db';
 import { workingDaysBetween } from '@/lib/leave';
+import { leaveDays, type DayPart } from '@/lib/leave-duration';
 import { getTeacherPersonId } from '@/lib/teacher';
 import { alertTeacherAbsence } from '@/lib/leave-alerts';
 
@@ -32,7 +33,15 @@ export async function createOwnLeaveRequestAction(fd: FormData): Promise<Result>
   const startDate = new Date(`${start}T00:00:00.000Z`);
   const endDate = new Date(`${end}T00:00:00.000Z`);
   if (endDate < startDate) return { ok: false, error: 'La date de fin précède la date de début.' };
-  const days = workingDaysBetween(startDate, endDate);
+  const rawPart = str(fd, 'dayPart');
+  const dayPart: DayPart = ['FULL', 'AM', 'PM', 'SESSIONS'].includes(rawPart ?? '')
+    ? (rawPart as DayPart)
+    : 'FULL';
+  const sessionCount = dayPart === 'SESSIONS' ? Number(str(fd, 'sessionCount') ?? 0) || 0 : null;
+  if (dayPart === 'SESSIONS' && (sessionCount ?? 0) <= 0) {
+    return { ok: false, error: 'Indiquez le nombre de séances.' };
+  }
+  const days = leaveDays(workingDaysBetween(startDate, endDate), dayPart, sessionCount);
 
   try {
     const created = await withTenant(tenantId, async (tx) => {
@@ -57,6 +66,8 @@ export async function createOwnLeaveRequestAction(fd: FormData): Promise<Result>
           startDate,
           endDate,
           days,
+          dayPart,
+          sessionCount,
           reason: str(fd, 'reason') ?? null,
           status: 'PENDING',
         },

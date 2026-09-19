@@ -76,18 +76,22 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
   });
 
   const { types, staff, requests, annual, takenByPerson, absenceByPerson } = data;
-  const absMap = new Map<string, { absent: number; late: number }>();
+  // Trois compteurs distincts : un jour de congé approuvé n'est ni une
+  // absence ni un retard (le « else » d'origine le comptait en retard).
+  const absMap = new Map<string, { absent: number; late: number; leave: number }>();
   for (const g of absenceByPerson) {
-    const cur = absMap.get(g.personId) ?? { absent: 0, late: 0 };
+    const cur = absMap.get(g.personId) ?? { absent: 0, late: 0, leave: 0 };
     if (g.status === 'ABSENT') cur.absent += g._count._all;
-    else cur.late += g._count._all;
+    else if (g.status === 'LATE') cur.late += g._count._all;
+    else if (g.status === 'LEAVE') cur.leave += g._count._all;
     absMap.set(g.personId, cur);
   }
   // Le plus absent en tête : c'est ce que le bloc sert à repérer.
   const absRows = staff
-    .map((sp) => ({ person: sp, ...(absMap.get(sp.id) ?? { absent: 0, late: 0 }) }))
-    .sort((a, b) => b.absent - a.absent || b.late - a.late);
-  const totalAbsent = absRows.reduce((n, r) => n + r.absent, 0);
+    .map((sp) => ({ person: sp, ...(absMap.get(sp.id) ?? { absent: 0, late: 0, leave: 0 }) }))
+    .filter((r) => r.absent + r.late + r.leave > 0)
+    .sort((a, b) => b.absent + b.leave - (a.absent + a.leave) || b.late - a.late);
+  const totalAbsent = absRows.reduce((n, r) => n + r.absent + r.leave, 0);
   const typeLabel = (fr: string, ar: string) => (locale === 'ar' ? ar : fr);
 
   return (
@@ -200,6 +204,11 @@ export default async function LeavePage({ params }: { params: Promise<{ locale: 
                         >
                           {r.absent} {t('daysUnit')}
                         </span>
+                        {r.leave > 0 && (
+                          <span className="rounded bg-sky-100 px-1.5 py-0.5 text-[10px] font-medium text-sky-800">
+                            {t('leaveCount', { count: r.leave })}
+                          </span>
+                        )}
                         {r.late > 0 && (
                           <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-800">
                             {t('lateCount', { count: r.late })}

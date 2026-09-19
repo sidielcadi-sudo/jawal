@@ -106,6 +106,53 @@ export async function coveredEntriesOn(
   return rows;
 }
 
+/** Séance où le titulaire est absent, placée dans sa semaine type. */
+export type AbsentCell = {
+  id: string;
+  date: string;
+  dayOfWeek: string;
+  slotId: string;
+  kind: 'SUBSTITUTION' | 'CANCELLED';
+  approval: 'PENDING' | 'APPROVED' | 'REFUSED';
+  substituteName: string | null;
+};
+
+/**
+ * Séances des 14 prochains jours où l'enseignant est absent : absence
+ * approuvée (séance à pourvoir), remplaçant affecté ou cours annulé. Vue du
+ * titulaire : il sait quelles séances il ne fera pas, et par qui elles sont
+ * assurées.
+ */
+export async function absentCellsForTeacher(
+  tx: Tx,
+  teacherId: string,
+  days = 14,
+): Promise<AbsentCell[]> {
+  const rows = await tx.timetableOverride.findMany({
+    where: { date: window(days), entry: { teacherId } },
+    select: {
+      id: true,
+      date: true,
+      kind: true,
+      approvalStatus: true,
+      entry: { select: { dayOfWeek: true, slotId: true } },
+      substituteTeacher: { select: { firstName: true, lastName: true } },
+    },
+    orderBy: { date: 'asc' },
+  });
+  return rows.map((o) => ({
+    id: o.id,
+    date: o.date.toISOString().slice(0, 10),
+    dayOfWeek: o.entry.dayOfWeek,
+    slotId: o.entry.slotId,
+    kind: o.kind === 'CANCELLED' ? 'CANCELLED' : 'SUBSTITUTION',
+    approval: o.approvalStatus,
+    substituteName: o.substituteTeacher
+      ? `${o.substituteTeacher.lastName} ${o.substituteTeacher.firstName}`
+      : null,
+  }));
+}
+
 /** Séance couverte par un remplaçant, placée dans SA semaine type. */
 export type CoveringCell = {
   id: string;

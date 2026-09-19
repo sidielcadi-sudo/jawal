@@ -1698,7 +1698,11 @@
       "group": "المجموعة",
       "wholeClass": "القسم كاملًا",
       "addGroup": "مجموعة",
-      "covering": "تعويض"
+      "covering": "تعويض",
+      "absentMark": "غائب",
+      "absentCancelled": "حصة ملغاة",
+      "absentBy": "يؤمنها {name}",
+      "absentToCover": "تعويض في انتظار التعيين"
     },
     "classConstraints": {
       "title": "قيود الجدول",
@@ -4928,7 +4932,8 @@
         "AM": "صباحا",
         "PM": "مساء",
         "SESSIONS": "حصص"
-      }
+      },
+      "leaveCount": "{count} يوم عطلة"
     },
     "overtime": {
       "title": "تدبير الساعات الإضافية والمصادقة عليها",
@@ -6705,7 +6710,13 @@
       "substitute": "تعويض",
       "cancelled": "حصة ملغاة",
       "covering": "أنتم تؤمّنون",
-      "absentCovered": "حصتكم"
+      "absentCovered": "حصتكم",
+      "absentMark": "غائب",
+      "absentCancelled": "حصة ملغاة",
+      "absentBy": "يؤمنها {name}",
+      "absentToCover": "تعويض في انتظار التعيين",
+      "coveringTitle": "التعويضات التي تؤمنونها",
+      "absentTitle": "حصصكم التي يتم تعويضكم فيها"
     },
     "classes": {
       "title": "أقسامي",
@@ -6791,6 +6802,14 @@
         "APPROVED": "موافق عليه",
         "REJECTED": "مرفوض",
         "CANCELLED": "ملغى"
+      },
+      "duration": "المدة",
+      "sessionCount": "عدد الحصص",
+      "dayParts": {
+        "FULL": "يوم كامل",
+        "AM": "صباحا",
+        "PM": "مساء",
+        "SESSIONS": "حصص"
       }
     },
     "competences": {

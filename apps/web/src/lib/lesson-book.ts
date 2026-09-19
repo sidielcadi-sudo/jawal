@@ -125,7 +125,7 @@ export async function getTeacherWeekSessions(
   }
 
   const lessons =
-    entries.length > 0
+    entries.length + coveredEntries.length > 0
       ? await tx.lessonEntry.findMany({
           where: { entryId: { in: [...entries, ...coveredEntries].map((e) => e.id) }, date: { in: dateObjs } },
           select: { entryId: true, date: true },
@@ -135,6 +135,22 @@ export async function getTeacherWeekSessions(
 
   const sessions: TeacherSession[] = [];
   for (const day of days) {
+    // Séances assurées en remplacement ce jour-là, avec leur classe.
+    for (const e of coveredEntries) {
+      if (!(coveredByDate.get(day.date) ?? []).includes(e.id)) continue;
+      sessions.push({
+        entryId: e.id,
+        date: day.date,
+        dow: day.dow,
+        slotStart: e.slot.startTime,
+        slotEnd: e.slot.endTime,
+        subject: e.subject?.label ?? null,
+        className: e.class.name,
+        room: e.room?.code ?? null,
+        filled: filled.has(`${e.id}|${day.date}`),
+        substitute: true,
+      });
+    }
     for (const e of entries) {
       if (e.dayOfWeek !== day.dow) continue;
       sessions.push({

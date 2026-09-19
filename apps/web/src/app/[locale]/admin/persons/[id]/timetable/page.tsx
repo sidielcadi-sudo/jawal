@@ -1,4 +1,4 @@
-import { coveringCellsForTeacher } from '@/lib/timetable-overrides';
+import { coveringCellsForTeacher, absentCellsForTeacher } from '@/lib/timetable-overrides';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { setRequestLocale, getTranslations } from 'next-intl/server';
@@ -79,12 +79,18 @@ export default async function TeacherTimetablePage({
     // Remplacements approuvés qu’il assure : absents de la semaine type,
     // puisqu’ils ne valent que pour une date.
     const covering = await coveringCellsForTeacher(tx, id);
+    const absent = await absentCellsForTeacher(tx, id);
 
-    return { teacher, years, yearId, slots, entries, assignments, groupRows, covering };
+    return { teacher, years, yearId, slots, entries, assignments, groupRows, covering, absent };
   });
 
   if (!data) notFound();
-  const { teacher, years, yearId, slots, entries, assignments, groupRows, covering } = data;
+  const { teacher, years, yearId, slots, entries, assignments, groupRows, covering, absent } = data;
+  const absentByKey = new Map<string, (typeof absent)[number][]>();
+  for (const a of absent) {
+    const k = `${a.dayOfWeek}|${a.slotId}`;
+    absentByKey.set(k, [...(absentByKey.get(k) ?? []), a]);
+  }
   const coveringByKey = new Map<string, (typeof covering)[number][]>();
   for (const c of covering) {
     const k = `${c.dayOfWeek}|${c.slotId}`;
@@ -291,6 +297,7 @@ export default async function TeacherTimetablePage({
                     }
                     const e = byKey.get(`${d}|${s.id}`);
                     const covers = coveringByKey.get(`${d}|${s.id}`) ?? [];
+                    const absents = e ? (absentByKey.get(`${d}|${s.id}`) ?? []) : [];
                     return (
                       <td key={d} className="px-2 py-2 align-top">
                         {e ? (
@@ -313,6 +320,23 @@ export default async function TeacherTimetablePage({
                             —
                           </div>
                         ) : null}
+                        {absents.map((a) => (
+                          <div
+                            key={a.id}
+                            className="mt-1 rounded-lg border border-rose-300 bg-rose-50 px-2 py-1.5 text-[11px] leading-tight"
+                          >
+                            <div className="text-[10px] font-semibold uppercase text-rose-700">
+                              {t('absentMark')} · {new Date(`${a.date}T00:00:00Z`).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', timeZone: 'UTC' })}
+                            </div>
+                            <div className="text-slate-600">
+                              {a.kind === 'CANCELLED'
+                                ? t('absentCancelled')
+                                : a.substituteName
+                                  ? t('absentBy', { name: a.substituteName })
+                                  : t('absentToCover')}
+                            </div>
+                          </div>
+                        ))}
                         {covers.map((c) => (
                           <div
                             key={c.id}

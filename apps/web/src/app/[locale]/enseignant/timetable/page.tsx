@@ -2,7 +2,7 @@ import { setRequestLocale, getTranslations } from 'next-intl/server';
 import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { getTeacherPersonId } from '@/lib/teacher';
-import { upcomingOverridesForTeacher, coveringCellsForTeacher } from '@/lib/timetable-overrides';
+import { upcomingOverridesForTeacher, coveringCellsForTeacher, absentCellsForTeacher } from '@/lib/timetable-overrides';
 import { UpcomingOverrides } from '@/components/upcoming-overrides';
 
 const DAYS = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'] as const;
@@ -38,9 +38,16 @@ export default async function TeacherTimetablePage({
     // Les remplacements qu’il assure : ils n’existent pas dans sa semaine
     // type, on les pose dans la case du créneau concerné.
     const covering = teacherId ? await coveringCellsForTeacher(tx, teacherId) : [];
-    return { slots, byCell, count: entries.length, overrides, covering };
+    // Ses propres séances où il sera absent : même logique, autre couleur.
+    const absent = teacherId ? await absentCellsForTeacher(tx, teacherId) : [];
+    return { slots, byCell, count: entries.length, overrides, covering, absent };
   });
 
+  const absentByCell = new Map<string, (typeof data.absent)[number][]>();
+  for (const a of data.absent) {
+    const k = `${a.dayOfWeek}-${a.slotId}`;
+    absentByCell.set(k, [...(absentByCell.get(k) ?? []), a]);
+  }
   const coveringByCell = new Map<string, (typeof data.covering)[number][]>();
   for (const c of data.covering) {
     const k = `${c.dayOfWeek}-${c.slotId}`;
@@ -55,6 +62,8 @@ export default async function TeacherTimetablePage({
       </header>
 
       <UpcomingOverrides
+        coveringTitle={t('coveringTitle')}
+        absentTitle={t('absentTitle')}
         items={data.overrides}
         locale={locale}
         title={t('changesTitle')}
@@ -90,6 +99,7 @@ export default async function TeacherTimetablePage({
                   {DAYS.map((d) => {
                     const e = data.byCell.get(`${d}-${s.id}`);
                     const covers = coveringByCell.get(`${d}-${s.id}`) ?? [];
+                    const absents = e ? (absentByCell.get(`${d}-${s.id}`) ?? []) : [];
                     return (
                       <td key={d} className="border-b border-e border-slate-100 px-1.5 py-1.5 align-top">
                         {e ? (
@@ -103,6 +113,24 @@ export default async function TeacherTimetablePage({
                         ) : covers.length === 0 ? (
                           <span className="text-slate-200">·</span>
                         ) : null}
+                        {/* Séances où il est absent : rose, datées. */}
+                        {absents.map((a) => (
+                          <div
+                            key={a.id}
+                            className="mt-1 rounded-lg border border-rose-300 bg-rose-50 px-2 py-1.5 text-[11px] leading-tight"
+                          >
+                            <div className="text-[10px] font-semibold uppercase text-rose-700">
+                              {t('absentMark')} · {new Date(`${a.date}T00:00:00Z`).toLocaleDateString(locale, { day: '2-digit', month: '2-digit', timeZone: 'UTC' })}
+                            </div>
+                            <div className="text-slate-600">
+                              {a.kind === 'CANCELLED'
+                                ? t('absentCancelled')
+                                : a.substituteName
+                                  ? t('absentBy', { name: a.substituteName })
+                                  : t('absentToCover')}
+                            </div>
+                          </div>
+                        ))}
                         {/* Remplacements assurés : une case datée, distincte du
                             cours ordinaire. */}
                         {covers.map((c) => (

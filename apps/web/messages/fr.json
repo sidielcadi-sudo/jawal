@@ -1698,7 +1698,11 @@
       "group": "Groupe",
       "wholeClass": "Classe entière",
       "addGroup": "un groupe",
-      "covering": "Remplacement"
+      "covering": "Remplacement",
+      "absentMark": "Absent",
+      "absentCancelled": "Cours annulé",
+      "absentBy": "Assuré par {name}",
+      "absentToCover": "Remplacement à pourvoir"
     },
     "classConstraints": {
       "title": "Contraintes EDT",
@@ -4928,7 +4932,8 @@
         "AM": "Matin",
         "PM": "Après-midi",
         "SESSIONS": "Séances"
-      }
+      },
+      "leaveCount": "{count} j de congé"
     },
     "overtime": {
       "title": "Gestion & Validation des Heures Supplémentaires (HSE)",
@@ -6705,7 +6710,13 @@
       "substitute": "Remplacement",
       "cancelled": "Cours annulé",
       "covering": "Vous assurez",
-      "absentCovered": "Votre cours"
+      "absentCovered": "Votre cours",
+      "absentMark": "Absent",
+      "absentCancelled": "Cours annulé",
+      "absentBy": "Assuré par {name}",
+      "absentToCover": "Remplacement à pourvoir",
+      "coveringTitle": "Remplacements que vous assurez",
+      "absentTitle": "Vos cours où vous êtes remplacé"
     },
     "classes": {
       "title": "Mes classes",
@@ -6791,6 +6802,14 @@
         "APPROVED": "Approuvé",
         "REJECTED": "Refusé",
         "CANCELLED": "Annulé"
+      },
+      "duration": "Durée",
+      "sessionCount": "Nombre de séances",
+      "dayParts": {
+        "FULL": "Journée entière",
+        "AM": "Matin",
+        "PM": "Après-midi",
+        "SESSIONS": "Séances"
       }
     },
     "competences": {
