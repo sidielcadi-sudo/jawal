@@ -21,10 +21,10 @@
     "db:migrate": "pnpm --filter @jawal/db prisma:migrate",
     "db:seed": "pnpm --filter @jawal/db seed",
     "db:studio": "pnpm --filter @jawal/db prisma:studio",
-    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
-    "infra:down": "docker compose -f infra/docker-compose.yml down",
-    "infra:logs": "docker compose -f infra/docker-compose.yml logs -f",
-    "infra:reset": "docker compose -f infra/docker-compose.yml down -v && docker compose -f infra/docker-compose.yml up -d",
+    "infra:up": "node scripts/stack-guard.mjs && docker compose -f infra/docker-compose.yml up -d",
+    "infra:down": "node scripts/stack-guard.mjs && docker compose -f infra/docker-compose.yml down",
+    "infra:logs": "node scripts/stack-guard.mjs && docker compose -f infra/docker-compose.yml logs -f",
+    "infra:reset": "node scripts/stack-guard.mjs && docker compose -f infra/docker-compose.yml down -v && docker compose -f infra/docker-compose.yml up -d",
     "docs:pdf": "node docs/guide/build-pdf.mjs"
   },
   "devDependencies": {

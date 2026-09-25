@@ -13,6 +13,8 @@
 #   - Solver       localhost:8001   (OR-Tools FastAPI — génération EDT)
 
 name: jawal-dev
+# Pile unique (noms de projet et de conteneurs figés) : elle se pilote depuis le
+# dépôt de référence jawal, via pnpm infra:up / infra:down (cf. scripts/stack-guard.mjs).
 
 services:
   postgres:
