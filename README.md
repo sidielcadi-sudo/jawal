@@ -9,7 +9,7 @@
 
 - **Node.js** ≥ 22 (voir `.nvmrc`)
 - **pnpm** ≥ 9 (`npm install -g pnpm`)
-- **Docker Desktop** (pour Postgres, Redis, MinIO, Mailpit)
+- **Docker Desktop** (pour Postgres, Redis, Garage, Mailpit)
 
 ### Installation
 
@@ -20,7 +20,7 @@ pnpm install
 # 2. Variables d'environnement
 cp .env.example .env
 
-# 3. Lancer l'infra dev (Postgres + Redis + MinIO + Mailpit)
+# 3. Lancer l'infra dev (Postgres + Redis + Garage + Mailpit)
 pnpm infra:up
 
 # 4. Migrer la base et seed
@@ -32,7 +32,7 @@ pnpm dev
 ```
 
 L'app web démarre sur http://localhost:3000.
-Mailpit UI : http://localhost:8025 · MinIO console : http://localhost:9001 (user/pass: `jawal` / `jawal-secret`).
+Mailpit UI : http://localhost:8025 · API admin Garage : http://localhost:9001 (bucket et clé posés par `garage-init`).
 
 ### Scripts utiles
 
@@ -59,7 +59,7 @@ jawal/
 │   ├── shared/             # Types, Zod schemas, utils partagés front/back
 │   └── config/             # Configs partagées (TS, ESLint, Tailwind)
 ├── infra/
-│   └── docker-compose.yml  # Postgres + Redis + MinIO + Mailpit
+│   └── docker-compose.yml  # Postgres + Redis + Garage + Mailpit
 ├── docs/                   # Cahier des charges, architecture, veille
 └── turbo.json              # Pipeline Turborepo
 ```

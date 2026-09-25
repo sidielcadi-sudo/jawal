@@ -6,7 +6,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * Sert le logo de l'établissement de la session (redirection vers une URL
- * signée MinIO). 404 si aucun logo → les portails affichent le logo par défaut.
+ * signée S3). 404 si aucun logo → les portails affichent le logo par défaut.
  */
 export async function GET() {
   const session = await auth();

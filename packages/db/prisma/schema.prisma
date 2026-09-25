@@ -354,7 +354,7 @@ model Tenant {
   localeDefault String        @default("fr") @map("locale_default")
   timezone      String        @default("Africa/Casablanca")
   currency      String        @default("MAD")
-  /// Logo de l'établissement — FileObject (MinIO). Affiché dans les portails.
+  /// Logo de l'établissement — FileObject (stockage S3). Affiché dans les portails.
   logoFileId    String?       @unique @map("logo_file_id") @db.Uuid
   settings      Json          @default("{}")
   createdAt     DateTime      @default(now()) @map("created_at")
@@ -611,9 +611,9 @@ model Person {
   /// des disponibilités horaires (availability). Sert au KPI de couverture
   /// horaire de l'établissement (capacité totale dispo pour le solveur EDT).
   contractualHoursPerWeek Int?                  @map("contractual_hours_per_week")
-  /// PDF du contrat — stocké dans MinIO via FileObject.
+  /// PDF du contrat — stocké en S3 via FileObject.
   contractFileId          String?               @unique @map("contract_file_id") @db.Uuid
-  /// Photo de la personne — stockée dans MinIO via FileObject.
+  /// Photo de la personne — stockée en S3 via FileObject.
   photoFileId             String?               @unique @map("photo_file_id") @db.Uuid
   /// RH — uniquement TEACHER/STAFF
   experienceYears         Int?                  @map("experience_years")
@@ -1879,7 +1879,7 @@ model RequiredDocument {
   @@map("required_documents")
 }
 
-/// Pièce déposée pour un dossier d'inscription (FileObject dans MinIO).
+/// Pièce déposée pour un dossier d'inscription (FileObject en S3).
 model EnrollmentDocument {
   id                 String         @id @default(uuid()) @db.Uuid
   tenantId           String         @map("tenant_id") @db.Uuid
@@ -2065,7 +2065,7 @@ model LessonEntry {
   @@map("lesson_entries")
 }
 
-/// Ressource pédagogique attachée à une séance : fichier (MinIO via
+/// Ressource pédagogique attachée à une séance : fichier (S3 via
 /// FileObject) ou lien externe. `fileId` référence un FileObject
 /// (ownerType="lesson.resource") ; null pour un lien (`url` renseigné).
 model LessonResource {
@@ -2686,7 +2686,7 @@ model ExceptionalFeeAssignment {
   /// Annulation après paiement : mode de traitement du montant déjà versé.
   refundMode          RefundMode? @map("refund_mode")
   refundedAt          DateTime?   @map("refunded_at")
-  /// Justificatif de remboursement (FileObject MinIO).
+  /// Justificatif de remboursement (FileObject S3).
   refundFileId        String?     @unique @map("refund_file_id") @db.Uuid
   /// Échéance sur laquelle le montant a été imputé (mode CREDITED).
   creditInstallmentId String?     @map("credit_installment_id") @db.Uuid

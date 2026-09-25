@@ -7,7 +7,7 @@ import { tenantDisplayName } from '@/lib/tenant-name';
 /**
  * Logo de l'établissement encodé en data URI base64 — pour inlining dans les
  * documents PDF (rendu Playwright) et la page de connexion (pré-auth).
- * Retourne null si l'établissement n'a pas de logo. Tolérant aux pannes MinIO
+ * Retourne null si l'établissement n'a pas de logo. Tolérant aux pannes du stockage S3
  * (retourne null plutôt que d'échouer le rendu du document).
  */
 export async function getTenantLogoDataUri(tenantId: string): Promise<string | null> {

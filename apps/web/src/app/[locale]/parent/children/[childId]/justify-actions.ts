@@ -90,7 +90,7 @@ export async function submitParentJustificationAction(formData: FormData): Promi
       ? `${ctx.reasonLabel}\n\n${parsed.data.comment}`
       : ctx.reasonLabel;
 
-    // 2) Upload du justificatif HORS transaction (I/O réseau MinIO).
+    // 2) Upload du justificatif HORS transaction (I/O réseau S3).
     let s3Key: string | undefined;
     if (upload) {
       const put = await putObject({

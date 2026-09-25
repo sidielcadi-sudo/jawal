@@ -109,7 +109,7 @@ export async function addLessonLinkAction(formData: FormData): Promise<Result> {
   return r;
 }
 
-/** Supprime une ressource (fichier MinIO + FileObject le cas échéant). */
+/** Supprime une ressource (fichier S3 + FileObject le cas échéant). */
 export async function deleteLessonResourceAction(resourceId: string): Promise<Result> {
   const session = await auth();
   if (!session?.user) return { ok: false, error: 'Non authentifié' };

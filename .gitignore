@@ -50,7 +50,7 @@ infra/.docker/
 
 # Uploads / S3 local
 uploads/
-.minio/
+.garage/
 
 # Playwright
 playwright-report/

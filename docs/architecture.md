@@ -71,7 +71,7 @@
 | API | **tRPC** (interne) + **REST OpenAPI** (externe) | tRPC pour portails internes (DX), REST pour intégrations. |
 | Tests | **Vitest + Playwright** | Unit + e2e ; rapides. |
 | Observabilité | **OpenTelemetry + Sentry** | Standard, multi-backend. |
-| Stockage fichiers | **S3-compatible** (AWS S3, Scaleway, MinIO) | Documents élèves, bulletins PDF, ressources LMS. |
+| Stockage fichiers | **S3-compatible** (AWS S3, Scaleway, Garage) | Documents élèves, bulletins PDF, ressources LMS. |
 | PDF | **react-pdf** ou **Puppeteer** | Bulletins, factures, diplômes. |
 | Paiement | **CMI** (Maroc) + **Stripe** | CMI prioritaire pour acceptation cartes nationales. |
 
@@ -344,7 +344,7 @@ modules/finance/infrastructure/payment-gateways/
 ## 13. Déploiement
 
 ### 13.1 Environnements
-- `dev` : Docker Compose local (Postgres, Redis, Mailpit, MinIO)
+- `dev` : Docker Compose local (Postgres, Redis, Mailpit, Garage)
 - `staging` : Vercel + Neon (DB) + Upstash (Redis)
 - `production` : voir options ci-dessous
 

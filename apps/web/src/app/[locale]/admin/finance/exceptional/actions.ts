@@ -291,7 +291,7 @@ export async function cancelAssignmentAction(formData: FormData): Promise<Result
     return { ok: false, error: e instanceof Error ? e.message : 'Erreur' };
   }
 
-  // 2) Justificatif de remboursement (hors transaction — I/O MinIO).
+  // 2) Justificatif de remboursement (hors transaction — I/O S3).
   let refundS3Key: string | undefined;
   let refundMeta: { filename: string; mime: string; size: number } | undefined;
   if (ctx.paid > 0 && mode === 'REFUND') {

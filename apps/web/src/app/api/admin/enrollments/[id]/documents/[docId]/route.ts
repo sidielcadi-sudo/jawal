@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { presignedGet } from '@/lib/storage';
 
-/** Affiche/télécharge une pièce déposée (redirection URL signée MinIO). */
+/** Affiche/télécharge une pièce déposée (redirection URL signée S3). */
 export async function GET(
   _req: NextRequest,
   { params }: { params: Promise<{ id: string; docId: string }> },

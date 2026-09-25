@@ -3,7 +3,7 @@ import { auth } from '@/lib/auth';
 import { withTenant } from '@/lib/db';
 import { presignedGet } from '@/lib/storage';
 
-/** Sert la photo d'une personne (redirection vers une URL signée MinIO). */
+/** Sert la photo d'une personne (redirection vers une URL signée S3). */
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const session = await auth();
   if (!session?.user) return new Response('Unauthorized', { status: 401 });

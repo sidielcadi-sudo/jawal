@@ -41,7 +41,7 @@ jawal/
 ├── packages/db/               # Prisma
 ├── packages/ui/               # Design system
 ├── packages/shared/           # Types/utils
-├── infra/docker-compose.yml   # Postgres + Redis + MinIO + Mailpit
+├── infra/docker-compose.yml   # Postgres + Redis + Garage + Mailpit
 └── turbo.json
 ```
 
