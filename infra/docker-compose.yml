@@ -8,7 +8,7 @@
 # Services exposés :
 #   - PostgreSQL   localhost:5433   (user/pass: jawal/jawal · db: jawal) — 5432 souvent occupé sur Windows
 #   - Redis        localhost:6379
-#   - MinIO        localhost:9000 (API) / localhost:9001 (console)
+#   - Garage (S3)  localhost:9000 (API S3) / localhost:9001 (API admin)
 #   - Mailpit      localhost:1025 (SMTP) / localhost:8025 (UI)
 #   - Solver       localhost:8001   (OR-Tools FastAPI — génération EDT)
 
@@ -50,24 +50,46 @@ services:
       timeout: 3s
       retries: 5
 
-  minio:
-    image: minio/minio:latest
-    container_name: jawal-minio
+  # Garage (S3-compatible) — remplace MinIO. Version exacte : l'API admin
+  # utilisée par garage/init.sh est celle de la v2.
+  garage:
+    image: dxflrs/garage:v2.1.0
+    container_name: jawal-garage
     restart: unless-stopped
     environment:
-      MINIO_ROOT_USER: jawal
-      MINIO_ROOT_PASSWORD: jawal-secret
-    command: server /data --console-address ":9001"
+      # Config montée avec les droits de l'hôte : Garage refuse sinon un
+      # secret lisible par tous.
+      GARAGE_ALLOW_WORLD_READABLE_SECRETS: 'true'
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "9000:3900"   # API S3 (port 9000 conservé : .env, adb-reverse mobile)
+      - "9001:3903"   # API admin
     volumes:
-      - minio_data:/data
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 10s
+      # Image sans shell ni curl : `garage status` interroge le nœud en RPC.
+      test: ["CMD", "/garage", "status"]
+      interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 20
+
+  # Pose disposition, clé d'accès et bucket, puis s'arrête (idempotent).
+  garage-init:
+    image: curlimages/curl:8.11.1
+    container_name: jawal-garage-init
+    depends_on:
+      garage:
+        condition: service_healthy
+    environment:
+      GARAGE_ADMIN_TOKEN: jawal_dev_admin_token
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-GK2787f17cb62e5bad2e6444fd}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-92beb34feaa387b49684e0cd52e8c701ade89ca8db66a38ab9cddda91dd702b1}
+      S3_BUCKET: ${S3_BUCKET:-jawal-dev}
+    volumes:
+      - ./garage/init.sh:/init.sh:ro
+    entrypoint: ["sh", "/init.sh"]
+    restart: "no"
 
   mailpit:
     image: axllent/mailpit:latest
@@ -103,4 +125,5 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  minio_data:
+  garage_meta:
+  garage_data:

@@ -21,7 +21,7 @@
 import { execFileSync } from 'node:child_process';
 
 const METRO_PORT = Number(process.env.RCT_METRO_PORT) || 8081;
-// 9000 = MinIO : les photos (élèves, professeurs) sont servies par des URL
+// 9000 = Garage (S3) : les photos (élèves, professeurs) sont servies par des URL
 // signées pointant sur 127.0.0.1:9000. Sans cette règle elles restent vides.
 const PORTS = [3000, 9000, METRO_PORT];
 

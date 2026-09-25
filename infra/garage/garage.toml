@@ -1,0 +1,31 @@
+# Garage — stockage objet S3-compatible, nœud unique de développement.
+#
+# Remplace MinIO (édition communautaire vidée de son administration en 2025).
+# En production : trois nœuds et `replication_factor = 3`.
+
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "lmdb"
+
+# Un seul nœud : toute autre valeur laisse le cluster attendre des pairs
+# inexistants et refuser les écritures.
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+rpc_public_addr = "127.0.0.1:3901"
+# Secret de dev, versionné à dessein : il n'ouvre que ce conteneur local.
+# En production : `openssl rand -hex 32`, dans le gestionnaire de secrets.
+rpc_secret = "385256a488d9a0ce275204a2875324408f0a4088d1c31a554d0f5dc528e4979a"
+
+[s3_api]
+# Entre dans la signature SigV4 : doit être identique à `S3_REGION`.
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+# Buckets adressés dans le chemin (`forcePathStyle` côté client).
+root_domain = ".s3.garage.localhost"
+
+[admin]
+# Utilisé par `garage-init` (l'image Garage n'a pas de shell).
+api_bind_addr = "[::]:3903"
+admin_token = "jawal_dev_admin_token"
+metrics_token = "jawal_dev_metrics_token"
