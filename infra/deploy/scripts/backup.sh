@@ -13,7 +13,7 @@ set -euo pipefail
 
 PROJECT_ROOT="${PROJECT_ROOT:-/srv/leadschool}"
 PG_HOTE_LOCAL="${PG_HOTE_LOCAL:-127.0.0.1}"
-PG_PORT="${PG_PORT:-5432}"
+PG_PORT="${PG_PORT:-5436}"
 RETENTION_JOURS="${RETENTION_JOURS:-14}"
 
 ENVIRONNEMENT="${1:?Usage : backup.sh <prod|recette>}"

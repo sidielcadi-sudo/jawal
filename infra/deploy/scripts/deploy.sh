@@ -24,7 +24,10 @@ DEPOT_GIT="${DEPOT_GIT:-git@github.com:sidielcadi-sudo/jawal.git}"
 # l'hôte lui-même pour psql/pg_restore.
 PG_HOTE_CONTENEUR="${PG_HOTE_CONTENEUR:-host.docker.internal}"
 PG_HOTE_LOCAL="${PG_HOTE_LOCAL:-127.0.0.1}"
-PG_PORT="${PG_PORT:-5432}"
+PG_PORT="${PG_PORT:-5436}"
+# Image client utilisée pour tester la route depuis un conteneur : doit être
+# d'une version >= au serveur (ici PostgreSQL 18).
+PG_IMAGE="${PG_IMAGE:-postgres:18-alpine}"
 
 bleu() { printf '\n\033[1;34m▶ %s\033[0m\n' "$*"; }
 vert() { printf '\033[1;32m✔ %s\033[0m\n' "$*"; }
@@ -174,7 +177,7 @@ PASS_APP="$(sed -E 's|.*://[^:]+:([^@]+)@.*|\1|' <<<"$DATABASE_URL_APP")"
 DB_PASS="${DB_PASS:-$(sed -E 's|.*://[^:]+:([^@]+)@.*|\1|' <<<"$DATABASE_URL")}"
 
 psql_proprio() {
-  PGPASSWORD="$DB_PASS" psql -h "$PG_HOTE_LOCAL" -p "$PG_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 "$@"
+  PGPASSWORD="$DB_PASS" psql -w -h "$PG_HOTE_LOCAL" -p "$PG_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 "$@"
 }
 
 # ── Actions courtes ──────────────────────────────────────────────────────────
@@ -200,14 +203,17 @@ vert "Base $DB_NAME accessible"
 
 # Les conteneurs joignent Postgres par la passerelle Docker : si l'écoute est
 # limitée à localhost, l'application démarrera mais ne verra aucune donnée.
-if ! docker run --rm --add-host=host.docker.internal:host-gateway postgres:16-alpine \
-     sh -c "PGPASSWORD='$DB_PASS' psql -h $PG_HOTE_CONTENEUR -p $PG_PORT -U '$DB_USER' -d '$DB_NAME' -c 'SELECT 1'" >/dev/null 2>&1; then
+if ! timeout 90 docker run --rm --add-host=host.docker.internal:host-gateway "$PG_IMAGE" \
+     sh -c "PGPASSWORD='$DB_PASS' psql -w -h $PG_HOTE_CONTENEUR -p $PG_PORT -U '$DB_USER' -d '$DB_NAME' -c 'SELECT 1' -o /dev/null" 2>/dev/null; then
   rouge "Postgres n'est pas joignable DEPUIS un conteneur."
-  cat <<'AIDE'
+  VERSION_PG="$(psql_proprio -tAc 'SHOW server_version' 2>/dev/null | cut -d. -f1 || echo 18)"
+  cat <<AIDE
    Corrigez côté hôte, puis relancez :
-     1. /etc/postgresql/16/main/postgresql.conf   →  listen_addresses = '*'
-     2. /etc/postgresql/16/main/pg_hba.conf       →  host all all 172.16.0.0/12 scram-sha-256
-     3. systemctl restart postgresql
+     1. /etc/postgresql/${VERSION_PG}/main/postgresql.conf
+          listen_addresses = '*'        (le port doit rester ${PG_PORT})
+     2. /etc/postgresql/${VERSION_PG}/main/pg_hba.conf
+          host all all 172.16.0.0/12 scram-sha-256
+     3. systemctl restart postgresql@${VERSION_PG}-main || systemctl restart postgresql
 AIDE
   exit 1
 fi

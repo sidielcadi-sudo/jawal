@@ -52,10 +52,10 @@ Les conteneurs passent par la passerelle Docker : l'écoute sur `localhost`
 seul ne suffit pas.
 
 ```bash
-# /etc/postgresql/16/main/postgresql.conf
-listen_addresses = '*'
+# /etc/postgresql/18/main/postgresql.conf
+listen_addresses = '*'        # le port reste 5436
 
-# /etc/postgresql/16/main/pg_hba.conf  (réseaux Docker)
+# /etc/postgresql/18/main/pg_hba.conf  (réseaux Docker)
 host    all    all    172.16.0.0/12    scram-sha-256
 
 systemctl restart postgresql
