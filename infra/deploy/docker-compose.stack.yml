@@ -140,6 +140,9 @@ services:
     profiles: ['crons']
     depends_on:
       - web
+    networks:
+      - default
+      - basededonnees
     environment:
       CRON_SECRET: ${CRON_SECRET:-${AUTH_SECRET}}
       WEB_URL: http://web:3000
@@ -156,6 +159,12 @@ services:
     restart: unless-stopped
     depends_on:
       - web
+    # web étant raccordé au réseau de la base, le DNS Docker renvoie ses DEUX
+    # adresses ; qui veut lui parler doit partager ses réseaux, sinon il tombe
+    # sur une adresse injoignable (502 côté nginx).
+    networks:
+      - default
+      - basededonnees
     ports:
       - '${HTTP_PORT}:80'
     volumes:
