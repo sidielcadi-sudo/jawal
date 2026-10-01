@@ -46,28 +46,37 @@ cat ~/.ssh/id_ed25519.pub     # → GitHub ▸ dépôt ▸ Settings ▸ Deploy k
 ssh -T git@github.com         # doit répondre « successfully authenticated »
 ```
 
-### 3. Autoriser Postgres depuis les conteneurs
+### 3. PostgreSQL : où tourne-t-il ?
 
-Les conteneurs passent par la passerelle Docker : l'écoute sur `localhost`
-seul ne suffit pas.
+Deux cas, à distinguer avant tout :
+
+```bash
+sudo ss -lntp | grep 5436
+```
+
+**Cas A — `docker-proxy` apparaît** : PostgreSQL est dans un conteneur, et
+son port n'est publié que sur `127.0.0.1`. Les autres conteneurs ne peuvent
+donc pas l'atteindre par l'hôte. Le script le détecte, rejoint le réseau
+Docker de ce conteneur et vise son nom de service sur le port **interne**
+(5432). Rien à faire à la main.
+
+N'ouvrez pas le port sur `0.0.0.0` pour contourner le problème : Docker écrit
+ses propres règles iptables et court-circuite UFW — la base serait exposée à
+Internet malgré le pare-feu.
+
+**Cas B — PostgreSQL est un service de l'hôte** (`postgres` dans la colonne
+des processus) : autorisez les réseaux Docker.
 
 ```bash
 # /etc/postgresql/18/main/postgresql.conf
 listen_addresses = '*'        # le port reste 5436
 
-# /etc/postgresql/18/main/pg_hba.conf  (réseaux Docker)
+# /etc/postgresql/18/main/pg_hba.conf
 host    all    all    172.16.0.0/12    scram-sha-256
 
 systemctl restart postgresql@18-main
-
-# UFW filtre AUSSI le trafic des conteneurs vers l hote :
 ufw allow from 172.16.0.0/12 to any port 5436 proto tcp
-ufw reload
-
-# Verification : doit montrer 0.0.0.0:5436, pas 127.0.0.1:5436
-ss -lntp | grep 5436
 ```
-
 ### 4. Première mise en place
 
 ```bash

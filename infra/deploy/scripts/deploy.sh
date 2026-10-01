@@ -22,7 +22,11 @@ PROJECT_ROOT="${PROJECT_ROOT:-/srv/leadschool}"
 DEPOT_GIT="${DEPOT_GIT:-git@github.com:sidielcadi-sudo/jawal.git}"
 # Hôte Postgres vu DEPUIS les conteneurs (la passerelle Docker), et depuis
 # l'hôte lui-même pour psql/pg_restore.
-PG_HOTE_CONTENEUR="${PG_HOTE_CONTENEUR:-host.docker.internal}"
+# Nom du conteneur PostgreSQL vu depuis le réseau Docker, et son port
+# interne. Détectés automatiquement si absents de .env (voir plus bas).
+PG_HOTE_CONTENEUR="${PG_HOTE_CONTENEUR:-}"
+PG_PORT_INTERNE="${PG_PORT_INTERNE:-5432}"
+PG_NETWORK="${PG_NETWORK:-}"
 PG_HOTE_LOCAL="${PG_HOTE_LOCAL:-127.0.0.1}"
 PG_PORT="${PG_PORT:-5436}"
 # Image client utilisée pour tester la route depuis un conteneur : doit être
@@ -205,6 +209,36 @@ vert "Base $DB_NAME accessible"
 # distinctes se cachent derrière « ça ne marche pas » : le port n'est pas
 # atteignable (écoute limitée, pare-feu), ou il l'est mais l'authentification
 # est refusée (pg_hba). On les sépare, sinon on corrige au hasard.
+# ── Où est PostgreSQL ? ────────────────────────────────────────────────────
+# Le serveur tourne dans un conteneur dont le port n'est publié que sur la
+# boucle locale de l'hôte : nos conteneurs doivent donc rejoindre SON réseau
+# et viser son nom, pas `host.docker.internal`.
+if [[ -z "${PG_NETWORK:-}" || -z "${PG_HOTE_CONTENEUR:-}" ]]; then
+  bleu "Détection du conteneur PostgreSQL"
+  conteneur_pg="$(docker ps --format '{{.Names}} {{.Ports}}' | awk -v p=":$PG_PORT->" '$0 ~ p {print $1; exit}')"
+  [[ -n "$conteneur_pg" ]] || mourir "Aucun conteneur ne publie le port $PG_PORT.
+   Vérifiez avec : docker ps --format '{{.Names}} {{.Ports}}'",
+  reseau_pg="$(docker inspect -f '{{range $k, $v := .NetworkSettings.Networks}}{{$k}} {{end}}' "$conteneur_pg" | awk '{print $1}')"
+  port_interne="$(docker inspect -f '{{range $p, $c := .NetworkSettings.Ports}}{{$p}} {{end}}' "$conteneur_pg" | sed -E 's|/tcp.*||' | awk '{print $1}')"
+  PG_HOTE_CONTENEUR="$conteneur_pg"
+  PG_NETWORK="$reseau_pg"
+  PG_PORT_INTERNE="${port_interne:-5432}"
+  vert "Conteneur : $PG_HOTE_CONTENEUR · réseau : $PG_NETWORK · port interne : $PG_PORT_INTERNE"
+
+  # On fige la découverte dans .env : le déploiement doit être reproductible,
+  # et l'URL de base doit viser le conteneur, pas l'hôte.
+  url_app="postgresql://${ROLE_APP}:${PASS_APP}@${PG_HOTE_CONTENEUR}:${PG_PORT_INTERNE}/${DB_NAME}?schema=public"
+  url_admin="postgresql://${DB_USER}:${DB_PASS}@${PG_HOTE_CONTENEUR}:${PG_PORT_INTERNE}/${DB_NAME}?schema=public"
+  sed -i "s|^DATABASE_URL=.*|DATABASE_URL=${url_admin}|" "$FICHIER_ENV"
+  sed -i "s|^DATABASE_URL_APP=.*|DATABASE_URL_APP=${url_app}|" "$FICHIER_ENV"
+  grep -q '^PG_NETWORK=' "$FICHIER_ENV" \
+    && sed -i "s|^PG_NETWORK=.*|PG_NETWORK=${PG_NETWORK}|" "$FICHIER_ENV" \
+    || printf '\n# Réseau Docker du conteneur PostgreSQL\nPG_NETWORK=%s\nPG_HOTE_CONTENEUR=%s\nPG_PORT_INTERNE=%s\n' \
+         "$PG_NETWORK" "$PG_HOTE_CONTENEUR" "$PG_PORT_INTERNE" >> "$FICHIER_ENV"
+  set -a; . "$FICHIER_ENV"; set +a
+fi
+export PG_NETWORK
+
 bleu "Route Postgres depuis un conteneur"
 
 # L'image du client doit être présente : sans ça, le test se bloquait sur un
@@ -215,34 +249,23 @@ if ! docker image inspect "$PG_IMAGE" >/dev/null 2>&1; then
 fi
 
 # 1. Le port répond-il ?
-if ! timeout 30 docker run --rm --add-host=host.docker.internal:host-gateway "$PG_IMAGE" \
-     timeout 10 sh -c "</dev/tcp/$PG_HOTE_CONTENEUR/$PG_PORT" >/dev/null 2>&1; then
-  passerelle="$(docker run --rm --add-host=host.docker.internal:host-gateway "$PG_IMAGE" \
-    getent hosts host.docker.internal 2>/dev/null | awk '{print $1}' | head -1)"
-  rouge "Le port $PG_PORT ne répond pas depuis un conteneur (passerelle : ${passerelle:-inconnue})."
+if ! timeout 30 docker run --rm --network "$PG_NETWORK" "$PG_IMAGE" \
+     timeout 10 sh -c "nc -z $PG_HOTE_CONTENEUR $PG_PORT_INTERNE" >/dev/null 2>&1; then
+  rouge "Le conteneur $PG_HOTE_CONTENEUR ne répond pas sur $PG_PORT_INTERNE (réseau $PG_NETWORK)."
   VERSION_PG="$(psql_proprio -tAc 'SHOW server_version' 2>/dev/null | cut -d. -f1 || echo 18)"
   cat <<AIDE
-   Trois causes, dans l'ordre de fréquence :
-
-   a) Pare-feu UFW : il filtre AUSSI le trafic venant des conteneurs.
-        sudo ufw allow from 172.16.0.0/12 to any port ${PG_PORT} proto tcp
-        sudo ufw reload
-
-   b) Écoute limitée à localhost :
-        /etc/postgresql/${VERSION_PG}/main/postgresql.conf
-          listen_addresses = '*'        (port = ${PG_PORT})
-        sudo systemctl restart postgresql@${VERSION_PG}-main
-
-   c) Vérifier ce que Postgres écoute réellement :
-        sudo ss -lntp | grep ${PG_PORT}
-        → doit montrer 0.0.0.0:${PG_PORT} ou *:${PG_PORT}, pas 127.0.0.1:${PG_PORT}
+   Causes possibles :
+     a) Le conteneur PostgreSQL est arrêté :  docker ps | grep $PG_HOTE_CONTENEUR
+     b) Le réseau détecté n'est pas le bon :  docker inspect $PG_HOTE_CONTENEUR \
+          --format '{{json .NetworkSettings.Networks}}'
+        → corriger PG_NETWORK et PG_HOTE_CONTENEUR dans $FICHIER_ENV
 AIDE
   exit 1
 fi
 
 # 2. L'authentification passe-t-elle ?
-erreur_psql="$(timeout 60 docker run --rm --add-host=host.docker.internal:host-gateway "$PG_IMAGE" \
-  sh -c "PGPASSWORD='$DB_PASS' psql -w -h $PG_HOTE_CONTENEUR -p $PG_PORT -U '$DB_USER' -d '$DB_NAME' -tAc 'SELECT 1'" 2>&1 || true)"
+erreur_psql="$(timeout 60 docker run --rm --network "$PG_NETWORK" "$PG_IMAGE" \
+  sh -c "PGPASSWORD='$DB_PASS' psql -w -h $PG_HOTE_CONTENEUR -p $PG_PORT_INTERNE -U '$DB_USER' -d '$DB_NAME' -tAc 'SELECT 1'" 2>&1 || true)"
 if ! grep -q '^1$' <<<"$erreur_psql"; then
   rouge "Le port répond, mais la connexion est refusée :"
   sed 's/^/   /' <<<"$erreur_psql"
