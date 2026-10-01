@@ -334,10 +334,21 @@ if [[ -n "$IMPORT" ]]; then
   PGPASSWORD="$DB_PASS" pg_restore -h "$PG_HOTE_LOCAL" -p "$PG_PORT" -U "$DB_USER" -d "$DB_NAME" \
     --no-owner --no-privileges "$IMPORT" || jaune "pg_restore a signalé des avertissements (souvent des GRANT absents) — vérifiez ci-dessus."
   vert "Base importée"
+  # Le dump peut venir d'une base gérée par `db push` : sans historique,
+  # l'étape suivante le posera (rattachement à 0_init).
 fi
 
 # ── Migrations et sécurité ───────────────────────────────────────────────────
 bleu "Migrations Prisma"
+# Une base peuplée sans table `_prisma_migrations` vient d'un `db push` ou
+# d'un dump restauré : Prisma la croirait vierge et tenterait de tout recréer.
+# On la rattache d'abord à la migration de référence, sans rien exécuter.
+tables_existantes="$(psql_proprio -tAc "SELECT count(*) FROM information_schema.tables WHERE table_schema='public'" | tr -d ' ')"
+historique="$(psql_proprio -tAc "SELECT to_regclass('public._prisma_migrations') IS NOT NULL" | tr -d ' ')"
+if [[ "${tables_existantes:-0}" -gt 0 && "$historique" != "t" ]]; then
+  jaune "Base déjà peuplée sans historique : rattachement à la migration 0_init"
+  "${COMPOSE[@]}" run --rm --no-deps web pnpm --filter @jawal/db exec prisma migrate resolve --applied 0_init
+fi
 "${COMPOSE[@]}" run --rm --no-deps web pnpm --filter @jawal/db exec prisma migrate deploy
 
 bleu "Politiques RLS, index d'unicité et droits"

@@ -125,6 +125,20 @@ import éventuel → migrations → RLS → rôles système → bascule → sant
 migrations passent **avant** le démarrage de la nouvelle version : si elles
 échouent, l'ancienne reste en service.
 
+## Schéma de base et migrations
+
+Le développement s'est fait avec `prisma db push` : il n'existait donc
+aucune migration, et une base de production restait vide. Le dépôt porte
+maintenant une migration de référence, `0_init`, générée depuis le schéma et
+vérifiée comme identique à la base de développement (132 tables).
+
+- **Base vierge** (production, recette) : `migrate deploy` crée tout.
+- **Base déjà peuplée** (dump restauré, `db push`) : le script la rattache à
+  `0_init` sans rien réexécuter, puis applique les migrations suivantes.
+
+Les évolutions de schéma passeront désormais par `prisma migrate dev`, pour
+que production et recette se mettent à jour sans intervention manuelle.
+
 ## Importer votre base de développement
 
 Sur le poste de développement :

@@ -11,8 +11,13 @@ FROM mcr.microsoft.com/playwright:v1.60.0-noble AS base
 
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
-    NEXT_TELEMETRY_DISABLED=1
-RUN corepack enable
+    NEXT_TELEMETRY_DISABLED=1 \
+    # Sans cela, corepack demande confirmation avant de télécharger pnpm :
+    # la construction et les commandes ponctuelles restent bloquées sur une
+    # invite que personne ne lit.
+    COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+# pnpm est figé dans l'image : aucun téléchargement au moment du déploiement.
+RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 WORKDIR /app
 
