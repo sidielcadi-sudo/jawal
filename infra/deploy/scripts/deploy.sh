@@ -285,6 +285,11 @@ vert "Postgres joignable depuis les conteneurs"
 # compris : sans BYPASSRLS, les migrations, le seed et l'espace super-admin ne
 # verraient plus rien. Le rôle applicatif, lui, doit rester soumis aux
 # politiques — c'est tout l'intérêt de l'isolation par tenant.
+#
+# CREATE ROLE et ALTER ROLE … BYPASSRLS demandent un superutilisateur. Il faut
+# le trouver sur LE BON serveur : quand PostgreSQL tourne en conteneur, un
+# `sudo -u postgres` de l'hôte viserait un autre cluster, et le rôle créé
+# serait introuvable depuis l'application (c'était le cas avant ce correctif).
 bleu "Rôle applicatif $ROLE_APP"
 SQL_PRIVILEGE="
 DO \$\$ BEGIN
@@ -296,12 +301,36 @@ ALTER ROLE $ROLE_APP WITH LOGIN PASSWORD '$PASS_APP' NOBYPASSRLS;
 ALTER ROLE $DB_USER WITH BYPASSRLS;
 GRANT CONNECT ON DATABASE $DB_NAME TO $ROLE_APP;
 "
-if sudo -n -u postgres psql -v ON_ERROR_STOP=1 -c 'SELECT 1' >/dev/null 2>&1; then
-  sudo -u postgres psql -v ON_ERROR_STOP=1 -d "$DB_NAME" -c "$SQL_PRIVILEGE" >/dev/null
-  vert "Rôle $ROLE_APP prêt, $DB_USER en BYPASSRLS"
+
+# Superutilisateur du conteneur : `postgres` par défaut, sinon le compte
+# déclaré à la création de l'image (POSTGRES_USER).
+PG_SUPERUSER="${PG_SUPERUSER:-}"
+if [[ -z "$PG_SUPERUSER" ]]; then
+  PG_SUPERUSER="$(docker exec "$PG_HOTE_CONTENEUR" sh -c 'printf %s "${POSTGRES_USER:-postgres}"' 2>/dev/null || echo postgres)"
+fi
+
+psql_super_conteneur() {
+  docker exec -i "$PG_HOTE_CONTENEUR" \
+    psql -v ON_ERROR_STOP=1 -U "$PG_SUPERUSER" -d "$DB_NAME" "$@"
+}
+
+if psql_super_conteneur -c "$SQL_PRIVILEGE" >/dev/null 2>&1; then
+  vert "Rôle $ROLE_APP prêt (via le conteneur $PG_HOTE_CONTENEUR, compte $PG_SUPERUSER)"
+elif psql_proprio -c "$SQL_PRIVILEGE" >/dev/null 2>&1; then
+  vert "Rôle $ROLE_APP prêt (via $DB_USER, qui dispose des droits nécessaires)"
 else
-  jaune "Pas d'accès superutilisateur : exécutez ceci une fois, puis relancez."
-  printf '\n   sudo -u postgres psql -d %s <<SQL\n%s\nSQL\n\n' "$DB_NAME" "$SQL_PRIVILEGE"
+  rouge "Impossible de créer le rôle applicatif : aucun compte superutilisateur accessible."
+  erreur="$(psql_super_conteneur -c "$SQL_PRIVILEGE" 2>&1 || true)"
+  sed 's/^/   /' <<<"$erreur"
+  cat <<AIDE
+   Exécutez ceci une fois, avec un superutilisateur du serveur, puis relancez :
+
+     docker exec -i $PG_HOTE_CONTENEUR psql -U postgres -d $DB_NAME <<'SQL'
+$SQL_PRIVILEGE
+SQL
+
+   (remplacez \`postgres\` par le superutilisateur de votre instance)
+AIDE
   exit 1
 fi
 
