@@ -9,11 +9,11 @@
 #   deploy.sh recette --seed              jeu de démonstration (base vidée)
 #   deploy.sh prod --status | --logs | --stop
 #
-# PostgreSQL est installé sur l'hôte (bases et rôles déjà créés) ; le reste
-# tourne en conteneurs. Les deux environnements sont deux piles Docker
+# Le socle de la machine (paquets, PostgreSQL, bases, rôles propriétaires) est
+# posé par bootstrap-host.sh. Voir INSTALLATION.md. Les deux environnements sont deux piles Docker
 # distinctes, deux dossiers, deux bases — et deux ports :
 #
-#   production : /srv/leadschool/prod      port 80     base leadschool_production_db
+#   production : /srv/leadschool/prod      port 8003   base leadschool_production_db
 #   recette    : /srv/leadschool/recette   port 8080   base leadschool_recette_db
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -46,7 +46,7 @@ case "$ENVIRONNEMENT" in
   prod)
     DOSSIER="$PROJECT_ROOT/prod"
     STACK_NAME="leadschool-prod"
-    HTTP_PORT="${HTTP_PORT:-80}"
+    HTTP_PORT="${HTTP_PORT:-8003}"
     DB_NAME="${DB_PROD_NAME:-leadschool_production_db}"
     DB_USER="${DB_PROD_USER:-leadschool_production_user}"
     DB_PASS="${DB_PROD_PASS:-}"

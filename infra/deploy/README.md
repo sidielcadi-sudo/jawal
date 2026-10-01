@@ -1,12 +1,15 @@
 # Déploiement VPS — LeadSchool (production + recette)
 
 Deux environnements sur une même machine, sans nom de domaine pour l'instant.
-PostgreSQL est **installé sur l'hôte** (bases et rôles déjà créés) ; tout le
-reste tourne en conteneurs.
+Tout tourne en conteneurs, PostgreSQL compris : un seul serveur pour les deux
+environnements, une base et un propriétaire par environnement.
+
+**Première installation : [INSTALLATION.md](INSTALLATION.md)** — d'un VPS
+vierge au service en marche. Ce fichier-ci est la référence d'exploitation.
 
 ```
 /srv/leadschool/
-├── prod/        clone Git + .env.prod       → http://IP        (port 80)
+├── prod/        clone Git + .env.prod       → http://IP:8003
 ├── recette/     clone Git + .env.recette    → http://IP:8080
 ├── dumps/       fichiers .dump à importer
 ├── backups/     sauvegardes automatiques
@@ -17,95 +20,27 @@ reste tourne en conteneurs.
 |---|---|---|
 | Dossier | `/srv/leadschool/prod` | `/srv/leadschool/recette` |
 | Pile Docker | `leadschool-prod` | `leadschool-recette` |
-| Port HTTP | 80 | 8080 |
+| Port HTTP | 8003 | 8080 |
 | Base | `leadschool_production_db` | `leadschool_recette_db` |
 | Rappels automatiques | oui | **non** (aucun message aux familles) |
 
 Chaque pile a ses propres conteneurs, volumes, stockage Garage et secrets.
 Elles ne partagent que l'hôte et le serveur PostgreSQL.
 
-## Installation (une seule fois)
+## Installation
 
-### 1. Prérequis sur le VPS
-
-```bash
-apt-get update
-apt-get install -y git curl postgresql-client ufw
-# Docker, si absent
-curl -fsSL https://get.docker.com | sh
-ufw allow OpenSSH && ufw allow 80/tcp && ufw allow 8080/tcp && ufw --force enable
-```
-
-4 Go de RAM minimum : la construction de l'image web échoue en dessous.
-
-### 2. Clé de déploiement GitHub
+Décrite pas à pas dans [INSTALLATION.md](INSTALLATION.md). En résumé, deux
+commandes :
 
 ```bash
-ssh-keygen -t ed25519 -C "vps-leadschool" -f ~/.ssh/id_ed25519 -N ""
-cat ~/.ssh/id_ed25519.pub     # → GitHub ▸ dépôt ▸ Settings ▸ Deploy keys (lecture seule)
-ssh -T git@github.com         # doit répondre « successfully authenticated »
+# 1. Socle de la machine : paquets, arborescence, pare-feu, PostgreSQL, bases
+sudo -E bash infra/deploy/scripts/bootstrap-host.sh
+
+# 2. Application (après la clé de déploiement GitHub)
+set -a; . /srv/leadschool/.db-credentials; set +a
+HTTP_PORT=8003 sudo -E bash infra/deploy/scripts/deploy.sh prod --init
+sudo -E bash infra/deploy/scripts/deploy.sh prod
 ```
-
-### 3. PostgreSQL : où tourne-t-il ?
-
-Deux cas, à distinguer avant tout :
-
-```bash
-sudo ss -lntp | grep 5436
-```
-
-**Cas A — `docker-proxy` apparaît** : PostgreSQL est dans un conteneur, et
-son port n'est publié que sur `127.0.0.1`. Les autres conteneurs ne peuvent
-donc pas l'atteindre par l'hôte. Le script le détecte, rejoint le réseau
-Docker de ce conteneur et vise son nom de service sur le port **interne**
-(5432). Rien à faire à la main.
-
-N'ouvrez pas le port sur `0.0.0.0` pour contourner le problème : Docker écrit
-ses propres règles iptables et court-circuite UFW — la base serait exposée à
-Internet malgré le pare-feu.
-
-**Cas B — PostgreSQL est un service de l'hôte** (`postgres` dans la colonne
-des processus) : autorisez les réseaux Docker.
-
-```bash
-# /etc/postgresql/18/main/postgresql.conf
-listen_addresses = '*'        # le port reste 5436
-
-# /etc/postgresql/18/main/pg_hba.conf
-host    all    all    172.16.0.0/12    scram-sha-256
-
-systemctl restart postgresql@18-main
-ufw allow from 172.16.0.0/12 to any port 5436 proto tcp
-```
-### 4. Première mise en place
-
-```bash
-# Le dépôt n'est pas encore là : on amorce avec un clone manuel
-mkdir -p /srv/leadschool && cd /srv/leadschool
-git clone git@github.com:sidielcadi-sudo/jawal.git prod
-
-# Production (les mots de passe ne sont PAS dans le dépôt : on les passe ici)
-DB_PROD_PASS='ProdPassword123!' \
-  bash /srv/leadschool/prod/infra/deploy/scripts/deploy.sh prod --init
-
-# Recette
-DB_REC_PASS='RecPassword123!' \
-  bash /srv/leadschool/prod/infra/deploy/scripts/deploy.sh recette --init
-```
-
-`--init` crée l'arborescence, clone l'environnement manquant et génère
-`.env.<environnement>` avec des secrets aléatoires (permissions 600).
-Vérifiez ensuite `APP_URL` dans chaque fichier.
-
-### 5. Déployer
-
-```bash
-bash /srv/leadschool/prod/infra/deploy/scripts/deploy.sh prod
-bash /srv/leadschool/recette/infra/deploy/scripts/deploy.sh recette
-```
-
-Premier lancement : 15 à 25 minutes (téléchargement de Chromium, compilation).
-Ensuite : 3 à 5 minutes.
 
 ## Utilisation courante
 

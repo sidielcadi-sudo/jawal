@@ -1,0 +1,84 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# LeadSchool — serveur PostgreSQL de la machine.
+#
+# UNE seule instance pour les deux environnements : production et recette ont
+# chacune leur base et son propriétaire, jamais les mêmes données. Mutualiser
+# le serveur économise la mémoire ; séparer les bases garantit qu'une recette
+# ne touche pas la production.
+#
+# Pilotée par `scripts/bootstrap-host.sh`, pas à la main :
+#   docker compose --env-file /srv/leadschool/.postgres.env \
+#     -f docker-compose.postgres.yml up -d
+# ─────────────────────────────────────────────────────────────────────────────
+name: leadschool-db
+
+services:
+  postgres:
+    image: postgres:${PG_VERSION:-18}-alpine
+    container_name: ${PG_CONTAINER:-leadschool-postgres}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_SUPERUSER:-postgres}
+      POSTGRES_PASSWORD: ${PG_SUPERPASS:?mot de passe superutilisateur absent}
+      POSTGRES_DB: postgres
+      # Détecte une corruption de page au lieu de servir des données fausses.
+      POSTGRES_INITDB_ARGS: --data-checksums
+      TZ: ${TZ:-Africa/Casablanca}
+    command:
+      - postgres
+      # Valeurs prudentes pour un VPS de 4 à 8 Go. À relever avec la machine.
+      - -c
+      - max_connections=${PG_MAX_CONNECTIONS:-200}
+      - -c
+      - shared_buffers=${PG_SHARED_BUFFERS:-512MB}
+      - -c
+      - effective_cache_size=${PG_EFFECTIVE_CACHE:-1536MB}
+      - -c
+      - work_mem=${PG_WORK_MEM:-8MB}
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - random_page_cost=1.1
+      # Journal : de quoi diagnostiquer sans noyer le disque.
+      - -c
+      - log_min_duration_statement=1000
+      - -c
+      - log_connections=on
+      - -c
+      - log_disconnections=on
+      - -c
+      - log_lock_waits=on
+      - -c
+      - log_line_prefix=%m [%p] %u@%d
+    ports:
+      # Boucle locale UNIQUEMENT. Publier sur 0.0.0.0 exposerait la base à
+      # Internet : Docker écrit ses règles avant UFW, qui ne filtrerait rien.
+      # Les conteneurs applicatifs n'en ont pas besoin — ils rejoignent le
+      # réseau ci-dessous et visent le serveur par son nom, sur le port 5432.
+      - '127.0.0.1:${PG_PORT:-5436}:5432'
+    volumes:
+      # PostgreSQL 18 place ses données sous /var/lib/postgresql/<version>/ :
+      # on monte le dossier parent, valable quelle que soit la version.
+      - pg_data:/var/lib/postgresql
+    shm_size: 256mb
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '5'
+
+networks:
+  # Réseau nommé, stable : les piles applicatives s'y raccordent en tant que
+  # réseau externe (PG_NETWORK dans leur .env).
+  default:
+    name: ${PG_NETWORK:-leadschool-db}
+
+volumes:
+  pg_data:
+    name: ${PG_VOLUME:-leadschool_pg_data}
