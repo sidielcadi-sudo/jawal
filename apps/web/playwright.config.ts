@@ -42,7 +42,10 @@ export default defineConfig({
         process.env.E2E_DATABASE_URL_APP ??
         'postgresql://jawal_app:jawal_app@localhost:5433/jawal_e2e?schema=public',
       AUTH_SECRET: 'e2e-test-secret-do-not-use-in-prod-xxxxxxxxxxxxx',
-      AUTH_URL: BASE_URL,
+      // Cf. src/lib/auth/config.ts : AUTH_URL ferait réécrire l'origine des
+      // requêtes par next-auth. L'hôte vient des en-têtes.
+      AUTH_TRUST_HOST: 'true',
+      APP_URL: BASE_URL,
       ROOT_DOMAIN: 'jawal.local',
       NODE_OPTIONS: '--use-system-ca',
     },

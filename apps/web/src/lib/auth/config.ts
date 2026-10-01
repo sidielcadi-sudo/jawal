@@ -7,6 +7,12 @@ import type { NextAuthConfig } from 'next-auth';
  * définis dans `./index.ts` (runtime Node uniquement).
  */
 export const authConfig = {
+  // L'URL publique vient des en-têtes transmis par le proxy. Ne PAS la figer
+  // via AUTH_URL : next-auth remplacerait l'origine de la requête, et la
+  // moindre différence avec l'en-tête Host transforme la réécriture de
+  // next-intl en redirection vers une « autre » origine — que Next proxifie,
+  // vers lui-même, en boucle.
+  trustHost: true,
   pages: {
     signIn: '/login',
   },

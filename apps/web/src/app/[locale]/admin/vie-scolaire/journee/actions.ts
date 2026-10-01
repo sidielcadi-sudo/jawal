@@ -161,7 +161,7 @@ export async function notifyAppelAction(input: {
         where: { id: tenantId },
         select: { name: true, localeDefault: true },
       });
-      const base = process.env.AUTH_URL ?? process.env.NEXTAUTH_URL ?? '';
+      const base = process.env.APP_URL ?? '';
       const link = `${base}/${tenant?.localeDefault ?? 'fr'}/enseignant/messages/${out.conversationId}`;
       await safeSendEmail({
         to: out.email,

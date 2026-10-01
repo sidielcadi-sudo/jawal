@@ -105,8 +105,15 @@ services:
       NODE_ENV: production
       APP_URL: ${APP_URL}
       APP_NAME: ${APP_NAME:-LeadSchool}
-      AUTH_URL: ${APP_URL}
-      NEXTAUTH_URL: ${APP_URL}
+      # Pas d'AUTH_URL / NEXTAUTH_URL : next-auth s'en sert pour REMPLACER
+      # l'origine de chaque requête dans le middleware (reqWithEnvURL). Dès que
+      # l'en-tête Host n'est pas identique au caractère près (port absent,
+      # http/https, adresse au lieu du nom), next-intl renvoie alors une
+      # réécriture absolue vers une autre origine, que Next traite comme une
+      # cible externe : l'application se proxifie elle-même en boucle jusqu'au
+      # dépassement de taille d'en-tête (500, HPE_HEADER_OVERFLOW).
+      # L'hôte est déduit des en-têtes transmis par nginx (trustHost).
+      AUTH_TRUST_HOST: 'true'
       AUTH_SECRET: ${AUTH_SECRET}
       CRON_SECRET: ${CRON_SECRET:-${AUTH_SECRET}}
       ROOT_DOMAIN: ${ROOT_DOMAIN:-}
