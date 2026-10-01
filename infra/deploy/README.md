@@ -58,7 +58,14 @@ listen_addresses = '*'        # le port reste 5436
 # /etc/postgresql/18/main/pg_hba.conf  (réseaux Docker)
 host    all    all    172.16.0.0/12    scram-sha-256
 
-systemctl restart postgresql
+systemctl restart postgresql@18-main
+
+# UFW filtre AUSSI le trafic des conteneurs vers l hote :
+ufw allow from 172.16.0.0/12 to any port 5436 proto tcp
+ufw reload
+
+# Verification : doit montrer 0.0.0.0:5436, pas 127.0.0.1:5436
+ss -lntp | grep 5436
 ```
 
 ### 4. Première mise en place

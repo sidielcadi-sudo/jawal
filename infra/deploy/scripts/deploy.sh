@@ -201,19 +201,57 @@ command -v psql >/dev/null || mourir "Client psql absent : apt-get install -y po
 psql_proprio -c 'SELECT 1' >/dev/null || mourir "Connexion impossible à $DB_NAME avec $DB_USER. Vérifiez le mot de passe et pg_hba.conf."
 vert "Base $DB_NAME accessible"
 
-# Les conteneurs joignent Postgres par la passerelle Docker : si l'écoute est
-# limitée à localhost, l'application démarrera mais ne verra aucune donnée.
-if ! timeout 90 docker run --rm --add-host=host.docker.internal:host-gateway "$PG_IMAGE" \
-     sh -c "PGPASSWORD='$DB_PASS' psql -w -h $PG_HOTE_CONTENEUR -p $PG_PORT -U '$DB_USER' -d '$DB_NAME' -c 'SELECT 1' -o /dev/null" 2>/dev/null; then
-  rouge "Postgres n'est pas joignable DEPUIS un conteneur."
+# Les conteneurs joignent Postgres par la passerelle Docker. Deux pannes
+# distinctes se cachent derrière « ça ne marche pas » : le port n'est pas
+# atteignable (écoute limitée, pare-feu), ou il l'est mais l'authentification
+# est refusée (pg_hba). On les sépare, sinon on corrige au hasard.
+bleu "Route Postgres depuis un conteneur"
+
+# L'image du client doit être présente : sans ça, le test se bloquait sur un
+# téléchargement silencieux.
+if ! docker image inspect "$PG_IMAGE" >/dev/null 2>&1; then
+  echo "   Téléchargement de $PG_IMAGE…"
+  docker pull "$PG_IMAGE" || mourir "Téléchargement de $PG_IMAGE impossible (réseau ?)."
+fi
+
+# 1. Le port répond-il ?
+if ! timeout 30 docker run --rm --add-host=host.docker.internal:host-gateway "$PG_IMAGE" \
+     timeout 10 sh -c "</dev/tcp/$PG_HOTE_CONTENEUR/$PG_PORT" >/dev/null 2>&1; then
+  passerelle="$(docker run --rm --add-host=host.docker.internal:host-gateway "$PG_IMAGE" \
+    getent hosts host.docker.internal 2>/dev/null | awk '{print $1}' | head -1)"
+  rouge "Le port $PG_PORT ne répond pas depuis un conteneur (passerelle : ${passerelle:-inconnue})."
   VERSION_PG="$(psql_proprio -tAc 'SHOW server_version' 2>/dev/null | cut -d. -f1 || echo 18)"
   cat <<AIDE
-   Corrigez côté hôte, puis relancez :
-     1. /etc/postgresql/${VERSION_PG}/main/postgresql.conf
-          listen_addresses = '*'        (le port doit rester ${PG_PORT})
-     2. /etc/postgresql/${VERSION_PG}/main/pg_hba.conf
-          host all all 172.16.0.0/12 scram-sha-256
-     3. systemctl restart postgresql@${VERSION_PG}-main || systemctl restart postgresql
+   Trois causes, dans l'ordre de fréquence :
+
+   a) Pare-feu UFW : il filtre AUSSI le trafic venant des conteneurs.
+        sudo ufw allow from 172.16.0.0/12 to any port ${PG_PORT} proto tcp
+        sudo ufw reload
+
+   b) Écoute limitée à localhost :
+        /etc/postgresql/${VERSION_PG}/main/postgresql.conf
+          listen_addresses = '*'        (port = ${PG_PORT})
+        sudo systemctl restart postgresql@${VERSION_PG}-main
+
+   c) Vérifier ce que Postgres écoute réellement :
+        sudo ss -lntp | grep ${PG_PORT}
+        → doit montrer 0.0.0.0:${PG_PORT} ou *:${PG_PORT}, pas 127.0.0.1:${PG_PORT}
+AIDE
+  exit 1
+fi
+
+# 2. L'authentification passe-t-elle ?
+erreur_psql="$(timeout 60 docker run --rm --add-host=host.docker.internal:host-gateway "$PG_IMAGE" \
+  sh -c "PGPASSWORD='$DB_PASS' psql -w -h $PG_HOTE_CONTENEUR -p $PG_PORT -U '$DB_USER' -d '$DB_NAME' -tAc 'SELECT 1'" 2>&1 || true)"
+if ! grep -q '^1$' <<<"$erreur_psql"; then
+  rouge "Le port répond, mais la connexion est refusée :"
+  sed 's/^/   /' <<<"$erreur_psql"
+  VERSION_PG="$(psql_proprio -tAc 'SHOW server_version' 2>/dev/null | cut -d. -f1 || echo 18)"
+  cat <<AIDE
+   Autoriser les réseaux Docker dans pg_hba.conf :
+     /etc/postgresql/${VERSION_PG}/main/pg_hba.conf
+       host    all    all    172.16.0.0/12    scram-sha-256
+     sudo systemctl reload postgresql@${VERSION_PG}-main
 AIDE
   exit 1
 fi
