@@ -1,0 +1,59 @@
+# Image applicative (Next.js 15 + Prisma) pour la production.
+#
+# Base Playwright : les bulletins et attestations sont rendus en PDF par un
+# Chromium piloté côté serveur (apps/web/src/lib/pdf.ts). Partir de node:slim
+# obligerait à réinstaller Chromium et ses dépendances système à la main ;
+# l'image officielle Playwright les fournit, à la version exacte du paquet.
+#
+# Le contexte de build est la RACINE du monorepo : pnpm a besoin du
+# workspace complet (packages/db, packages/shared, packages/ui).
+FROM mcr.microsoft.com/playwright:v1.60.0-noble AS base
+
+ENV PNPM_HOME=/pnpm \
+    PATH=/pnpm:$PATH \
+    NEXT_TELEMETRY_DISABLED=1
+RUN corepack enable
+
+WORKDIR /app
+
+# ── Dépendances ──────────────────────────────────────────────────────────
+# Copiées seules d'abord : tant que les manifestes ne changent pas, Docker
+# réutilise cette couche et n'refait pas l'install à chaque commit.
+FROM base AS deps
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/web/package.json apps/web/
+COPY apps/mobile/package.json apps/mobile/
+COPY packages/config/package.json packages/config/
+COPY packages/db/package.json packages/db/
+COPY packages/shared/package.json packages/shared/
+COPY packages/ui/package.json packages/ui/
+# `--frozen-lockfile` : un lockfile désynchronisé doit faire échouer le build,
+# pas produire une image avec d'autres versions que celles testées.
+RUN pnpm install --frozen-lockfile --filter @jawal/web... --filter @jawal/db...
+
+# ── Build ────────────────────────────────────────────────────────────────
+FROM deps AS build
+COPY . .
+# Le client Prisma est généré dans node_modules : il doit l'être avant le build
+# Next, qui type-vérifie les requêtes.
+RUN pnpm --filter @jawal/db exec prisma generate \
+ && pnpm --filter @jawal/web build
+
+# ── Image finale ─────────────────────────────────────────────────────────
+# On conserve le workspace installé plutôt que la sortie `standalone` : le
+# monorepo transpile trois packages locaux et la base Playwright pèse déjà
+# lourd — le gain serait marginal pour un risque de résolution de modules.
+FROM build AS runner
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+EXPOSE 3000
+
+# Utilisateur non root fourni par l'image Playwright.
+RUN chown -R pwuser:pwuser /app
+USER pwuser
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+CMD ["pnpm", "--filter", "@jawal/web", "start"]

@@ -1,0 +1,29 @@
+# Garage — stockage objet S3-compatible, nœud unique (VPS mono-machine).
+#
+# Aucun secret ici : `rpc_secret` et `admin_token` viennent des variables
+# GARAGE_RPC_SECRET et GARAGE_ADMIN_TOKEN, lues dans .env.prod. Ce fichier est
+# versionné, pas les secrets.
+#
+# Un seul nœud ⇒ pas de redondance : la sauvegarde du volume `garage_data` est
+# la seule protection contre la perte des fichiers (cf. scripts/backup.sh).
+# Passer à trois nœuds impose `replication_factor = 3`.
+
+metadata_dir = "/var/lib/garage/meta"
+data_dir = "/var/lib/garage/data"
+db_engine = "lmdb"
+
+replication_factor = 1
+
+rpc_bind_addr = "[::]:3901"
+# Nom du service sur le réseau Docker interne.
+rpc_public_addr = "garage:3901"
+
+[s3_api]
+# Entre dans la signature SigV4 : doit être identique à `S3_REGION` côté app.
+s3_region = "garage"
+api_bind_addr = "[::]:3900"
+# Buckets adressés dans le chemin (`forcePathStyle` côté client).
+root_domain = ".s3.garage.internal"
+
+[admin]
+api_bind_addr = "[::]:3903"

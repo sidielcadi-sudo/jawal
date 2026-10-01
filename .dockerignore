@@ -1,0 +1,36 @@
+# Contexte de build : on envoie le code source, rien d'autre.
+# Sans ce fichier, le contexte dépasse 2 Go (node_modules, .next, caches) et
+# chaque build recopie tout au démon Docker.
+
+**/node_modules
+**/.next
+**/.turbo
+**/dist
+**/build
+**/coverage
+**/test-results
+**/playwright-report
+**/*.tsbuildinfo
+
+.git
+.github
+.vscode
+.idea
+
+# Secrets et environnements locaux : jamais dans une image.
+.env
+.env.*
+!.env.example
+**/.env.local
+
+# Données et sorties locales
+infra/solver-dump
+docs/guide/*.pdf
+*.dump
+*.odt
+*.csv
+
+# Mobile : pas construit dans l'image web.
+apps/mobile/.expo
+apps/mobile/android
+apps/mobile/ios

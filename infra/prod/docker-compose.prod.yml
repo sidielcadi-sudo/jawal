@@ -1,0 +1,185 @@
+# Pile de production Jawal — VPS mono-machine, sans nom de domaine.
+#
+# Seul nginx publie un port (80). Postgres, Redis, Garage, le solveur et
+# l'application restent sur le réseau interne : rien d'autre n'est joignable
+# depuis Internet, même si le pare-feu du VPS était mal réglé.
+#
+# Noms de projet et de conteneurs distincts de la pile de développement
+# (`jawal-dev`) : les deux peuvent coexister sur une même machine.
+#
+# Démarrage :  docker compose -f infra/prod/docker-compose.prod.yml --env-file .env.prod up -d
+name: jawal-prod
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: jawal-prod-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      # Collation déterministe : les tris et index ne doivent pas dépendre de
+      # la locale de l'hôte.
+      LANG: C.UTF-8
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ../postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: jawal-prod-redis
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # Stockage objet S3-compatible (photos, pièces d'inscription, logos).
+  garage:
+    image: dxflrs/garage:v2.1.0
+    container_name: jawal-prod-garage
+    restart: unless-stopped
+    environment:
+      # Secrets hors fichier de configuration : Garage les lit dans l'env.
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN}
+      GARAGE_ALLOW_WORLD_READABLE_SECRETS: 'true'
+    volumes:
+      - ./garage/garage.toml:/etc/garage.toml:ro
+      - garage_meta:/var/lib/garage/meta
+      - garage_data:/var/lib/garage/data
+    healthcheck:
+      # Image sans shell : `garage status` interroge le nœud en RPC.
+      test: ['CMD', '/garage', 'status']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+  # Pose la disposition du cluster, la clé d'accès et le bucket, puis s'arrête.
+  garage-init:
+    image: curlimages/curl:8.11.1
+    container_name: jawal-prod-garage-init
+    depends_on:
+      garage:
+        condition: service_healthy
+    environment:
+      GARAGE_HOST: garage
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+    volumes:
+      - ../garage/init.sh:/init.sh:ro
+    entrypoint: ['sh', '/init.sh']
+    restart: 'no'
+
+  # Génération des emplois du temps (OR-Tools + FET).
+  solver:
+    build:
+      context: ../../apps/solver
+      dockerfile: Dockerfile
+    image: jawal-prod/solver:latest
+    container_name: jawal-prod-solver
+    restart: unless-stopped
+    environment:
+      PORT: 8000
+
+  web:
+    build:
+      # Contexte = racine du monorepo (workspace pnpm complet).
+      context: ../..
+      dockerfile: infra/prod/Dockerfile.web
+    image: jawal-prod/web:latest
+    container_name: jawal-prod-web
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      garage:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      APP_URL: ${APP_URL}
+      APP_NAME: ${APP_NAME:-LeadSchool}
+      AUTH_URL: ${APP_URL}
+      NEXTAUTH_URL: ${APP_URL}
+      AUTH_SECRET: ${AUTH_SECRET}
+      CRON_SECRET: ${CRON_SECRET:-${AUTH_SECRET}}
+      ROOT_DOMAIN: ${ROOT_DOMAIN:-}
+      # Les services se joignent par leur nom sur le réseau Docker.
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      DATABASE_URL_APP: postgresql://jawal_app:${APP_DB_PASSWORD}@postgres:5432/${POSTGRES_DB}?schema=public
+      REDIS_URL: redis://redis:6379
+      SOLVER_URL: http://solver:8000
+      S3_ENDPOINT: http://garage:3900
+      S3_REGION: ${S3_REGION:-garage}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY}
+      S3_SECRET_KEY: ${S3_SECRET_KEY}
+      S3_BUCKET: ${S3_BUCKET}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      NOTIFY_DRIVER: ${NOTIFY_DRIVER:-log}
+      CMI_MERCHANT_ID: ${CMI_MERCHANT_ID:-}
+      CMI_STORE_KEY: ${CMI_STORE_KEY:-}
+      CMI_GATEWAY_URL: ${CMI_GATEWAY_URL:-}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_SMS_FROM: ${TWILIO_SMS_FROM:-}
+      TWILIO_WHATSAPP_FROM: ${TWILIO_WHATSAPP_FROM:-}
+      WHATSAPP_TOKEN: ${WHATSAPP_TOKEN:-}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID:-}
+
+  # Travaux quotidiens (rappels d'échéances, d'appels, d'examens…).
+  cron:
+    image: alpine:3.21
+    container_name: jawal-prod-cron
+    restart: unless-stopped
+    depends_on:
+      - web
+    environment:
+      CRON_SECRET: ${CRON_SECRET:-${AUTH_SECRET}}
+      WEB_URL: http://web:3000
+    volumes:
+      - ./cron/run-crons.sh:/run-crons.sh:ro
+    # busybox crond en avant-plan ; le script est appelé par la crontab.
+    command: >
+      sh -c "apk add --no-cache curl tzdata >/dev/null &&
+             printf '%s\n' '15 2 * * * /run-crons.sh' > /etc/crontabs/root &&
+             crond -f -l 8"
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: jawal-prod-nginx
+    restart: unless-stopped
+    depends_on:
+      - web
+    ports:
+      - '80:80'
+    volumes:
+      - ./nginx/jawal.conf:/etc/nginx/conf.d/default.conf:ro
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '-', 'http://localhost/api/health']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  pg_data:
+  redis_data:
+  garage_meta:
+  garage_data:
