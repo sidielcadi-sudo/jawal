@@ -12,6 +12,7 @@
   "dependencies": {
     "expo": "^57.0.9",
     "expo-asset": "~57.0.11",
+    "expo-build-properties": "~57.0.22",
     "expo-constants": "~57.0.11",
     "expo-device": "~57.0.1",
     "expo-linear-gradient": "~57.0.1",

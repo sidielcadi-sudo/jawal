@@ -161,6 +161,23 @@ npx eas build --profile production --platform all
 > **Google Play Console** (25 $ une fois). EAS génère et stocke les certificats
 > (`eas credentials` pour les gérer).
 
+### 3 bis) APK pour le VPS sans nom de domaine
+Le profil **`vps`** vise `http://57.129.157.247:8003` et produit un APK
+Android installable par simple lien, sans passer par le Play Store :
+```bash
+npx eas build --profile vps --platform android
+```
+EAS affiche à la fin une page d'installation (lien + QR code) à transmettre.
+
+`app.config.js` autorise le trafic HTTP non chiffré **uniquement** quand
+`EXPO_PUBLIC_API_URL` commence par `http://` : sans cela Android refuse chaque
+requête (« Network request failed »). Les builds `https` restent stricts.
+
+> ⚠️ **À réserver à un pilote.** En HTTP, mots de passe et données des élèves
+> circulent en clair. Et l'adresse est figée dans l'APK : le jour où un
+> domaine arrive, chaque parent devra réinstaller. iOS n'est pas couvert
+> (pas d'installation par lien sans compte Apple Developer + TestFlight).
+
 ### 4) Publier
 ```bash
 npx eas submit --profile production --platform android   # → Play Console
