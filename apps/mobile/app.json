@@ -26,6 +26,12 @@
       "expo-asset",
       "expo-secure-store",
       "expo-status-bar"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "984f5f54-89c4-4179-b222-30ad8e3d2943"
+      }
+    },
+    "owner": "selc"
   }
 }
